@@ -1,0 +1,15 @@
+{
+	"title": "Photo",
+	"type": "string",
+	"links": [
+		{
+			"rel": "full",
+			"href": "/{@}",
+			"targetSchema": {"$ref": "../photo.json"}
+		},
+		{
+			"href": "/{@}/picture",
+			"rel": "picture"
+		}
+	]
+}

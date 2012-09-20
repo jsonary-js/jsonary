@@ -1,0 +1,22 @@
+{
+	"title": "Results list",
+	"properties": {
+		"data": {
+		},
+		"paging": {
+			"links": [
+				{
+					"href": "{previous}",
+					"rel": "prev",
+					"targetSchema": {"$ref": "#"}
+				},
+				{
+					"href": "{next}",
+					"rel": "next",
+					"targetSchema": {"$ref": "#"}
+				}
+			]
+		}
+	},
+	"required": ["data"]
+}

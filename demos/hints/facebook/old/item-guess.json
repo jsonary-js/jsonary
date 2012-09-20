@@ -1,0 +1,16 @@
+{
+	"title": "Take a guess",
+	"type": [
+		{"$ref": "user.json"},
+		{
+			"title": "Results list (guess)",
+			"extends": {"$ref": "result-array.json"},
+			"properties": {
+				"data": {
+					"items": {"$ref": "item-guess.json"}
+				}
+			}
+		}		
+	]
+}
+

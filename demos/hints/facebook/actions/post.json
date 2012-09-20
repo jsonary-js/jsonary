@@ -1,0 +1,33 @@
+{
+	"title": "Postable",
+	"links": [
+		{
+			"href": "/{id}/feed",
+			"rel": "update status",
+			"method": "POST",
+			"encType": "application/x-www-form-urlencoded",
+			"schema": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"title": "Status",
+						"type": "string"
+					}
+				},
+				"additionalProperties": false,
+				"default": {"message": "testing some exciting code"}
+			},
+			"targetSchema": {
+				"title": "Status ID",
+				"links": [
+					{
+						"rel": "full",
+						"href": "{@}",
+						"targetSchema": {"$ref": "../objects/post.json"}
+					}
+				]
+			}
+		}
+	]
+}
+

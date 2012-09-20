@@ -1,0 +1,12 @@
+{
+	"links": [
+		{
+			"href": "http://graph.facebook.com/{id}",
+			"rel": "self"
+		},
+		{
+			"href": "http://graph.facebook.com/{id}/picture",
+			"rel": "picture"
+		}
+	]
+}

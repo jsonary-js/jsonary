@@ -1,0 +1,9 @@
+{
+	"title": "User's Wall",
+	"extends": {"$ref": "result-array.json"},
+	"properties": {
+		"data": {
+			"items": {"$ref": "post.json"}
+		}
+	}
+}

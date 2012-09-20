@@ -1,0 +1,28 @@
+{
+	"title": "Upload photos",
+	"links": [
+		{
+			"href": "/{id}/photos",
+			"method": "POST",
+			"encType": "multipart/form-data",
+			"schema": {
+				"type": "object",
+				"properties": {
+					"source": {
+						"title": "Photo",
+						"type": "string",
+						"mediaType": "image/*"
+					},
+					"message": {
+						"title": "Description",
+						"type": "string",
+					}
+				},
+				"required": ["source"],
+				"additionalProperties": false
+			},
+			"targetSchema": {"$ref": "../objects/links/photo.json"}
+		}
+	]
+}
+

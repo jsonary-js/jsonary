@@ -1,0 +1,45 @@
+.facebook-links {
+	background-color: #FFF;
+}
+
+.facebook-link {
+	display: inline;
+	font-family: sans-serif;
+	padding-left: 1em;
+	padding-right: 1em;
+	color: #08F;
+	text-decoration: none;
+}
+
+.facebook-link:hover {
+	color: #1BF;
+	text-decoration: underline;
+}
+
+.facebook-item {
+	border: 1px solid black;
+}
+
+.facebook-picture {
+	border: 1px solid #000;
+	border-radius: 10px;
+	vertical-align: middle;
+}
+
+.facebook-user-small {
+	border: 1px solid black;
+	border-radius: 10px;
+	background-color: white;
+}
+
+.facebook-post {
+	border: 1px solid black;
+	border-radius: 10px;
+	background-color: white;
+	margin: 10px;
+	padding: 10px;
+}
+
+.facebook-post-date {
+	font-size: 0.8em;
+}

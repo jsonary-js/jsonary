@@ -1,0 +1,9 @@
+{
+	"title": "Friends List",
+	"extends": {"$ref": "result-array.json"},
+	"properties": {
+		"data": {
+			"items": {"$ref": "userlink.json"}
+		}
+	}
+}

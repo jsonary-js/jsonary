@@ -1,0 +1,33 @@
+{
+	"title": "Commentable",
+	"links": [
+		{
+			"href": "/{id}/comments",
+			"rel": "add comment",
+			"method": "POST",
+			"encType": "application/x-www-form-urlencoded",
+			"schema": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"title": "Message",
+						"type": "string",
+						"default": "comment"
+					}
+				},
+				"additionalProperties": false,
+				"default": {"message": "comment"}
+			},
+			"targetSchema": {
+				"title": "Comment link",
+				"links": [
+					{
+						"href": "/{@}",
+						"rel": "full",
+						"targetSchema": "../comment.json"
+					}
+				]
+			}
+		}
+	]
+}
