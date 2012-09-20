@@ -1,0 +1,16 @@
+{
+	"title": "User",
+	"properties": {
+	},
+	"links": [
+		{
+			"rel": "full",
+			"href": "/{id}",
+			"targetSchema": {"$ref": "../user.json"}
+		},
+		{
+			"rel": "picture",
+			"href": "/{id}/picture"
+		}
+	]
+}

@@ -1,0 +1,30 @@
+{
+	"title": "Photo",
+	"description": "https://developers.facebook.com/docs/reference/api/photo/",
+	"properties": {
+		"from": {"$ref": "links/user.json"},
+		"cover_photo": {"$ref": "links.photo.json"}
+	},
+	"links": [
+		{
+			"href": "/{id}/likes",
+			"rel": "likes",
+			"targetSchema": {"$ref": "../arrays/likes.json"}
+		},
+		{
+			"href": "/{id}/comments",
+			"rel": "comments",
+			"targetSchema": {"$ref": "../arrays/comments.json"}
+		},
+		{
+			"href": "/{id}/picture",
+			"rel": "picture"
+		},
+		{
+			"href": "{source}",
+			"rel": "source"
+		}
+	],
+	"extends": [{"$ref": "common.json"}, {"$ref": "../actions/comment.json"}, {"$ref": "../actions/like.json"}]
+}
+

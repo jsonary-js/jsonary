@@ -1,0 +1,16 @@
+{
+	"title": "Current User",
+	"links": [
+		{
+			"rel": "home",
+			"href": "/me/home",
+			"targetSchema": {"$ref": "arrays/posts.json"}
+		},
+		{
+			"rel": "likes",
+			"href": "/me/likes",
+			"targetSchema": {"$ref": "arrays/likes.json"}
+		}
+	],
+	"extends": [{"$ref": "objects/user.json"}, {"$ref": "actions/post.json"}, {"$ref": "../actions/upload-photo.json"}]
+}

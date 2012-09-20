@@ -1,0 +1,16 @@
+{
+	"title": "Like target",
+	"properties": {
+	},
+	"links": [
+		{
+			"rel": "full",
+			"href": "/{id}"
+		},
+		{
+			"href": "/{id}/likes",
+			"rel": "unlike",
+			"method": "DELETE"
+		}
+	]
+}

@@ -1,0 +1,16 @@
+{
+	"title": "Post",
+	"properties": {
+		"from": {"$ref": "userlink.json"},
+		"to": {
+			"items": {"$ref": "userlink.json"}
+		}
+	},
+	"links": [
+		{
+			"href": "{picture}",
+			"rel": "image"
+		}
+	],
+	"extends": {"$ref": "item-common.json"}
+}

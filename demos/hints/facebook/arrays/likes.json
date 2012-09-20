@@ -1,0 +1,23 @@
+{
+	"title": "Likes",
+	"properties": {
+		"count": {"title": "Count"},
+		"data": {
+			"items": {"$ref": "../objects/links/like.json"}
+		},
+		"paging": {
+			"links": [
+				{
+					"href": "{previous}",
+					"rel": "previous",
+					"targetSchema": {"$ref": "#"}
+				},
+				{
+					"href": "{next}",
+					"rel": "next",
+					"targetSchema": {"$ref": "#"}
+				}
+			]
+		}
+	}
+}

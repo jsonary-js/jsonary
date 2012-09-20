@@ -1,0 +1,25 @@
+{
+	"title": "Comment",
+	"description": "https://developers.facebook.com/docs/reference/api/comment/",
+	"properties": {
+		"from": {"$ref": "links/user.json"},
+		"cover_photo": {"$ref": "links.photo.json"}
+	},
+	"links": [
+		{
+			"href": "/{id}/likes",
+			"rel": "likes",
+			"targetSchema": {"$ref": "../arrays/likes.json"}
+		},
+		{
+			"href": "/{id}/picture",
+			"rel": "picture"
+		},
+		{
+			"href": "{source}",
+			"rel": "source"
+		}
+	],
+	"extends": [{"$ref": "common.json"}, {"$ref": "../actions/like.json"}]
+}
+

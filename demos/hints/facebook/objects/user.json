@@ -1,0 +1,50 @@
+{
+	"title": "User",
+	"description": "https://developers.facebook.com/docs/reference/api/user/",
+	"properties": {
+		"significant_other": {"$ref": "links/user.json"}
+	},
+	"links": [
+		{
+			"rel": "albums",
+			"href": "/{id}/albums",
+			"targetSchema": {"$ref": "../arrays/albums.json"}
+		},
+		{
+			"href": "/{id}/feed",
+			"rel": "feed",
+			"targetSchema": {"$ref": "../arrays/posts.json"}
+		},
+		{
+			"href": "/{id}/friends",
+			"rel": "friends",
+			"targetSchema": {"$ref": "../arrays/user-links.json"}
+		},
+		{
+			"rel": "mutualfriends",
+			"href": "/{id}/mutualfriends",
+			"targetSchema": {"$ref": "../arrays/user-links.json"}
+		},
+		{
+			"href": "/{id}/picture",
+			"rel": "picture"
+		},
+		{
+			"rel": "photos",
+			"href": "/{id}/photos",
+			"targetSchema": {"$ref": "../arrays/photos.json"}
+		},
+		{
+			"rel": "posts",
+			"href": "/{id}/posts",
+			"targetSchema": {"$ref": "../arrays/posts.json"}
+		},
+		{
+			"rel": "tagged",
+			"href": "/{id}/tagged",
+			"targetSchema": {"$ref": "../arrays/posts.json"}
+		}
+	],
+	"extends": {"$ref": "common.json"}
+}
+
