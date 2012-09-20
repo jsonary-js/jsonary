@@ -125,6 +125,7 @@ if (typeof global.jQuery != "undefined") {
 		if (element != undefined) {
 			render(element, data);
 		}
+		return this;
 	};
 	jQueryRender.register = function (jQueryObj) {
 		var obj = {};
