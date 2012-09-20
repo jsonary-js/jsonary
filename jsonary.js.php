@@ -21,7 +21,9 @@
     '_footer.js'
   );
 
-  $outputString = "";
+  $outputString = "/**\n";
+  $outputString .= file_get_contents("LICENSE.txt");
+  $outputString .= "**/\n\n";
   
   foreach ($files as $filename) {
     $outputString .= file_get_contents(BASE_DIR.$filename)."\n";
