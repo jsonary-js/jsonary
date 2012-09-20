@@ -1,1 +1,1 @@
-})(); // Global wrapper
+})(this); // Global wrapper

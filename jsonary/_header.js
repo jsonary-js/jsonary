@@ -1,4 +1,4 @@
-(function() { // Global wrapper
+(function(global) { // Global wrapper
 	
 var publicApi = {
     "toString": function() {

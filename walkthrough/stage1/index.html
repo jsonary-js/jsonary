@@ -1,0 +1,99 @@
+<html>
+  <head>
+		<title>Jsonary Basic Walkthrough</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<script src="../../jsonary.js"></script>
+		<script src="../../renderers/basic.jsonary.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>Jsonary Basic Walkthrough</h1>
+				<div class="tagline">AJAX and rendering</div>
+				
+				<div class="section">
+					<p>The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+					</ul>
+				</div>
+	
+				<h2>Basic rendering</h2>
+				<div class="section">
+					<p>Let's start with some example JSON data:
+					<pre class="example code">
+{
+	"title": "Example data"
+}
+					</pre>
+					<p>We can render to the page using Jsonary:
+					<pre class="example code">
+var element = document.getElementById('example-basic');
+var data = Jsonary.create({"title": "Example data"}).readOnlyCopy();
+Jsonary.render(element, data);
+					</pre>
+					<p>And the result is this: <a href="#" onclick="exampleBasic(); return false">click to run</a>
+					<div class="example" id="example-basic"></div>
+					<script>
+function exampleBasic() {
+	var element = document.getElementById('example-basic');
+	var data = Jsonary.create({"title": "Example data"}).readOnlyCopy();
+	Jsonary.render(element, data);
+}
+					</script>
+				</div>
+
+				<h2>Basic AJAX</h2>
+				<div class="section">
+					<p>Say we want to fetch data from an external source: <a href="data.json">data.json</a>.
+					<p>We can tell Jsonary to fetch the data, and give us a callback when it's done.
+					<pre class="example code">
+Jsonary.getData("data.json", function (data) {
+	var element = document.getElementById('example-basic-ajax');
+	Jsonary.render(element, data);
+});
+					</pre>
+					<p>And the result is this: <a href="#" onclick="exampleBasicAjax(); return false">click to run</a>
+					<div class="example" id="example-basic-ajax"></div>
+					<script>
+function exampleBasicAjax() {
+	Jsonary.getData("data.json", function (data) {
+		var element = document.getElementById('example-basic-ajax');
+		Jsonary.render(element, data);
+	});
+}
+					</script>
+				</div>
+
+				<h2>Read-only vs. editable data</h2>
+				<div class="section">
+					<p>You may have noticed that in the first example, we explicitly took a read-only copy of the data.  However, we didn't do that when rendering data from an AJAX request.
+					<p>This is because data objects created from scratch using Jsonary.create() are editable by default, whereas data from AJAX requests is read-only by default.</p>
+					<p>Jsonary renders read-only data in "display" mode, and presents an editable interface for editable data.  For example, here we make the same AJAX request as above, but we render an editable copy of the data:
+					<pre class="example code">
+Jsonary.getData("data.json", function (data) {
+	var element = document.getElementById('example-ajax-editable');
+	Jsonary.render(element, data.editableCopy());
+});
+					</pre>
+					<p>And the result is this: <a href="#" onclick="exampleAjaxEditable(); return false">click to run</a>
+					<div class="example" id="example-ajax-editable"></div>
+					<script>
+function exampleAjaxEditable() {
+	Jsonary.getData("data.json", function (data) {
+		var element = document.getElementById('example-ajax-editable');
+		Jsonary.render(element, data.editableCopy());
+	});
+}
+					</script>
+					<p>As you can hopefully see, there is a fairly ugly but functional editing interface for the data.</p>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

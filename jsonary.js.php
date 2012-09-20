@@ -16,21 +16,15 @@
     'schema.js',
     'schemamatch.js',
     'schemaset.js',
+    'render.js',
     'main.js',
     '_footer.js'
   );
 
   $outputString = "";
   
-  $outputString .= "// Rendered: " . date('r') . "\n";
   foreach ($files as $filename) {
-    $outputString .= "//\t* $filename\n";
-  }
-  $outputString .= "\n";
-  
-  foreach ($files as $filename) {
-    $outputString .= "\n/********************** $filename **********************/\n";
-    $outputString .= file_get_contents(BASE_DIR.$filename);
+    $outputString .= file_get_contents(BASE_DIR.$filename)."\n";
   }
   echo($outputString);
   file_put_contents(TARGET_FILE, $outputString);
