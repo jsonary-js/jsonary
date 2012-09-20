@@ -1,0 +1,20 @@
+{
+	"title": "Likeable",
+	"links": [
+		{
+			"href": "/{id}/likes",
+			"rel": "like",
+			"method": "POST",
+			"encType": "application/x-www-form-urlencoded",
+			"schema": {
+				"type": "object",
+				"additionalProperties": false
+			}
+		},
+		{
+			"href": "/{id}/like",
+			"rel": "unlike",
+			"method": "DELETE"
+		}
+	]
+}

@@ -1,0 +1,22 @@
+{
+	"title": "Post",
+	"description": "https://developers.facebook.com/docs/reference/api/post/",
+	"properties": {
+		"from": {"$ref": "links/user.json"},
+		"to": {"$ref": "../arrays/user-links.json"}
+	},
+	"links": [
+		{
+			"rel": "comments",
+			"href": "{id}/comments",
+			"targetSchema": {"$ref": "../arrays/comments.json"}
+		},
+		{
+			"rel": "likes",
+			"href": "{id}/likes",
+			"targetSchema": {"$ref": "../arrays/likes.json"}
+		}
+	],
+	"extends": [{"$ref": "common.json"}, {"$ref": "../actions/comment.json"}, {"$ref": "../actions/like.json"}]
+}
+
