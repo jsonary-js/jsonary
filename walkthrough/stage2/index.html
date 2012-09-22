@@ -1,0 +1,129 @@
+<html>
+  <head>
+		<title>JSON Schemas in Jsonary</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<script src="../../jsonary.js"></script>
+		<script src="../../renderers/basic.jsonary.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>JSON Schemas in Jsonary</h1>
+				<div class="tagline">Displaying in the default renderer</div>
+				
+				<div class="section">
+					<p>The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+					</ul>
+				</div>
+	
+				<h2>Adding a schema</h2>
+				<div class="section">
+					<p>Previously, we rendered some data like this:
+<pre class="example code">
+var element = document.getElementById('example-basic');
+var data = Jsonary.create({"title": "Example data"}).readOnlyCopy();
+Jsonary.render(element, data);
+</pre>
+					<p>This time, however, we're going to tell Jsonary that this data is described by a schema: <a href="schema-basic.json">schema-basic.json</a>
+<pre class="example code">
+var element = document.getElementById('example-basic');
+var data = Jsonary.create({"title": "Example data"}).readOnlyCopy();
+data.addSchema("schema-basic.json");
+Jsonary.render(element, data);
+</pre>
+					<p>And the result is this: <a href="#" onclick="exampleBasic(); return false">click to run</a>
+					<div class="example" id="example-basic"></div>
+					<script>
+function exampleBasic() {
+	var element = document.getElementById('example-basic');
+	var data = Jsonary.create({"title": "Example data"}).readOnlyCopy();
+	data.addSchema("schema-basic.json");
+	Jsonary.render(element, data);
+}
+					</script>
+					<p>The rendered data is now annotated with the title from our schema.  If you click the schema title, you should get a popup displaying the schema's URL, as well as its contents.
+				</div>
+
+				<h2>Sub-schemas</h2>
+				<div class="section">
+					<p>The JSON Schema provides rules for how to find schemas describing an instance's children.  (Here, and elsewhere, "instance" is used to mean the data that the schema is describing).
+					<p>These rules come in the form of <code>items</code> and <code>properties</code> keywords in the schema.  The <code>properties</code> keyword is an object, mapping object keys to sub-schemas, and the <code>items</code> keyword is either a sub-schema or an array of sub-schemas, corresponding to array items.
+					<p>For example, let's look at this schema: (<a href="schema-inference.json">schema-inference.json</a>)
+<pre class="example code">
+{
+	"title": "Top-level schema",
+	"properties": {
+		"key": {
+			"title": "Key"
+		},
+		"array": {
+			"title": "Array",
+			"items": {
+				"title": "Item"
+			}
+		}
+	}
+}
+</pre>
+					<p>So here, there are two keys: <code>key</code> and <code>array</code>.  The sub-schema for <code>array</code> has sub-schemas for any array items.  And here we have some data, which will be described by that schema: (<a href="data-inference.json">data-inference.json</a>)
+<pre class="example code">
+{
+	"key": "value",
+	"array": [1, false, "string value"],
+	"extraKey": "another value"
+}
+</pre>
+					<p>When we render the data (and tell Jsonary about the schema) the sub-schemas are assigned, like this: <a href="#" onclick="exampleInference(); return false">click to run</a>
+					<div class="example" id="example-inference"></div>
+					<script>
+function exampleInference() {
+	function drawItem(data) {
+		var element = document.getElementById('example-inference');
+		Jsonary.render(element, data);
+	}
+	Jsonary.getData("data-inference.json", drawItem, "schema-inference.json");
+}
+					</script>
+					<p>You should see that the sub-schemas are assigned to the appropriate parts of the document.  You should also see that the property that wasn't in the schema (<code>"extraKey"</code>) has no sub-schema describing it.
+				</div>
+
+				<h2>Schemas from HTTP Headers</h2>
+				<div class="section">
+					<p>In the previous examples, the client has been explictly setting the schema.  However, if you are fetching the data from the web (via an AJAX request), then the server can provide the URL of the schema for you.
+					<p>This is done with the "<code>profile</code>" parameter in the <code>Content-Type</code> header.  Here is a PHP file that outputs some JSON, supplying a schema using the <code>profile</code> parameter:
+<pre class="example code">
+&lt;?php
+	header("Content-Type: application/json; profile=<a href="schema-header.json">schema-header.json</a>");
+?&gt;
+[0, 1, 2, 3]
+</pre>
+					<p>If our server is providing the schema like this, then we don't need to do anything about the schemas ourselves:
+<pre class="example code">
+Jsonary.getData("data-header.php", function (data) {
+	var element = document.getElementById('example-header');
+	Jsonary.render(element, data);
+});
+</pre>
+					<p>Jsonary should correctly annotate the item data with the schema: <a href="#" onclick="exampleHeader(); return false">click to run</a>
+					<div class="example" id="example-header"></div>
+					<script>
+function exampleHeader() {
+	Jsonary.getData("data-header.php", function (data) {
+		var element = document.getElementById('example-header');
+		Jsonary.render(element, data);
+	});
+}
+					</script>
+					<p><I>Note: the previous example uses PHP, and therefore will not work if you are viewing this on GitHub.</I>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

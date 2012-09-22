@@ -1,0 +1,5 @@
+{
+	"key": "value",
+	"array": [1, false, "string value"],
+	"extraKey": "another value"
+}
