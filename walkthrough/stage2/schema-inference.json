@@ -1,0 +1,14 @@
+{
+	"title": "Top-level schema",
+	"properties": {
+		"key": {
+			"title": "Key"
+		},
+		"array": {
+			"title": "Array",
+			"items": {
+				"title": "Item"
+			}
+		}
+	}
+}
