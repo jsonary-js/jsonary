@@ -369,6 +369,10 @@ function ActiveLink(rawLink, potentialLink, data) {
 
 	this.rel = rawLink.rel;
 	this.method = (rawLink.method != undefined) ? rawLink.method : "GET";
+	if (rawLink.enctype != undefined) {
+		rawLink.encType = rawLink.enctype;
+		delete rawLink.enctype;
+	}
 	if (rawLink.encType == undefined) {
 		if (this.method == "GET") {
 			this.encType = "application/x-www-form-urlencoded";
