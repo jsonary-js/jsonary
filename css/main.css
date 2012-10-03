@@ -35,6 +35,25 @@ h2 {
 	text-align: left;
 }
 
+#nav {
+	padding-left: 1em;
+}
+
+.nav-link + .nav-link:before {
+	content: " > ";
+	color: black;
+}
+
+.resource-list {
+	margin: 1em;
+	padding: 1em;
+	margin-left: 10%;
+	margin-right: 10%;
+	border: 1px solid #888;
+	background-color: #F8F8F8;
+	color: #444;
+}
+
 .section {
 	margin-left: 1em;
 	margin-right: 1em;

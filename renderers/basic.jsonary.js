@@ -2,6 +2,9 @@
 	function listSchemas(element, schemaList) {
 		var linkElement = null;
 		schemaList.each(function (index, schema) {
+			if (schema.title() == null) {
+				return;
+			}
 			linkElement = document.createElement("a");
 			linkElement.setAttribute("href", schema.referenceUrl());
 			linkElement.setAttribute("class", "json-schema");
