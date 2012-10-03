@@ -14,8 +14,14 @@
 				<h1>Hyperlinks</h1>
 				<div class="tagline">handling links defined in JSON Schema</div>
 				
-				<div class="section">
-					<p>The demos on this page use the following files:
+				<div id="nav">
+					back to
+					<a class="nav-link" href="../">walkthrough</a>
+					<a class="nav-link" href="../../">main page</a>
+				</div>
+				
+				<div class="resource-list">
+					The demos on this page use the following files:
 					<ul>
 						<li><span class="filename">jsonary.js</span> - the core Jsonary library
 						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
@@ -94,6 +100,115 @@ Jsonary.getSchema("schema-list.json#/items", function (schema) {
 					</script>
 					<p>Hopefully, next to the schema titles annotating the data, you should see some links, labelled "comments" according to the <code>rel</code> value.
 					<p>If you select these links, you should see a popup containing the URI of the link that you clicked.  The URIs are different for the two items, due to their different values for "<code>id</code>".
+				</div>
+
+				<h2>Submitting data</h2>
+				<div class="section">
+					<p>Hyperlinks in JSON Schema can define data to be submitted with the link.  The following properties are all optional:
+					<ul>
+						<li><code>schema</code> - specifies the form the data should take, as a JSON Schema.</li>
+						<li><code>method</code> - the method (GET/POST/etc.) with which the link should be accessed. Defaults to "GET".</li>
+						<li><code>encType</code> - the encoding method for the data.</li>
+					</ul>
+					<p>Any of these options can be omitted.
+					<p>For example, here is a link definition that defines some data: (<a href="data-list.json">schema-link.json</a>)
+<pre class="example code">
+{
+	"title": "Example schema",
+	"links": [
+		{
+			"href": "mirror.php",
+			"rel": "example",
+			"method": "POST",
+			"enctype": "application/x-www-form-urlencoded",
+			"schema": {
+				"type": "object",
+				"properties": {
+					"num": {"type": "integer"},
+					"str": {"type": "string"}
+				},
+				"required": ["num", "str"],
+				"additionalProperties": {"type": "boolean"}
+			}
+		}
+	]
+}
+</pre>
+					<p>Let's take a look at what an instance described by that schema might look like:
+					<p><I>Note: this example uses PHP, and therefore will not work if you are viewing this on GitHub.</I>
+					<div class="example" id="example-link"></div>
+					<p>When you click the link, a prompt should appear in which you can edit some data to submit.  The response (from <code>mirror.php</code>) will be shown below:
+					<div class="example" id="example-link-response"></div>
+					<script>
+var element = document.getElementById('example-link');
+var data = Jsonary.create("Some test data").addSchema("schema-link.json");
+Jsonary.render(element, data);
+
+Jsonary.getSchema("schema-link.json", function (schema) {
+	var linkDefinition = schema.links()[0];
+	linkDefinition.addHandler(function (link, submissionData, request) {
+		var element = document.getElementById('example-link-response');
+		alert("Submitted data to: " + link.href);
+		request.getData(function (data) {
+			Jsonary.render(element, data);
+		});
+	});
+});
+					</script>
+					<p>When you submit the link data, you should (hopefully) see the data returned by <code>mirror.php</code>, which includes the POST data.
+					<p>You may notice that the POST data is formatted exactly like a query string in a URL.  This is the encoding defined by the media type <code>application/x-www-form-urlencoded</code>, and it is the default encoding when using HTML forms.
+				</div>
+
+				<h2>Submitting JSON data</h2>
+				<div class="section">
+					<p>When using the <code>application/x-www-form-urlencoding</code> encoding, all the data is bundled up into a query string, and therefore loses all type information.  The number <code>2</code> is indistinguisable from the string <code>"2"</code>.
+					<p>Fortunately, this is not the only encoding we can use.  We can use any media type, including <code>application/json</code>: (<a href="data-list.json">schema-link-json.json</a>)
+<pre class="example code">
+{
+	"title": "Example schema",
+	"links": [
+		{
+			"href": "mirror.php?some=parameters&because=why_not",
+			"rel": "example",
+			"method": "POST",
+			"encType": "application/json",
+			"schema": {
+				"type": "object",
+				"properties": {
+					"num": {"type": "integer"},
+					"str": {"type": "string"}
+				},
+				"required": ["num", "str"],
+				"additionalProperties": {"type": "boolean"}
+			}
+		}
+	]
+}
+</pre>
+					<p>This is actually the default value of <code>encType</code> for POST links in JSON Schema (if you are making GET requests, then only <code>application/x-www-form-urlencoded</code> is available).  Let's look at what happens when we use that link:
+					<p><I>Note: this example uses PHP, and therefore will not work if you are viewing this on GitHub.</I>
+					<div class="example" id="example-link-json"></div>
+					<p>The response from <code>mirror.php</code> will be shown below:
+					<div class="example" id="example-link-json-response"></div>
+					<script>
+var element = document.getElementById('example-link-json');
+var data = Jsonary.create("Some more data").addSchema("schema-link-json.json");
+Jsonary.render(element, data);
+
+Jsonary.getSchema("schema-link-json.json", function (schema) {
+	var linkDefinition = schema.links()[0];
+	linkDefinition.addHandler(function (link, submissionData, request) {
+		var element = document.getElementById('example-link-json-response');
+		alert("Submitted data to: " + link.href);
+		request.getData(function (data) {
+			Jsonary.render(element, data);
+		});
+	});
+});
+					</script>
+					<p>As you can hopefully see, the data being sent as the POST body is now encoded as JSON.
+					<p><B>Please note</B>: submitting JSON data as above is <U>not</U> the same as submitting JSON data as a string value in an HTML form.  Submitting JSON data as an input with name "<code>jsonData</code>" would end up POSTing something like this:
+					<pre class="example">jsonData=%7B%22num%22%3A0%2C%22str%22%3A%22value%22%7D</pre>
 				</div>
 			</div>
 		</div>

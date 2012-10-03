@@ -1,0 +1,20 @@
+{
+	"title": "Example schema",
+	"links": [
+		{
+			"href": "mirror.php",
+			"rel": "example",
+			"method": "POST",
+			"encType": "application/x-www-form-urlencoded",
+			"schema": {
+				"type": "object",
+				"properties": {
+					"num": {"type": "integer"},
+					"str": {"type": "string"}
+				},
+				"required": ["num", "str"],
+				"additionalProperties": {"type": "boolean"}
+			}
+		}
+	]
+}
