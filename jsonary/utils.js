@@ -146,6 +146,18 @@ var Utils = {
 			throw new Error("Unknown encoding type: " + this.encType);
 		}
 	},
+	decodeData: function (data, encType) {
+		if (encType == undefined) {
+			encType = "application/x-www-form-urlencoded";
+		}
+		if (encType == "application/json") {
+			return JSON.parse(data);
+		} else if (encType == "application/x-www-form-urlencoded") {
+			return Utils.formDecode(data);
+		} else {
+			throw new Error("Unknown encoding type: " + this.encType);
+		}
+	},
 	formEncode: function (data, prefix) {
 		if (prefix == undefined) {
 			prefix = "";
@@ -198,6 +210,54 @@ var Utils = {
 		}
 		return result.join("&");
 	},
+	formDecode: function (data) {
+		console.log("Decoding: " + data);
+		var result = {};
+		var parts = data.split("&");
+		for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+			var part = parts[partIndex];
+			var key = part;
+			var value = "";
+			if (part.indexOf("=") >= 0) {
+				key = part.substring(0, part.indexOf("="));
+				value = decodeURIComponent(part.substring(part.indexOf("=") + 1));
+				if (value == "true") {
+					value = true;
+				} else if (value == "false") {
+					value = false;
+				} else if (value == "null") {
+					value = null;
+				} else if (parseFloat(value) + "" == value) {
+					value = parseFloat(value);
+				}
+			}
+			key = decodeURIComponent(key);
+			var subject = result;
+			var keyparts = key.split("[");
+			for (var i = 1; i < keyparts.length; i++) {
+				keyparts[i] = keyparts[i].substring(0, keyparts[i].length - 1);
+			}
+			for (var i = 0; i < keyparts.length; i++) {
+				if (Array.isArray(subject) && keyparts[i] == "") {
+					keyparts[i] = subject.length;
+				}
+				if (i == keyparts.length - 1) {
+					subject[keyparts[i]] = value;
+				} else {
+					if (subject[keyparts[i]] == undefined) {
+						if (keyparts[i + 1] == "") {
+							subject[keyparts[i]] = [];
+						} else {
+							subject[keyparts[i]] = {};
+						}
+					}
+					subject = subject[keyparts[i]];
+				}
+			}
+		}
+		console.log(result);
+		return result;
+	},
 	encodePointerComponent: function (component) {
 		return component.toString().replace("~", "~0").replace("/", "~1");
 	},
@@ -249,10 +309,19 @@ publicApi.setLogFunction = function (log) {
 };
 publicApi.logLevel = Utils.logLevel;
 publicApi.encodeData = Utils.encodeData;
+publicApi.decodeData = Utils.decodeData;
 publicApi.encodePointerComponent = Utils.encodePointerComponent;
 publicApi.decodePointerComponent = Utils.decodePointerComponent;
 publicApi.splitPointer = Utils.splitPointer;
 publicApi.joinPointer = Utils.joinPointer;
+
+publicApi.extend = function (obj) {
+	for (var key in obj) {
+		if (publicApi[key] == undefined) {
+			publicApi[key] = obj[key];
+		}
+	}
+};
 
 function cacheResult(targetObj, map) {
 	for (var key in map) {

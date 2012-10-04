@@ -536,6 +536,15 @@ Data.prototype.index = function (index) {
 	return this.item(index);
 };
 
+publicApi.extendData = function (obj) {
+	for (var key in obj) {
+		if (Data.prototype[key] == undefined) {
+			Data.prototype[key] = obj[key];
+		}
+	}
+};
+
+
 publicApi.create = function (rawData, baseUrl, readOnly) {
 	var definitive = baseUrl != undefined;
 	if (baseUrl != undefined && baseUrl.indexOf("#") != -1) {
