@@ -1,0 +1,45 @@
+<html>
+  <head>
+		<title>Jsonary - Forwarding to Facebook</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>Forwarding to Facebook</h1>
+				<div class="tagline">the beginnings of logging in</div>
+
+				<div id="nav">
+					back to
+					<a class="nav-link" href="../">walkthrough</a>
+					<a class="nav-link" href="../../">main page</a>
+				</div>
+				
+				<div class="resource-list">
+					The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jquery.js</span> - the jQuery library, to help assemble our interface faster
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">jsonary.hash.js</span> - the Jsonary.Hash plugin
+						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+					</ul>
+				</div>
+	
+				<h2>Login link</h2>
+				<div class="section">
+					<p>The first thing we need to do is to forward the user to Facebook, to authorise our application, providing us with an OAuth bearer token:
+<pre class="example code">
+var oauthToken = null;
+
+if (oauthToken
+</pre>
+					<iframe class="example" src="fb-forward.html">
+					</iframe>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
