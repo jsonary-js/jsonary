@@ -32,12 +32,15 @@
 				<div class="section">
 					<p>The first thing we need to do is to forward the user to Facebook, to authorise our application, providing us with an OAuth bearer token:
 <pre class="example code">
-var oauthToken = null;
-
-if (oauthToken
+function forwardToFacebook() {
+	var facebookAppId = 219375971524697;
+	var facebookRedirectUri = window.location;
+	var facebookPermissions = ["user_about_me"];
+	var facebookAuthUrl = "https://www.facebook.com/dialog/oauth?client_id=" + facebookAppId + "&redirect_uri=" + encodeURIComponent(facebookRedirectUri + window.location.hash) + "&response_type=token&scope=" + facebookPermissions.join(",");
+	window.location.replace(facebookAuthUrl);
+}
 </pre>
-					<iframe class="example" src="fb-forward.html">
-					</iframe>
+					<p><a href="fb-forward.html" target="forwardToFacebook">Try it</a>.
 				</div>
 			</div>
 		</div>
