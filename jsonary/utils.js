@@ -254,6 +254,14 @@ publicApi.decodePointerComponent = Utils.decodePointerComponent;
 publicApi.splitPointer = Utils.splitPointer;
 publicApi.joinPointer = Utils.joinPointer;
 
+publicApi.extend = function (obj) {
+	for (var key in obj) {
+		if (publicApi[key] == undefined) {
+			publicApi[key] = obj[key];
+		}
+	}
+};
+
 function cacheResult(targetObj, map) {
 	for (var key in map) {
 		(function (key, value) {

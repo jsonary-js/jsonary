@@ -244,6 +244,14 @@ Schema.prototype = {
 	}
 };
 
+publicApi.extendSchema = function (obj) {
+	for (var key in obj) {
+		if (Schema.prototype[key] == undefined) {
+			Schema.prototype[key] = obj[key];
+		}
+	}
+};
+
 function PotentialLink(linkData) {
 	var i, part, index, partConstant, partName;
 	var parts = linkData.propertyValue("href").split("{");
