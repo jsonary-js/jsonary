@@ -505,6 +505,14 @@ publicApi.decodePointerComponent = Utils.decodePointerComponent;
 publicApi.splitPointer = Utils.splitPointer;
 publicApi.joinPointer = Utils.joinPointer;
 
+publicApi.extend = function (obj) {
+	for (var key in obj) {
+		if (publicApi[key] == undefined) {
+			publicApi[key] = obj[key];
+		}
+	}
+};
+
 function cacheResult(targetObj, map) {
 	for (var key in map) {
 		(function (key, value) {
@@ -1664,6 +1672,15 @@ Data.prototype.index = function (index) {
 	return this.item(index);
 };
 
+publicApi.extendData = function (obj) {
+	for (var key in obj) {
+		if (Data.prototype[key] == undefined) {
+			Data.prototype[key] = obj[key];
+		}
+	}
+};
+
+
 publicApi.create = function (rawData, baseUrl, readOnly) {
 	var definitive = baseUrl != undefined;
 	if (baseUrl != undefined && baseUrl.indexOf("#") != -1) {
@@ -1923,6 +1940,14 @@ Schema.prototype = {
 	},
 	asList: function () {
 		return new SchemaList([this]);
+	}
+};
+
+publicApi.extendSchema = function (obj) {
+	for (var key in obj) {
+		if (Schema.prototype[key] == undefined) {
+			Schema.prototype[key] = obj[key];
+		}
 	}
 };
 
