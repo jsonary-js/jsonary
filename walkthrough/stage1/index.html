@@ -52,6 +52,7 @@ function exampleBasic() {
 	Jsonary.render(element, data);
 }
 					</script>
+					<p>It is also possible to call <code>render()</code> on the data object, which has the same effect.  <code>Jsonary.render(element, data)</code> is equivalent to <code>data.render(element)</code>.
 				</div>
 
 				<h2>Basic AJAX</h2>
@@ -98,6 +99,16 @@ function exampleAjaxEditable() {
 }
 					</script>
 					<p>As you can hopefully see, there is a fairly ugly but functional editing interface for the data.</p>
+				</div>
+
+				<h2>jQuery</h2>
+				<div class="section">
+					<p>If jQuery is loaded before Jsonary, then Jsonary registers with jQuery:
+<pre class="example code">
+var data = Jsonary.create({"title": "Example data"}).readOnlyCopy();
+$('#target').renderJson(data);
+</pre>
+					<p>This corresponds to the <code>$render()</code> method on the data object, which has the same effect.  <code>$('#target').renderJson(data)</code> is equivalent to <code>data.$render($('#target'))</code>.
 				</div>
 			</div>
 		</div>
