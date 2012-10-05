@@ -2730,7 +2730,7 @@ SchemaList.prototype = {
 			for (var i = 0; i < this.length; i++) {
 				var schema = this[i];
 				var referenceUrl = schema.referenceUrl();
-				if (referenceUrl.substring(referenceUrl.length - url.length) == url) {
+				if (referenceUrl != null && referenceUrl.substring(referenceUrl.length - url.length) == url) {
 					return true;
 				}
 			}
@@ -3710,6 +3710,14 @@ if (typeof global.jQuery != "undefined") {
 		}
 		return this;
 	};
+	publicApi.extendData({
+		$render: function (query) {
+			var element = query[0];
+			if (element != undefined) {
+				render(element, this);
+			}
+		}
+	});
 	jQueryRender.register = function (jQueryObj) {
 		var obj = {};
 		obj.filter = jQueryObj.filter;
@@ -3732,7 +3740,11 @@ if (typeof global.jQuery != "undefined") {
 	jQuery.extend({renderJson: jQueryRender});
 }
 
-
+publicApi.extendData({
+	render: function (element) {
+		render(element, this);
+	}
+});
 
 //Tidying
 // TODO: check all " == undefined", in case they should be " === undefined" instead (null-safety)
