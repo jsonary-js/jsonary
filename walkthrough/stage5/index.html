@@ -42,10 +42,11 @@ Jsonary.render.register({
 	"filter": function (data, schemas) {
 		// return boolean, declaring whether this renderer can render the item
 		// Most of the time, it will look something like this:
-		return schemas.containsUrl('some url');
+		return schemas.containsUrl('some schema url');
 	}
 });
 </pre>
+					<p>The <code>containsUrl()</code> method matches the provided argument against the URLs of the schemas as a suffix (if it's a string), so you can just pass in <code>"mySchema.json"</code>, and it will match <code>http://example.com/schemas/mySchema.json</code>.  If you pass in a regular expression, then it tests the URLs using that regular expression.
 					<p>There is also an optional <code>"update"</code> property that can be placed in that object, but we're not going to discuss that yet.
 				</div>
 
