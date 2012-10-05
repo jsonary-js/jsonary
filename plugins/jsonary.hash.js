@@ -1,8 +1,7 @@
 (function (global) {
 	var hashJsonaryData = Jsonary.create(null);
-	
-	var lastHash = null;
-	setInterval(function () {
+
+	function updateHash() {
 		var hashString = window.location.hash;
 		if (hashString.length > 0 && hashString.charAt(0) == "#") {
 			hashString = hashString.substring(1);
@@ -18,7 +17,12 @@
 		} catch (e) {
 			console.log(e);
 		}
-	}, 100);
+		hashJsonaryData.setValue(hashData);
+	}
+	
+	var lastHash = null;
+	setInterval(updateHash, 100);
+	updateHash();
 
 	Jsonary.extend({
 		hash: hashJsonaryData
