@@ -73,6 +73,17 @@ a:hover {
 	color: #08F;
 }
 
+code, .code {
+	padding-left: 0.3em;
+	padding-right: 0.2em;
+	color: #000;
+	font-size: 1.1em;
+	line-height: 1.1em;
+	background-color: #EEE;
+	border: 1px solid #CCC;
+	border-radius: 3px;
+}
+
 .example {
 	display: block;
 	width: 80%;
@@ -84,9 +95,12 @@ a:hover {
 
 .example.code {
 	background-color: #EEE;
+	border: 2px solid #444;
+	line-height: 1.2em;
 }
 
 .filename {
 	font-family: monospace;
 	font-weight: bold;
 }
+

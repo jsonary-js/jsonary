@@ -1,0 +1,143 @@
+<html>
+  <head>
+		<title>Manipulating data in Jsonary</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<script src="../../jsonary.js"></script>
+		<script src="../../renderers/basic.jsonary.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>Manipulating data in Jsonary</h1>
+				<div class="tagline"></div>
+				
+				<div id="nav">
+					back to
+					<a class="nav-link" href="../">walkthrough</a>
+					<a class="nav-link" href="../../">main page</a>
+				</div>
+				
+				<div class="resource-list">
+					The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+					</ul>
+				</div>
+	
+				<h2>Accessing raw values</h2>
+				<div class="section">
+					<p>Jsonary places a wrapper around data, allowing it to store metadata like schema associations.
+					<p>To get the original data back again, use the <code>value()</code> method:
+<pre class="example code">
+var wrappedData = Jsonary.create({"key": "value"});
+var originalData = wrappedData.value();
+</pre>
+					<p>To get the basic type (<code>null</code>, <code>boolean</code>, <code>integer</code>, <code>number</code>, <code>string</code>, <code>object</code> or <code>array</code>), use the <code>basicType()</code> method:
+<pre class="example code">
+var wrappedData = Jsonary.create([0, 1, 2, 3]);
+var basicType = wrappedData.basicType();  // In this case, it's "array"
+</pre>
+					<p>Note that <code>data.basicType()</code> is <em>not</em> the same as <code>typeof data.value()</code>.
+				</div>
+	
+				<h2>Accessing properties and items</h2>
+				<div class="section">
+					<p>Here are some methods for accessing properties of objects, and items in arrays:
+<pre class="example code">
+var rawData = {
+	"arrayKey": [0, 1, 2, 3, 4]
+};
+var wrappedData = Jsonary.create(rawData);
+
+var propertyData = wrappedData.property("arrayKey");
+var itemData = propertyData.item(0);
+</pre>
+					<p>There are of course <code>keys()</code> and <code>length()</code> methods.  Since Jsonary allows you to navigate down into non-existent properties or items, there is also the <code>defined()</code> method:
+<pre class="example code">
+var rawData = {
+	"arrayKey": [0, 1, 2, 3, 4]
+};
+var wrappedData = Jsonary.create(rawData);
+
+var keys = wrappedData.keys();
+var length = wrappedData.property("arrayKey").length();
+
+wrappedData.property("arrayKey").defined(); // true
+wrappedData.property("anotherKey").defined(); // false
+
+wrappedData.property("arrayKey").item(0).defined(); // true
+wrappedData.property("arrayKey").item(10).defined(); // false
+</pre>
+				</div>
+
+				<h2>Convenience methods</h2>
+				<div class="section">
+<pre class="example code">
+var wrappedData = Jsonary.create(rawData);
+
+wrappedData.propertyValue("key"); // shorthand for wrappedData.property("key").value()
+wrappedData.itemValue(0); // shorthand for wrappedData.property(0).value()
+
+// Iterate
+wrappedData.properties(function (key, subData) {
+	// here, subData == wrappedData.property(key);
+});
+wrappedData.items(function (index, subData) {
+	// here, subData == wrappedData.item(index);
+});
+</pre>
+					<p>Note that if the data is of the wrong type, calling the <code>properties()</code> or <code>items()</code> methods do not cause an exception - the callback is merely never called.
+				</div>
+
+				<h2>Changing data</h2>
+				<div class="section">
+					<p>The way to change the value a Jsonary object holds is the <code>setValue()</code> property.
+<pre class="example code">
+var exampleData = Jsonary.create({"key": "value"});
+Jsonary.render(document.getElementById("example-changing-data"), exampleData);
+
+function setKey() {
+	exampleData.property("otherKey").setValue("other value");
+}
+function removeKey() {
+	exampleData.property("otherKey").remove();
+	// Alternatively:  exampleData.removeProperty("otherKey")
+}
+</pre>
+					<div class="example" id="example-changing-data"></div>
+					<script>
+var exampleData = Jsonary.create({"key": "value"});
+Jsonary.render(document.getElementById("example-changing-data"), exampleData);
+
+function setKey() {
+	exampleData.property("otherKey").setValue("other value");
+}
+function removeKey() {
+	exampleData.property("otherKey").remove();
+	// Alternatively:  exampleData.removeProperty("otherKey")
+}
+					</script>
+					<p>Try it out using these two links: <a href="javascript:setKey()">setKey()</a>, <a href="javascript:removeKey()">removeKey()</a>.
+					<p>Changes made to one Jsonary data can affect another, for example:
+<pre class="example code">
+var data = Jsonary.create({"key": "value"});
+
+// Access non-existent property
+var subData = data.property("otherKey");
+subData.defined(); // false
+
+data.setValue({"otherKey", "other value"});
+
+subData.defined(); // true - the property is now defined;
+subData.value(); // returns "other value"
+</pre>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

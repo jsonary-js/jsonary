@@ -1,0 +1,69 @@
+<html>
+  <head>
+		<title>Custom Renderers in Jsonary</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<script src="../../jsonary.js"></script>
+		<script src="../../renderers/basic.jsonary.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>Custom Renderers in Jsonary</h1>
+				<div class="tagline">make things look pretty</div>
+				
+				<div id="nav">
+					back to
+					<a class="nav-link" href="../">walkthrough</a>
+					<a class="nav-link" href="../../">main page</a>
+				</div>
+				
+				<div class="resource-list">
+					The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+					</ul>
+				</div>
+	
+				<h2>Registering a custom renderer</h2>
+				<div class="section">
+					<p>The most basic way to register a renderer in Jsonary is this:
+<pre class="example code">
+Jsonary.render.register({
+	"render": function (element, data) {
+		// Fill the element with data
+		// The element is emptied before this function is called,
+		//   so you don't need to do that yourself
+	},
+	"filter": function (data, schemas) {
+		// return boolean, declaring whether this renderer can render the item
+		// Most of the time, it will look something like this:
+		return schemas.containsUrl('some url');
+	}
+});
+</pre>
+					<p>There is also an optional <code>"update"</code> property that can be placed in that object, but we're not going to discuss that yet.
+				</div>
+
+				<h2>jQuery</h2>
+				<div class="section">
+					<p>There is a nice jQuery-friendly way to do this as well:
+<pre class="example code">
+$.renderJson.register({
+	"render": function (query, data) {
+		// Here, query is a jQuery object
+	},
+	"filter": function (data, schemas) {
+		// same as above
+	}
+});
+</pre>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

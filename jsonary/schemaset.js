@@ -67,7 +67,7 @@ SchemaList.prototype = {
 			for (var i = 0; i < this.length; i++) {
 				var schema = this[i];
 				var referenceUrl = schema.referenceUrl();
-				if (referenceUrl.substring(referenceUrl.length - url.length) == url) {
+				if (referenceUrl != null && referenceUrl.substring(referenceUrl.length - url.length) == url) {
 					return true;
 				}
 			}
