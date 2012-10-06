@@ -1160,6 +1160,22 @@ PatchOperation.prototype = {
 		}
 		return false;
 	},
+	target: function () {
+		return this._target;
+	},
+	targetEquals: function (path) {
+		return this._target == path;
+	},
+	targetChild: function (path) {
+		path += "/";
+		if (this._target.substring(0, path.length) == path) {
+			var remainder = this._target.substring(path.length);
+			if (remainder.indexOf("/") == -1) {
+				return decodeURIComponent(remainder);
+			}
+		}
+		return false;
+	},
 	plain: function () {
 		result = {};
 		result[this._patchType] = this._subject;
@@ -1243,9 +1259,10 @@ function Document(url, isDefinitive, readOnly) {
 		} else {
 			subjectData = this.root.subPath(subject);
 		}
-		var result = [subjectData];
-		if (operation.action() != "replace" && subjectData.parent() != undefined) {
-			result.push(subjectData.parent());
+		var result = [];
+		while (subjectData != undefined) {
+			result.push(subjectData);
+			subjectData = subjectData.parent();
 		}
 		if (operation.action() == "move") {
 			var target = operation.target();
@@ -1255,9 +1272,10 @@ function Document(url, isDefinitive, readOnly) {
 			} else {
 				targetData = this.root.subPath(target);
 			}
-			result.push(targetData);
-			if (targetData.parent() != undefined) {
-				result.push(targetData.parent());
+			result.push();
+			while (targetData != undefined) {
+				result.push(targetData);
+				targetData = targetData.parent();
 			}
 		}
 		return result;
@@ -1333,11 +1351,11 @@ function Data(document, secrets, parent, parentKey) {
 	this.parent = function() {
 		return parent;
 	};
-	this.fragmentPath = function () {
+	this.pointerPath = function () {
 		if (this.document.root == this) {
 			return "";
 		} else if (parent != undefined) {
-			return parent.fragmentPath() + "/" + Utils.encodePointerComponent(parentKey);
+			return parent.pointerPath() + "/" + Utils.encodePointerComponent(parentKey);
 		} else {
 			return "?";
 		}
@@ -1381,7 +1399,7 @@ function Data(document, secrets, parent, parentKey) {
 	
 	this.patch = function (patch) {
 		var thisData = this;
-		var thisPath = this.fragmentPath();
+		var thisPath = this.pointerPath();
 		var updateKeys = {};
 		patch.each(function (i, operation) {
 			if (operation.subjectEquals(thisPath)) {
@@ -1574,9 +1592,9 @@ function Data(document, secrets, parent, parentKey) {
 Data.prototype = {
 	referenceUrl: function () {
 		if (this.document.isDefinitive) {
-			var fragmentPath = this.fragmentPath();
-			if (fragmentPath == "" || fragmentPath.charAt(0) == "/") {
-				return this.document.url + "#" + encodeURI(this.fragmentPath());
+			var pointerPath = this.pointerPath();
+			if (pointerPath == "" || pointerPath.charAt(0) == "/") {
+				return this.document.url + "#" + encodeURI(this.pointerPath());
 			}
 		}
 	},
@@ -1605,16 +1623,16 @@ Data.prototype = {
 		}
 		var patch = new Patch();
 		if (this.defined()) {
-			patch.replace(this.fragmentPath(), newValue);
+			patch.replace(this.pointerPath(), newValue);
 		} else {
-			patch.add(this.fragmentPath(), newValue);
+			patch.add(this.pointerPath(), newValue);
 		}
 		this.document.patch(patch, this);
 		return this;
 	},
 	remove: function () {
 		var patch = new Patch();
-		patch.remove(this.fragmentPath());
+		patch.remove(this.pointerPath());
 		this.document.patch(patch, this);
 		return this;
 	},
@@ -3597,10 +3615,7 @@ function selectRenderer(data) {
 }
 
 function render(element, data) {
-	if (global.jQuery != null) {
-		jQuery(element).empty();
-	}
-	element.innerHTML = "";
+	render.empty(element);
 	if (element.id == undefined || element.id == "") {
 		element.id = ELEMENT_ID_PREFIX + (elementIdCounter++);
 	}
@@ -3625,6 +3640,12 @@ function render(element, data) {
 	}
 }
 publicApi.render = render;
+render.empty = function (element) {
+	if (global.jQuery != null) {
+		jQuery(element).empty();
+	}
+	element.innerHTML = "";
+};
 
 function update(data, operation) {
 	var uniqueId = data.uniqueId;
@@ -3680,11 +3701,7 @@ Renderer.prototype = {
 		if (this.updateFunction != undefined) {
 			this.updateFunction(element, data, operation);
 		} else {
-			if (global.jQuery != null) {
-				jQuery(element).empty();
-			}
-			element.innerHTML = "";
-			this.renderFunction(element, data);
+			this.defaultUpdate(element, data, operation);
 		}
 		return this;
 	},
@@ -3693,6 +3710,21 @@ Renderer.prototype = {
 			return this.filterFunction(data, schemas);
 		}
 		return true;
+	},
+	defaultUpdate: function (element, data, operation) {
+		var redraw = false;
+		var pointerPath = data.pointerPath();
+		if (operation.subjectEquals(pointerPath) || operation.subjectChild(pointerPath) !== false) {
+			redraw = true;
+		} else if (operation.target() != undefined) {
+			if (operation.targetEquals(pointerPath) || operation.targetChild(pointerPath) !== false) {
+				redraw = true;
+			}
+		}
+		if (redraw) {
+			render.empty(element);
+			this.renderFunction(element, data);
+		}
 	}
 }
 
@@ -3735,6 +3767,11 @@ if (typeof global.jQuery != "undefined") {
 			}
 		}
 		render.register(obj);
+	};
+	jQueryRender.empty = function (query) {
+		query.each(function (index, element) {
+			render.empty(element);
+		});
 	};
 	jQuery.fn.extend({renderJson: jQueryRender});
 	jQuery.extend({renderJson: jQueryRender});

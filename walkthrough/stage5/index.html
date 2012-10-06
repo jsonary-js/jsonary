@@ -4,9 +4,20 @@
 		<link rel="stylesheet" href="../../css/main.css">
 		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
 		<meta name="viewport" content="width=960">
+		<style>
+			.exampleTitle {
+				margin: 0;
+				text-align: left;
+				border-bottom: 1px solid black;
+				font-size: 1.3em;
+				padding-left: 1em;
+				background-color: #EEF;
+			}
+		</style>
 	</head>
 	<body>
 		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<script src="../../js/jquery.js"></script>
 		<script src="../../jsonary.js"></script>
 		<script src="../../renderers/basic.jsonary.js"></script>
 		<div align="center">
@@ -23,6 +34,7 @@
 				<div class="resource-list">
 					The demos on this page use the following files:
 					<ul>
+						<li><span class="filename">jquery.js</span> - jQuery
 						<li><span class="filename">jsonary.js</span> - the core Jsonary library
 						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
 						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
@@ -47,7 +59,7 @@ Jsonary.render.register({
 });
 </pre>
 					<p>The <code>containsUrl()</code> method matches the provided argument against the URLs of the schemas as a suffix (if it's a string), so you can just pass in <code>"mySchema.json"</code>, and it will match <code>http://example.com/schemas/mySchema.json</code>.  If you pass in a regular expression, then it tests the URLs using that regular expression.
-					<p>There is also an optional <code>"update"</code> property that can be placed in that object, but we're not going to discuss that yet.
+					<p>There is also an optional <code>"update"</code> property, discussed later.
 				</div>
 
 				<h2>jQuery</h2>
@@ -63,6 +75,134 @@ $.renderJson.register({
 	}
 });
 </pre>
+				</div>
+
+				<h2>Example</h2>
+				<div class="section">
+					<p>For this example, we're going to use jQuery.
+					<p>Say we have a schema, like so: (<a href="example-schema.json">example-schema.json</a>)
+<pre class="example code">
+{
+	"title": "Example schema",
+	"type": "object",
+	"properties": {
+		"title": {"type": "string"},
+		"message": {"type": "string"}
+	}
+}
+</pre>
+					<p>If simply rendered a (read-only) instance described by this schema, it would look like this:
+					<div class="example" id="example-no-renderer"></div>
+					<script>
+var rawData = {"title": "Instance title", "message": "This is the message content"};
+var data = Jsonary.create(rawData, null, true);
+data.addSchema("example-schema-copy.json").$render($("#example-no-renderer"));
+					</script>
+					<p>Let's try adding a custom renderer that matches that schema:
+<pre class="example code">
+$.renderJson.register({
+	"render": function (query, data) {
+		var title = $('&lt;h3 class="exampleTitle" /&gt;');
+		title.renderJson(data.property("title")).appendTo(query);
+		var message = $('&lt;div class="exampleMessage" /&gt;');
+		message.renderJson(data.property("message")).appendTo(query);
+	},
+	"filter": function (data, schemas) {
+		return schemas.containsUrl("example-schema.json");
+	}
+});
+</pre>
+					<p>If we render the item, having defined this custom renderer (and a bit of CSS), it looks like this:
+					<div class="example" id="example-renderer"></div>
+					<script>
+$.renderJson.register({
+	"render": function (query, data) {
+		var title = $('<h3 class="exampleTitle" />');
+		title.renderJson(data.property("title")).appendTo(query);
+		var message = $('<div class="exampleMessage" />');
+		message.renderJson(data.property("message")).appendTo(query);
+	},
+	"filter": function (data, schemas) {
+		return schemas.containsUrl("example-schema.json");
+	}
+});
+
+var rawData = {"title": "Instance title", "message": "This is the message content"};
+var data = Jsonary.create(rawData, null, true);
+data.addSchema("example-schema.json").$render($("#example-renderer"));
+					</script>
+				</div>
+				
+				<h2>Read/write example</h2>
+				<div class="section">
+					<p>You might wonder why in the previous example, we called <code>title.renderJson(data.property("title"))</code> instead of <code>title.text(data.propertyValue("title"))</code>.
+					<p>To illustrate, let's try rendering an <em>editable</em> item using exactly the same renderer:
+					<div class="example" id="example-renderer-editable"></div>
+					<script>
+var rawData = {"title": "Instance title", "message": "This is the message content"};
+var data = Jsonary.create(rawData);
+data.addSchema("example-schema.json").$render($('#example-renderer-editable'));
+					</script>
+					<p>As you should hopefully be able to see, the item is now rendered with an editable title and message.
+					<p>This is one of the advantages of the rendering using Jsonary.  If instead of figuring out how to render everything yourself, you pass back to Jsonary, it can select an appropriate renderer for you, and you can piggy-back on that renderer's behaviour.
+				</div>
+				
+				<h2>Simultaneous read/write</h2>
+				<div class="section">
+					<p>Since the rendered versions of the items are tied to the data, if you update the data then the displayed version changes. Here we are rendering two copies of an instance:
+					<div class="example" id="example-renderer-duplicate1"></div>
+					<p>and:
+					<div class="example" id="example-renderer-duplicate2"></div>
+					<script>
+var rawData = {"title": "Duplicated item", "message": "This is the message content"};
+var data = Jsonary.create(rawData).addSchema("example-schema.json");
+$('#example-renderer-duplicate1').renderJson(data);
+$('#example-renderer-duplicate2').renderJson(data);
+					</script>
+					<p>If you edit the title or message in one of them, then the other should change to match, as the underlying data has changed.
+				</div>
+
+				<h2>Updates</h2>
+				<div class="section">
+					<p>How does this magical updating work?
+					<p>At the top of this page, we briefly mentioned the optional <code>update</code> property of the renderer object.  We're not going to describe it in great detail, but the basic form is:
+<pre class="example code">
+Jsonary.render.register({
+	"render": function (element, data) {
+		// rendering code
+	},
+	"update": function (element, data, operation) {
+		// update code
+	}
+	"filter": function (data, schemas) {
+		return schemas.containsUrl('some schema url');
+	}
+});
+</pre>
+					<p>Whenever any data is changed, this function is called for that data <em>and its parent, grandparent and so on</em> anywhere that is still rendered on the page.  The mysterious third argument <code>operation</code> represents a single operation in a JSON Patch, which you can inspect to see what the actual change was.
+					<p>Most of the time, you will not need to implement this function.  If you don't specify an update function, the default update function is called.  This function simply re-draws the item if the change occurred in the rendered data or any of its immediate children.
+					<p>You can fall back to the default update behaviour from within your update function by calling <code>this.defaultUpdate(element, data, operation)</code>.
+<!--
+<pre class="example code">
+function defaultUpdate(element, data, operation) {
+	var redraw = false;
+	var pointerPath = data.pointerPath();
+	if (operation.subjectEquals(pointerPath) || operation.subjectChild(pointerPath) !== false) {
+		redraw = true;
+	} else if (operation.target() != undefined) {
+		if (operation.targetEquals(pointerPath) || operation.targetChild(pointerPath) !== false) {
+			redraw = true;
+		}
+	}
+	if (redraw) {
+		render.empty(element);
+		this.renderFunction(element, data);
+	}
+}
+</pre>
+					<p>You might notice the use of <code>Jsonary.render.empty()</code> in that code.  This is a function that empties the element, but attempting to be as friendly as possible to other plugins.  If jQuery is available, it uses <code>jQuery(element).empty()</code>, before it calls <code>element.innerHTML = ""</code>.
+					<p>This is because if jQuery is used to attach data to elements (using the <code>data()</code> method), and the element is then removed <em>without</em> using jQuery, then the data can hang around.  To help prevent such memory leaks, the <code>Jsonary.render.empty()</code> method clears out the element in a jQuery-safe way.
+-->			
 				</div>
 			</div>
 		</div>
