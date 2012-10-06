@@ -46,9 +46,10 @@ function Document(url, isDefinitive, readOnly) {
 		} else {
 			subjectData = this.root.subPath(subject);
 		}
-		var result = [subjectData];
-		if (operation.action() != "replace" && subjectData.parent() != undefined) {
-			result.push(subjectData.parent());
+		var result = [];
+		while (subjectData != undefined) {
+			result.push(subjectData);
+			subjectData = subjectData.parent();
 		}
 		if (operation.action() == "move") {
 			var target = operation.target();
@@ -58,9 +59,10 @@ function Document(url, isDefinitive, readOnly) {
 			} else {
 				targetData = this.root.subPath(target);
 			}
-			result.push(targetData);
-			if (targetData.parent() != undefined) {
-				result.push(targetData.parent());
+			result.push();
+			while (targetData != undefined) {
+				result.push(targetData);
+				targetData = targetData.parent();
 			}
 		}
 		return result;
@@ -136,11 +138,11 @@ function Data(document, secrets, parent, parentKey) {
 	this.parent = function() {
 		return parent;
 	};
-	this.fragmentPath = function () {
+	this.pointerPath = function () {
 		if (this.document.root == this) {
 			return "";
 		} else if (parent != undefined) {
-			return parent.fragmentPath() + "/" + Utils.encodePointerComponent(parentKey);
+			return parent.pointerPath() + "/" + Utils.encodePointerComponent(parentKey);
 		} else {
 			return "?";
 		}
@@ -184,7 +186,7 @@ function Data(document, secrets, parent, parentKey) {
 	
 	this.patch = function (patch) {
 		var thisData = this;
-		var thisPath = this.fragmentPath();
+		var thisPath = this.pointerPath();
 		var updateKeys = {};
 		patch.each(function (i, operation) {
 			if (operation.subjectEquals(thisPath)) {
@@ -377,9 +379,9 @@ function Data(document, secrets, parent, parentKey) {
 Data.prototype = {
 	referenceUrl: function () {
 		if (this.document.isDefinitive) {
-			var fragmentPath = this.fragmentPath();
-			if (fragmentPath == "" || fragmentPath.charAt(0) == "/") {
-				return this.document.url + "#" + encodeURI(this.fragmentPath());
+			var pointerPath = this.pointerPath();
+			if (pointerPath == "" || pointerPath.charAt(0) == "/") {
+				return this.document.url + "#" + encodeURI(this.pointerPath());
 			}
 		}
 	},
@@ -408,16 +410,16 @@ Data.prototype = {
 		}
 		var patch = new Patch();
 		if (this.defined()) {
-			patch.replace(this.fragmentPath(), newValue);
+			patch.replace(this.pointerPath(), newValue);
 		} else {
-			patch.add(this.fragmentPath(), newValue);
+			patch.add(this.pointerPath(), newValue);
 		}
 		this.document.patch(patch, this);
 		return this;
 	},
 	remove: function () {
 		var patch = new Patch();
-		patch.remove(this.fragmentPath());
+		patch.remove(this.pointerPath());
 		this.document.patch(patch, this);
 		return this;
 	},

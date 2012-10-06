@@ -107,6 +107,22 @@ PatchOperation.prototype = {
 		}
 		return false;
 	},
+	target: function () {
+		return this._target;
+	},
+	targetEquals: function (path) {
+		return this._target == path;
+	},
+	targetChild: function (path) {
+		path += "/";
+		if (this._target.substring(0, path.length) == path) {
+			var remainder = this._target.substring(path.length);
+			if (remainder.indexOf("/") == -1) {
+				return decodeURIComponent(remainder);
+			}
+		}
+		return false;
+	},
 	plain: function () {
 		result = {};
 		result[this._patchType] = this._subject;

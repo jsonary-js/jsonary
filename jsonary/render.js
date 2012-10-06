@@ -14,10 +14,7 @@ function selectRenderer(data) {
 }
 
 function render(element, data) {
-	if (global.jQuery != null) {
-		jQuery(element).empty();
-	}
-	element.innerHTML = "";
+	render.empty(element);
 	if (element.id == undefined || element.id == "") {
 		element.id = ELEMENT_ID_PREFIX + (elementIdCounter++);
 	}
@@ -42,6 +39,12 @@ function render(element, data) {
 	}
 }
 publicApi.render = render;
+render.empty = function (element) {
+	if (global.jQuery != null) {
+		jQuery(element).empty();
+	}
+	element.innerHTML = "";
+};
 
 function update(data, operation) {
 	var uniqueId = data.uniqueId;
@@ -97,11 +100,7 @@ Renderer.prototype = {
 		if (this.updateFunction != undefined) {
 			this.updateFunction(element, data, operation);
 		} else {
-			if (global.jQuery != null) {
-				jQuery(element).empty();
-			}
-			element.innerHTML = "";
-			this.renderFunction(element, data);
+			this.defaultUpdate(element, data, operation);
 		}
 		return this;
 	},
@@ -110,6 +109,21 @@ Renderer.prototype = {
 			return this.filterFunction(data, schemas);
 		}
 		return true;
+	},
+	defaultUpdate: function (element, data, operation) {
+		var redraw = false;
+		var pointerPath = data.pointerPath();
+		if (operation.subjectEquals(pointerPath) || operation.subjectChild(pointerPath) !== false) {
+			redraw = true;
+		} else if (operation.target() != undefined) {
+			if (operation.targetEquals(pointerPath) || operation.targetChild(pointerPath) !== false) {
+				redraw = true;
+			}
+		}
+		if (redraw) {
+			render.empty(element);
+			this.renderFunction(element, data);
+		}
 	}
 }
 
@@ -152,6 +166,11 @@ if (typeof global.jQuery != "undefined") {
 			}
 		}
 		render.register(obj);
+	};
+	jQueryRender.empty = function (query) {
+		query.each(function (index, element) {
+			render.empty(element);
+		});
 	};
 	jQuery.fn.extend({renderJson: jQueryRender});
 	jQuery.extend({renderJson: jQueryRender});
