@@ -115,12 +115,11 @@ textarea {
 
 .json-string {
 	white-space: pre;
-	color: #000;
 }
 
-.json-string:before, .json-string:after {
-	content: "\"";
-	color: #888;
+textarea.json-string {
+	font-size: inherit;
+	font-weight: inherit;
 }
 
 /**** Number ****/
