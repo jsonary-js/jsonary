@@ -75,6 +75,11 @@ function exampleBasicAjax() {
 	});
 }
 					</script>
+					<p>There is also a shorthand version, where you just supply the URL as a string:
+<pre class="example code">
+var element = document.getElementById('example-basic-ajax');
+Jsonary.render(element, "data.json");
+</pre>
 				</div>
 
 				<h2>Read-only vs. editable data</h2>
@@ -103,12 +108,17 @@ function exampleAjaxEditable() {
 
 				<h2>jQuery</h2>
 				<div class="section">
-					<p>If jQuery is loaded before Jsonary, then Jsonary registers with jQuery:
+					<p>If jQuery is loaded before Jsonary, then Jsonary registers as a jQuery plugin:
 <pre class="example code">
 var data = Jsonary.create({"title": "Example data"}).readOnlyCopy();
 $('#target').renderJson(data);
 </pre>
-					<p>This corresponds to the <code>$renderTo()</code> method on the data object, which has the same effect.  <code>$('#target').renderJson(data)</code> is equivalent to <code>data.$renderTo($('#target'))</code> or <code>data.$renderTo('#target')</code>.
+					<p>It also adds the <code>$renderTo()</code> method to the data object, which is the jQuery version of the <code>renderTo()</code> method.  This method can take either a jQuery query object or a string selector as an argument - so the following three are equivalent:
+					<ul>
+						<li><code>$('#target').renderJson(data)</code></li>
+						<li><code>data.$renderTo($('#target'))</code></li>
+						<li><code>data.$renderTo('#target')</code></li>
+					</ul>
 				</div>
 			</div>
 		</div>
