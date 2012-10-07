@@ -142,7 +142,10 @@ if (typeof global.jQuery != "undefined") {
 		return this;
 	};
 	publicApi.extendData({
-		$render: function (query) {
+		$renderTo: function (query) {
+			if (typeof query == "string") {
+				query = jQuery(query);
+			}
 			var element = query[0];
 			if (element != undefined) {
 				render(element, this);
@@ -177,7 +180,7 @@ if (typeof global.jQuery != "undefined") {
 }
 
 publicApi.extendData({
-	render: function (element) {
+	renderTo: function (element) {
 		render(element, this);
 	}
 });
