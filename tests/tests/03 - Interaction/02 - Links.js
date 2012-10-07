@@ -76,7 +76,7 @@ tests.add("Jsonary.addLinkHandler()", function () {
 	Jsonary.addLinkHandler(function(argLink, argData, argRequest) {
 		thisTest.assert(this == link, "this == link");
 		thisTest.assert(argLink == link, "argLink == link");
-		thisTest.assert(argData == submissionData, "argData == submissionData");
+		thisTest.assert(argData.equals(submissionData), "argData.equals(submissionData)");
 		thisTest.assert(argRequest != undefined, "argRequest defined");
 		thisTest.pass();
 	});
@@ -137,7 +137,7 @@ tests.add("link.definition.addHandler()", function () {
 	link.definition.addHandler(function(argLink, argData, argRequest) {
 		thisTest.assert(this == link, "this == link");
 		thisTest.assert(argLink == link, "argLink == link");
-		thisTest.assert(argData == submissionData, "argData == submissionData");
+		thisTest.assert(argData.equals(submissionData), "argData.equals(submissionData)");
 		thisTest.pass();
 	});
 
@@ -164,7 +164,7 @@ tests.add("link.follow(submissionData, handler)", function () {
 	var handler = function(argLink, argData, argRequest) {
 		thisTest.assert(this == link, "this == link");
 		thisTest.assert(argLink == link, "argLink == link");
-		thisTest.assert(argData == submissionData, "argData == submissionData");
+		thisTest.assert(argData.equals(submissionData), "argData.equals(submissionData)");
 		thisTest.pass();
 	};
 
@@ -278,7 +278,7 @@ tests.add("link.definition.addPreHandler() multiple", function () {
 	var counter = 0;
 	link.definition.addPreHandler(function(argLink, argRequest, argData) {
 		counter++;
-		thisTest.fail();
+		return true;
 	});
 	link.definition.addPreHandler(function(argLink, argRequest, argData) {
 		counter++;
@@ -286,7 +286,7 @@ tests.add("link.definition.addPreHandler() multiple", function () {
 	});
 	link.definition.addPreHandler(function(argLink, argRequest, argData) {
 		counter++;
-		return true;
+		thisTest.fail("This handler should never be called");
 	});
 
 	link.follow();
