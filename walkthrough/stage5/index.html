@@ -24,7 +24,6 @@
 			<div id="content">
 				<h1>Custom Renderers in Jsonary</h1>
 				<div class="tagline">make things look pretty</div>
-				
 				<div id="nav">
 					back to
 					<a class="nav-link" href="../">walkthrough</a>
@@ -96,7 +95,7 @@ $.renderJson.register({
 					<script>
 var rawData = {"title": "Instance title", "message": "This is the message content"};
 var data = Jsonary.create(rawData, null, true);
-data.addSchema("example-schema-copy.json").$render($("#example-no-renderer"));
+data.addSchema("example-schema-copy.json").$renderTo("#example-no-renderer");
 					</script>
 					<p>Let's try adding a custom renderer that matches that schema:
 <pre class="example code">
@@ -129,7 +128,7 @@ $.renderJson.register({
 
 var rawData = {"title": "Instance title", "message": "This is the message content"};
 var data = Jsonary.create(rawData, null, true);
-data.addSchema("example-schema.json").$render($("#example-renderer"));
+data.addSchema("example-schema.json").$renderTo("#example-renderer");
 					</script>
 				</div>
 				
@@ -141,7 +140,7 @@ data.addSchema("example-schema.json").$render($("#example-renderer"));
 					<script>
 var rawData = {"title": "Instance title", "message": "This is the message content"};
 var data = Jsonary.create(rawData);
-data.addSchema("example-schema.json").$render($('#example-renderer-editable'));
+data.addSchema("example-schema.json").$renderTo('#example-renderer-editable');
 					</script>
 					<p>As you should hopefully be able to see, the item is now rendered with an editable title and message.
 					<p>This is one of the advantages of the rendering using Jsonary.  If instead of figuring out how to render everything yourself, you pass back to Jsonary, it can select an appropriate renderer for you, and you can piggy-back on that renderer's behaviour.
@@ -180,29 +179,8 @@ Jsonary.render.register({
 });
 </pre>
 					<p>Whenever any data is changed, this function is called for that data <em>and its parent, grandparent and so on</em> anywhere that is still rendered on the page.  The mysterious third argument <code>operation</code> represents a single operation in a JSON Patch, which you can inspect to see what the actual change was.
-					<p>Most of the time, you will not need to implement this function.  If you don't specify an update function, the default update function is called.  This function simply re-draws the item if the change occurred in the rendered data or any of its immediate children.
+					<p>Most of the time, you will not need to implement this function.  If you don't specify an update function, the default update function is called.  This function simply re-draws the item if the change occurred in the rendered data (or any of its immediate children, unless the update type is "replace").
 					<p>You can fall back to the default update behaviour from within your update function by calling <code>this.defaultUpdate(element, data, operation)</code>.
-<!--
-<pre class="example code">
-function defaultUpdate(element, data, operation) {
-	var redraw = false;
-	var pointerPath = data.pointerPath();
-	if (operation.subjectEquals(pointerPath) || operation.subjectChild(pointerPath) !== false) {
-		redraw = true;
-	} else if (operation.target() != undefined) {
-		if (operation.targetEquals(pointerPath) || operation.targetChild(pointerPath) !== false) {
-			redraw = true;
-		}
-	}
-	if (redraw) {
-		render.empty(element);
-		this.renderFunction(element, data);
-	}
-}
-</pre>
-					<p>You might notice the use of <code>Jsonary.render.empty()</code> in that code.  This is a function that empties the element, but attempting to be as friendly as possible to other plugins.  If jQuery is available, it uses <code>jQuery(element).empty()</code>, before it calls <code>element.innerHTML = ""</code>.
-					<p>This is because if jQuery is used to attach data to elements (using the <code>data()</code> method), and the element is then removed <em>without</em> using jQuery, then the data can hang around.  To help prevent such memory leaks, the <code>Jsonary.render.empty()</code> method clears out the element in a jQuery-safe way.
--->			
 				</div>
 			</div>
 		</div>

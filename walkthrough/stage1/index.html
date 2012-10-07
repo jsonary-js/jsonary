@@ -52,7 +52,7 @@ function exampleBasic() {
 	Jsonary.render(element, data);
 }
 					</script>
-					<p>It is also possible to call <code>render()</code> on the data object, which has the same effect.  <code>Jsonary.render(element, data)</code> is equivalent to <code>data.render(element)</code>.
+					<p>It is also possible to call <code>renderTo()</code> on the data object, which has the same effect.  <code>Jsonary.render(element, data)</code> is equivalent to <code>data.renderTo(element)</code>.
 				</div>
 
 				<h2>Basic AJAX</h2>
@@ -108,7 +108,7 @@ function exampleAjaxEditable() {
 var data = Jsonary.create({"title": "Example data"}).readOnlyCopy();
 $('#target').renderJson(data);
 </pre>
-					<p>This corresponds to the <code>$render()</code> method on the data object, which has the same effect.  <code>$('#target').renderJson(data)</code> is equivalent to <code>data.$render($('#target'))</code>.
+					<p>This corresponds to the <code>$renderTo()</code> method on the data object, which has the same effect.  <code>$('#target').renderJson(data)</code> is equivalent to <code>data.$renderTo($('#target'))</code> or <code>data.$renderTo('#target')</code>.
 				</div>
 			</div>
 		</div>

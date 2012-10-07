@@ -1,0 +1,111 @@
+<html>
+  <head>
+		<title>Link Handlers in Jsonary</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<script src="../../jsonary.js"></script>
+		<script src="../../renderers/basic.jsonary.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>Link Handlers in Jsonary</h1>
+				<div class="tagline">before and after</div>
+				
+				<div id="nav">
+					back to
+					<a class="nav-link" href="../">walkthrough</a>
+					<a class="nav-link" href="../../">main page</a>
+				</div>
+				
+				<div class="resource-list">
+					The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+					</ul>
+				</div>
+	
+				<h2>Registering handlers</h2>
+				<div class="section">
+					<p>Link handlers are called when the user has selected a link and entered any required information.  The "link pre-handlers" are called before the link is followed, and provide means to alter the data being submitted along with the request.  Plain "link handlers" are called after request has been made to the remote server.
+					<p>There are two ways to register a link handler.  One is at the global level, to register handlers that apply to any link:
+<pre class="example code">
+Jsonary.addLinkPreHandler(function (link, submissionData) {
+	alert(link.href);
+});
+Jsonary.addLinkHandler(function (link, submissionData, request) {
+	alert(link.href); // Pop up the URL we just requested
+});
+</pre>
+					<p>You can also register handlers for links described in specific schemas, like this:
+<pre class="example code">
+Jsonary.getSchema("schema-list.json#/items", function (schema) {
+	var links = schema.links();
+	var linkDefinition = links[0];
+	linkDefinition.addPreHandler(function (link, submissionData) {
+		alert(link.href);
+	});
+	linkDefinition.addHandler(function (link, submissionData, request) {
+		alert(link.href);
+	});
+});
+</pre>
+				</div>
+
+				<h2>Pre-handlers</h2>
+				<div class="section">
+					<p>Pre-handlers are called before the request is made.  They are passed in an object describing the link, along with a Jsonary wrapper for the data being submitted with the request.
+					<p>The submission data can be modified, to change the data that is sent to the server.  For example, this code adds a timestamp to all links being followed:
+<pre class="example code">
+Jsonary.addLinkPreHandler(function(link, submissionData) {
+	var timestamp = (new Date()).toString();	
+	if (submissionData.basicType() == "object") {
+		submissionData.property("timestamp").setValue(timestamp);
+	} else {
+		submissionData.setValue({"timestamp": timestamp});
+	}
+});
+</pre>
+					<p>If the pre-handler returns <code>false</code> then the link is cancelled, no request is made and no more handlers are called.  Any other return value allows the link to continue.
+<pre class="example code">
+Jsonary.addLinkPreHandler(function(link, submissionData) {
+	if (ignoreLinks) {
+		return false;
+	}
+});
+</pre>
+					<p>Pre-handlers are called in the order they are registered, and global-level link pre-handlers are called before schema-specific pre-handlers.
+					<p>Therefore, if a global-level link handler cancels the request, the schema-specific handlers will not be called.
+				</div>
+
+				<h2>(Post-)handlers</h2>
+				<div class="section">
+					<p>Ordinary link handlers are called after the request is made.  They are passed in the original link, along with the data as it was submitted, and the request that following the link produced.
+					<p>The submission data provided is read-only.
+<pre class="example code">
+Jsonary.addLinkHandler(function(link, data, request) {
+	var element = document.getElementById("latest-request-data");
+	navigateTo(link.href, request);
+	return true;
+});
+</pre>
+					<p>If the link handler returns <code>false</code> then no further callbacks are called.
+<pre class="example code">
+Jsonary.addLinkHandler(function(link, submissionData, request) {
+	if (canHandleLink) {
+		// Do something or other
+		return false;
+	}
+});
+</pre>
+					<p>Link handlers are called in the reverse order to how they were registered, and schema-specific handlers are called before global-level link handlers.  Later handlers can therefore override earlier ones.
+					<p>Therefore, if a schema-specific handler handles the link event (and returns <code>false</code> to signify this) then the global-level link handlers will not be called.
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
