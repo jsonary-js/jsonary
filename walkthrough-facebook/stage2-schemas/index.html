@@ -1,0 +1,39 @@
+<html>
+  <head>
+		<title>Adding Schemas</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>Adding Schemas</h1>
+				<div class="tagline">describing the Graph API</div>
+
+				<div id="nav">
+					back to
+					<a class="nav-link" href="../">walkthrough</a>
+					<a class="nav-link" href="../../">main page</a>
+				</div>
+				
+				<div class="resource-list">
+					The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jquery.js</span> - the jQuery library, to help assemble our interface faster
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">jsonary.hash.js</span> - the Jsonary.Hash plugin
+						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+					</ul>
+				</div>
+	
+				<h2>Why are we doing this?</h2>
+				<div class="section">
+					<p>Ideally, we would be working with an API that is already documented using JSON Schemas, and sending out links to those schemas in the HTTP header.
+					<p>Sadly, that is not currently the case for the Facebook Graph API.  However, we can write our <em>own</em> schemas describing the API, and match them up afterwards.
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
