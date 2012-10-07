@@ -14,6 +14,13 @@ function selectRenderer(data) {
 }
 
 function render(element, data) {
+	if (typeof data == "string") {
+		publicApi.getData(data, function (actualData) {
+			render(element, actualData);
+		});
+		return;
+	}
+
 	render.empty(element);
 	if (element.id == undefined || element.id == "") {
 		element.id = ELEMENT_ID_PREFIX + (elementIdCounter++);
@@ -112,11 +119,12 @@ Renderer.prototype = {
 	},
 	defaultUpdate: function (element, data, operation) {
 		var redraw = false;
+		var checkChildren = operation.action() != "replace";
 		var pointerPath = data.pointerPath();
-		if (operation.subjectEquals(pointerPath) || operation.subjectChild(pointerPath) !== false) {
+		if (operation.subjectEquals(pointerPath) || (checkChildren && operation.subjectChild(pointerPath) !== false)) {
 			redraw = true;
 		} else if (operation.target() != undefined) {
-			if (operation.targetEquals(pointerPath) || operation.targetChild(pointerPath) !== false) {
+			if (operation.targetEquals(pointerPath) || (checkChildren && operation.targetChild(pointerPath) !== false)) {
 				redraw = true;
 			}
 		}
@@ -142,7 +150,10 @@ if (typeof global.jQuery != "undefined") {
 		return this;
 	};
 	publicApi.extendData({
-		$render: function (query) {
+		$renderTo: function (query) {
+			if (typeof query == "string") {
+				query = jQuery(query);
+			}
 			var element = query[0];
 			if (element != undefined) {
 				render(element, this);
@@ -177,7 +188,7 @@ if (typeof global.jQuery != "undefined") {
 }
 
 publicApi.extendData({
-	render: function (element) {
+	renderTo: function (element) {
 		render(element, this);
 	}
 });

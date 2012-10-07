@@ -294,7 +294,7 @@ PotentialLink.prototype = {
 		return this;
 	},
 	addPreHandler: function(handler) {
-		this.preHandlers.unshift(handler);
+		this.preHandlers.push(handler);
 		return this;
 	},
 	canApplyTo: function (privateData) {
@@ -357,7 +357,7 @@ publicApi.addLinkHandler = function(handler) {
 	defaultLinkHandlers.unshift(handler);
 };
 publicApi.addLinkPreHandler = function(handler) {
-	defaultLinkPreHandlers.unshift(handler);
+	defaultLinkPreHandlers.push(handler);
 };
 
 function ActiveLink(rawLink, potentialLink, data) {
@@ -427,11 +427,12 @@ ActiveLink.prototype = {
 		} else {
 			submissionData = publicApi.create(undefined);
 		}
-		var preHandlers = this.definition.preHandlers.concat(defaultLinkPreHandlers);
+		var preHandlers = defaultLinkPreHandlers.concat(this.definition.preHandlers);
 		for (var i = 0; i < preHandlers.length; i++) {
 			var handler = preHandlers[i];
-			if (handler.call(this, this, submissionData)) {
-				break;
+			if (handler.call(this, this, submissionData) === false) {
+				Utils.log(Utils.logLevel.DEBUG, "Link cancelled: " + this.href);
+				return null;
 			}
 		}
 		var value = submissionData.value();
@@ -442,13 +443,14 @@ ActiveLink.prototype = {
 			data:value,
 			encType:this.encType
 		}, null, this.targetSchema);
+		submissionData = submissionData.readOnlyCopy();
 		var handlers = this.definition.handlers.concat(defaultLinkHandlers);
 		if (extraHandler !== undefined) {
 			handlers.unshift(extraHandler);
 		}
 		for (var i = 0; i < handlers.length; i++) {
 			var handler = handlers[i];
-			if (handler.call(this, this, submissionData, request)) {
+			if (handler.call(this, this, submissionData, request) === false) {
 				break;
 			}
 		}

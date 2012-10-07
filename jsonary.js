@@ -2072,7 +2072,7 @@ PotentialLink.prototype = {
 		return this;
 	},
 	addPreHandler: function(handler) {
-		this.preHandlers.unshift(handler);
+		this.preHandlers.push(handler);
 		return this;
 	},
 	canApplyTo: function (privateData) {
@@ -2135,7 +2135,7 @@ publicApi.addLinkHandler = function(handler) {
 	defaultLinkHandlers.unshift(handler);
 };
 publicApi.addLinkPreHandler = function(handler) {
-	defaultLinkPreHandlers.unshift(handler);
+	defaultLinkPreHandlers.push(handler);
 };
 
 function ActiveLink(rawLink, potentialLink, data) {
@@ -2205,11 +2205,12 @@ ActiveLink.prototype = {
 		} else {
 			submissionData = publicApi.create(undefined);
 		}
-		var preHandlers = this.definition.preHandlers.concat(defaultLinkPreHandlers);
+		var preHandlers = defaultLinkPreHandlers.concat(this.definition.preHandlers);
 		for (var i = 0; i < preHandlers.length; i++) {
 			var handler = preHandlers[i];
-			if (handler.call(this, this, submissionData)) {
-				break;
+			if (handler.call(this, this, submissionData) === false) {
+				Utils.log(Utils.logLevel.DEBUG, "Link cancelled: " + this.href);
+				return null;
 			}
 		}
 		var value = submissionData.value();
@@ -2220,13 +2221,14 @@ ActiveLink.prototype = {
 			data:value,
 			encType:this.encType
 		}, null, this.targetSchema);
+		submissionData = submissionData.readOnlyCopy();
 		var handlers = this.definition.handlers.concat(defaultLinkHandlers);
 		if (extraHandler !== undefined) {
 			handlers.unshift(extraHandler);
 		}
 		for (var i = 0; i < handlers.length; i++) {
 			var handler = handlers[i];
-			if (handler.call(this, this, submissionData, request)) {
+			if (handler.call(this, this, submissionData, request) === false) {
 				break;
 			}
 		}
@@ -3615,6 +3617,13 @@ function selectRenderer(data) {
 }
 
 function render(element, data) {
+	if (typeof data == "string") {
+		publicApi.getData(data, function (actualData) {
+			render(element, actualData);
+		});
+		return;
+	}
+
 	render.empty(element);
 	if (element.id == undefined || element.id == "") {
 		element.id = ELEMENT_ID_PREFIX + (elementIdCounter++);
@@ -3713,11 +3722,12 @@ Renderer.prototype = {
 	},
 	defaultUpdate: function (element, data, operation) {
 		var redraw = false;
+		var checkChildren = operation.action() != "replace";
 		var pointerPath = data.pointerPath();
-		if (operation.subjectEquals(pointerPath) || operation.subjectChild(pointerPath) !== false) {
+		if (operation.subjectEquals(pointerPath) || (checkChildren && operation.subjectChild(pointerPath) !== false)) {
 			redraw = true;
 		} else if (operation.target() != undefined) {
-			if (operation.targetEquals(pointerPath) || operation.targetChild(pointerPath) !== false) {
+			if (operation.targetEquals(pointerPath) || (checkChildren && operation.targetChild(pointerPath) !== false)) {
 				redraw = true;
 			}
 		}
@@ -3743,7 +3753,10 @@ if (typeof global.jQuery != "undefined") {
 		return this;
 	};
 	publicApi.extendData({
-		$render: function (query) {
+		$renderTo: function (query) {
+			if (typeof query == "string") {
+				query = jQuery(query);
+			}
 			var element = query[0];
 			if (element != undefined) {
 				render(element, this);
@@ -3778,7 +3791,7 @@ if (typeof global.jQuery != "undefined") {
 }
 
 publicApi.extendData({
-	render: function (element) {
+	renderTo: function (element) {
 		render(element, this);
 	}
 });
