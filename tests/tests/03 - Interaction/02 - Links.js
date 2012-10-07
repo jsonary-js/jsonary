@@ -221,11 +221,11 @@ tests.add("link.definition.addHandler() multiple", function () {
 	});
 	link.definition.addHandler(function(argLink, argRequest, argData) {
 		counter++;
-		return true;
+		return false;
 	});
 	link.definition.addHandler(function(argLink, argRequest, argData) {
 		counter++;
-		return false;
+		return true;
 	});
 
 	link.follow();
@@ -282,11 +282,11 @@ tests.add("link.definition.addPreHandler() multiple", function () {
 	});
 	link.definition.addPreHandler(function(argLink, argRequest, argData) {
 		counter++;
-		return true;
+		return false;
 	});
 	link.definition.addPreHandler(function(argLink, argRequest, argData) {
 		counter++;
-		return false;
+		return true;
 	});
 
 	link.follow();
