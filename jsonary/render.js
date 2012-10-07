@@ -14,6 +14,13 @@ function selectRenderer(data) {
 }
 
 function render(element, data) {
+	if (typeof data == "string") {
+		publicApi.getData(data, function (actualData) {
+			render(element, actualData);
+		});
+		return;
+	}
+
 	render.empty(element);
 	if (element.id == undefined || element.id == "") {
 		element.id = ELEMENT_ID_PREFIX + (elementIdCounter++);
