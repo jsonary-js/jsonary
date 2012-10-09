@@ -156,8 +156,7 @@ function addToCache(url, rawData, schemaUrl, cacheFunction) {
 	}
 	var data = {};
 	var cacheKey = JSON.stringify(url) + ":" + JSON.stringify(data);
-	var request = new RequestFake(url, rawData, schemaUrl);
-	cacheFunction(cacheKey, request);
+	var request = new RequestFake(url, rawData, schemaUrl, cacheFunction, cacheKey);
 }
 publicApi.addToCache = addToCache;
 publicApi.getData = function(params, callback, hintSchema) {
@@ -351,7 +350,9 @@ Request.prototype = {
 	}
 };
 
-function RequestFake(url, rawData, schemaUrl) {
+function RequestFake(url, rawData, schemaUrl, cacheFunction, cacheKey) {
+	cacheFunction(cacheKey, this);
+
 	var thisRequest = this;
 	this.url = url;
 	
@@ -360,21 +361,21 @@ function RequestFake(url, rawData, schemaUrl) {
 	this.document.setRaw(rawData);
 	this.profileUrl = schemaUrl;
 	if (schemaUrl != undefined) {
-		if (schemaUrl == url) {
-			this.document.raw.addSchema(this.document.raw.asSchema());
-		} else {
-			this.document.raw.addSchema(schemaUrl);
-		}
+		this.document.raw.addSchema(schemaUrl);
 	}
-	this.document.raw.whenSchemasStable(function () {
-		var rootLink = thisRequest.document.raw.getLink("root");
-		if (rootLink != undefined) {
-			var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
-			thisRequest.document.setRoot(fragment);
-		} else {
-			thisRequest.document.setRoot("");
-		}
-	});
+	if (url == schemaUrl) {
+		this.document.setRoot("");
+	} else {
+		this.document.raw.whenSchemasStable(function () {
+			var rootLink = thisRequest.document.raw.getLink("root");
+			if (rootLink != undefined) {
+				var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
+				thisRequest.document.setRoot(fragment);
+			} else {
+				thisRequest.document.setRoot("");
+			}
+		});
+	}
 	this.successful = true;
 	this.errorMessage = undefined;
 

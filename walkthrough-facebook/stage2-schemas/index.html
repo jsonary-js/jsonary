@@ -13,8 +13,8 @@
 
 				<div id="nav">
 					back to
-					<a class="nav-link" href="../">walkthrough</a>
 					<a class="nav-link" href="../../">main page</a>
+					<a class="nav-link" href="../">Facebook walkthrough</a>
 				</div>
 				
 				<div class="resource-list">
@@ -32,6 +32,26 @@
 				<div class="section">
 					<p>Ideally, we would be working with an API that is already documented using JSON Schemas, and sending out links to those schemas in the HTTP header.
 					<p>Sadly, that is not currently the case for the Facebook Graph API.  However, we can write our <em>own</em> schemas describing the API, and match them up afterwards.
+				</div>
+
+				<h2>Adding a "current user" schema</h2>
+				<div class="section">
+					<p>OK, first we create a schema describing the data we expect from <code>https://graph.facebook.com/me</code>.
+<pre class="example code">
+{
+	"title": "Current user"
+}
+</pre>
+					<p>Then, we use the "schema hint" argument of <code>Jsonary.getData()</code>.
+<pre class="example code">
+Jsonary.getData({
+	url: "https://graph.facebook.com/me",
+	data: {access_token: authToken}
+}, function (data) {
+	$('<div></div>').renderJson(data).appendTo('#main');
+}, <B>"schemas/me.json"</B>);
+</pre>
+					<p>You can see that in action <a href="fb-schema-me.html" target="facebookSchemaMe">here</a>.  As you can hopefully see, the data displayed about the current user is associated with a schema titled "Current user".
 				</div>
 			</div>
 		</div>
