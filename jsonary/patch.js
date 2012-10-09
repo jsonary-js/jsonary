@@ -94,6 +94,33 @@ PatchOperation.prototype = {
 	subject: function () {
 		return this._subject;	
 	},
+	depthFrom: function (path) {
+		path += "/";
+		var minDepth = NaN;
+		if (this._subject.substring(0, path.length) == path) {
+			var remainder = this._subject.substring(path.length);
+			if (remainder == 0) {
+				minDepth = 0;
+			} else {
+				minDepth = remainder.split("/").length;
+			}
+		}
+		if (this._target != undefined) {
+			if (this._target.substring(0, path.length) == path) {
+				var targetDepth;
+				var remainder = this._target.substring(path.length);
+				if (remainder == 0) {
+					targetDepth = 0;
+				} else {
+					targetDepth = remainder.split("/").length;
+				}
+				if (!(targetDepth > minDepth)) {
+					minDepth = targetDepth;
+				}
+			}
+		}
+		return minDepth;
+	},
 	subjectEquals: function (path) {
 		return this._subject == path;
 	},
