@@ -206,11 +206,18 @@ Schema.prototype = {
 		return !!this.data.propertyValue("exclusiveMaximum");
 	},
 	definedProperties: function() {
-		var properties = this.data.property("properties");
-		if (properties.defined()) {
-			return properties.keys();
+		var result = {};
+		this.data.property("properties").properties(function (key, subData) {
+			result[key] = true;
+		});
+		this.data.property("required").items(function (index, subData) {
+			result[subData.value()] = true;
+		});
+		var resultArray = [];
+		for (var key in result) {
+			resultArray.push(key);
 		}
-		return [];
+		return resultArray;
 	},
 	requiredProperties: function () {
 		var requiredKeys = this.data.propertyValue("required");

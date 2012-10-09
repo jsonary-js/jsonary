@@ -430,6 +430,13 @@ Data.prototype = {
 		this.index(index).remove();
 		return this;
 	},
+	push: function (value) {
+		if (this.basicType() == "array") {
+			this.index(this.length()).setValue(value);
+		} else {
+			throw new Error("Can only push() on an array");
+		}
+	},
 	propertyValue: function (key) {
 		return this.property(key).value();
 	},

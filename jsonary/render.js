@@ -168,7 +168,7 @@ if (typeof global.jQuery != "undefined") {
 				jQueryObj.render.call(this, query, data);
 			}
 		}
-		if (obj.update != undefined) {
+		if (jQueryObj.update != undefined) {
 			obj.update = function (element, data, operation) {
 				var query = $(element);
 				jQueryObj.update.call(this, query, data, operation);
