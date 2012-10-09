@@ -1,24 +1,4 @@
 (function () {
-	function listSchemas(element, schemaList) {
-		var linkElement = null;
-		schemaList.each(function (index, schema) {
-			if (schema.title() == null) {
-				return;
-			}
-			linkElement = document.createElement("a");
-			linkElement.setAttribute("href", schema.referenceUrl());
-			linkElement.setAttribute("class", "json-schema");
-			linkElement.appendChild(document.createTextNode(schema.title()));
-			element.appendChild(linkElement);
-			linkElement.onclick = function () {
-				alert(schema.referenceUrl() + "\n" + JSON.stringify(schema.data.value(), null, 4));
-				return false;
-			};
-		});
-		element = null;
-		linkElement = null;
-	}
-
 	function listLinks(element, links) {
 		var linkElement = null;
 		for (var i = 0; i < links.length; i++) {
@@ -44,7 +24,6 @@
 			var spanElement = document.createElement("span");
 			spanElement.setAttribute("class", "json-raw");
 			spanElement.appendChild(document.createTextNode(JSON.stringify(data.value())));
-			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
 			element.appendChild(spanElement);
 			spanElement = null;
@@ -70,7 +49,6 @@
 	// Edit raw JSON
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
 			var textarea = document.createElement("textarea");
 			textarea.setAttribute("class", "json-raw");
@@ -109,17 +87,10 @@
 	// Display/edit objects
 	Jsonary.render.register({
 		render: function (element, data) {
-			element.appendChild(document.createTextNode("{"));
-			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
-			var lastRow = null;
 			data.properties(function (key, subData) {
-				if (lastRow != null) {
-					lastRow.appendChild(document.createTextNode(","));
-				}
 				var rowElement = document.createElement("div");
 				rowElement.setAttribute('class', "json-object-pair");
-				lastRow = rowElement;
 
 				var keyElement = document.createElement("span");
 				keyElement.setAttribute('class', "json-object-key");
@@ -190,8 +161,6 @@
 				newKeyLink = null;
 				addLink = null;
 			}
-			element.appendChild(document.createTextNode("}"));
-			
 			element = null;
 		},
 		filter: function (data) {
@@ -202,17 +171,10 @@
 	// Display/edit arrays
 	Jsonary.render.register({
 		render: function (element, data) {
-			element.appendChild(document.createTextNode("["));
-			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
-			var lastRow = null;
 			data.indices(function (index, subData) {
-				if (lastRow != null) {
-					lastRow.appendChild(document.createTextNode(","));
-				}
 				var rowElement = document.createElement("div");
 				rowElement.setAttribute('class', "json-array-item");
-				lastRow = rowElement;
 
 				var valueElement = document.createElement("span");
 				valueElement['class'] = "json-array-value";
@@ -250,7 +212,6 @@
 				addLink = null;
 			}
 			
-			element.appendChild(document.createTextNode("]"));
 			element = null;
 		},
 		filter: function (data) {
@@ -261,7 +222,6 @@
 	// Display string
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
 			var textspan = document.createElement("span");
 			textspan.setAttribute("class", "json-string");
@@ -276,7 +236,6 @@
 	// Edit string
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
 			var textarea = document.createElement("textarea");
 			textarea.setAttribute("class", "json-string");
@@ -300,7 +259,6 @@
 	// Display/edit boolean	
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
 			var valueSpan = document.createElement("a");
 			if (data.value()) {
@@ -329,7 +287,6 @@
 	// Edit number
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
 			var valueSpan = document.createElement("a");
 			valueSpan.setAttribute("href", "#");
@@ -383,15 +340,15 @@
 		render: function (element, data) {
 			if (!data.readOnly()) {
 				var parent = data.parent();
+				var pointerComponent = Jsonary.splitPointer(data.pointerPath());
+				var finalComponent = pointerComponent.pop();
 				if (parent != null) {
 					var addLink = document.createElement("a");
 					addLink.href = "#";
 					addLink.className = "json-undefined-create";
-					addLink.innerHTML = "+ create";
+					addLink.innerHTML = "+ create " + finalComponent;
 					addLink.onclick = function () {
-						var pointerComponent = Jsonary.splitPointer(data.pointerPath());
 						var parentSchemas = parent.schemas();
-						var finalComponent = pointerComponent.pop();
 						if (parent.basicType() == "array") {
 							var newValue = parentSchemas.createValueForIndex(finalComponent);
 							parent.index(finalComponent).setValue(newValue);

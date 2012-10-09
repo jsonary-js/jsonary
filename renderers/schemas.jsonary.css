@@ -1,0 +1,21 @@
+.schema {
+	border: 1px solid black;
+	border-radius: 5px;
+	margin: 0.2em;
+}
+
+.schema-title {
+	font-weight: bold;
+	font-family: sans-serif;
+	border-bottom: 1px solid black;
+	background-color: #DDD;
+	padding: 0.2em;
+	border-radius: 5px;
+}
+
+.schema-section {
+	margin-left: 2em;
+}
+.schema-section-title {
+	font-family: sans-serif;
+}
