@@ -487,10 +487,16 @@ Data.prototype = {
 			return this;
 		}
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", true);
+		this.schemas().each(function (index, schema) {
+			copy.addSchema(schema);
+		});
 		return copy;
 	},
 	editableCopy: function () {
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", false);
+		this.schemas().each(function (index, schema) {
+			copy.addSchema(schema);
+		});
 		return copy;
 	},
 	asSchema: function () {

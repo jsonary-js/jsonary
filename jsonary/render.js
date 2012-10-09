@@ -21,7 +21,6 @@ function render(element, data) {
 		return;
 	}
 
-	render.empty(element);
 	if (element.id == undefined || element.id == "") {
 		element.id = ELEMENT_ID_PREFIX + (elementIdCounter++);
 	}
@@ -100,6 +99,7 @@ function Renderer(sourceObj) {
 }
 Renderer.prototype = {
 	render: function (element, data) {
+		render.empty(element);
 		this.renderFunction(element, data);
 		return this;
 	},
@@ -129,8 +129,7 @@ Renderer.prototype = {
 			}
 		}
 		if (redraw) {
-			render.empty(element);
-			this.renderFunction(element, data);
+			this.render(element, data);
 		}
 	}
 }
@@ -166,7 +165,6 @@ if (typeof global.jQuery != "undefined") {
 		if (jQueryObj.render != undefined) {
 			obj.render = function (element, data) {
 				var query = $(element);
-				query.empty();
 				jQueryObj.render.call(this, query, data);
 			}
 		}
