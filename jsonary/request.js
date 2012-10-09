@@ -12,7 +12,7 @@ if (typeof XMLHttpRequest == "undefined") {
 			return new ActiveXObject("Microsoft.XMLHTTP");
 		} catch (e) {
 		}
-		//Microsoft.XMLHTTP points to Msxml2.XMLHTTP and is redundant
+		//Microsoft.XMLHTTP points to Msxml2.XMLHTTP and is redundanat
 		throw new Error("This browser does not support XMLHttpRequest.");
 	};
 }
@@ -360,7 +360,11 @@ function RequestFake(url, rawData, schemaUrl) {
 	this.document.setRaw(rawData);
 	this.profileUrl = schemaUrl;
 	if (schemaUrl != undefined) {
-		this.document.raw.addSchema(schemaUrl);
+		if (schemaUrl == url) {
+			this.document.raw.addSchema(this.document.raw.asSchema());
+		} else {
+			this.document.raw.addSchema(schemaUrl);
+		}
 	}
 	this.document.raw.whenSchemasStable(function () {
 		var rootLink = thisRequest.document.raw.getLink("root");
