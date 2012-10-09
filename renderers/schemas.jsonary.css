@@ -2,11 +2,11 @@
 	border: 1px solid black;
 	border-radius: 5px;
 	margin: 0.2em;
+	font-family: sans-serif;
 }
 
 .schema-title {
 	font-weight: bold;
-	font-family: sans-serif;
 	border-bottom: 1px solid black;
 	background-color: #DDD;
 	padding: 0.2em;
@@ -17,5 +17,29 @@
 	margin-left: 2em;
 }
 .schema-section-title {
-	font-family: sans-serif;
+}
+
+.schema-property {
+	margin: 1em;
+	border-left: 1px solid black;
+	padding-left: 0.5em;
+}
+
+.schema-property-name {
+	font-weight: bold;
+	font-family: monospace;
+	font-size: 1.1em;
+	color: #048;
+}
+
+.schema-property-delete {
+	color: #800;
+	font-size: 0.8em;
+	float: left;
+	margin-right: 1em;
+}
+
+.schema-property-add {
+	color: #008;
+	font-size: 0.8em;
 }

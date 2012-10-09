@@ -1152,6 +1152,33 @@ PatchOperation.prototype = {
 	subject: function () {
 		return this._subject;	
 	},
+	depthFrom: function (path) {
+		path += "/";
+		var minDepth = NaN;
+		if (this._subject.substring(0, path.length) == path) {
+			var remainder = this._subject.substring(path.length);
+			if (remainder == 0) {
+				minDepth = 0;
+			} else {
+				minDepth = remainder.split("/").length;
+			}
+		}
+		if (this._target != undefined) {
+			if (this._target.substring(0, path.length) == path) {
+				var targetDepth;
+				var remainder = this._target.substring(path.length);
+				if (remainder == 0) {
+					targetDepth = 0;
+				} else {
+					targetDepth = remainder.split("/").length;
+				}
+				if (!(targetDepth > minDepth)) {
+					minDepth = targetDepth;
+				}
+			}
+		}
+		return minDepth;
+	},
 	subjectEquals: function (path) {
 		return this._subject == path;
 	},
@@ -1648,6 +1675,13 @@ Data.prototype = {
 		this.index(index).remove();
 		return this;
 	},
+	push: function (value) {
+		if (this.basicType() == "array") {
+			this.index(this.length()).setValue(value);
+		} else {
+			throw new Error("Can only push() on an array");
+		}
+	},
 	propertyValue: function (key) {
 		return this.property(key).value();
 	},
@@ -1705,10 +1739,16 @@ Data.prototype = {
 			return this;
 		}
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", true);
+		this.schemas().each(function (index, schema) {
+			copy.addSchema(schema);
+		});
 		return copy;
 	},
 	editableCopy: function () {
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", false);
+		this.schemas().each(function (index, schema) {
+			copy.addSchema(schema);
+		});
 		return copy;
 	},
 	asSchema: function () {
@@ -1989,11 +2029,18 @@ Schema.prototype = {
 		return !!this.data.propertyValue("exclusiveMaximum");
 	},
 	definedProperties: function() {
-		var properties = this.data.property("properties");
-		if (properties.defined()) {
-			return properties.keys();
+		var result = {};
+		this.data.property("properties").properties(function (key, subData) {
+			result[key] = true;
+		});
+		this.data.property("required").items(function (index, subData) {
+			result[subData.value()] = true;
+		});
+		var resultArray = [];
+		for (var key in result) {
+			resultArray.push(key);
 		}
-		return [];
+		return resultArray;
 	},
 	requiredProperties: function () {
 		var requiredKeys = this.data.propertyValue("required");
@@ -3629,7 +3676,6 @@ function render(element, data) {
 		return;
 	}
 
-	render.empty(element);
 	if (element.id == undefined || element.id == "") {
 		element.id = ELEMENT_ID_PREFIX + (elementIdCounter++);
 	}
@@ -3708,6 +3754,7 @@ function Renderer(sourceObj) {
 }
 Renderer.prototype = {
 	render: function (element, data) {
+		render.empty(element);
 		this.renderFunction(element, data);
 		return this;
 	},
@@ -3737,8 +3784,7 @@ Renderer.prototype = {
 			}
 		}
 		if (redraw) {
-			render.empty(element);
-			this.renderFunction(element, data);
+			this.render(element, data);
 		}
 	}
 }
@@ -3774,11 +3820,10 @@ if (typeof global.jQuery != "undefined") {
 		if (jQueryObj.render != undefined) {
 			obj.render = function (element, data) {
 				var query = $(element);
-				query.empty();
 				jQueryObj.render.call(this, query, data);
 			}
 		}
-		if (obj.update != undefined) {
+		if (jQueryObj.update != undefined) {
 			obj.update = function (element, data, operation) {
 				var query = $(element);
 				jQueryObj.update.call(this, query, data, operation);
