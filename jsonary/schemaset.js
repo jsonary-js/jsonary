@@ -501,7 +501,7 @@ function SchemaSet(dataObj) {
 	this.schemas = {};
 	this.links = {};
 	this.matches = {};
-	this.typeSelectors = {};
+	this.xorSelectors = {};
 	this.schemaFlux = 0;
 	this.schemasStable = true;
 
@@ -514,9 +514,6 @@ function SchemaSet(dataObj) {
 var counter = 0;
 SchemaSet.prototype = {
 	update: function (key) {
-		if (key == null) {
-			this.updateTypeSelectorsWithBasicType(this.dataObj.basicType());
-		}
 		this.updateLinksWithKey(key);
 		this.updateMatchesWithKey(key);
 	},
@@ -551,18 +548,17 @@ SchemaSet.prototype = {
 		}
 	},
 	updateMatchesWithKey: function (key) {
+		// TODO: maintain a list of sorted keys, instead of sorting them each time
+		var schemaKeys = [];		
 		for (schemaKey in this.matches) {
-			var matchList = this.matches[schemaKey];
+			schemaKeys.push(schemaKey);
+		}
+		schemaKeys.sort();
+		schemaKeys.reverse();
+		for (var j = 0; j < schemaKeys.length; j++) {
+			var matchList = this.matches[schemaKeys[j]];
 			for (i = 0; i < matchList.length; i++) {
 				matchList[i].dataUpdated(key);
-			}
-		}
-	},
-	updateTypeSelectorsWithBasicType: function (basicType) {
-		for (var key in this.typeSelectors) {
-			var selectorList = this.typeSelectors[key];
-			for (var i = 0; i < selectorList.length; i++) {
-				selectorList[i].updateWithBasicType(basicType);
 			}
 		}
 	},
@@ -630,7 +626,7 @@ SchemaSet.prototype = {
 			}
 
 			thisSchemaSet.addLinks(schema.links(), schemaKey, schemaKeyHistory);
-			thisSchemaSet.addTypeSelector(schemaKey, schema, schemaKeyHistory);
+			thisSchemaSet.addXorSelectors(schema, schemaKey, schemaKeyHistory);
 
 			thisSchemaSet.schemaFlux--;
 			thisSchemaSet.invalidateSchemaState();
@@ -649,15 +645,17 @@ SchemaSet.prototype = {
 		}
 		this.invalidateSchemaState();
 	},
-	addTypeSelector: function (schemaKey, schema, schemaKeyHistory) {
-		if (schema.types().length == 0) {
-			return;
+	addXorSelectors: function (schema, schemaKey, schemaKeyHistory) {
+		var xorSchemas = schema.xorSchemas();
+		var selectors = [];
+		for (var i = 0; i < xorSchemas.length; i++) {
+			var selector = new XorSchemaApplier(xorSchemas[i], Utils.getKeyVariant(schemaKey, "xor" + i), schemaKeyHistory, this);
 		}
-		var typeSelector = new SchemaTypeApplier(schemaKey, schema, this, schemaKeyHistory, this.dataObj);
-		if (this.typeSelectors[schemaKey] == undefined) {
-			this.typeSelectors[schemaKey] = [];
+		if (this.xorSelectors[schemaKey] == undefined) {
+			this.xorSelectors[schemaKey] = selectors;
+		} else {
+			this.xorSelectors[schemaKey] = this.xorSelectors[schemaKey].concat(selectors);
 		}
-		this.typeSelectors[schemaKey].push(typeSelector);
 	},
 	addLink: function (rawLink) {
 		var schemaKey = Utils.getUniqueKey();
@@ -718,17 +716,11 @@ SchemaSet.prototype = {
 				keysToRemove.push(key);
 			}
 		}
-		for (key in this.typeSelectors) {
-			if (Utils.keyIsVariant(key, schemaKey)) {
-				keysToRemove.push(key);
-			}
-		}
 		for (i = 0; i < keysToRemove.length; i++) {
 			key = keysToRemove[i];
 			delete this.schemas[key];
 			delete this.links[key];
 			delete this.matches[key];
-			delete this.typeSelectors[key];
 		}
 
 		if (keysToRemove.length > 0) {
@@ -739,7 +731,6 @@ SchemaSet.prototype = {
 		this.schemas = {};
 		this.links = {};
 		this.matches = {};
-		this.typeSelectors = {};
 		this.invalidateSchemaState();
 	},
 	getSchemas: function () {
@@ -892,28 +883,13 @@ LinkInstance.prototype = {
 	}
 };
 
-function SchemaTypeApplier(schemaKey, schema, schemaSet, schemaKeyHistory, dataObj) {
-	var first = true;
-	var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "autoType");
-	this.typeSelector = new TypeSelector(schemaKey, schema.types(), dataObj);
-	this.typeSelector.onMatch(function (type) {
-		if (!first) {
-			schemaSet.removeSchema(inferredSchemaKey);
-		}
-		first = false;
-		if (typeof type != "string") {
-			schemaSet.addSchema(type, inferredSchemaKey, schemaKeyHistory);
-		}
-	}).onNoMatch(function () {
-		if (!first) {
-			schemaSet.removeSchema(inferredSchemaKey);
-			first = false;
+function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
+	var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "auto");
+	this.xorSelector = new XorSelector(schemaKey, options, schemaSet.dataObj);
+	this.xorSelector.onMatchChange(function (selectedOption) {
+		schemaSet.removeSchema(inferredSchemaKey);
+		if (selectedOption != null) {
+			schemaSet.addSchema(selectedOption, inferredSchemaKey, schemaKeyHistory);
 		}
 	});
-}
-SchemaTypeApplier.prototype = {
-	// TODO: do we need this?  Can we just register a value listener in the typeSelector instead?
-	updateWithBasicType: function (basicType) {
-		this.typeSelector.updateWithBasicType(basicType);
-	}
 }

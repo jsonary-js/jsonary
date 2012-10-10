@@ -1,5 +1,3 @@
-var ALL_TYPES = ["null", "boolean", "integer", "number", "string", "array", "object"];
-
 function getSchema(url, callback) {
 	return publicApi.getData(url, function(data, fragmentRequest) {
 		var schema = data.asSchema();
@@ -12,6 +10,15 @@ publicApi.createSchema = function (rawData, baseUrl) {
 };
 
 publicApi.getSchema = getSchema;
+
+var ALL_TYPES = ["null", "boolean", "integer", "number", "string", "array", "object"];
+var TYPE_SCHEMAS = {};
+function getTypeSchema(basicType) {
+	if (TYPE_SCHEMAS[basicType] == undefined) {
+		TYPE_SCHEMAS[basicType] = publicApi.createSchema({"type": basicType});
+	}
+	return TYPE_SCHEMAS[basicType];
+}
 
 function Schema(data) {
 	this.data = data;
@@ -30,7 +37,7 @@ function Schema(data) {
 	this.links = function () {
 		return potentialLinks.slice(0);
 	};
-	this.schemaTitle = this.title();
+	this.schemaTitle = this.title();	
 }
 Schema.prototype = {
 	"toString": function () {
@@ -128,46 +135,50 @@ Schema.prototype = {
 	},
 	types: function () {
 		var typeData = this.data.property("type");
-		var types = [];
 		if (typeData.defined()) {
-			if (typeData.basicType() == "array") {
-				typeData.indices(function (i, t) {
-					if (t.basicType() === "string") {
-						types.push(t.value());
-					} else {
-						types.push(t.asSchema());
-					}
-				});
+			if (typeData.basicType() === "string") {
+				return [typeData.value()];
 			} else {
-				if (typeData.basicType() === "string") {
-					types[0] = typeData.value();
-				} else {
-					types[0] = typeData.asSchema();
+				var types = [];
+				for (var i = 0; i < typeData.length(); i++) {
+					if (typeData.item(i).basicType() == "string") {
+						types.push(typeData.item(i).value());
+					} else {
+						return ALL_TYPES.slice(0);
+					}
 				}
+				return types;
 			}
 		}
-		return types;
+		return ALL_TYPES.slice(0);
 	},
-	basicTypes: function () {
-		var types = this.types();
-		var basicTypes = {};
-		for (var i = 0; i < types.length; i++) {
-			var type = types[i];
-			if (typeof type === "string") {
-				if (type === "any") {
-					return ALL_TYPES.slice(0);
+	xorSchemas: function () {
+		var result = [];
+		var typeData = this.data.property("type");
+		if (typeData.defined()) {
+			for (var i = 0; i < typeData.length(); i++) {
+				if (typeData.item(i).basicType() != "string") {
+					var orGroup = [];
+					typeData.items(function (index, subData) {
+						if (subData.basicType() == "string") {
+							orGroup.push(getTypeSchema(subData.value()));
+						} else {
+							orGroup.push(subData.asSchema());
+						}
+					});
+					result.push(orGroup);
+					break;
 				}
-				basicTypes[type] = true;
 			}
 		}
-		var basicTypesList = [];
-		for (var basicType in basicTypes) {
-			basicTypesList.push(basicType);
+		if (this.data.property("oneOf").defined()) {
+			var orGroup = [];
+			this.data.property("oneOf").items(function (index, subData) {
+				orGroup.push(subData.asSchema());
+			});
+			result.push(orGroup);
 		}
-		if (basicTypesList.length === 0) {
-			return ALL_TYPES.slice(0);
-		}
-		return basicTypesList;
+		return new SchemaList(result);
 	},
 	equals: function (otherSchema) {
 		if (this === otherSchema) {
@@ -250,6 +261,7 @@ Schema.prototype = {
 		return new SchemaList([this]);
 	}
 };
+Schema.prototype.basicTypes = Schema.prototype.types;
 
 publicApi.extendSchema = function (obj) {
 	for (var key in obj) {

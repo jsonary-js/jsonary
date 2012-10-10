@@ -28,13 +28,27 @@ var exampleSchema = {
 	exampleTypeB, "string"]
 };
 
-tests.add("Listing available types", function () {
+tests.add("Listing \"xor\" options (v3-style)", function () {
 	var data = Jsonary.create(exampleData);
 	var schema = Jsonary.createSchema(exampleSchema);
 	data.addSchema(schema);
 	var schemas = data.schemas();
-	var types = schema.types();
-	this.assert(types.length == 3, "types.length should be 3, was " + JSON.stringify(types.length));
+	var xorSchemas = schema.xorSchemas();
+	this.assert(xorSchemas.length == 1, "orSchemas.length should be 1, was " + xorSchemas.length);
+	this.assert(xorSchemas[0].length == 3, "orSchemas[0].length should be 3, was " + xorSchemas.length);
+	return true;
+});
+
+tests.add("Listing \"or\" options: ", function () {
+	var schema = Jsonary.createSchema({
+		"oneOf": [
+			{"title": "Schema 1"},
+			{"title": "Schema 1"}
+		]
+	});
+	var xorSchemas = schema.xorSchemas();
+	this.assert(xorSchemas.length == 1, "orSchemas.length should be 1, was " + xorSchemas.length);
+	this.assert(xorSchemas[0].length == 2, "orSchemas[0].length should be 3, was " + xorSchemas.length);
 	return true;
 });
 
@@ -58,7 +72,7 @@ tests.add("Validating a schema with types", function () {
 	thisTest.assert(lastMatch === true, "initial match should be true, was " + JSON.stringify(lastMatch) + ": " + lastFailReason);
 
 	data.property("important_key").setValue(1);
-	thisTest.assert(callbackCount === 2, "callbackCount == 2");
+	thisTest.assert(callbackCount === 2, "callbackCount == 2, was " + callbackCount);
 	thisTest.assert(lastMatch === false, "second match should be false, was " + JSON.stringify(lastMatch));
 
 	data.setValue("some string");
@@ -68,7 +82,7 @@ tests.add("Validating a schema with types", function () {
 	data.setValue({
 		"important_key": "B"
 	});
-	thisTest.assert(callbackCount === 3, "callbackCount == 3 (no change)");
+	thisTest.assert(callbackCount === 3, "callbackCount == 3 (no change), was " + callbackCount);
 	thisTest.assert(lastMatch === true, "third match should still be true, was " + JSON.stringify(lastMatch) + ": " + lastFailReason);
 
 	data.setValue({

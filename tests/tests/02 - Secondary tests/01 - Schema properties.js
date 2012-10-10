@@ -45,8 +45,7 @@ tests.add("basicTypes()", function () {
 	this.assert(recursiveCompare(schemaFull.basicTypes(), expected), "basicTypes() should return a list, even when only one type is specified");
 
 	// Does the order matter?  Perhaps it shouldn't.
-	expected = ["string", "boolean"];
-	this.assert(recursiveCompare(schemaFull2.basicTypes(), expected), "basicTypes() should return a list of the basic types in the list when present");
+	this.assert(schemaFull2.basicTypes().length == 7, "basicTypes() should return a full list of basic types if there is an object in \"type\"");
 
 	return true;
 });
