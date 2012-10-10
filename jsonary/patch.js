@@ -134,6 +134,13 @@ PatchOperation.prototype = {
 		}
 		return false;
 	},
+	subjectRelative: function (path) {
+		path += "/";
+		if (this._subject.substring(0, path.length) == path) {
+			return this._subject.substring(path.length - 1);
+		}
+		return false;
+	}
 	target: function () {
 		return this._target;
 	},
@@ -150,6 +157,13 @@ PatchOperation.prototype = {
 		}
 		return false;
 	},
+	targetRelative: function (path) {
+		path += "/";
+		if (this._target.substring(0, path.length) == path) {
+			return this._target.substring(path.length - 1);
+		}
+		return false;
+	}
 	plain: function () {
 		result = {};
 		result[this._patchType] = this._subject;

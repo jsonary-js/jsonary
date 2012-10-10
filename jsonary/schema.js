@@ -155,7 +155,7 @@ Schema.prototype = {
 			var type = types[i];
 			if (typeof type === "string") {
 				if (type === "any") {
-					return ALL_TYPES;
+					return ALL_TYPES.slice(0);
 				}
 				basicTypes[type] = true;
 			}
@@ -165,7 +165,7 @@ Schema.prototype = {
 			basicTypesList.push(basicType);
 		}
 		if (basicTypesList.length === 0) {
-			return ALL_TYPES;
+			return ALL_TYPES.slice(0);
 		}
 		return basicTypesList;
 	},
