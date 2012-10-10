@@ -137,11 +137,17 @@ Schema.prototype = {
 		var typeData = this.data.property("type");
 		if (typeData.defined()) {
 			if (typeData.basicType() === "string") {
+				if (typeData.value() == "all") {
+					return ALL_TYPES.slice(0);
+				}
 				return [typeData.value()];
 			} else {
 				var types = [];
 				for (var i = 0; i < typeData.length(); i++) {
 					if (typeData.item(i).basicType() == "string") {
+						if (typeData.item(i).value() == "all") {
+							return ALL_TYPES.slice(0);
+						}
 						types.push(typeData.item(i).value());
 					} else {
 						return ALL_TYPES.slice(0);

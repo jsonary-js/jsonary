@@ -38,6 +38,8 @@ tests.add("basicTypes()", function () {
 	var schemaMinimal = Jsonary.createSchema(exampleSchemaMinimal);
 	var schemaFull = Jsonary.createSchema(exampleSchemaFull);
 	var schemaFull2 = Jsonary.createSchema(exampleSchemaFull2);
+	var schema3 = Jsonary.createSchema({"type": "all"});
+	var schema4 = Jsonary.createSchema({"type": ["all"]});
 	var expected;
 	this.assert(schemaMinimal.basicTypes().length == 7, "basicTypes() should return a complete list when not present");
 	
@@ -46,6 +48,12 @@ tests.add("basicTypes()", function () {
 
 	// Does the order matter?  Perhaps it shouldn't.
 	this.assert(schemaFull2.basicTypes().length == 7, "basicTypes() should return a full list of basic types if there is an object in \"type\"");
+
+	// Does the order matter?  Perhaps it shouldn't.
+	this.assert(schema3.basicTypes().length == 7, "basicTypes() should return a full list for \"all\"");
+
+	// Does the order matter?  Perhaps it shouldn't.
+	this.assert(schema4.basicTypes().length == 7, "basicTypes() should return a full list for [all]");
 
 	return true;
 });
