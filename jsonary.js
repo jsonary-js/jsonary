@@ -1192,6 +1192,13 @@ PatchOperation.prototype = {
 		}
 		return false;
 	},
+	subjectRelative: function (path) {
+		path += "/";
+		if (this._subject.substring(0, path.length) == path) {
+			return this._subject.substring(path.length - 1);
+		}
+		return false;
+	},
 	target: function () {
 		return this._target;
 	},
@@ -1205,6 +1212,13 @@ PatchOperation.prototype = {
 			if (remainder.indexOf("/") == -1) {
 				return decodeURIComponent(remainder);
 			}
+		}
+		return false;
+	},
+	targetRelative: function (path) {
+		path += "/";
+		if (this._target.substring(0, path.length) == path) {
+			return this._target.substring(path.length - 1);
 		}
 		return false;
 	},
@@ -1978,7 +1992,7 @@ Schema.prototype = {
 			var type = types[i];
 			if (typeof type === "string") {
 				if (type === "any") {
-					return ALL_TYPES;
+					return ALL_TYPES.slice(0);
 				}
 				basicTypes[type] = true;
 			}
@@ -1988,7 +2002,7 @@ Schema.prototype = {
 			basicTypesList.push(basicType);
 		}
 		if (basicTypesList.length === 0) {
-			return ALL_TYPES;
+			return ALL_TYPES.slice(0);
 		}
 		return basicTypesList;
 	},

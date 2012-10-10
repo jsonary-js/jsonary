@@ -120,6 +120,7 @@ textarea {
 textarea.json-string {
 	font-size: inherit;
 	font-weight: inherit;
+	font-style: inherit;
 }
 
 /**** Number ****/

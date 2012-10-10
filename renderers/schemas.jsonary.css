@@ -13,23 +13,83 @@
 	border-radius: 5px;
 }
 
-.schema-section {
-	margin-left: 2em;
+.schema-description {
+	font-style: italic;
+	padding-left: 2em;
 }
+
 .schema-section-title {
+	margin-top: 0.8em;
 }
 
-.schema-property {
-	margin: 1em;
-	border-left: 1px solid black;
-	padding-left: 0.5em;
+.schema-types {
+	margin: 0;
+	margin-left: 2em;
+	font-family: monospace;
+	font-weight: bold;
 }
 
-.schema-property-name {
+.schema-type-delete {
+	color: #800;
+	cursor: pointer;
+	margin-right: 0.2em;
+}
+
+.schema-properties {
+	margin-left: 2em;
+	border: 1px solid black;
+	border-radius: 10px;
+	background-color: #FFF;
+}
+
+.schema-properties td {
+	border-bottom: 1px solid #CCC;
+	vertical-align: top;
+}
+
+.schema-property-key, .schema-property-additional {
 	font-weight: bold;
 	font-family: monospace;
 	font-size: 1.1em;
 	color: #048;
+	padding-right: 0.5em;
+	padding-left: 5px;
+	border-right: 1px solid black;
+	text-align: right;
+}
+
+.schema-property-additional {
+	color: #000;
+	font-style: italic;
+}
+
+.schema-property-required {
+	padding-left: 0.5em;
+	width: 12ex;
+	border-left: 1px solid black;
+}
+
+.schema-property-summary {
+	padding-left: 0.5em;
+	padding-right: 0.5em;
+}
+
+.schema-property-view-full {
+	float: left;
+	font-size: 0.8em;
+	color: #048;
+	margin-right: 1em;
+	cursor: pointer;
+}
+
+.schema-property-full {
+	clear: both;
+}
+
+.schema-property-description {
+	color: #666;
+	font-style: italic;
+	margin-left: 1em;
 }
 
 .schema-property-delete {
@@ -37,9 +97,13 @@
 	font-size: 0.8em;
 	float: left;
 	margin-right: 1em;
+	cursor: pointer;
 }
 
 .schema-property-add {
 	color: #008;
 	font-size: 0.8em;
+	cursor: pointer;
+	padding-left: 1em;
+	padding-right: 1em;
 }

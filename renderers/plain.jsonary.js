@@ -346,7 +346,7 @@
 					var addLink = document.createElement("a");
 					addLink.href = "#";
 					addLink.className = "json-undefined-create";
-					addLink.innerHTML = "+ create " + finalComponent;
+					addLink.innerHTML = "+" + finalComponent;
 					addLink.onclick = function () {
 						var parentSchemas = parent.schemas();
 						if (parent.basicType() == "array") {
