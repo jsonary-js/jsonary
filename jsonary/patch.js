@@ -140,7 +140,7 @@ PatchOperation.prototype = {
 			return this._subject.substring(path.length - 1);
 		}
 		return false;
-	}
+	},
 	target: function () {
 		return this._target;
 	},
@@ -163,7 +163,7 @@ PatchOperation.prototype = {
 			return this._target.substring(path.length - 1);
 		}
 		return false;
-	}
+	},
 	plain: function () {
 		result = {};
 		result[this._patchType] = this._subject;
