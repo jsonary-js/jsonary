@@ -462,7 +462,6 @@ var Utils = {
 		return result.join("&");
 	},
 	formDecode: function (data) {
-		console.log("Decoding: " + data);
 		var result = {};
 		var parts = data.split("&");
 		for (var partIndex = 0; partIndex < parts.length; partIndex++) {
@@ -506,7 +505,6 @@ var Utils = {
 				}
 			}
 		}
-		console.log(result);
 		return result;
 	},
 	encodePointerComponent: function (component) {
@@ -664,6 +662,31 @@ ListenerSet.prototype = {
 	},
 	isEmpty: function () {
 		return this.listeners.length === 0;
+	}
+};
+
+var DelayedCallbacks = {
+	depth: 0,
+	callbacks: [],
+	increment: function () {
+		this.depth++;
+	},
+	decrement: function () {
+		this.depth--;
+		if (this.depth < 0) {
+			throw new Error("DelayedCallbacks.depth cannot be < 0");
+		}
+		while (this.depth == 0 && this.callbacks.length > 0) {
+			var callback = this.callbacks.shift();
+			callback();
+		}
+	},
+	add: function (callback) {
+		if (this.depth == 0) {
+			callback();
+		} else {
+			this.callbacks.push(callback);
+		}
 	}
 };
 
@@ -1074,7 +1097,7 @@ Patch.prototype = {
 		return this;
 	},
 	plain: function () {
-		result = [];
+		var result = [];
 		for (var i = 0; i < this.operations.length; i++) {
 			result[i] = this.operations[i].plain();
 		}
@@ -1130,12 +1153,21 @@ Patch.prototype = {
 		var operation = new PatchOperation("remove", path);
 		this.operations.push(operation);
 		return this;
+	},
+	inverse: function () {
+		var result = new Patch(this.prefix);
+		for (var i = 0; i < this.operations.length; i++) {
+			result.operations[i] = this.operations[i].inverse();
+		}
+		result.operations.reverse();
+		return result;
 	}
 };
 
 function PatchOperation(patchType, subject, value) {
 	this._patchType = patchType;
 	this._subject = subject;
+	this._oldSubjectValue = undefined;
 	if (patchType == "move") {
 		this._target = value;
 	} else {
@@ -1151,6 +1183,24 @@ PatchOperation.prototype = {
 	},
 	subject: function () {
 		return this._subject;	
+	},
+	setOldSubjectValue: function (value) {
+		this._oldSubjectValue = value;
+		return this;
+	},
+	inverse: function () {
+		switch (this._patchType) {
+			case "replace":
+				return new PatchOperation("replace", this._subject, this._oldSubjectValue);
+			case "add":
+				return (new PatchOperation("remove", this._subject)).setOldSubjectValue(this._value);
+			case "remove":
+				return (new PatchOperation("add", this._subject, this._oldSubjectValue));
+			case "move":
+				return (new PatchOperation("move", this._target, this._subject));
+			default:
+				throw new Error("Unrecognised patch type for inverse: " + this._patchType);
+		}
 	},
 	depthFrom: function (path) {
 		path += "/";
@@ -1223,7 +1273,7 @@ PatchOperation.prototype = {
 		return false;
 	},
 	plain: function () {
-		result = {};
+		var result = {};
 		result[this._patchType] = this._subject;
 		if (this._patchType == "remove") {
 		} else if (this._patchType == "move") {
@@ -1262,6 +1312,29 @@ publicApi.registerChangeListener = function (listener) {
 	changeListeners.push(listener);
 };
 
+var batchChanges = false;
+var batchChangeDocuments = [];
+publicApi.batch = function (batchFunc) {
+	if (batchFunc != undefined) {
+		publicApi.batch();
+		batchFunc();
+		publicApi.batchDone();
+		return this;
+	}
+	batchChanges = true;
+	return this;
+};
+publicApi.batchDone = function () {
+	batchChanges = false;
+	while (batchChangeDocuments.length > 0) {
+		var document = batchChangeDocuments.shift();
+		var patch = document.batchPatch;
+		delete document.batchPatch;
+		document.patch(patch);
+	}
+	return this;
+};
+
 function Document(url, isDefinitive, readOnly) {
 	this.readOnly = !!readOnly;
 	this.url = url;
@@ -1289,10 +1362,20 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		if (batchChanges) {
+			if (this.batchPatch == undefined) {
+				this.batchPatch = new Patch();
+				batchChangeDocuments.push(this);
+			}
+			this.batchPatch.operations = this.batchPatch.operations.concat(patch.operations);
+			return;
+		}
+		DelayedCallbacks.increment();
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
 		this.raw.patch(rawPatch);
 		this.root.patch(rootPatch);
+		DelayedCallbacks.decrement();
 		for (var i = 0; i < changeListeners.length; i++) {
 			changeListeners[i].call(this, patch, this);
 		}
@@ -1450,6 +1533,7 @@ function Data(document, secrets, parent, parentKey) {
 		patch.each(function (i, operation) {
 			if (operation.subjectEquals(thisPath)) {
 				if (operation.action() == "replace" || operation.action() == "add") {
+					operation.setOldSubjectValue(thisData.value());
 					secrets.setValue(operation.value());
 				} else if (operation.action() == "remove") {
 				} else {
@@ -1475,6 +1559,7 @@ function Data(document, secrets, parent, parentKey) {
 							if (keyIndex == -1) {
 								throw new Error("Cannot delete missing key: " + child);
 							}
+							operation.setOldSubjectValue(thisData.propertyValue(child));
 							keys.splice(keyIndex, 1);
 							if (propertyDataSecrets[child] != undefined) {
 								propertyDataSecrets[child].setValue(undefined);
@@ -1512,6 +1597,7 @@ function Data(document, secrets, parent, parentKey) {
 							if (index >= length) {
 								throw new Error("Cannot remove a non-existent index");
 							}
+							operation.setOldSubjectValue(thisData.itemValue(index));
 							for (var j = index; j < length - 1; j++) {
 								if (indexDataSecrets[j] == undefined) {
 									continue;
@@ -1835,8 +1921,6 @@ publicApi.create = function (rawData, baseUrl, readOnly) {
 };
 
 
-var ALL_TYPES = ["null", "boolean", "integer", "number", "string", "array", "object"];
-
 function getSchema(url, callback) {
 	return publicApi.getData(url, function(data, fragmentRequest) {
 		var schema = data.asSchema();
@@ -1849,6 +1933,15 @@ publicApi.createSchema = function (rawData, baseUrl) {
 };
 
 publicApi.getSchema = getSchema;
+
+var ALL_TYPES = ["null", "boolean", "integer", "number", "string", "array", "object"];
+var TYPE_SCHEMAS = {};
+function getTypeSchema(basicType) {
+	if (TYPE_SCHEMAS[basicType] == undefined) {
+		TYPE_SCHEMAS[basicType] = publicApi.createSchema({"type": basicType});
+	}
+	return TYPE_SCHEMAS[basicType];
+}
 
 function Schema(data) {
 	this.data = data;
@@ -1867,7 +1960,7 @@ function Schema(data) {
 	this.links = function () {
 		return potentialLinks.slice(0);
 	};
-	this.schemaTitle = this.title();
+	this.schemaTitle = this.title();	
 }
 Schema.prototype = {
 	"toString": function () {
@@ -1949,7 +2042,7 @@ Schema.prototype = {
 		}
 		return new SchemaList();
 	},
-	extendSchemas: function () {
+	andSchemas: function () {
 		var extData = this.data.property("extends");
 		var ext = [];
 		if (extData.defined()) {
@@ -1965,46 +2058,68 @@ Schema.prototype = {
 	},
 	types: function () {
 		var typeData = this.data.property("type");
-		var types = [];
 		if (typeData.defined()) {
-			if (typeData.basicType() == "array") {
-				typeData.indices(function (i, t) {
-					if (t.basicType() === "string") {
-						types.push(t.value());
-					} else {
-						types.push(t.asSchema());
-					}
-				});
-			} else {
-				if (typeData.basicType() === "string") {
-					types[0] = typeData.value();
-				} else {
-					types[0] = typeData.asSchema();
-				}
-			}
-		}
-		return types;
-	},
-	basicTypes: function () {
-		var types = this.types();
-		var basicTypes = {};
-		for (var i = 0; i < types.length; i++) {
-			var type = types[i];
-			if (typeof type === "string") {
-				if (type === "any") {
+			if (typeData.basicType() === "string") {
+				if (typeData.value() == "all") {
 					return ALL_TYPES.slice(0);
 				}
-				basicTypes[type] = true;
+				return [typeData.value()];
+			} else {
+				var types = [];
+				for (var i = 0; i < typeData.length(); i++) {
+					if (typeData.item(i).basicType() == "string") {
+						if (typeData.item(i).value() == "all") {
+							return ALL_TYPES.slice(0);
+						}
+						types.push(typeData.item(i).value());
+					} else {
+						return ALL_TYPES.slice(0);
+					}
+				}
+				return types;
 			}
 		}
-		var basicTypesList = [];
-		for (var basicType in basicTypes) {
-			basicTypesList.push(basicType);
+		return ALL_TYPES.slice(0);
+	},
+	xorSchemas: function () {
+		var result = [];
+		var typeData = this.data.property("type");
+		if (typeData.defined()) {
+			for (var i = 0; i < typeData.length(); i++) {
+				if (typeData.item(i).basicType() != "string") {
+					var xorGroup = [];
+					typeData.items(function (index, subData) {
+						if (subData.basicType() == "string") {
+							xorGroup.push(getTypeSchema(subData.value()));
+						} else {
+							xorGroup.push(subData.asSchema());
+						}
+					});
+					result.push(xorGroup);
+					break;
+				}
+			}
 		}
-		if (basicTypesList.length === 0) {
-			return ALL_TYPES.slice(0);
+		if (this.data.property("oneOf").defined()) {
+			var xorGroup = [];
+			this.data.property("oneOf").items(function (index, subData) {
+				xorGroup.push(subData.asSchema());
+			});
+			result.push(xorGroup);
 		}
-		return basicTypesList;
+		return new SchemaList(result);
+	},
+	orSchemas: function () {
+		var result = [];
+		var typeData = this.data.property("type");
+		if (this.data.property("anyOf").defined()) {
+			var orGroup = [];
+			this.data.property("anyOf").items(function (index, subData) {
+				orGroup.push(subData.asSchema());
+			});
+			result.push(orGroup);
+		}
+		return new SchemaList(result);
 	},
 	equals: function (otherSchema) {
 		if (this === otherSchema) {
@@ -2087,6 +2202,8 @@ Schema.prototype = {
 		return new SchemaList([this]);
 	}
 };
+Schema.prototype.basicTypes = Schema.prototype.types;
+Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
 
 publicApi.extendSchema = function (obj) {
 	for (var key in obj) {
@@ -2317,35 +2434,37 @@ function SchemaMatch(monitorKey, data, schema) {
 	this.dependencies = {};
 	this.dependencyKeys = {};
 
-	this.types = schema.types();
+	this.basicTypes = schema.basicTypes();
 	this.data = data;
-	this.setupTypeSelector();
+	this.setupXorSelectors();
+	this.setupOrSelectors();
 	this.dataUpdated();
 }
 SchemaMatch.prototype = {
-	setupTypeSelector: function () {
+	setupXorSelectors: function () {
 		var thisSchemaMatch = this;
 		this.currentType = null;
-		var first = true;
-		if (this.types.length > 0) {
-			this.typeSelector = new TypeSelector(this.monitorKey, this.types, this.data);
-			this.typeSelector.onMatch(function (type) {
-				var oldType = thisSchemaMatch.currentType;
-				thisSchemaMatch.currentType = type;
-				if (oldType == null && !first) {
-					thisSchemaMatch.update();
-				}
-				first = false;
-			}).onNoMatch(function () {
-				var oldType = thisSchemaMatch.currentType;
-				thisSchemaMatch.currentType = null;
-				if (oldType != null && !first) {
-					thisSchemaMatch.update();
-				}
-				first = false;
-			});
-		} else {
-			this.typeSelector = null;
+		this.xorSelectors = {};
+		var xorSchemas = this.schema.xorSchemas();
+		for (var i = 0; i < xorSchemas.length; i++) {
+			var xorSelector = new XorSelector(Utils.getKeyVariant(this.monitorKey, "xor" + i), xorSchemas[i], this.data);
+			this.xorSelectors[i] = xorSelector;
+			xorSelector.onMatchChange(function (selectedOption) {
+				thisSchemaMatch.update();
+			}, false);
+		}
+	},
+	setupOrSelectors: function () {
+		var thisSchemaMatch = this;
+		this.currentType = null;
+		this.orSelectors = {};
+		var orSchemas = this.schema.orSchemas();
+		for (var i = 0; i < orSchemas.length; i++) {
+			var orSelector = new OrSelector(Utils.getKeyVariant(this.monitorKey, "or" + i), orSchemas[i], this.data);
+			this.orSelectors[i] = orSelector;
+			orSelector.onMatchChange(function (selectedOptions) {
+				thisSchemaMatch.update();
+			}, false);
 		}
 	},
 	addMonitor: function (monitor, executeImmediately) {
@@ -2357,9 +2476,6 @@ SchemaMatch.prototype = {
 		return this;
 	},
 	dataUpdated: function (key) {
-		if (key == null && this.typeSelector != null) {
-			this.typeSelector.updateWithBasicType(this.data.basicType());
-		}
 		var thisSchemaMatch = this;
 		if (this.data.basicType() == "object") {
 			this.indexMatches = {};
@@ -2474,7 +2590,7 @@ SchemaMatch.prototype = {
 	},
 	update: function () {
 		try {
-			this.matchHasType();
+			this.matchAgainstBasicTypes();
 			this.matchAgainstSubMatches();
 			this.matchAgainstImmediateConstraints();
 			this.setMatch(true);
@@ -2486,13 +2602,30 @@ SchemaMatch.prototype = {
 			}
 		}
 	},
-	matchHasType: function () {
-		if (this.currentType != null || this.types.length == 0) {
-			return;
+	matchAgainstBasicTypes: function () {
+		var basicType = this.data.basicType();
+		for (var i = 0; i < this.basicTypes.length; i++) {
+			if (this.basicTypes[i] == basicType) {
+				return;
+			}
 		}
-		throw new SchemaMatchFailReason("Data does not match any of the types", this.schema);
+		throw new SchemaMatchFailReason("Data does not match any of the basic types: " + this.basicTypes, this.schema);
 	},
 	matchAgainstSubMatches: function () {
+		for (var key in this.xorSelectors) {
+			var selector = this.xorSelectors[key];
+			if (selector.selectedOption == null) {
+				var message = "XOR #" + key + ": " + selector.failReason.message;
+				throw new SchemaMatchFailReason(message, this.schema, selector.failReason);
+			}
+		}
+		for (var key in this.orSelectors) {
+			var selector = this.orSelectors[key];
+			if (selector.selectedOptions.length == 0) {
+				var message = "OR #" + key + ": no matches";
+				throw new SchemaMatchFailReason(message, this.schema);
+			}
+		}
 		for (var key in this.propertyMatches) {
 			var subMatchList = this.propertyMatches[key];
 			for (var i = 0; i < subMatchList.length; i++) {
@@ -2624,125 +2757,124 @@ SchemaMatchFailReason.prototype.equals = function (other) {
 	} else if (other.subMatchFailReason == null || !this.subMatchFailReason.equals(other.subMatchFailReason)) {
 		return false;
 	}
-	return this.message == other.message && this.schema.equals(other.schema);
+	return this.message == other.message && (this.schema == null && other.schema == null || this.schema != null && other.schema != null && this.schema.equals(other.schema));
 };
 
-function TypeSelector(schemaKey, types, dataObj) {
-	this.schemaKeyRoot = schemaKey;
-
-	this.schemaMatchKeys = [];
-	this.types = types;
-	if (this.types.length == 0) {
-		throw new Error("Cannot select types from []");
-	}
-
-	this.candidateMatchCallback = null;
-	this.candidateNoMatchCallback = null;
-	this.data = null;
-	this.setData(dataObj);
-}
-TypeSelector.prototype = {
-	setData: function (dataObj) {
-		// TODO: think through whether we need to remove the listeners (and old value monitors!) here - it might have already happened
-		if (this.data == dataObj) {
-			return;
-		}
-		this.data = dataObj;
-		var thisTypeSelector = this;
-		this.lastValidIndex = null;
-		this.currentCandidate = -1;
-		this.dataBasicType = dataObj.basicType();
-		this.tryNextCandidate();
-	},
-	onMatch: function (callback) {
-		this.candidateMatchCallback = callback;
-		if (this.currentCandidate != null) {
-			callback.call(this, this.types[this.currentCandidate]);
-		}
-		return this;
-	},
-	onNoMatch: function (callback) {
-		this.candidateNoMatchCallback = callback;
-		if (this.currentCandidate == null) {
-			callback.call(this);
-		}
-		return this;
-	},
-	basicTypeMatches: function (type) {
-		return type === "any" || type === this.dataBasicType || (type === "number" && this.dataBasicType === "integer");
-	},
-	updateWithBasicType: function (basicType) {
-		this.dataBasicType = basicType;
-		for (var i = 0; i < this.types.length; i++) {
-			var type = this.types[i];
-			if (typeof type != "string") {
-				continue;
-			}
-			if (this.basicTypeMatches(type)) {
-				this.candidateMatches(i);
+function XorSelector(schemaKey, options, dataObj) {
+	var thisXorSelector = this;
+	this.options = options;
+	this.matchCallback = null;
+	this.selectedOption = null;
+	this.data = dataObj;
+	
+	this.subMatches = [];
+	this.subSchemaKeys = [];
+	var pendingUpdate = false;
+	for (var i = 0; i < options.length; i++) {
+		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
+		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
+			if (pendingUpdate) {
 				return;
-			} else {
-				this.candidateDoesNotMatch(i);
 			}
-		}
-	},
-	tryNextCandidate: function () {
-		this.currentCandidate = (this.currentCandidate + 1) % this.types.length;
-		if (this.currentCandidate == this.lastValidIndex) {
-			this.currentCandidate = null;
-			this.candidatesNoneMatch();
-			return;
-		} else if (this.lastValidIndex === null) {
-			this.lastValidIndex = this.currentCandidate;
-		}
-		this.tryCandidate(this.currentCandidate);
-	},
-	tryCandidate: function (index) {
-		var thisTypeSelector = this;
-		var type = this.types[index];
-		if (this.schemaMatchKeys[index] == undefined) {
-			this.schemaMatchKeys[index] = Utils.getKeyVariant(this.schemaKeyRoot, "autoType" + index);
-		}
-		if (typeof type == "string") {
-			if (this.basicTypeMatches(type)) {
-				this.candidateMatches(index);
-			} else {
-				this.candidateDoesNotMatch(index);
-			}
-		} else {
-			this.data.addSchemaMatchMonitor(this.schemaMatchKeys[index], type, function (match) {
-				if (match) {
-					thisTypeSelector.candidateMatches(index);
-				} else {
-					thisTypeSelector.candidateDoesNotMatch(index);
-				}
+			pendingUpdate = true;
+			DelayedCallbacks.add(function () {
+				pendingUpdate = false;
+				thisXorSelector.update();
 			});
+		}, false);
+	}
+	this.update();
+}
+XorSelector.prototype = {
+	onMatchChange: function (callback, executeImmediately) {
+		this.matchCallback = callback;
+		if (executeImmediately !== false) {
+			callback.call(this, this.selectedOption);
 		}
+		return this;
 	},
-	candidateMatches: function (index) {
-		this.currentCandidate = index;
-		var type = this.types[index];
-		for (var i = 0; i < this.types.length; i++) {
-			if (i != index) {
-				var schemaMatchKey = this.schemaMatchKeys[i];
-				if (schemaMatchKey != null) {
-					this.data.removeSchema(schemaMatchKey);
+	update: function () {
+		var nextOption = null;
+		var failReason = "No matches";
+		for (var i = 0; i < this.subMatches.length; i++) {
+			if (this.subMatches[i].match) {
+				if (nextOption == null) {
+					nextOption = this.options[i];
+					failReason = null;
+				} else {
+					failReason = "multiple matches";
+					nextOption = null;
+					break;
 				}
 			}
 		}
-		this.lastValidIndex = index;
-		if (this.candidateMatchCallback != null) {
-			this.candidateMatchCallback.call(this, type);
+		this.failReason = new SchemaMatchFailReason(failReason);
+		if (this.selectedOption != nextOption) {
+			this.selectedOption = nextOption;
+			if (this.matchCallback != undefined) {
+				this.matchCallback.call(this, this.selectedOption);
+			}
 		}
-	},
-	candidateDoesNotMatch: function (index) {
-		if (this.currentCandidate == index) {
-			this.tryNextCandidate();
+	}
+};
+
+function OrSelector(schemaKey, options, dataObj) {
+	var thisOrSelector = this;
+	this.options = options;
+	this.matchCallback = null;
+	this.selectedOptions = [];
+	this.data = dataObj;
+	
+	this.subMatches = [];
+	this.subSchemaKeys = [];
+	var pendingUpdate = false;
+	for (var i = 0; i < options.length; i++) {
+		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
+		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
+			if (pendingUpdate) {
+				return;
+			}
+			pendingUpdate = true;
+			DelayedCallbacks.add(function () {
+				pendingUpdate = false;
+				thisOrSelector.update();
+			});
+		}, false);
+	}
+	this.update();
+}
+OrSelector.prototype = {
+	onMatchChange: function (callback, executeImmediately) {
+		this.matchCallback = callback;
+		if (executeImmediately !== false) {
+			callback.call(this, this.selectedOptions);
 		}
+		return this;
 	},
-	candidatesNoneMatch: function () {
-		if (this.candidateNoMatchCallback != null) {
-			this.candidateNoMatchCallback.call(this);
+	update: function () {
+		var nextOptions = [];
+		var failReason = "No matches";
+		for (var i = 0; i < this.subMatches.length; i++) {
+			if (this.subMatches[i].match) {
+				nextOptions.push(this.options[i]);
+			}
+		}
+		var difference = false;
+		if (nextOptions.length != this.selectedOptions.length) {
+			difference = true;
+		} else {
+			for (var i = 0; i < nextOptions.length; i++) {
+				if (nextOptions[i] != this.selectedOptions[i]) {
+					difference = true;
+					break;
+				}
+			}
+		}
+		if (difference) {
+			this.selectedOptions = nextOptions;
+			if (this.matchCallback != undefined) {
+				this.matchCallback.call(this, this.selectedOptions);
+			}
 		}
 	}
 };
@@ -3250,7 +3382,8 @@ function SchemaSet(dataObj) {
 	this.schemas = {};
 	this.links = {};
 	this.matches = {};
-	this.typeSelectors = {};
+	this.xorSelectors = {};
+	this.orSelectors = {};
 	this.schemaFlux = 0;
 	this.schemasStable = true;
 
@@ -3263,9 +3396,6 @@ function SchemaSet(dataObj) {
 var counter = 0;
 SchemaSet.prototype = {
 	update: function (key) {
-		if (key == null) {
-			this.updateTypeSelectorsWithBasicType(this.dataObj.basicType());
-		}
 		this.updateLinksWithKey(key);
 		this.updateMatchesWithKey(key);
 	},
@@ -3300,18 +3430,17 @@ SchemaSet.prototype = {
 		}
 	},
 	updateMatchesWithKey: function (key) {
+		// TODO: maintain a list of sorted keys, instead of sorting them each time
+		var schemaKeys = [];		
 		for (schemaKey in this.matches) {
-			var matchList = this.matches[schemaKey];
-			for (i = 0; i < matchList.length; i++) {
-				matchList[i].dataUpdated(key);
-			}
+			schemaKeys.push(schemaKey);
 		}
-	},
-	updateTypeSelectorsWithBasicType: function (basicType) {
-		for (var key in this.typeSelectors) {
-			var selectorList = this.typeSelectors[key];
-			for (var i = 0; i < selectorList.length; i++) {
-				selectorList[i].updateWithBasicType(basicType);
+		schemaKeys.sort();
+		schemaKeys.reverse();
+		for (var j = 0; j < schemaKeys.length; j++) {
+			var matchList = this.matches[schemaKeys[j]];
+			for (var i = 0; i < matchList.length; i++) {
+				matchList[i].dataUpdated(key);
 			}
 		}
 	},
@@ -3379,7 +3508,8 @@ SchemaSet.prototype = {
 			}
 
 			thisSchemaSet.addLinks(schema.links(), schemaKey, schemaKeyHistory);
-			thisSchemaSet.addTypeSelector(schemaKey, schema, schemaKeyHistory);
+			thisSchemaSet.addXorSelectors(schema, schemaKey, schemaKeyHistory);
+			thisSchemaSet.addOrSelectors(schema, schemaKey, schemaKeyHistory);
 
 			thisSchemaSet.schemaFlux--;
 			thisSchemaSet.invalidateSchemaState();
@@ -3398,15 +3528,29 @@ SchemaSet.prototype = {
 		}
 		this.invalidateSchemaState();
 	},
-	addTypeSelector: function (schemaKey, schema, schemaKeyHistory) {
-		if (schema.types().length == 0) {
-			return;
+	addXorSelectors: function (schema, schemaKey, schemaKeyHistory) {
+		var xorSchemas = schema.xorSchemas();
+		var selectors = [];
+		for (var i = 0; i < xorSchemas.length; i++) {
+			var selector = new XorSchemaApplier(xorSchemas[i], Utils.getKeyVariant(schemaKey, "xor" + i), schemaKeyHistory, this);
 		}
-		var typeSelector = new SchemaTypeApplier(schemaKey, schema, this, schemaKeyHistory, this.dataObj);
-		if (this.typeSelectors[schemaKey] == undefined) {
-			this.typeSelectors[schemaKey] = [];
+		if (this.xorSelectors[schemaKey] == undefined) {
+			this.xorSelectors[schemaKey] = selectors;
+		} else {
+			this.xorSelectors[schemaKey] = this.xorSelectors[schemaKey].concat(selectors);
 		}
-		this.typeSelectors[schemaKey].push(typeSelector);
+	},
+	addOrSelectors: function (schema, schemaKey, schemaKeyHistory) {
+		var orSchemas = schema.orSchemas();
+		var selectors = [];
+		for (var i = 0; i < orSchemas.length; i++) {
+			var selector = new OrSchemaApplier(orSchemas[i], Utils.getKeyVariant(schemaKey, "or" + i), schemaKeyHistory, this);
+		}
+		if (this.orSelectors[schemaKey] == undefined) {
+			this.orSelectors[schemaKey] = selectors;
+		} else {
+			this.orSelectors[schemaKey] = this.orSelectors[schemaKey].concat(selectors);
+		}
 	},
 	addLink: function (rawLink) {
 		var schemaKey = Utils.getUniqueKey();
@@ -3467,17 +3611,11 @@ SchemaSet.prototype = {
 				keysToRemove.push(key);
 			}
 		}
-		for (key in this.typeSelectors) {
-			if (Utils.keyIsVariant(key, schemaKey)) {
-				keysToRemove.push(key);
-			}
-		}
 		for (i = 0; i < keysToRemove.length; i++) {
 			key = keysToRemove[i];
 			delete this.schemas[key];
 			delete this.links[key];
 			delete this.matches[key];
-			delete this.typeSelectors[key];
 		}
 
 		if (keysToRemove.length > 0) {
@@ -3488,7 +3626,6 @@ SchemaSet.prototype = {
 		this.schemas = {};
 		this.links = {};
 		this.matches = {};
-		this.typeSelectors = {};
 		this.invalidateSchemaState();
 	},
 	getSchemas: function () {
@@ -3641,30 +3778,42 @@ LinkInstance.prototype = {
 	}
 };
 
-function SchemaTypeApplier(schemaKey, schema, schemaSet, schemaKeyHistory, dataObj) {
-	var first = true;
-	var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "autoType");
-	this.typeSelector = new TypeSelector(schemaKey, schema.types(), dataObj);
-	this.typeSelector.onMatch(function (type) {
-		if (!first) {
-			schemaSet.removeSchema(inferredSchemaKey);
-		}
-		first = false;
-		if (typeof type != "string") {
-			schemaSet.addSchema(type, inferredSchemaKey, schemaKeyHistory);
-		}
-	}).onNoMatch(function () {
-		if (!first) {
-			schemaSet.removeSchema(inferredSchemaKey);
-			first = false;
+function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
+	var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "auto");
+	this.xorSelector = new XorSelector(schemaKey, options, schemaSet.dataObj);
+	this.xorSelector.onMatchChange(function (selectedOption) {
+		schemaSet.removeSchema(inferredSchemaKey);
+		if (selectedOption != null) {
+			schemaSet.addSchema(selectedOption, inferredSchemaKey, schemaKeyHistory);
 		}
 	});
 }
-SchemaTypeApplier.prototype = {
-	// TODO: do we need this?  Can we just register a value listener in the typeSelector instead?
-	updateWithBasicType: function (basicType) {
-		this.typeSelector.updateWithBasicType(basicType);
+
+function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
+	var inferredSchemaKeys = [];
+	var optionsApplied = [];
+	for (var i = 0; i < options.length; i++) {
+		inferredSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "auto" + i);
+		optionsApplied[i] = false;
 	}
+	this.orSelector = new OrSelector(schemaKey, options, schemaSet.dataObj);
+	this.orSelector.onMatchChange(function (selectedOptions) {
+		for (var i = 0; i < options.length; i++) {
+			var found = false;
+			for (var j = 0; j < selectedOptions.length; j++) {
+				if (options[i] == selectedOptions[j]) {
+					found = true;
+					break;
+				}
+			}
+			if (found && !optionsApplied[i]) {
+				schemaSet.addSchema(options[i], inferredSchemaKeys[i], schemaKeyHistory);
+			} else if (!found && optionsApplied[i]) {
+				schemaSet.removeSchema(inferredSchemaKeys[i]);
+			}
+			optionsApplied[i] = found;
+		}
+	});
 }
 
 var elementLookup = {};

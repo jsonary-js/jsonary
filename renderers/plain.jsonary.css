@@ -55,7 +55,10 @@ textarea {
 	font-weight: bold;
 	color: #F00;
 	text-decoration: none;
-	margin-right: 1em;	
+	margin-right: 1em;
+	position: relative;
+	left: -1em;
+	float: left;
 }
 
 .json-object-add {
@@ -121,6 +124,16 @@ textarea.json-string {
 	font-size: inherit;
 	font-weight: inherit;
 	font-style: inherit;
+	border: none;
+	background: transparent;
+	color: inherit;
+}
+
+textarea.json-string:focus {
+	color: #000;
+	background: #FFF;
+	border: 1px solid black;
+	border-radius: 3px;
 }
 
 /**** Number ****/

@@ -112,6 +112,20 @@
 			
 		}
 	}
+	
+	function renderOneOfDetails(container, data, schema) {
+		if (data.property("oneOf").defined()) {
+			$('<div class="schema-section-title">Must be one of:</div>').appendTo(container);
+			$('<div class="schema-section" />').renderJson(data.property("oneOf")).appendTo(container);
+		}
+	}
+
+	function renderAnyOfDetails(container, data, schema) {
+		if (data.property("anyOf").defined()) {
+			$('<div class="schema-section-title">Must be at least one of:</div>').appendTo(container);
+			$('<div class="schema-section" />').renderJson(data.property("anyOf")).appendTo(container);
+		}
+	}
 
 	$.renderJson.register({
 		render: function (query, data) {
@@ -120,7 +134,7 @@
 			$('<div class="schema-title" />').renderJson(data.property("title")).appendTo(container);
 			$('<div class="schema-description" />').renderJson(data.property("description")).appendTo(container);
 			
-			$('<div class="schema-section-title">Allowed types:</div>').appendTo(container);
+			$('<div class="schema-section-title">Basic types:</div>').appendTo(container);
 			var basicTypes = schema.basicTypes();
 			var typeList = $('<ul class="schema-types" />').appendTo(container);
 			$.each(basicTypes, function (index, type) {
@@ -129,16 +143,48 @@
 					$('<span class="schema-type-delete">[X]<span>').prependTo(typeItem).click(function () {
 						var index = basicTypes.indexOf(type);
 						basicTypes.splice(index, 1);
-						data.property("type").setValue(basicTypes);
+						if (basicTypes.length > 0) {
+							data.property("type").setValue(basicTypes);
+						} else {
+							data.removeProperty("type");
+						}
 					});
 				}
 			});
 			
-			renderObjectDetails($('<div />').appendTo(container), data, schema);
-			renderArrayDetails($('<div />').appendTo(container), data, schema);
+			renderOneOfDetails($('<div />').appendTo(container), data, schema);
+			renderAnyOfDetails($('<div />').appendTo(container), data, schema);
+
+			var tabControls = $('<div class="schema-detail-tabs" />').appendTo(container);
+			var tabContent = $('<div class="schema-detail" />').appendTo(container);
+			function selectOption(basicType) {
+				tabContent.empty();
+				switch (basicType) {
+					case "object":
+						renderObjectDetails(tabContent, data, schema);
+						break;
+					case "array":
+						renderArrayDetails(tabContent, data, schema);
+						break;
+				}
+			}
+			var tabItems = [];
+			$.each(basicTypes, function (index, type) {
+				tabItems[index] = $('<a class="schema-detail-tab"></a>').text(type).appendTo(tabControls).click(function () {
+					selectOption(type);
+					for (var i = 0; i < basicTypes.length; i++) {
+						tabItems[i].removeClass("tab-selected");
+					}
+					tabItems[index].addClass("tab-selected");
+				});
+			});
+			if (tabItems.length > 0) {
+				tabItems[0].addClass("tab-selected");
+				selectOption(basicTypes[0]);
+			}
 		},
 		filter: function (data, schemas) {
-			return schemas.containsUrl("http://json-schema.org/hyper-schema");
+			return schemas.containsUrl("http://json-schema.org/hyper-schema") && !data.property("$ref").defined();
 		},
 		update: function (query, data, operation) {
 			var path = data.pointerPath();
@@ -148,6 +194,45 @@
 				}
 			}
 			this.defaultUpdate(query, data, operation);
+		}
+	});
+
+	$.renderJson.register({
+		render: function (query, data) {
+			var refUrl = data.propertyValue("$ref");
+			var container = $('<div class="schema-reference"></div>').appendTo(query);
+			if (!data.readOnly()) {
+				var editUrl = $('<span class="schema-reference-edit">edit URL</span>').appendTo(container).click(function () {
+					var input = $('<input type="text"></input>').appendTo(editUrl.empty()).val(refUrl);
+					input.focus().select();
+					function confirmChange() {
+						data.property("$ref").setValue(input.val());
+					}
+					input.blur(confirmChange).keydown(function (evenet) {
+						if (event.which == 13) {
+							confirmChange();
+						}
+					});
+				});
+			}
+			var schemaTitle = $('<div class="schema-title" />').appendTo(container)
+			$('<span>Reference:<span>').appendTo(container);
+			var linkQuery = $('<a class="schema-reference-url" />').attr("href", refUrl).text(refUrl).appendTo(container).click(function () {
+				data.getLink("full").follow();
+				return false;
+			});
+			data.getLink("full").follow(function (link, submissionData, request) {
+				request.getData(function (fullData) {
+					if (fullData.property("title").defined()) {
+						schemaTitle.text(fullData.propertyValue("title"));
+					}
+				});
+				return false;
+			});
+			return;
+		},
+		filter: function (data, schemas) {
+			return schemas.containsUrl("http://json-schema.org/hyper-schema") && data.property("$ref").defined();
 		}
 	});
 	
@@ -162,6 +247,10 @@
 			"description": {
 				"title": "Schema description",
 				"type": "string"
+			},
+			"oneOf": {
+				"type": "array",
+				"items": {"$ref": "#"}
 			},
 			"properties": {
 				"title": "Object properties",
@@ -178,9 +267,9 @@
 						"type": "array",
 						"minItems": 1,
 						"items": {"$ref": "#"}
-					},
+					}
 				]
-			},
+			}
 		},
 		"additionalProperties": {},
 		"links": [
