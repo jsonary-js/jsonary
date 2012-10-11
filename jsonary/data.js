@@ -3,6 +3,29 @@ publicApi.registerChangeListener = function (listener) {
 	changeListeners.push(listener);
 };
 
+var batchChanges = false;
+var batchChangeDocuments = [];
+publicApi.batch = function (batchFunc) {
+	if (batchFunc != undefined) {
+		publicApi.batch();
+		batchFunc();
+		publicApi.batchDone();
+		return this;
+	}
+	batchChanges = true;
+	return this;
+};
+publicApi.batchDone = function () {
+	batchChanges = false;
+	while (batchChangeDocuments.length > 0) {
+		var document = batchChangeDocuments.shift();
+		var patch = document.batchPatch;
+		delete document.batchPatch;
+		document.patch(patch);
+	}
+	return this;
+};
+
 function Document(url, isDefinitive, readOnly) {
 	this.readOnly = !!readOnly;
 	this.url = url;
@@ -30,6 +53,14 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		if (batchChanges) {
+			if (this.batchPatch == undefined) {
+				this.batchPatch = new Patch();
+				batchChangeDocuments.push(this);
+			}
+			this.batchPatch.operations = this.batchPatch.operations.concat(patch.operations);
+			return;
+		}
 		DelayedCallbacks.increment();
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
@@ -193,6 +224,7 @@ function Data(document, secrets, parent, parentKey) {
 		patch.each(function (i, operation) {
 			if (operation.subjectEquals(thisPath)) {
 				if (operation.action() == "replace" || operation.action() == "add") {
+					operation.setOldSubjectValue(thisData.value());
 					secrets.setValue(operation.value());
 				} else if (operation.action() == "remove") {
 				} else {
@@ -218,6 +250,7 @@ function Data(document, secrets, parent, parentKey) {
 							if (keyIndex == -1) {
 								throw new Error("Cannot delete missing key: " + child);
 							}
+							operation.setOldSubjectValue(thisData.propertyValue(child));
 							keys.splice(keyIndex, 1);
 							if (propertyDataSecrets[child] != undefined) {
 								propertyDataSecrets[child].setValue(undefined);
@@ -255,6 +288,7 @@ function Data(document, secrets, parent, parentKey) {
 							if (index >= length) {
 								throw new Error("Cannot remove a non-existent index");
 							}
+							operation.setOldSubjectValue(thisData.itemValue(index));
 							for (var j = index; j < length - 1; j++) {
 								if (indexDataSecrets[j] == undefined) {
 									continue;

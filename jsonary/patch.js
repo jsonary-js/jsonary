@@ -16,7 +16,7 @@ Patch.prototype = {
 		return this;
 	},
 	plain: function () {
-		result = [];
+		var result = [];
 		for (var i = 0; i < this.operations.length; i++) {
 			result[i] = this.operations[i].plain();
 		}
@@ -72,12 +72,21 @@ Patch.prototype = {
 		var operation = new PatchOperation("remove", path);
 		this.operations.push(operation);
 		return this;
+	},
+	inverse: function () {
+		var result = new Patch(this.prefix);
+		for (var i = 0; i < this.operations.length; i++) {
+			result.operations[i] = this.operations[i].inverse();
+		}
+		result.operations.reverse();
+		return result;
 	}
 };
 
 function PatchOperation(patchType, subject, value) {
 	this._patchType = patchType;
 	this._subject = subject;
+	this._oldSubjectValue = undefined;
 	if (patchType == "move") {
 		this._target = value;
 	} else {
@@ -93,6 +102,24 @@ PatchOperation.prototype = {
 	},
 	subject: function () {
 		return this._subject;	
+	},
+	setOldSubjectValue: function (value) {
+		this._oldSubjectValue = value;
+		return this;
+	},
+	inverse: function () {
+		switch (this._patchType) {
+			case "replace":
+				return new PatchOperation("replace", this._subject, this._oldSubjectValue);
+			case "add":
+				return (new PatchOperation("remove", this._subject)).setOldSubjectValue(this._value);
+			case "remove":
+				return (new PatchOperation("add", this._subject, this._oldSubjectValue));
+			case "move":
+				return (new PatchOperation("move", this._target, this._subject));
+			default:
+				throw new Error("Unrecognised patch type for inverse: " + this._patchType);
+		}
 	},
 	depthFrom: function (path) {
 		path += "/";
@@ -165,7 +192,7 @@ PatchOperation.prototype = {
 		return false;
 	},
 	plain: function () {
-		result = {};
+		var result = {};
 		result[this._patchType] = this._subject;
 		if (this._patchType == "remove") {
 		} else if (this._patchType == "move") {
