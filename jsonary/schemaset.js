@@ -502,6 +502,7 @@ function SchemaSet(dataObj) {
 	this.links = {};
 	this.matches = {};
 	this.xorSelectors = {};
+	this.orSelectors = {};
 	this.schemaFlux = 0;
 	this.schemasStable = true;
 
@@ -627,6 +628,7 @@ SchemaSet.prototype = {
 
 			thisSchemaSet.addLinks(schema.links(), schemaKey, schemaKeyHistory);
 			thisSchemaSet.addXorSelectors(schema, schemaKey, schemaKeyHistory);
+			thisSchemaSet.addOrSelectors(schema, schemaKey, schemaKeyHistory);
 
 			thisSchemaSet.schemaFlux--;
 			thisSchemaSet.invalidateSchemaState();
@@ -655,6 +657,18 @@ SchemaSet.prototype = {
 			this.xorSelectors[schemaKey] = selectors;
 		} else {
 			this.xorSelectors[schemaKey] = this.xorSelectors[schemaKey].concat(selectors);
+		}
+	},
+	addOrSelectors: function (schema, schemaKey, schemaKeyHistory) {
+		var orSchemas = schema.orSchemas();
+		var selectors = [];
+		for (var i = 0; i < orSchemas.length; i++) {
+			var selector = new OrSchemaApplier(orSchemas[i], Utils.getKeyVariant(schemaKey, "or" + i), schemaKeyHistory, this);
+		}
+		if (this.orSelectors[schemaKey] == undefined) {
+			this.orSelectors[schemaKey] = selectors;
+		} else {
+			this.orSelectors[schemaKey] = this.orSelectors[schemaKey].concat(selectors);
 		}
 	},
 	addLink: function (rawLink) {
@@ -890,6 +904,33 @@ function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 		schemaSet.removeSchema(inferredSchemaKey);
 		if (selectedOption != null) {
 			schemaSet.addSchema(selectedOption, inferredSchemaKey, schemaKeyHistory);
+		}
+	});
+}
+
+function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
+	var inferredSchemaKeys = [];
+	var optionsApplied = [];
+	for (var i = 0; i < options.length; i++) {
+		inferredSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "auto" + i);
+		optionsApplied[i] = false;
+	}
+	this.orSelector = new OrSelector(schemaKey, options, schemaSet.dataObj);
+	this.orSelector.onMatchChange(function (selectedOptions) {
+		for (var i = 0; i < options.length; i++) {
+			var found = false;
+			for (var j = 0; j < selectedOptions.length; j++) {
+				if (options[i] == selectedOptions[j]) {
+					found = true;
+					break;
+				}
+			}
+			if (found && !optionsApplied[i]) {
+				schemaSet.addSchema(options[i], inferredSchemaKeys[i], schemaKeyHistory);
+			} else if (!found && optionsApplied[i]) {
+				schemaSet.removeSchema(inferredSchemaKeys[i]);
+			}
+			optionsApplied[i] = found;
 		}
 	});
 }
