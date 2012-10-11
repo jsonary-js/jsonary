@@ -2,6 +2,10 @@ var exampleData = {
 	"important_key": "B"
 };
 
+var exampleData2 = {
+	"important_key": {"inner_key": "B"}
+};
+
 var exampleTypeA = {
 	"title": "Schema A",
 	"type": "object",
@@ -22,10 +26,44 @@ var exampleTypeB = {
 	}
 }
 
+var exampleTypeA2 = {
+	"title": "Schema A",
+	"type": "object",
+	"properties": {
+		"important_key": {
+			"type": "object",
+			"required": ["inner_key"],
+			"properties": {
+				"inner_key": {"enum": ["A"]}
+			}
+		}
+	}
+}
+
+var exampleTypeB2 = {
+	"title": "Schema B",
+	"type": "object",
+	"properties": {
+		"important_key": {
+			"type": "object",
+			"required": ["inner_key"],
+			"properties": {
+				"inner_key": {"enum": ["B"]}
+			}
+		}
+	}
+}
+
 var exampleSchema = {
 	"type": [
 	exampleTypeA,
 	exampleTypeB, "string"]
+};
+
+var exampleSchema2 = {
+	"type": [
+	exampleTypeA2,
+	exampleTypeB2, "string"]
 };
 
 tests.add("Listing \"xor\" options (v3-style)", function () {
@@ -39,7 +77,7 @@ tests.add("Listing \"xor\" options (v3-style)", function () {
 	return true;
 });
 
-tests.add("Listing \"or\" options: ", function () {
+tests.add("Listing \"xor\" options: (v4-style)", function () {
 	var schema = Jsonary.createSchema({
 		"oneOf": [
 			{"title": "Schema 1"},
@@ -201,3 +239,63 @@ tests.add("Validating a different schema with types, because I can't quite belie
 
 	return true;
 });
+
+
+tests.add("Validating a third schema with types", function () {
+	var thisTest = this;
+	var data = Jsonary.create(exampleData2);
+	var schema = Jsonary.createSchema(exampleSchema2);
+	var callbackCount = 0;
+	var lastMatch = null;
+	var lastFailReason = null;
+	var failReasons = [];
+
+	var schemaKey = Jsonary.getMonitorKey();
+	data.addSchemaMatchMonitor(schemaKey, schema, function (match, failReason) {
+		callbackCount++;
+		lastMatch = match;
+		lastFailReason = failReason;
+		failReasons.push(failReason);
+	});
+	thisTest.assert(callbackCount === 1, "callbackCount == 1");
+	thisTest.assert(lastMatch === true, "initial match should be true, was " + JSON.stringify(lastMatch) + ": " + lastFailReason);
+
+	data.property("important_key").property("inner_key").setValue(1);
+	thisTest.assert(callbackCount === 2, "callbackCount == 2, was " + callbackCount);
+	thisTest.assert(lastMatch === false, "second match should be false, was " + JSON.stringify(lastMatch));
+
+	data.setValue("some string");
+	thisTest.assert(lastMatch === true, "third match should be true, was " + JSON.stringify(lastMatch) + ": " + lastFailReason);
+	thisTest.assert(callbackCount === 3, "callbackCount should be 3, was " + callbackCount);
+
+	data.setValue({
+		"important_key": {"inner_key": "A"}
+	});
+	thisTest.assert(callbackCount === 3, "callbackCount == 3 (no change), was " + callbackCount);
+	thisTest.assert(lastMatch === true, "third match should still be true, was " + JSON.stringify(lastMatch) + ": " + lastFailReason);
+
+	data.setValue({
+		"important_key": {"inner_key": "B"}
+	});
+	thisTest.assert(callbackCount === 3, "callbackCount == 3 (no change), was " + callbackCount);
+	thisTest.assert(lastMatch === true, "third match should still be true, was " + JSON.stringify(lastMatch) + ": " + lastFailReason);
+
+	data.setValue({
+		"important_key": "X"
+	});
+	thisTest.assert(callbackCount === 4, "callbackCount == 4");
+	thisTest.assert(lastMatch === false, "fourth match should be false, was " + JSON.stringify(lastMatch));
+
+	data.setValue({
+		"important_key": false
+	});
+	thisTest.assert(callbackCount === 4, "callbackCount == 4 (no change)");
+	thisTest.assert(lastMatch === false, "fourth match should still be false, was " + JSON.stringify(lastMatch));
+
+	data.property("important_key").setValue({}).property("inner_key").setValue("A");
+	thisTest.assert(callbackCount === 5, "callbackCount == 5, was " + callbackCount);
+	thisTest.assert(lastMatch === true, "fifth match should be true, was " + JSON.stringify(lastMatch) + ": " + lastFailReason);
+
+	return true;
+});
+

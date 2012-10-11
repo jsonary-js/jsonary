@@ -27,7 +27,7 @@ SchemaMatch.prototype = {
 			var xorSelector = new XorSelector(Utils.getKeyVariant(this.monitorKey, "xor" + i), xorSchemas[i], this.data);
 			this.xorSelectors[i] = xorSelector;
 			xorSelector.onMatchChange(function (match) {
-				//thisSchemaMatch.update();
+				thisSchemaMatch.update();
 			}, false);
 		}
 	},
@@ -326,10 +326,18 @@ function XorSelector(schemaKey, options, dataObj) {
 	
 	this.subMatches = [];
 	this.subSchemaKeys = [];
+	var pendingUpdate = false;
 	for (var i = 0; i < options.length; i++) {
 		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
 		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
-			thisXorSelector.update();
+			if (pendingUpdate) {
+				return;
+			}
+			pendingUpdate = true;
+			DelayedCallbacks.add(function () {
+				pendingUpdate = false;
+				thisXorSelector.update();
+			});
 		}, false);
 	}
 	this.update();

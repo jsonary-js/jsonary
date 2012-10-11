@@ -1,5 +1,7 @@
 var exampleData = {
-	"important_key": "B"
+	"important_key": {
+		"inner_key": "B"
+	}
 };
 
 var exampleTypeA = {
@@ -7,8 +9,12 @@ var exampleTypeA = {
 	"type": "object",
 	"properties": {
 		"important_key": {
-			"enum": ["A"]
-		},
+			"type": "object",
+			"required": ["inner_key"],
+			"properties": {
+				"inner_key": {"enum": ["A"]}
+			}
+		}
 	}
 }
 
@@ -17,8 +23,12 @@ var exampleTypeB = {
 	"type": "object",
 	"properties": {
 		"important_key": {
-			"enum": ["B"]
-		},
+			"type": "object",
+			"required": ["inner_key"],
+			"properties": {
+				"inner_key": {"enum": ["B"]}
+			}
+		}
 	}
 }
 
@@ -55,7 +65,7 @@ function searchForTitleInSchemaList(title, schemaList) {
 	return false;
 }
 
-tests.add("Inferring correct type", function () {
+tests.add("Inferring correct type (v3-style)", function () {
 	var thisTest = this;
 	var data = Jsonary.create(exampleData);
 	var schema = Jsonary.createSchema(exampleSchema, "http://example.com/test-schema");
@@ -83,12 +93,12 @@ tests.add("Switching type", function () {
 	this.assert(searchForTitleInSchemaList(exampleTypeB.title, schemas), "Schema \"B\" must be in list");
 	this.assert(!searchForTitleInSchemaList(exampleTypeA.title, schemas), "Schema \"A\" must not be in the list initially");
 
-	data.property("important_key").setValue("A");
+	data.property("important_key").property("inner_key").setValue("A");
 	schemas = data.schemas();
 	this.assert(!searchForTitleInSchemaList(exampleTypeB.title, schemas), "Schema \"B\" must no longer be in list");
 	this.assert(searchForTitleInSchemaList(exampleTypeA.title, schemas), "Schema \"A\" must be in list");
 
-	data.property("important_key").setValue("B");
+	data.property("important_key").property("inner_key").setValue("B");
 	schemas = data.schemas();
 	this.assert(searchForTitleInSchemaList(exampleTypeB.title, schemas), "Schema \"B\" must be in list again");
 	this.assert(!searchForTitleInSchemaList(exampleTypeA.title, schemas), "Schema \"A\" must no longer be in list");

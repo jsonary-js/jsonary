@@ -30,10 +30,12 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		DelayedCallbacks.increment();
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
 		this.raw.patch(rawPatch);
 		this.root.patch(rootPatch);
+		DelayedCallbacks.decrement();
 		for (var i = 0; i < changeListeners.length; i++) {
 			changeListeners[i].call(this, patch, this);
 		}

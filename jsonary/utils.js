@@ -211,7 +211,6 @@ var Utils = {
 		return result.join("&");
 	},
 	formDecode: function (data) {
-		console.log("Decoding: " + data);
 		var result = {};
 		var parts = data.split("&");
 		for (var partIndex = 0; partIndex < parts.length; partIndex++) {
@@ -255,7 +254,6 @@ var Utils = {
 				}
 			}
 		}
-		console.log(result);
 		return result;
 	},
 	encodePointerComponent: function (component) {

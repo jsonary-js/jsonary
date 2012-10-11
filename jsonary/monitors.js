@@ -80,3 +80,28 @@ ListenerSet.prototype = {
 		return this.listeners.length === 0;
 	}
 };
+
+var DelayedCallbacks = {
+	depth: 0,
+	callbacks: [],
+	increment: function () {
+		this.depth++;
+	},
+	decrement: function () {
+		this.depth--;
+		if (this.depth < 0) {
+			throw new Error("DelayedCallbacks.depth cannot be < 0");
+		}
+		while (this.depth == 0 && this.callbacks.length > 0) {
+			var callback = this.callbacks.shift();
+			callback();
+		}
+	},
+	add: function (callback) {
+		if (this.depth == 0) {
+			callback();
+		} else {
+			this.callbacks.push(callback);
+		}
+	}
+};

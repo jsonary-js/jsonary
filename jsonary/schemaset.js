@@ -557,7 +557,7 @@ SchemaSet.prototype = {
 		schemaKeys.reverse();
 		for (var j = 0; j < schemaKeys.length; j++) {
 			var matchList = this.matches[schemaKeys[j]];
-			for (i = 0; i < matchList.length; i++) {
+			for (var i = 0; i < matchList.length; i++) {
 				matchList[i].dataUpdated(key);
 			}
 		}
