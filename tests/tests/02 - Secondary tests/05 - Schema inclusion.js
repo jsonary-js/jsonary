@@ -1,0 +1,120 @@
+tests.add("schemas.orSchemas()", function () {
+	var schema = Jsonary.createSchema({
+		"anyOf": [
+			{
+				"title": "Schema 1",
+				"type": "object",
+				"required": ["key1"]
+			},
+			{
+				"title": "Schema 2",
+				"type": "object",
+				"required": ["key2"]
+			}
+		]
+	});
+	
+	var orSchemas = schema.orSchemas();
+	this.assert(orSchemas.length == 1, "orSchemas().length == 1, was " + orSchemas.length);
+	this.assert(orSchemas[0].length == 2, "orSchemas()[0].length == 2, was " + orSchemas[0].length);
+
+	return true;
+});
+
+function searchForTitleInSchemaList(title, schemaList) {
+	for (var i = 0; i < schemaList.length; i++) {
+		var schema = schemaList[i];
+		var schemaTitle = schema.title();
+		if (schemaTitle == title) {
+			return true;
+		}
+	}
+	return false;
+}
+
+tests.add("anyOf validation", function () {
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		"anyOf": [
+			{
+				"title": "Schema 1",
+				"required": ["key1"]
+			},
+			{
+				"title": "Schema 2",
+				"required": ["key2"]
+			}
+		]
+	});
+	
+	var data = Jsonary.create({key1: true});
+	
+	var monitorKey = Jsonary.getMonitorKey();
+	var failReasons = [];
+	var lastMatch = null;
+	data.addSchemaMatchMonitor(monitorKey, schema, function (match, failReason) {
+		lastMatch = match;
+		failReasons.push(failReason);
+	});
+	
+	this.assert(lastMatch === true, "should initially match");
+	this.assert(failReasons.length == 1, "should have 1 callback");
+
+	data.property("key1").remove();
+	this.assert(lastMatch === false, "2: should not match");
+	this.assert(failReasons.length == 2, "should have 2 callbacks");
+
+	data.property("key2").setValue(true);
+	this.assert(lastMatch === true, "3: should match");
+	this.assert(failReasons.length == 3, "should have 3 callbacks");
+
+	data.property("key1").setValue(true);
+	this.assert(lastMatch === true, "4: should still match");
+	this.assert(failReasons.length == 3, "should still have 3 callbacks");
+
+	data.property("key2").remove();
+	this.assert(lastMatch === true, "5: should still match");
+	this.assert(failReasons.length == 3, "should still have 3 callbacks");
+
+	data.property("key1").remove();
+	this.assert(lastMatch === false, "6: should not match");
+	this.assert(failReasons.length == 4, "should have 4 callbacks");
+
+	return true;
+});
+
+tests.add("anyOf inference", function () {
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		"anyOf": [
+			{
+				"title": "Schema 1",
+				"required": ["key1"]
+			},
+			{
+				"title": "Schema 2",
+				"required": ["key2"]
+			}
+		]
+	});
+	
+	var data = Jsonary.create({key1: true});
+	data.addSchema(schema);
+	
+	this.assert(searchForTitleInSchemaList("Schema 1", data.schemas()), "1: Should contain Schema 1");
+	this.assert(!searchForTitleInSchemaList("Schema 2", data.schemas()), "1: Should not contain Schema 2");
+	
+	data.property("key2").setValue(true);
+	this.assert(searchForTitleInSchemaList("Schema 1", data.schemas()), "2: Should contain Schema 1");
+	this.assert(searchForTitleInSchemaList("Schema 2", data.schemas()), "2: Should contain Schema 2");
+
+	data.property("key1").remove();
+	this.assert(!searchForTitleInSchemaList("Schema 1", data.schemas()), "3: Should not contain Schema 1");
+	this.assert(searchForTitleInSchemaList("Schema 2", data.schemas()), "3: Should contain Schema 2");
+
+	data.property("key2").remove();
+	this.assert(!searchForTitleInSchemaList("Schema 1", data.schemas()), "4: Should not contain Schema 1");
+	this.assert(!searchForTitleInSchemaList("Schema 2", data.schemas()), "4: Should not contain Schema 2");
+
+	return true;
+});
