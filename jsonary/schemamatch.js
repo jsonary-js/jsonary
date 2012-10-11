@@ -15,6 +15,7 @@ function SchemaMatch(monitorKey, data, schema) {
 	this.basicTypes = schema.basicTypes();
 	this.data = data;
 	this.setupXorSelectors();
+	this.setupOrSelectors();
 	this.dataUpdated();
 }
 SchemaMatch.prototype = {
@@ -26,7 +27,20 @@ SchemaMatch.prototype = {
 		for (var i = 0; i < xorSchemas.length; i++) {
 			var xorSelector = new XorSelector(Utils.getKeyVariant(this.monitorKey, "xor" + i), xorSchemas[i], this.data);
 			this.xorSelectors[i] = xorSelector;
-			xorSelector.onMatchChange(function (match) {
+			xorSelector.onMatchChange(function (selectedOption) {
+				thisSchemaMatch.update();
+			}, false);
+		}
+	},
+	setupOrSelectors: function () {
+		var thisSchemaMatch = this;
+		this.currentType = null;
+		this.orSelectors = {};
+		var orSchemas = this.schema.orSchemas();
+		for (var i = 0; i < orSchemas.length; i++) {
+			var orSelector = new OrSelector(Utils.getKeyVariant(this.monitorKey, "or" + i), orSchemas[i], this.data);
+			this.orSelectors[i] = orSelector;
+			orSelector.onMatchChange(function (selectedOptions) {
 				thisSchemaMatch.update();
 			}, false);
 		}
@@ -181,6 +195,13 @@ SchemaMatch.prototype = {
 			if (selector.selectedOption == null) {
 				var message = "XOR #" + key + ": " + selector.failReason.message;
 				throw new SchemaMatchFailReason(message, this.schema, selector.failReason);
+			}
+		}
+		for (var key in this.orSelectors) {
+			var selector = this.orSelectors[key];
+			if (selector.selectedOptions.length == 0) {
+				var message = "OR #" + key + ": no matches";
+				throw new SchemaMatchFailReason(message, this.schema);
 			}
 		}
 		for (var key in this.propertyMatches) {
@@ -370,6 +391,67 @@ XorSelector.prototype = {
 			this.selectedOption = nextOption;
 			if (this.matchCallback != undefined) {
 				this.matchCallback.call(this, this.selectedOption);
+			}
+		}
+	}
+};
+
+function OrSelector(schemaKey, options, dataObj) {
+	var thisOrSelector = this;
+	this.options = options;
+	this.matchCallback = null;
+	this.selectedOptions = [];
+	this.data = dataObj;
+	
+	this.subMatches = [];
+	this.subSchemaKeys = [];
+	var pendingUpdate = false;
+	for (var i = 0; i < options.length; i++) {
+		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
+		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
+			if (pendingUpdate) {
+				return;
+			}
+			pendingUpdate = true;
+			DelayedCallbacks.add(function () {
+				pendingUpdate = false;
+				thisOrSelector.update();
+			});
+		}, false);
+	}
+	this.update();
+}
+OrSelector.prototype = {
+	onMatchChange: function (callback, executeImmediately) {
+		this.matchCallback = callback;
+		if (executeImmediately !== false) {
+			callback.call(this, this.selectedOptions);
+		}
+		return this;
+	},
+	update: function () {
+		var nextOptions = [];
+		var failReason = "No matches";
+		for (var i = 0; i < this.subMatches.length; i++) {
+			if (this.subMatches[i].match) {
+				nextOptions.push(this.options[i]);
+			}
+		}
+		var difference = false;
+		if (nextOptions.length != this.selectedOptions.length) {
+			difference = true;
+		} else {
+			for (var i = 0; i < nextOptions.length; i++) {
+				if (nextOptions[i] != this.selectedOptions[i]) {
+					difference = true;
+					break;
+				}
+			}
+		}
+		if (difference) {
+			this.selectedOptions = nextOptions;
+			if (this.matchCallback != undefined) {
+				this.matchCallback.call(this, this.selectedOptions);
 			}
 		}
 	}

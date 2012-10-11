@@ -119,7 +119,7 @@ Schema.prototype = {
 		}
 		return new SchemaList();
 	},
-	extendSchemas: function () {
+	andSchemas: function () {
 		var extData = this.data.property("extends");
 		var ext = [];
 		if (extData.defined()) {
@@ -164,22 +164,34 @@ Schema.prototype = {
 		if (typeData.defined()) {
 			for (var i = 0; i < typeData.length(); i++) {
 				if (typeData.item(i).basicType() != "string") {
-					var orGroup = [];
+					var xorGroup = [];
 					typeData.items(function (index, subData) {
 						if (subData.basicType() == "string") {
-							orGroup.push(getTypeSchema(subData.value()));
+							xorGroup.push(getTypeSchema(subData.value()));
 						} else {
-							orGroup.push(subData.asSchema());
+							xorGroup.push(subData.asSchema());
 						}
 					});
-					result.push(orGroup);
+					result.push(xorGroup);
 					break;
 				}
 			}
 		}
 		if (this.data.property("oneOf").defined()) {
-			var orGroup = [];
+			var xorGroup = [];
 			this.data.property("oneOf").items(function (index, subData) {
+				xorGroup.push(subData.asSchema());
+			});
+			result.push(xorGroup);
+		}
+		return new SchemaList(result);
+	},
+	orSchemas: function () {
+		var result = [];
+		var typeData = this.data.property("type");
+		if (this.data.property("anyOf").defined()) {
+			var orGroup = [];
+			this.data.property("anyOf").items(function (index, subData) {
 				orGroup.push(subData.asSchema());
 			});
 			result.push(orGroup);
@@ -268,6 +280,7 @@ Schema.prototype = {
 	}
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
+Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
 
 publicApi.extendSchema = function (obj) {
 	for (var key in obj) {
