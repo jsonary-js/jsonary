@@ -1154,6 +1154,11 @@ Patch.prototype = {
 		this.operations.push(operation);
 		return this;
 	},
+	move: function (path, target) {
+		var operation = new PatchOperation("move", path, target);
+		this.operations.push(operation);
+		return this;
+	},
 	inverse: function () {
 		var result = new Patch(this.prefix);
 		for (var i = 0; i < this.operations.length; i++) {
@@ -1167,7 +1172,7 @@ Patch.prototype = {
 function PatchOperation(patchType, subject, value) {
 	this._patchType = patchType;
 	this._subject = subject;
-	this._oldSubjectValue = undefined;
+	this._subjectValue = undefined;
 	if (patchType == "move") {
 		this._target = value;
 	} else {
@@ -1184,18 +1189,21 @@ PatchOperation.prototype = {
 	subject: function () {
 		return this._subject;	
 	},
-	setOldSubjectValue: function (value) {
-		this._oldSubjectValue = value;
+	setSubjectValue: function (value) {
+		this._subjectValue = value;
 		return this;
+	},
+	subjectValue: function () {
+		return this._subjectValue;
 	},
 	inverse: function () {
 		switch (this._patchType) {
 			case "replace":
-				return new PatchOperation("replace", this._subject, this._oldSubjectValue);
+				return new PatchOperation("replace", this._subject, this._subjectValue);
 			case "add":
-				return (new PatchOperation("remove", this._subject)).setOldSubjectValue(this._value);
+				return (new PatchOperation("remove", this._subject)).setSubjectValue(this._value);
 			case "remove":
-				return (new PatchOperation("add", this._subject, this._oldSubjectValue));
+				return (new PatchOperation("add", this._subject, this._subjectValue));
 			case "move":
 				return (new PatchOperation("move", this._target, this._subject));
 			default:
@@ -1256,6 +1264,9 @@ PatchOperation.prototype = {
 		return this._target == path;
 	},
 	targetChild: function (path) {
+		if (this._target == undefined) {
+			return;
+		}
 		path += "/";
 		if (this._target.substring(0, path.length) == path) {
 			var remainder = this._target.substring(path.length);
@@ -1423,6 +1434,19 @@ Document.prototype = {
 				callback.call(this, fragmentData);
 			}
 		});
+	},
+	get: function (path) {
+		return this.root.get(path);
+	},
+	set: function (path, value) {
+		this.root.set(path, value);
+		return this;
+	},
+	move: function (source, target) {
+		var patch = new Patch();
+		patch.move(source, target);
+		this.patch(patch);
+		return this;
 	}
 }
 
@@ -1533,11 +1557,16 @@ function Data(document, secrets, parent, parentKey) {
 		patch.each(function (i, operation) {
 			if (operation.subjectEquals(thisPath)) {
 				if (operation.action() == "replace" || operation.action() == "add") {
-					operation.setOldSubjectValue(thisData.value());
+					operation.setSubjectValue(thisData.value());
 					secrets.setValue(operation.value());
 				} else if (operation.action() == "remove") {
+				} else if (operation.action() == "move") {
 				} else {
 					throw new Error("Unrecognised patch operation: " + operation.action());
+				}
+			} else if (operation.targetEquals(thisPath)) {
+				if (operation.action() == "move") {
+					secrets.setValue(operation.subjectValue());
 				}
 			} else {
 				var child = operation.subjectChild(thisPath);
@@ -1554,12 +1583,12 @@ function Data(document, secrets, parent, parentKey) {
 							if (propertyData[child] != undefined) {
 								secrets.schemas.addSchemasForProperty(child, propertyData[child]);
 							}
-						} else if (operation.action() == "remove") {
+						} else if (operation.action() == "remove" || operation.action() == "move") {
 							var keyIndex = keys.indexOf(child);
 							if (keyIndex == -1) {
 								throw new Error("Cannot delete missing key: " + child);
 							}
-							operation.setOldSubjectValue(thisData.propertyValue(child));
+							operation.setSubjectValue(thisData.propertyValue(child));
 							keys.splice(keyIndex, 1);
 							if (propertyDataSecrets[child] != undefined) {
 								propertyDataSecrets[child].setValue(undefined);
@@ -1593,11 +1622,11 @@ function Data(document, secrets, parent, parentKey) {
 							if (indexData[index] != undefined) {
 								secrets.schemas.addSchemasForIndex(key, indexData[index]);
 							}
-						} else if (operation.action() == "remove") {
+						} else if (operation.action() == "remove" || operation.action() == "move") {
 							if (index >= length) {
 								throw new Error("Cannot remove a non-existent index");
 							}
-							operation.setOldSubjectValue(thisData.itemValue(index));
+							operation.setSubjectValue(thisData.itemValue(index));
 							for (var j = index; j < length - 1; j++) {
 								if (indexDataSecrets[j] == undefined) {
 									continue;
@@ -1616,6 +1645,48 @@ function Data(document, secrets, parent, parentKey) {
 						} else if (operation.action() == "replace") {
 						} else {
 							throw new Error("Unrecognised patch operation: " + operation.action());
+						}
+					}
+				}
+				var targetChild = operation.targetChild(thisPath);
+				if (targetChild) {
+					updateKeys[targetChild] = true;
+					if (basicType == "object") {
+						if (operation.action() == "move") {
+							var keyIndex = keys.indexOf(targetChild);
+							if (keyIndex != -1) {
+								throw new Error("Cannot move to existing key: " + targetChild);
+							}
+							keys.push(targetChild);
+							value[targetChild] = operation.subjectValue();
+							if (propertyData[targetChild] != undefined) {
+								secrets.schemas.addSchemasForProperty(targetChild, propertyData[targetChild]);
+							}
+						}
+					} else if (basicType == "array") {
+						if (!isIndex(targetChild)) {
+							throw new Error("Cannot patch non-numeric index: " + targetChild);
+						}
+						var index = parseInt(targetChild);
+						if (operation.action() == "move") {
+							if (index > length) {
+								throw new Error("Cannot add past the end of the list");
+							}
+							for (var j = length - 1; j >= index; j--) {
+								if (indexDataSecrets[j + 1] == undefined) {
+									continue;
+								}
+								if (indexData[j] == undefined) {
+									indexDataSecrets[j + 1].setValue(value[j]);
+								} else {
+									indexDataSecrets[j + 1].setValue(indexData[j].value());
+								}
+							}
+							value.splice(index, 0, operation.subjectValue());
+							length++;
+							if (indexData[index] != undefined) {
+								secrets.schemas.addSchemasForIndex(key, indexData[index]);
+							}
 						}
 					}
 				}
@@ -1789,6 +1860,21 @@ Data.prototype = {
 		this.property(key).remove();
 		return this;
 	},
+	moveTo: function (target) {
+		if (typeof target == "object") {
+			if (target.document != this.document) {
+				var value = this.value();
+				this.remove();
+				target.setValue(value);
+				return target;
+			}
+			target = target.pointerPath();
+		}
+		var patch = new Patch();
+		patch.move(this.pointerPath(), target);
+		this.document.patch(patch, this);
+		return this.document.root.subPath(target);
+	},
 	getLink: function (rel) {
 		var links = this.links(rel);
 		return links[0];
@@ -1887,6 +1973,16 @@ Data.prototype = {
 	},
 	resolveUrl: function (url) {
 		return this.document.resolveUrl(url);
+	},
+	get: function (path) {
+		return this.subPath(path).value();
+	},
+	set: function (path, value) {
+		this.subPath(path).setValue(value);
+		return this;
+	},
+	json: function () {
+		return JSON.stringify(this.value());
 	}
 };
 Data.prototype.indices = Data.prototype.items;
@@ -2107,7 +2203,7 @@ Schema.prototype = {
 			});
 			result.push(xorGroup);
 		}
-		return new SchemaList(result);
+		return result;
 	},
 	orSchemas: function () {
 		var result = [];
@@ -2119,7 +2215,7 @@ Schema.prototype = {
 			});
 			result.push(orGroup);
 		}
-		return new SchemaList(result);
+		return result;
 	},
 	equals: function (otherSchema) {
 		if (this === otherSchema) {
@@ -2423,7 +2519,6 @@ ActiveLink.prototype = {
 function SchemaMatch(monitorKey, data, schema) {
 	var thisSchemaMatch = this;
 	this.monitorKey = monitorKey;
-	this.schema = schema;
 	this.match = false;
 	this.matchFailReason = new SchemaMatchFailReason("initial failure", null);
 	this.monitors = new MonitorSet(schema);
@@ -2434,11 +2529,17 @@ function SchemaMatch(monitorKey, data, schema) {
 	this.dependencies = {};
 	this.dependencyKeys = {};
 
-	this.basicTypes = schema.basicTypes();
+	this.schemaLoaded = false;
 	this.data = data;
-	this.setupXorSelectors();
-	this.setupOrSelectors();
-	this.dataUpdated();
+	schema.getFull(function (schema) {
+		thisSchemaMatch.schemaLoaded = true;
+		thisSchemaMatch.schema = schema;
+
+		thisSchemaMatch.basicTypes = schema.basicTypes();
+		thisSchemaMatch.setupXorSelectors();
+		thisSchemaMatch.setupOrSelectors();
+		thisSchemaMatch.dataUpdated();
+	});
 }
 SchemaMatch.prototype = {
 	setupXorSelectors: function () {
@@ -2476,6 +2577,9 @@ SchemaMatch.prototype = {
 		return this;
 	},
 	dataUpdated: function (key) {
+		if (!this.schemaLoaded) {
+			return;
+		}
 		var thisSchemaMatch = this;
 		if (this.data.basicType() == "object") {
 			this.indexMatches = {};
@@ -4025,6 +4129,10 @@ publicApi.extendData({
 // TODO: re-structure monitor keys
 // TODO: separate schema monitors from type monitors?
 
-
+var configData = publicApi.create({
+	intelligentLinks: true,
+	intelligentPut: true
+});
+publicApi.config = configData;
 })(this); // Global wrapper
 

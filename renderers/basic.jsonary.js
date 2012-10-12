@@ -165,8 +165,9 @@
 							keyLink.appendChild(document.createTextNode(key));
 							addLink.appendChild(keyLink);
 							keyLink.onclick = function () {
-								var newValue = data.schemas().createValueForProperty(key);
-								data.property(key).setValue(newValue);
+								data.schemas().createValueForProperty(key, function (newValue) {
+									data.property(key).setValue(newValue);
+								});
 								return false;
 							};
 							keyLink = null;
@@ -180,8 +181,9 @@
 				newKeyLink.onclick = function () {
 					var newKey = prompt("New key:", "key");
 					if (newKey !== null && !data.property(newKey).defined()) {
-						var newValue = data.schemas().createValueForProperty(newKey);
-						data.property(newKey).setValue(newValue);
+						data.schemas().createValueForProperty(newKey, function (newValue) {
+							data.property(newKey).setValue(newValue);
+						});
 					}
 					return false;
 				};
@@ -242,8 +244,10 @@
 				addLink.setAttribute("class", "json-array-add");
 				addLink.innerHTML = "+ add";
 				addLink.onclick = function () {
-					var newValue = data.schemas().createValueForIndex(data.length());
-					data.index(data.length()).setValue(newValue);
+					var index = data.length();
+					data.schemas().createValueForIndex(index, function (newValue) {
+						data.index(index).setValue(newValue);
+					});
 					return false;
 				};
 				element.appendChild(addLink);
@@ -393,14 +397,16 @@
 						var parentSchemas = parent.schemas();
 						var finalComponent = pointerComponent.pop();
 						if (parent.basicType() == "array") {
-							var newValue = parentSchemas.createValueForIndex(finalComponent);
-							parent.index(finalComponent).setValue(newValue);
+							parentSchemas.createValueForIndex(finalComponent, function (newValue) {
+								parent.index(finalComponent).setValue(newValue);
+							});
 						} else {
 							if (parent.basicType() != "object") {
 								parent.setValue({});
 							}
-							var newValue = parentSchemas.createValueForProperty(finalComponent);
-							parent.property(finalComponent).setValue(newValue);
+							parentSchemas.createValueForProperty(finalComponent, function (newValue) {
+								parent.property(finalComponent).setValue(newValue);
+							});
 						}
 						return false;
 					};

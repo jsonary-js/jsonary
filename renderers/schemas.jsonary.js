@@ -19,7 +19,12 @@
 						data.property("properties").property(key).remove();
 					});
 				}
-				$('<td class="schema-property-key"></td>').text(key).appendTo(tableRow);
+				var keyCell = $('<td class="schema-property-key"></td>').text(key).appendTo(tableRow);
+				if (!data.readOnly()) {
+					keyCell.click(function () {
+						var input = $('<input type="text" />')
+					});
+				}
 				var summaryCell = $('<td class="schema-property-summary"></td>').appendTo(tableRow);
 				var displayed = false;
 				var viewFullSchema = $('<div class="schema-property-view-full">view schema</div>').appendTo(summaryCell).click(function () {
@@ -108,14 +113,19 @@
 	function renderArrayDetails(container, data, schema) {
 		var basicTypes = schema.basicTypes();
 		if (basicTypes.indexOf("array") >= 0) {
-			$('<div class="schema-section-title">Array items:</div>').appendTo(container);
-			
+			if (data.property("items").basicType() == "object") {
+				$('<div class="schema-section-title">Items in the array must be:</div>').appendTo(container);
+				$('<div class="schema-section" />').renderJson(data.property("items")).appendTo(container);
+			} else if (data.property("items").basicType() == "array") {
+				$('<div class="schema-section-title">Array must contain items in this order:</div>').appendTo(container);
+				$('<div class="schema-section" />').renderJson(data.property("items")).appendTo(container);
+			}
 		}
 	}
 	
 	function renderOneOfDetails(container, data, schema) {
 		if (data.property("oneOf").defined()) {
-			$('<div class="schema-section-title">Must be one of:</div>').appendTo(container);
+			$('<div class="schema-section-title">Must be exactly one of:</div>').appendTo(container);
 			$('<div class="schema-section" />').renderJson(data.property("oneOf")).appendTo(container);
 		}
 	}
@@ -155,7 +165,7 @@
 			renderOneOfDetails($('<div />').appendTo(container), data, schema);
 			renderAnyOfDetails($('<div />').appendTo(container), data, schema);
 
-			var tabControls = $('<div class="schema-detail-tabs" />').appendTo(container);
+			var tabControls = $('<div class="schema-detail-tabs"></div>').appendTo(container);
 			var tabContent = $('<div class="schema-detail" />').appendTo(container);
 			function selectOption(basicType) {
 				tabContent.empty();
@@ -170,9 +180,13 @@
 			}
 			var tabItems = [];
 			$.each(basicTypes, function (index, type) {
+				if (type == "null" || type == "boolean") {
+					return;
+				}
+				index = tabItems.length;
 				tabItems[index] = $('<a class="schema-detail-tab"></a>').text(type).appendTo(tabControls).click(function () {
 					selectOption(type);
-					for (var i = 0; i < basicTypes.length; i++) {
+					for (var i = 0; i < tabItems.length; i++) {
 						tabItems[i].removeClass("tab-selected");
 					}
 					tabItems[index].addClass("tab-selected");
@@ -269,6 +283,10 @@
 						"items": {"$ref": "#"}
 					}
 				]
+			},
+			"testProperty": {
+				"type": "array",
+				"items": [{"title": "Test 1"}, {"title": "Test 2"}]
 			}
 		},
 		"additionalProperties": {},

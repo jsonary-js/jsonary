@@ -40,7 +40,6 @@
 	var ignoreChanges = 0;
 	
 	Jsonary.registerChangeListener(function (patch, document) {
-		console.log(JSON.stringify(patch.plain()));
 		if (ignoreChanges > 0) {
 			ignoreChanges--;
 			return;
