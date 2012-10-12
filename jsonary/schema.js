@@ -184,7 +184,7 @@ Schema.prototype = {
 			});
 			result.push(xorGroup);
 		}
-		return new SchemaList(result);
+		return result;
 	},
 	orSchemas: function () {
 		var result = [];
@@ -196,7 +196,7 @@ Schema.prototype = {
 			});
 			result.push(orGroup);
 		}
-		return new SchemaList(result);
+		return result;
 	},
 	equals: function (otherSchema) {
 		if (this === otherSchema) {

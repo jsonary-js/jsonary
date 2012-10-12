@@ -145,6 +145,53 @@ tests.add("property(...).setValue()", function () {
 	return true;
 });
 
+tests.add("moveTo(data) object", function () {
+	var data = Jsonary.create({"key1": "value"});
+	
+	var key1 = data.property("key1");
+	var key2 = data.property("key2");
+	
+	var result = key1.moveTo(key2);
+	this.assert(!key1.defined(), "key1 should not be defined");
+	this.assert(key2.value() == "value", "key2 == value");
+	this.assert(result == key2, "moveTo() should return target");
+	
+	return true;
+});
+
+tests.add("moveTo(data) array", function () {
+	var data = Jsonary.create([0, 1, 2, 3]);
+	
+	var result = data.item(2).moveTo(data.item(0));
+	this.assert(data.value()[0] == 2, "[0] == 2");
+	this.assert(data.value()[1] == 0, "[1] == 0");
+	this.assert(data.value()[2] == 1, "[2] == 1");
+	this.assert(result == data.item(0), "moveTo() should return target");
+
+	var result = data.item(1).moveTo(data.item(3));
+	this.assert(data.value()[0] == 2, "[0] == 2");
+	this.assert(data.value()[1] == 1, "[1] == 1");
+	this.assert(data.value()[2] == 3, "[2] == 3");
+	this.assert(data.value()[3] == 0, "[3] == 0");
+	this.assert(result == data.item(3), "moveTo() should return target");
+	
+	return true;
+});
+
+tests.add("document.move()", function () {
+	var data = Jsonary.create({"key1": "value"});
+	var document = data.document;
+	
+	var key1 = data.property("key1");
+	var key2 = data.property("key2");
+	document.move("/key1", "/key2");
+	
+	this.assert(!key1.defined(), "key1 should not be defined");
+	this.assert(key2.value() == "value", "key2 == value");
+	
+	return true;
+});
+
 tests.add("defined()", function () {
 	var data = Jsonary.create({"key": "value"});
 	var dataKey = data.property("key");
@@ -152,5 +199,35 @@ tests.add("defined()", function () {
 	this.assert(data.defined() === true, "data.defined() === true, not " + JSON.stringify(data.defined()));
 	this.assert(dataKey.defined() === true, "dataKey.defined() === true, not " + JSON.stringify(data.defined()));
 	this.assert(dataKey2.defined() === false, "dataKey2.defined() === false, not " + JSON.stringify(data.defined()));
+	return true;
+});
+
+tests.add("get()", function () {
+	var data = Jsonary.create({"key": {"subKey": "value"}});
+	this.assert(data.get("/key/subKey") == "value", "values do not match");
+	this.assert(typeof data.get("/key") == "object", "/key must be object");
+	return true;
+});
+
+tests.add("set()", function () {
+	var data = Jsonary.create({"key": {"subKey": "value"}});
+	data.set("/key/subKey", "new value");
+	this.assert(data.get("/key/subKey") == "new value", "values do not match");
+	return true;
+});
+
+tests.add("document.get()", function () {
+	var data = Jsonary.create({"key": {"subKey": "value"}});
+	var document = data.document;
+	this.assert(document.get("/key/subKey") == "value", "values do not match");
+	this.assert(typeof document.get("/key") == "object", "/key must be object");
+	return true;
+});
+
+tests.add("document.set()", function () {
+	var data = Jsonary.create({"key": {"subKey": "value"}});
+	var document = data.document;
+	document.set("/key/subKey", "new value");
+	this.assert(document.get("/key/subKey") == "new value", "values do not match");
 	return true;
 });

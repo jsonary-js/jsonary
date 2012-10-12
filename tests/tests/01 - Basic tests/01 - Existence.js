@@ -18,3 +18,8 @@ tests.add("keyIsVariant", function() {
     return true;
 });
 
+tests.add("config", function() {
+    this.assert(Jsonary.config !== undefined);
+    return true;
+});
+

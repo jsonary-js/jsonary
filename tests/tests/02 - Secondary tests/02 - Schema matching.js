@@ -253,3 +253,24 @@ tests.add("Basic type sub-data change", function () {
 	}, 50);
 });
 
+tests.add("Schema expansion", function () {
+	var thisTest = this;
+	Jsonary.addToCache("http://example.com/schema?test=expansion", {
+		"enum": ["B"]
+	});
+	
+	var data = Jsonary.create("A");
+	var schema = Jsonary.createSchema({"$ref": "http://example.com/schema?test=expansion"});
+	
+	var matchHistory = [];
+	var failReasonHistory = [];
+	var schemaKey = Jsonary.getMonitorKey();
+	data.addSchemaMatchMonitor(schemaKey, schema, function (match, failReason) {
+		matchHistory.push(match);
+		failReasonHistory.push(failReason);
+	}, true);
+	this.assert(matchHistory.length == 1, "matchHistory.length == 1");
+	this.assert(matchHistory[0] == false, "matchHistory[0] should be false");
+	return true;
+});
+

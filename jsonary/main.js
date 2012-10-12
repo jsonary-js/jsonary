@@ -14,3 +14,8 @@
 // TODO: re-structure monitor keys
 // TODO: separate schema monitors from type monitors?
 
+var configData = publicApi.create({
+	intelligentLinks: true,
+	intelligentPut: true
+});
+publicApi.config = configData;

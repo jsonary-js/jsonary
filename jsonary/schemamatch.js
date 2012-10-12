@@ -1,7 +1,6 @@
 function SchemaMatch(monitorKey, data, schema) {
 	var thisSchemaMatch = this;
 	this.monitorKey = monitorKey;
-	this.schema = schema;
 	this.match = false;
 	this.matchFailReason = new SchemaMatchFailReason("initial failure", null);
 	this.monitors = new MonitorSet(schema);
@@ -12,11 +11,17 @@ function SchemaMatch(monitorKey, data, schema) {
 	this.dependencies = {};
 	this.dependencyKeys = {};
 
-	this.basicTypes = schema.basicTypes();
+	this.schemaLoaded = false;
 	this.data = data;
-	this.setupXorSelectors();
-	this.setupOrSelectors();
-	this.dataUpdated();
+	schema.getFull(function (schema) {
+		thisSchemaMatch.schemaLoaded = true;
+		thisSchemaMatch.schema = schema;
+
+		thisSchemaMatch.basicTypes = schema.basicTypes();
+		thisSchemaMatch.setupXorSelectors();
+		thisSchemaMatch.setupOrSelectors();
+		thisSchemaMatch.dataUpdated();
+	});
 }
 SchemaMatch.prototype = {
 	setupXorSelectors: function () {
@@ -54,6 +59,9 @@ SchemaMatch.prototype = {
 		return this;
 	},
 	dataUpdated: function (key) {
+		if (!this.schemaLoaded) {
+			return;
+		}
 		var thisSchemaMatch = this;
 		if (this.data.basicType() == "object") {
 			this.indexMatches = {};

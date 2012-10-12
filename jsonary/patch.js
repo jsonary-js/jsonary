@@ -73,6 +73,11 @@ Patch.prototype = {
 		this.operations.push(operation);
 		return this;
 	},
+	move: function (path, target) {
+		var operation = new PatchOperation("move", path, target);
+		this.operations.push(operation);
+		return this;
+	},
 	inverse: function () {
 		var result = new Patch(this.prefix);
 		for (var i = 0; i < this.operations.length; i++) {
@@ -86,7 +91,7 @@ Patch.prototype = {
 function PatchOperation(patchType, subject, value) {
 	this._patchType = patchType;
 	this._subject = subject;
-	this._oldSubjectValue = undefined;
+	this._subjectValue = undefined;
 	if (patchType == "move") {
 		this._target = value;
 	} else {
@@ -103,18 +108,21 @@ PatchOperation.prototype = {
 	subject: function () {
 		return this._subject;	
 	},
-	setOldSubjectValue: function (value) {
-		this._oldSubjectValue = value;
+	setSubjectValue: function (value) {
+		this._subjectValue = value;
 		return this;
+	},
+	subjectValue: function () {
+		return this._subjectValue;
 	},
 	inverse: function () {
 		switch (this._patchType) {
 			case "replace":
-				return new PatchOperation("replace", this._subject, this._oldSubjectValue);
+				return new PatchOperation("replace", this._subject, this._subjectValue);
 			case "add":
-				return (new PatchOperation("remove", this._subject)).setOldSubjectValue(this._value);
+				return (new PatchOperation("remove", this._subject)).setSubjectValue(this._value);
 			case "remove":
-				return (new PatchOperation("add", this._subject, this._oldSubjectValue));
+				return (new PatchOperation("add", this._subject, this._subjectValue));
 			case "move":
 				return (new PatchOperation("move", this._target, this._subject));
 			default:
@@ -175,6 +183,9 @@ PatchOperation.prototype = {
 		return this._target == path;
 	},
 	targetChild: function (path) {
+		if (this._target == undefined) {
+			return;
+		}
 		path += "/";
 		if (this._target.substring(0, path.length) == path) {
 			var remainder = this._target.substring(path.length);
