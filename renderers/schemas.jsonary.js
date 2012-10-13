@@ -439,6 +439,12 @@
 				"type": "array",
 				"items": {"$ref": "#"}
 			},
+			"allOf": {
+				"title": "All-Of",
+				"description": "Instances must match all of the schemas in this property",
+				"type": "array",
+				"items": {"$ref": "#"}
+			},
 			"enum": {
 				"title": "Enum values",
 				"description": "If defined, then the value must be equal to one of the items in this array",
@@ -550,7 +556,10 @@
 			},
 			"testProperty": {
 				"type": "string",
-				"enum": ["A", "B", "C"]
+				"enum": ["A", "B", "C"],
+				"allOf": [
+					{"$ref": "#"}
+				]
 			}
 		},
 		"additionalProperties": {},
