@@ -3,6 +3,14 @@
 	border-radius: 5px;
 	margin: 0.2em;
 	font-family: sans-serif;
+	background-color: #FFF;
+}
+
+.schema-switch {
+	font-family: monospace;
+	font-weight: bold;
+	color: #048;
+	cursor: pointer;
 }
 
 .schema-reference-edit {
@@ -34,11 +42,16 @@
 	margin-top: 0.8em;
 }
 
-.schema-section {
+div.schema-section {
+	margin-left: 2em;
+}
+
+span.schema-section {
 	margin-left: 2em;
 }
 
 .schema-types {
+	clear: left;
 	margin: 0;
 	margin-left: 2em;
 	font-family: monospace;
@@ -53,10 +66,8 @@
 }
 
 .schema-properties {
+	clear: left;
 	margin-left: 2em;
-	border: 1px solid black;
-	border-radius: 10px;
-	background-color: #FFF;
 }
 
 .schema-properties td {
@@ -108,6 +119,11 @@
 	color: #666;
 	font-style: italic;
 	margin-left: 1em;
+	white-space: collapse;
+}
+
+.schema-property-description * {
+	white-space: collapse;
 }
 
 .schema-property-delete {
@@ -140,11 +156,18 @@
 	cursor: pointer;
 }
 .schema-detail-tab.tab-selected {
-	background-color: #FFF;
+	background-color: #EEF;
 	border-bottom: #FFF;
 }
 .schema-detail {
 	clear: left;
 	border: 1px solid black;
-	background-color: #FFF;
+	background-color: #EEF;
+	padding: 0.5em;
+}
+
+.schema-regex {
+	font-family: monospace;
+	color: #080;
+	font-size: 1.2em;
 }

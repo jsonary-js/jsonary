@@ -2,7 +2,7 @@
 	function renderObjectDetails(container, data, schema) {
 		var basicTypes = schema.basicTypes();
 		if (basicTypes.indexOf("object") >= 0) {
-			$('<div class="schema-section-title">Object properties:</div>').appendTo(container);
+			$('<div class="schema-section-title">Properties:</div>').appendTo(container);
 			var propertyList = schema.definedProperties();
 			var requiredList = schema.requiredProperties();
 			var propertiesTable = $('<table class="schema-properties" cellpadding=0 cellspacing=0 />');
@@ -22,7 +22,19 @@
 				var keyCell = $('<td class="schema-property-key"></td>').text(key).appendTo(tableRow);
 				if (!data.readOnly()) {
 					keyCell.click(function () {
-						var input = $('<input type="text" />')
+						var input = $('<input type="text" />').val(key).appendTo(keyCell.empty());
+						input.blur(function () {
+							var newKey = input.val();
+							if (newKey == key) {
+								keyCell.text(key);
+								return;
+							}
+							var properties = data.property("properties");
+							while (properties.property(newKey).defined()) {
+								newKey = "_" + newKey;
+							}
+							properties.property(key).moveTo(properties.property(newKey));
+						}).focus().select();
 					});
 				}
 				var summaryCell = $('<td class="schema-property-summary"></td>').appendTo(tableRow);
@@ -33,10 +45,8 @@
 					}
 					schemaContainer.slideToggle();
 					titleContainer.toggle();
-					descriptionContainer.toggle();
 				});
 				var titleContainer = $('<span class="schema-property-title" />').renderJson(propertySchema.property("title")).appendTo(summaryCell);
-				var descriptionContainer= $('<span class="schema-property-description" />').renderJson(propertySchema.property("description")).appendTo(summaryCell);
 				var schemaContainer = $('<div class="schema-property-full" />').hide().appendTo(summaryCell);
 				var required = requiredList.indexOf(key) > -1;
 				var requiredBlock = $('<td class="schema-property-required"></td>').appendTo(tableRow);
@@ -107,6 +117,62 @@
 					});
 				}
 			}
+
+			$('<div class="schema-section-title">Dependencies:</div>').appendTo(container);
+			var dependencyTable = $('<table class="schema-properties" cellpadding=0 cellspacing=0 />');
+			var tableBody = $('<tbody></tbody>').appendTo(dependencyTable);
+			data.property("dependencies").properties(function (key, subData) {
+				var tableRow = $('<tr class="schema-property" />').appendTo(tableBody);
+				if (!data.readOnly()) {
+					$('<td class="schema-property-delete">[X Delete]</td>').appendTo(tableRow).click(function () {
+						subData.remove();
+					});
+				}
+				var keyCell = $('<td class="schema-property-key"></td>').text(key).appendTo(tableRow);
+				if (!data.readOnly()) {
+					keyCell.click(function () {
+						var input = $('<input type="text" />').val(key).appendTo(keyCell.empty());
+						input.blur(function () {
+							var newKey = input.val();
+							if (newKey == key) {
+								keyCell.text(key);
+								return;
+							}
+							var properties = data.property("properties");
+							while (properties.property(newKey).defined()) {
+								newKey = "_" + newKey;
+							}
+							properties.property(key).moveTo(properties.property(newKey));
+						}).focus().select();
+					});
+				}
+				var summaryCell = $('<td class="schema-property-summary"></td>').appendTo(tableRow);
+				var displayed = false;
+				var viewFullSchema = $('<div class="schema-property-view-full">view schema</div>').appendTo(summaryCell).click(function () {
+					if (!displayed) {
+						schemaContainer.renderJson(subData);
+					}
+					schemaContainer.slideToggle();
+					titleContainer.toggle();
+				});
+				var titleContainer = $('<span class="schema-property-title" />').renderJson(subData.property("title")).appendTo(summaryCell);
+				var schemaContainer = $('<div class="schema-property-full" />').hide().appendTo(summaryCell);
+			});
+			if (!data.readOnly()) {
+				$('<tr><td colspan=4 class="schema-property-add">[+ Add]</td></span>').appendTo(tableBody).click(function () {
+					var key = window.prompt("Property name:");
+					if (key == null) {
+						return;
+					}
+					if (!data.property("dependencies").defined()) {
+						data.property("dependencies").setValue({});
+					}
+					if (!data.property("dependencies").property(key).defined()) {
+						data.property("dependencies").property(key).setValue({"title": "Dependency for \"" + key + "\""});
+					}
+				});
+			}
+			dependencyTable.appendTo(container);
 		}
 	}
 
@@ -119,22 +185,101 @@
 			} else if (data.property("items").basicType() == "array") {
 				$('<div class="schema-section-title">Array must contain items in this order:</div>').appendTo(container);
 				$('<div class="schema-section" />').renderJson(data.property("items")).appendTo(container);
+				$('<div class="schema-section-title">Additional items:</div>').appendTo(container);
+				$('<div class="schema-section" />').renderJson(data.property("additionalItems")).appendTo(container);
 			}
 		}
+		if (data.property("minItems").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Minimum length:</div>').appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("minItems")).appendTo(container);
+		if (data.property("maxItems").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Maximum length:</div>').appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("maxItems")).appendTo(container);
+		if (data.property("uniqueItems").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Items must be unique:</div>').appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("uniqueItems")).appendTo(container);
 	}
 	
-	function renderOneOfDetails(container, data, schema) {
-		if (data.property("oneOf").defined()) {
-			$('<div class="schema-section-title">Must be exactly one of:</div>').appendTo(container);
-			$('<div class="schema-section" />').renderJson(data.property("oneOf")).appendTo(container);
+	function renderNumberDetails(container, data, schema) {
+		if (data.property("minimum").defined() || !data.readOnly()) {
+			var conditions = $('<div class="schema-section-title">Value must be </div>').appendTo(container);
+			var exclusiveSpan = $('<span></span>').appendTo(conditions).text(data.get("/exclusiveMinimum") ? "greater than" : "greater than or equal to");
+			if (!data.readOnly()) {
+				exclusiveSpan.addClass("schema-switch").click(function () {
+					data.set("/exclusiveMinimum", !data.get("/exclusiveMinimum"));
+				});
+			}
+			conditions.append(":");
 		}
+		$('<div class="schema-section" />').renderJson(data.property("minimum")).appendTo(container);
+
+		if (data.property("maximum").defined() || !data.readOnly()) {
+			var conditions = $('<div class="schema-section-title">Value must be </div>').appendTo(container);
+			var exclusiveSpan = $('<span></span>').appendTo(conditions).text(data.get("/exclusiveMaximum") ? "less than" : "less than or equal to");
+			if (!data.readOnly()) {
+				exclusiveSpan.addClass("schema-switch").click(function () {
+					data.set("/exclusiveMaximum", !data.get("/exclusiveMaximum"));
+				});
+			}
+			conditions.append(":");
+		}
+		$('<div class="schema-section" />').renderJson(data.property("maximum")).appendTo(container);
+
+		if (data.property("divisibleBy").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Value must be a multiple of:</div>').appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("divisibleBy")).appendTo(container);
+	}
+
+	function renderStringDetails(container, data, schema) {
+		if (data.property("pattern").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Regular expression:</div>').appendTo(container);
+		}
+		$('<div class="schema-section schema-regex" />').renderJson(data.property("pattern")).appendTo(container);
+
+		if (data.property("minLength").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Minimum length:</div>').appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("minLength")).appendTo(container);
+
+		if (data.property("maxLength").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Maximum length:</div>').appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("maxLength")).appendTo(container);
+	}
+
+	function renderOneOfDetails(container, data, schema) {
+		if (data.property("oneOf").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Must be exactly one of:</div>').appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("oneOf")).appendTo(container);
 	}
 
 	function renderAnyOfDetails(container, data, schema) {
-		if (data.property("anyOf").defined()) {
+		if (data.property("anyOf").defined() || !data.readOnly()) {
 			$('<div class="schema-section-title">Must be at least one of:</div>').appendTo(container);
-			$('<div class="schema-section" />').renderJson(data.property("anyOf")).appendTo(container);
 		}
+		$('<div class="schema-section" />').renderJson(data.property("anyOf")).appendTo(container);
+	}
+
+	function renderAllDetails(container, data, schema) {
+		if (data.property("allOf").defined() || data.property("extends").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Must also match all of:</div>').appendTo(container);
+		}
+		if (data.property("extends").defined()) {
+			$('<div class="schema-section" />').renderJson(data.property("extends")).appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("allOf")).appendTo(container);
+	}
+
+	function renderEnumDetails(container, data, schema) {
+		if (data.property("enum").defined() || !data.readOnly()) {
+			$('<div class="schema-section-title">Must be exactly equal to one of:</div>').appendTo(container);
+		}
+		$('<div class="schema-section" />').renderJson(data.property("enum")).appendTo(container);
 	}
 
 	$.renderJson.register({
@@ -164,6 +309,8 @@
 			
 			renderOneOfDetails($('<div />').appendTo(container), data, schema);
 			renderAnyOfDetails($('<div />').appendTo(container), data, schema);
+			renderAllDetails($('<div />').appendTo(container), data, schema);
+			renderEnumDetails($('<div />').appendTo(container), data, schema);
 
 			var tabControls = $('<div class="schema-detail-tabs"></div>').appendTo(container);
 			var tabContent = $('<div class="schema-detail" />').appendTo(container);
@@ -176,13 +323,20 @@
 					case "array":
 						renderArrayDetails(tabContent, data, schema);
 						break;
+					case "string":
+						renderStringDetails(tabContent, data, schema);
+						break;
+					case "number":
+					case "integer":
+						renderNumberDetails(tabContent, data, schema);
+						break;
+					default:
+						tabContent.text("There are no " + basicType + " constraints");
+						break;
 				}
 			}
 			var tabItems = [];
 			$.each(basicTypes, function (index, type) {
-				if (type == "null" || type == "boolean") {
-					return;
-				}
 				index = tabItems.length;
 				tabItems[index] = $('<a class="schema-detail-tab"></a>').text(type).appendTo(tabControls).click(function () {
 					selectOption(type);
@@ -193,8 +347,8 @@
 				});
 			});
 			if (tabItems.length > 0) {
-				tabItems[0].addClass("tab-selected");
-				selectOption(basicTypes[0]);
+				tabItems[tabItems.length - 1].addClass("tab-selected");
+				selectOption(basicTypes[tabItems.length - 1]);
 			}
 		},
 		filter: function (data, schemas) {
@@ -202,9 +356,20 @@
 		},
 		update: function (query, data, operation) {
 			var path = data.pointerPath();
-			if (operation.depthFrom(path) <= 2) {
-				if (operation.hasPrefix(path + "/properties") || operation.hasPrefix(path + "/required") || operation.hasPrefix(path + "/type")) {
-					this.render(query, data);
+			var depth = operation.depthFrom(path)
+			if (depth <= 1) {
+				if (data.readOnly()
+					|| operation.hasPrefix(path + "/exclusiveMinimum")
+					|| operation.hasPrefix(path + "/exclusiveMaximum")) {
+					return this.render(query, data);
+				}
+				return this.render(query, data);
+			} else if (depth <= 2) {
+				if (operation.hasPrefix(path + "/properties")
+					|| operation.hasPrefix(path + "/required")
+					|| operation.hasPrefix(path + "/dependencies")
+					|| operation.hasPrefix(path + "/type")) {
+					return this.render(query, data);
 				}
 			}
 			this.defaultUpdate(query, data, operation);
@@ -263,11 +428,43 @@
 				"type": "string"
 			},
 			"oneOf": {
+				"title": "One-Of",
+				"description": "Instances must match exactly one of the schemas in this property",
 				"type": "array",
 				"items": {"$ref": "#"}
 			},
+			"anyOf": {
+				"title": "Any-Of",
+				"description": "Instances must match at least one of the schemas in this property",
+				"type": "array",
+				"items": {"$ref": "#"}
+			},
+			"enum": {
+				"title": "Enum values",
+				"description": "If defined, then the value must be equal to one of the items in this array",
+				"type": "array"
+			},
+			"default": {
+				"title": "Default value",
+				"type": "any"
+			},
 			"properties": {
 				"title": "Object properties",
+				"type": "object",
+				"additionalProperties": {"$ref": "#"}
+			},
+			"required": {
+				"title": "Required properties",
+				"description": "If the instance is an object, these properties must be present",
+				"type": "array",
+				"items": {
+					"title": "Property name",
+					"type": "string"
+				}
+			},
+			"dependencies": {
+				"title": "Dependencies",
+				"description": "If the instance is an object, and contains a property matching one of those here, then it must also follow the corresponding schema",
 				"type": "object",
 				"additionalProperties": {"$ref": "#"}
 			},
@@ -284,9 +481,76 @@
 					}
 				]
 			},
+			"additionalItems": {"$ref": "#"},
+			"minItems": {
+				"title": "Minimum array length",
+				"type": "integer",
+				"minimum": 0
+			},
+			"maxItems": {
+				"title": "Maximum array length",
+				"type": "integer",
+				"minimum": 0
+			},
+			"uniqueItems": {
+				"title": "Unique items",
+				"description": "If set to true, and the value is an array, then no two items in the array should be equal.",
+				"type": "boolean",
+				"default": false
+			},
+			"pattern": {
+				"title": "Regular expression",
+				"description": "An regular expression (ECMA 262) which the value must match if it's a string",
+				"type": "string",
+				"format": "regex"
+			},
+			"minLength": {
+				"title": "Minimum string length",
+				"type": "integer",
+				"minimum": 0,
+				"default": 0
+			},
+			"maxLength": {
+				"title": "Maximum string length",
+				"type": "integer",
+				"minimum": 0
+			},
+			"minimum": {
+				"title": "Minimum value",
+				"type": "number"
+			},
+			"maximum": {
+				"title": "Maximum value",
+				"type": "number"
+			},
+			"exclusiveMinimum": {
+				"title": "Exclusive Minimum",
+				"description": "If the value is a number and this is set to true, then the value cannot be equal to the value specified in \"minimum\"",
+				"type": "boolean",
+				"default": false
+			},
+			"exclusiveMaximum": {
+				"title": "Exclusive Maximum",
+				"description": "If the value is a number and this is set to true, then the value cannot be equal to the value specified in \"maximum\"",
+				"type": "boolean",
+				"default": false
+			},
+			"divisibleBy": {
+				"title": "Divisible by",
+				"description": "If the value is a number, then it must be an integer multiple of the value of this property",
+				"type": "number",
+				"minimum": 0,
+				"exclusiveMinimum": true
+			},
+			"$ref": {
+				"title": "Reference URI",
+				"description": "This contains the URI of a schema, which should be used to replace the containing schema.",
+				"type": "string",
+				"format": "uri"
+			},
 			"testProperty": {
-				"type": "array",
-				"items": [{"title": "Test 1"}, {"title": "Test 2"}]
+				"type": "string",
+				"enum": ["A", "B", "C"]
 			}
 		},
 		"additionalProperties": {},

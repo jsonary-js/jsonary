@@ -1373,6 +1373,9 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		if (this.readOnly) {
+			throw new Error("Cannot update read-only document");
+		}
 		if (batchChanges) {
 			if (this.batchPatch == undefined) {
 				this.batchPatch = new Patch();
@@ -3637,6 +3640,7 @@ SchemaSet.prototype = {
 		var selectors = [];
 		for (var i = 0; i < xorSchemas.length; i++) {
 			var selector = new XorSchemaApplier(xorSchemas[i], Utils.getKeyVariant(schemaKey, "xor" + i), schemaKeyHistory, this);
+			selectors.push(selector);
 		}
 		if (this.xorSelectors[schemaKey] == undefined) {
 			this.xorSelectors[schemaKey] = selectors;
@@ -3649,6 +3653,7 @@ SchemaSet.prototype = {
 		var selectors = [];
 		for (var i = 0; i < orSchemas.length; i++) {
 			var selector = new OrSchemaApplier(orSchemas[i], Utils.getKeyVariant(schemaKey, "or" + i), schemaKeyHistory, this);
+			selectors.push(selector);
 		}
 		if (this.orSelectors[schemaKey] == undefined) {
 			this.orSelectors[schemaKey] = selectors;

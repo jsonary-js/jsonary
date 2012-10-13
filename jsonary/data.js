@@ -53,6 +53,9 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		if (this.readOnly) {
+			throw new Error("Cannot update read-only document");
+		}
 		if (batchChanges) {
 			if (this.batchPatch == undefined) {
 				this.batchPatch = new Patch();
@@ -551,7 +554,11 @@ Data.prototype = {
 			target = target.pointerPath();
 		}
 		var patch = new Patch();
-		patch.move(this.pointerPath(), target);
+		var pointerPath = this.pointerPath();
+		if (target == pointerPath) {
+			continue;
+		}
+		patch.move(pointerPath, target);
 		this.document.patch(patch, this);
 		return this.document.root.subPath(target);
 	},
