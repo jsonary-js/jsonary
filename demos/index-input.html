@@ -51,6 +51,7 @@
 		</table>
 		<div align=center>
 			<input type="button" id="button-update" value="Update">
+			<input type="checkbox" id="checkbox-editable">Editable</input>
 		</div>
 		<hr>
 		<div id="main" />
@@ -69,7 +70,7 @@
 			});
 			$('#button-update').click(function () {
 				try {
-					var data = Jsonary.create(JSON.parse($('#json-data-source').val()), null, true);
+					var data = Jsonary.create(JSON.parse($('#json-data-source').val()), null, !$('#checkbox-editable').is(':checked'));
 					var schema = Jsonary.createSchema(JSON.parse($('#json-schema-source').val()));
 					data.addSchema(schema);
 					$('#main').renderJson(data);
