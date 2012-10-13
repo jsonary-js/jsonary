@@ -120,18 +120,21 @@ Schema.prototype = {
 		return new SchemaList();
 	},
 	andSchemas: function () {
+		var result = [];
 		var extData = this.data.property("extends");
-		var ext = [];
 		if (extData.defined()) {
 			if (extData.basicType() == "array") {
 				extData.indices(function (i, e) {
-					ext[ext.length] = e.asSchema();
+					result.push(e.asSchema());
 				});
 			} else {
-				ext[0] = extData.asSchema();
+				result.push(extData.asSchema());
 			}
 		}
-		return new SchemaList(ext);
+		this.data.property("allOf").items(function (index, data) {
+			result.push(data.asSchema());
+		});
+		return new SchemaList(result);
 	},
 	types: function () {
 		var typeData = this.data.property("type");

@@ -20,13 +20,13 @@ function SchemaMatch(monitorKey, data, schema) {
 		thisSchemaMatch.basicTypes = schema.basicTypes();
 		thisSchemaMatch.setupXorSelectors();
 		thisSchemaMatch.setupOrSelectors();
+		thisSchemaMatch.setupAndMatches();
 		thisSchemaMatch.dataUpdated();
 	});
 }
 SchemaMatch.prototype = {
 	setupXorSelectors: function () {
 		var thisSchemaMatch = this;
-		this.currentType = null;
 		this.xorSelectors = {};
 		var xorSchemas = this.schema.xorSchemas();
 		for (var i = 0; i < xorSchemas.length; i++) {
@@ -39,7 +39,6 @@ SchemaMatch.prototype = {
 	},
 	setupOrSelectors: function () {
 		var thisSchemaMatch = this;
-		this.currentType = null;
 		this.orSelectors = {};
 		var orSchemas = this.schema.orSchemas();
 		for (var i = 0; i < orSchemas.length; i++) {
@@ -49,6 +48,17 @@ SchemaMatch.prototype = {
 				thisSchemaMatch.update();
 			}, false);
 		}
+	},
+	setupAndMatches: function () {
+		var thisSchemaMatch = this;
+		this.andMatches = [];
+		var andSchemas = this.schema.andSchemas();
+		andSchemas.each(function (index, subSchema) {
+			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchema, function () {
+				thisSchemaMatch.update();
+			}, false);
+			thisSchemaMatch.andMatches.push(subMatch);
+		});
 	},
 	addMonitor: function (monitor, executeImmediately) {
 		// TODO: make a monitor set that doesn't require keys.  The keyed one could use it!
@@ -198,6 +208,13 @@ SchemaMatch.prototype = {
 		throw new SchemaMatchFailReason("Data does not match any of the basic types: " + this.basicTypes, this.schema);
 	},
 	matchAgainstSubMatches: function () {
+		for (var i = 0; i < this.andMatches.length; i++) {
+			var andMatch = this.andMatches[i];
+			if (!andMatch.match) {
+				var message = "extended schema #" + i + ": " + andMatch.message;
+				throw new SchemaMatchFailReason(message, this.schema, andMatch.failReason);
+			}
+		}
 		for (var key in this.xorSelectors) {
 			var selector = this.xorSelectors[key];
 			if (selector.selectedOption == null) {

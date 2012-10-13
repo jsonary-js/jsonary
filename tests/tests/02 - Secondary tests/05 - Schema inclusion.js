@@ -272,3 +272,75 @@ tests.add("anyOf inference", function () {
 
 	return true;
 });
+
+tests.add("allOf validation", function () {
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		"allOf": [
+			{
+				"title": "Schema 1",
+				"required": ["key1"]
+			},
+			{
+				"title": "Schema 2",
+				"required": ["key2"]
+			}
+		]
+	});
+	
+	var data = Jsonary.create({key1: true});
+	
+	var monitorKey = Jsonary.getMonitorKey();
+	var failReasons = [];
+	var lastMatch = null;
+	data.addSchemaMatchMonitor(monitorKey, schema, function (match, failReason) {
+		lastMatch = match;
+		failReasons.push(failReason);
+	});
+	
+	this.assert(lastMatch === false, "should initially not match");
+	this.assert(failReasons.length == 1, "should have 1 callback");
+
+	data.property("key1").remove();
+	this.assert(lastMatch === false, "2: should not match");
+	this.assert(failReasons.length == 2, "should have 2 callbacks");
+
+	data.property("key2").setValue(true);
+	this.assert(lastMatch === false, "3: should not match");
+	this.assert(failReasons.length == 2, "should still have 2 callbacks");
+
+	data.property("key1").setValue(true);
+	this.assert(lastMatch === true, "4: should match");
+	this.assert(failReasons.length == 3, "should have 3 callbacks");
+
+	data.property("key2").remove();
+	this.assert(lastMatch === false, "5: should not match");
+	this.assert(failReasons.length == 4, "should have 4 callbacks");
+
+	return true;
+});
+
+tests.add("allOf inference", function () {
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		"allOf": [
+			{
+				"title": "Schema 1",
+				"required": ["key1"]
+			},
+			{
+				"title": "Schema 2",
+				"required": ["key2"]
+			}
+		]
+	});
+	
+	var data = Jsonary.create({key1: true});
+	data.addSchema(schema);
+
+	// All schemas shoudl be present, even if one of them doesn't validate
+	this.assert(searchForTitleInSchemaList("Schema 1", data.schemas()), "2: Should contain Schema 1");
+	this.assert(searchForTitleInSchemaList("Schema 2", data.schemas()), "2: Should contain Schema 2");
+
+	return true;
+});
