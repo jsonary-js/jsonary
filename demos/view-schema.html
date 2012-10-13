@@ -29,13 +29,20 @@
 		</table>
 		<div align=center>
 			JSON Schema:<br>
-			<textarea cols=100 rows=15 id="json-data-source" class="valid">
+<textarea cols=100 rows=15 id="json-data-source" class="valid">
 {
+    "title": "Example Schema",
+    "description": "Just a short example",
+    "type": ["object", "array"],
     "properties": {
         "title": {
             "title": "Item title",
             "type": "string"
         }
+    },
+    "items": {
+        "type": "integer",
+        "minimum": 0
     }
 }
 </textarea><br>

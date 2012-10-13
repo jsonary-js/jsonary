@@ -347,8 +347,8 @@
 				});
 			});
 			if (tabItems.length > 0) {
-				tabItems[tabItems.length - 1].addClass("tab-selected");
-				selectOption(basicTypes[tabItems.length - 1]);
+				tabItems[0].addClass("tab-selected");
+				selectOption(basicTypes[0]);
 			}
 		},
 		filter: function (data, schemas) {
