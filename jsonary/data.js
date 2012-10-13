@@ -556,7 +556,7 @@ Data.prototype = {
 		var patch = new Patch();
 		var pointerPath = this.pointerPath();
 		if (target == pointerPath) {
-			continue;
+			return;
 		}
 		patch.move(pointerPath, target);
 		this.document.patch(patch, this);
