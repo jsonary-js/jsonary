@@ -201,7 +201,7 @@ SchemaMatch.prototype = {
 	matchAgainstBasicTypes: function () {
 		var basicType = this.data.basicType();
 		for (var i = 0; i < this.basicTypes.length; i++) {
-			if (this.basicTypes[i] == basicType) {
+			if (this.basicTypes[i] == basicType || basicType == "integer" && this.basicTypes[i] == "number") {
 				return;
 			}
 		}
