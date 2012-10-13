@@ -445,6 +445,12 @@
 				"type": "array",
 				"items": {"$ref": "#"}
 			},
+			"extends": {
+				"title": "Extends (DEPRECATED)",
+				"description": "Instances must match all of the schemas in this property",
+				"type": "array",
+				"items": {"$ref": "#"}
+			},
 			"enum": {
 				"title": "Enum values",
 				"description": "If defined, then the value must be equal to one of the items in this array",
