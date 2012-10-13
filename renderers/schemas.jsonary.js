@@ -352,7 +352,7 @@
 			}
 		},
 		filter: function (data, schemas) {
-			return schemas.containsUrl("http://json-schema.org/hyper-schema") && !data.property("$ref").defined();
+			return schemas.containsUrl("http://json-schema.org/schema") && !data.property("$ref").defined();
 		},
 		update: function (query, data, operation) {
 			var path = data.pointerPath();
@@ -411,11 +411,11 @@
 			return;
 		},
 		filter: function (data, schemas) {
-			return schemas.containsUrl("http://json-schema.org/hyper-schema") && data.property("$ref").defined();
+			return schemas.containsUrl("http://json-schema.org/schema") && data.property("$ref").defined();
 		}
 	});
 	
-	Jsonary.addToCache("http://json-schema.org/hyper-schema", {
+	Jsonary.addToCache("http://json-schema.org/schema", {
 		"title": "JSON Schema",
 		"type": "object",
 		"properties": {
@@ -553,13 +553,6 @@
 				"description": "This contains the URI of a schema, which should be used to replace the containing schema.",
 				"type": "string",
 				"format": "uri"
-			},
-			"testProperty": {
-				"type": "string",
-				"enum": ["A", "B", "C"],
-				"allOf": [
-					{"$ref": "#"}
-				]
 			}
 		},
 		"additionalProperties": {},
@@ -569,5 +562,11 @@
 				"rel": "full"
 			}
 		]
-	}, "http://json-schema.org/hyper-schema");
+	}, "http://json-schema.org/schema");
+
+	Jsonary.addToCache("http://json-schema.org/hyper-schema", {
+		"allOf": [
+			{"$ref": "http://json-schema.org/schema"}
+		]
+	}, "http://json-schema.org/hyper-schema");	
 })(jQuery);

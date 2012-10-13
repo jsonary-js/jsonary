@@ -1,0 +1,82 @@
+<html>
+	<head>
+		<title>JSON browser</title>
+		<link rel="stylesheet" href="css/page.index.css" />
+		<link rel="stylesheet" href="../renderers/plain.jsonary.css" />
+		<link rel="stylesheet" href="../renderers/schemas.jsonary.css" />
+		<style>
+			.valid {
+				border: 1px solid #080;
+				background-color: #EFE;
+			}
+			.invalid {
+				border: 1px solid #800;
+				background-color: #FEE;
+			}
+			#main {
+				background-color: white;
+				padding: 1em;
+				border: 1px solid black;
+				border-radius: 10px;
+				margin-left: 10%;
+				margin-right: 10%;
+			}
+		</style>
+	</head>
+	<body>
+		<table width=100%>
+			<tr>
+				<td style="text-align: center">
+					JSON data:<br>
+					<textarea cols=50 rows=15 style="float: right" id="json-data-source" class="valid">
+{
+    "title": "JSON data"
+}
+</textarea>
+				</td>
+				<td style="text-align: center">
+					JSON Schema:<br>
+					<textarea cols=50 rows=15 style="float: left" id="json-schema-source" class="valid">
+{
+    "properties": {
+        "title": {
+            "title": "Item title",
+            "type": "string"
+        }
+    }
+}
+</textarea>
+				</td>
+			</tr>
+		</table>
+		<div align=center>
+			<input type="button" id="button-update" value="Update">
+		</div>
+		<hr>
+		<div id="main" />
+		<script src="js/jquery.js"></script>
+		<script src="../jsonary.js"></script>
+		<script src="../renderers/plain.jsonary.js"></script>
+		<script src="../renderers/schemas.jsonary.js"></script>
+		<script>
+			$('#json-data-source, #json-schema-source').keyup(function () {
+				try {
+					var data = JSON.parse($(this).val());
+					$(this).removeClass("invalid").addClass("valid");
+				} catch (e) {
+					$(this).removeClass("valid").addClass("invalid");
+				}
+			});
+			$('#button-update').click(function () {
+				try {
+					var data = Jsonary.create(JSON.parse($('#json-data-source').val()), null, true);
+					var schema = Jsonary.createSchema(JSON.parse($('#json-schema-source').val()));
+					data.addSchema(schema);
+					$('#main').renderJson(data);
+				} catch (e) {
+					alert(e);
+				}
+			});
+		</script>
+	</body>
+</html>

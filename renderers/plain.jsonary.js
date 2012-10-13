@@ -87,6 +87,7 @@
 	// Display/edit objects
 	Jsonary.render.register({
 		render: function (element, data) {
+			element.appendChild(document.createTextNode("{"));
 			listLinks(element, data.links());
 			data.properties(function (key, subData) {
 				var rowElement = document.createElement("div");
@@ -163,6 +164,7 @@
 				newKeyLink = null;
 				addLink = null;
 			}
+			element.appendChild(document.createTextNode("}"));
 			element = null;
 		},
 		filter: function (data) {

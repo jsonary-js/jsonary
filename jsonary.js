@@ -1874,7 +1874,11 @@ Data.prototype = {
 			target = target.pointerPath();
 		}
 		var patch = new Patch();
-		patch.move(this.pointerPath(), target);
+		var pointerPath = this.pointerPath();
+		if (target == pointerPath) {
+			return;
+		}
+		patch.move(pointerPath, target);
 		this.document.patch(patch, this);
 		return this.document.root.subPath(target);
 	},
@@ -2142,18 +2146,21 @@ Schema.prototype = {
 		return new SchemaList();
 	},
 	andSchemas: function () {
+		var result = [];
 		var extData = this.data.property("extends");
-		var ext = [];
 		if (extData.defined()) {
 			if (extData.basicType() == "array") {
 				extData.indices(function (i, e) {
-					ext[ext.length] = e.asSchema();
+					result.push(e.asSchema());
 				});
 			} else {
-				ext[0] = extData.asSchema();
+				result.push(extData.asSchema());
 			}
 		}
-		return new SchemaList(ext);
+		this.data.property("allOf").items(function (index, data) {
+			result.push(data.asSchema());
+		});
+		return new SchemaList(result);
 	},
 	types: function () {
 		var typeData = this.data.property("type");
@@ -2541,13 +2548,13 @@ function SchemaMatch(monitorKey, data, schema) {
 		thisSchemaMatch.basicTypes = schema.basicTypes();
 		thisSchemaMatch.setupXorSelectors();
 		thisSchemaMatch.setupOrSelectors();
+		thisSchemaMatch.setupAndMatches();
 		thisSchemaMatch.dataUpdated();
 	});
 }
 SchemaMatch.prototype = {
 	setupXorSelectors: function () {
 		var thisSchemaMatch = this;
-		this.currentType = null;
 		this.xorSelectors = {};
 		var xorSchemas = this.schema.xorSchemas();
 		for (var i = 0; i < xorSchemas.length; i++) {
@@ -2560,7 +2567,6 @@ SchemaMatch.prototype = {
 	},
 	setupOrSelectors: function () {
 		var thisSchemaMatch = this;
-		this.currentType = null;
 		this.orSelectors = {};
 		var orSchemas = this.schema.orSchemas();
 		for (var i = 0; i < orSchemas.length; i++) {
@@ -2570,6 +2576,17 @@ SchemaMatch.prototype = {
 				thisSchemaMatch.update();
 			}, false);
 		}
+	},
+	setupAndMatches: function () {
+		var thisSchemaMatch = this;
+		this.andMatches = [];
+		var andSchemas = this.schema.andSchemas();
+		andSchemas.each(function (index, subSchema) {
+			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchema, function () {
+				thisSchemaMatch.update();
+			}, false);
+			thisSchemaMatch.andMatches.push(subMatch);
+		});
 	},
 	addMonitor: function (monitor, executeImmediately) {
 		// TODO: make a monitor set that doesn't require keys.  The keyed one could use it!
@@ -2719,6 +2736,13 @@ SchemaMatch.prototype = {
 		throw new SchemaMatchFailReason("Data does not match any of the basic types: " + this.basicTypes, this.schema);
 	},
 	matchAgainstSubMatches: function () {
+		for (var i = 0; i < this.andMatches.length; i++) {
+			var andMatch = this.andMatches[i];
+			if (!andMatch.match) {
+				var message = "extended schema #" + i + ": " + andMatch.message;
+				throw new SchemaMatchFailReason(message, this.schema, andMatch.failReason);
+			}
+		}
 		for (var key in this.xorSelectors) {
 			var selector = this.xorSelectors[key];
 			if (selector.selectedOption == null) {
