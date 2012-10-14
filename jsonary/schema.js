@@ -446,6 +446,10 @@ ActiveLink.prototype = {
 	createSubmissionData: function(callback) {
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
+		if (submissionSchemas.length == 0 && this.method == "PUT") {
+			callback(this.subjectData.editableCopy());
+			return;
+		}
 		submissionSchemas.getFull(function(fullList) {
 			var value = fullList.createValue();
 			var data = publicApi.create(value, hrefBase);
