@@ -580,9 +580,6 @@ SchemaSet.prototype = {
 		return false;
 	},
 	addSchema: function (schema, schemaKey, schemaKeyHistory) {
-		if (counter++ > 1000) {
-			throw new Error("Only allowed 1000 dependent schema in total (for a given base key): " + JSON.stringify(schema.data.value()));
-		}
 		var thisSchemaSet = this;
 		if (schemaKey == undefined) {
 			schemaKey = Utils.getUniqueKey();
