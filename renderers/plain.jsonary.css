@@ -195,6 +195,7 @@ textarea.json-string:focus {
 	padding-left: 15%;
 	padding-right: 15%;
 	background-color: rgba(100, 100, 100, 0.5);
+	overflow: scroll;
 }
 
 .prompt-buttons {

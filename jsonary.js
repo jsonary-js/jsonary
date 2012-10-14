@@ -1507,6 +1507,9 @@ function Data(document, secrets, parent, parentKey) {
 	this.parent = function() {
 		return parent;
 	};
+	this.parentKey = function () {
+		return parentKey;
+	};
 	this.pointerPath = function () {
 		if (this.document.root == this) {
 			return "";
@@ -2472,6 +2475,12 @@ ActiveLink.prototype = {
 	createSubmissionData: function(callback) {
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
+		if (submissionSchemas.length == 0 && this.method == "PUT") {
+			Jsonary.getData(this.href, function (data) {
+				callback(data.editableCopy());
+			})
+			return this;
+		}
 		submissionSchemas.getFull(function(fullList) {
 			var value = fullList.createValue();
 			var data = publicApi.create(value, hrefBase);
@@ -3463,6 +3472,7 @@ SchemaList.prototype = {
 	},
 	getFull: function(callback) {
 		if (this.length == 0) {
+			callback.call(this, this);
 			return this;
 		}
 		var pending = 0;
@@ -3976,7 +3986,7 @@ publicApi.config = configData;
 	var elementLookup = {};
 	var uniqueIdLookup = {};
 
-	var ELEMENT_ID_PREFIX = "Render.Jsonary.element";
+	var ELEMENT_ID_PREFIX = "Jsonary.element";
 	var elementIdCounter = 0;
 
 	function selectRenderer(data) {
@@ -3988,6 +3998,7 @@ publicApi.config = configData;
 		}
 	}
 
+	var renderDepth = 0;
 	function render(element, data) {
 		if (typeof data == "string") {
 			Jsonary.getData(data, function (actualData) {
@@ -4010,6 +4021,7 @@ publicApi.config = configData;
 		}
 		var prevRenderer = elementLookup[uniqueId][element.id];
 		var renderer = selectRenderer(data);
+		renderDepth++;
 		if (renderer != undefined) {
 			if (prevRenderer != renderer) {
 				elementLookup[uniqueId][element.id] = renderer;
@@ -4018,6 +4030,14 @@ publicApi.config = configData;
 		} else {
 			element.innerHTML = "NO RENDERER FOUND";
 		}
+		renderDepth--;
+		while (renderDepth == 0 && enhancementList.length > 0) {
+			var enhancement = enhancementList.shift();
+			var target = document.getElementById(enhancement.id);
+			renderDepth++;
+			enhancement.renderer.enhance(target, enhancement.data);
+			renderDepth--;
+		}
 	}
 	render.empty = function (element) {
 		if (global.jQuery != null) {
@@ -4025,6 +4045,11 @@ publicApi.config = configData;
 		}
 		element.innerHTML = "";
 	};
+	
+	function renderHtml(data) {
+		var renderer = selectRenderer(data);
+		return renderer.renderHtml(data);
+	}
 
 	function update(data, operation) {
 		var uniqueId = data.uniqueId;
@@ -4066,16 +4091,58 @@ publicApi.config = configData;
 		}
 	});
 
+	var enhancementList = [];
+	function addEnhancement(renderer, data) {
+		var elementId = ELEMENT_ID_PREFIX + (elementIdCounter++);
+		if (uniqueIdLookup[elementId] != undefined) {
+			var previousId = uniqueIdLookup[elementId];
+			delete elementLookup[previousId][elementId];
+		}
+		var uniqueId = data.uniqueId;
+		uniqueIdLookup[elementId] = uniqueId;
+		if (elementLookup[uniqueId] == undefined) {
+			elementLookup[uniqueId] = {};
+		}
+		var prevRenderer = elementLookup[uniqueId][elementId];
+		if (prevRenderer != renderer) {
+			elementLookup[uniqueId][elementId] = renderer;
+		}
+
+		enhancementList.push({
+			"id": elementId,
+			"renderer": renderer,
+			"data": data
+		});
+		console.log(enhancementList);
+		return elementId;
+	}
+	
 	function Renderer(sourceObj) {
 		this.renderFunction = sourceObj.render;
+		this.renderHtmlFunction = sourceObj.renderHtml;
 		this.updateFunction = sourceObj.update;
 		this.filterFunction = sourceObj.filter;
 	}
 	Renderer.prototype = {
 		render: function (element, data) {
 			render.empty(element);
+			if (this.renderHtmlFunction != undefined) {
+				element.innerHTML = this.renderHtmlFunction(data);
+			}
 			this.renderFunction(element, data);
 			return this;
+		},
+		enhance: function (element, data) {
+			this.renderFunction(element, data);
+			return this;
+		},
+		renderHtml: function (data) {
+			var innerHtml = "";
+			if (this.renderHtmlFunction != undefined) {
+				innerHtml = this.renderHtmlFunction(data);
+			}
+			var elementId = addEnhancement(this, data);
+			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		update: function (element, data, operation) {
 			if (this.updateFunction != undefined) {
@@ -4136,6 +4203,7 @@ publicApi.config = configData;
 		jQueryRender.register = function (jQueryObj) {
 			var obj = {};
 			obj.filter = jQueryObj.filter;
+			obj.renderHtml = jQueryObj.renderHtml;
 			if (jQueryObj.render != undefined) {
 				obj.render = function (element, data) {
 					var query = $(element);
@@ -4160,7 +4228,8 @@ publicApi.config = configData;
 	}
 
 	Jsonary.extend({
-		render: render
+		render: render,
+		renderHtml: renderHtml
 	});
 	Jsonary.extendData({
 		renderTo: function (element) {

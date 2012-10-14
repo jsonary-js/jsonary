@@ -471,5 +471,6 @@
 			});
 		}
 	};
+	Jsonary.render.linkPrompt = linkPrompt;
 
 })();

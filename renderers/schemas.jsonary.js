@@ -307,16 +307,17 @@
 				}
 			});
 			
-			renderOneOfDetails($('<div />').appendTo(container), data, schema);
-			renderAnyOfDetails($('<div />').appendTo(container), data, schema);
-			renderAllDetails($('<div />').appendTo(container), data, schema);
-			renderEnumDetails($('<div />').appendTo(container), data, schema);
-
 			var tabControls = $('<div class="schema-detail-tabs"></div>').appendTo(container);
 			var tabContent = $('<div class="schema-detail" />').appendTo(container);
-			function selectOption(basicType) {
+			function selectOption(tabName) {
 				tabContent.empty();
-				switch (basicType) {
+				switch (tabName) {
+					case "all types":
+						renderEnumDetails($('<div />').appendTo(tabContent), data, schema);
+						renderAllDetails($('<div />').appendTo(tabContent), data, schema);
+						renderOneOfDetails($('<div />').appendTo(tabContent), data, schema);
+						renderAnyOfDetails($('<div />').appendTo(tabContent), data, schema);
+						break;
 					case "object":
 						renderObjectDetails(tabContent, data, schema);
 						break;
@@ -331,12 +332,12 @@
 						renderNumberDetails(tabContent, data, schema);
 						break;
 					default:
-						tabContent.text("There are no " + basicType + " constraints");
+						tabContent.text("There are no " + tabName + " constraints");
 						break;
 				}
 			}
 			var tabItems = [];
-			$.each(basicTypes, function (index, type) {
+			$.each(["all types"].concat(basicTypes), function (index, type) {
 				index = tabItems.length;
 				tabItems[index] = $('<a class="schema-detail-tab"></a>').text(type).appendTo(tabControls).click(function () {
 					selectOption(type);
@@ -346,10 +347,8 @@
 					tabItems[index].addClass("tab-selected");
 				});
 			});
-			if (tabItems.length > 0) {
-				tabItems[0].addClass("tab-selected");
-				selectOption(basicTypes[0]);
-			}
+			tabItems[0].addClass("tab-selected");
+			selectOption("all types");
 		},
 		filter: function (data, schemas) {
 			return schemas.containsUrl("http://json-schema.org/schema") && !data.property("$ref").defined();
@@ -380,20 +379,6 @@
 		render: function (query, data) {
 			var refUrl = data.propertyValue("$ref");
 			var container = $('<div class="schema-reference"></div>').appendTo(query);
-			if (!data.readOnly()) {
-				var editUrl = $('<span class="schema-reference-edit">edit URL</span>').appendTo(container).click(function () {
-					var input = $('<input type="text"></input>').appendTo(editUrl.empty()).val(refUrl);
-					input.focus().select();
-					function confirmChange() {
-						data.property("$ref").setValue(input.val());
-					}
-					input.blur(confirmChange).keydown(function (evenet) {
-						if (event.which == 13) {
-							confirmChange();
-						}
-					});
-				});
-			}
 			var schemaTitle = $('<div class="schema-title" />').appendTo(container)
 			$('<span>Reference:<span>').appendTo(container);
 			var linkQuery = $('<a class="schema-reference-url" />').attr("href", refUrl).text(refUrl).appendTo(container).click(function () {
@@ -408,7 +393,24 @@
 				});
 				return false;
 			});
+			if (!data.readOnly()) {
+				var editUrl = $('<span class="schema-reference-edit">edit URL</span>').appendTo(container).click(function () {
+					var input = $('<input type="text"></input>').appendTo(editUrl.empty()).val(refUrl);
+					input.focus().select();
+					function confirmChange() {
+						data.property("$ref").setValue(input.val());
+					}
+					input.blur(confirmChange).keydown(function (event) {
+						if (event.which == 13) {
+							confirmChange();
+						}
+					});
+				});
+			}
 			return;
+		},
+		update: function (query, data, operation) {
+			this.render(query, data);
 		},
 		filter: function (data, schemas) {
 			return schemas.containsUrl("http://json-schema.org/schema") && data.property("$ref").defined();

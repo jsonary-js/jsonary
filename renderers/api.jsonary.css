@@ -1,0 +1,55 @@
+.api-object {
+	margin: 0.5em;
+	margin-top: 0;
+	border: 1px solid black;
+	border-radius: 0px 0px 10px 10px;
+}
+
+.api-object-title {
+	margin: 0.5em;
+	margin-bottom: 0;
+	padding: 0.2em;
+	padding-left: 0.5em;
+	font-size: 1.1em;
+	border: 1px solid black;
+	border-bottom: none;
+	background-color: #DDE;
+	border-radius: 10px 10px 0px 0px;
+}
+
+.api-description {
+	font-style: italic;
+	margin-left; 2em;
+}
+
+.api-object h2 {
+	font-size: 1.1em;
+	border-bottom: 1px solid #DDD;
+}
+
+.api-section {
+	margin-left: 2em;
+}
+
+.api-function-title {
+	font-size: 1.1em;
+	border-bottom: 1px solid black;
+}
+
+.api-function {
+	margin-left: 2em;
+}
+
+.api-function-signature {
+	font-family: monospace;
+	font-weight: bold;
+	font-size: 1.1em;
+}
+
+.api-function-argument {
+	color: #048;
+}
+
+.api-function h2 {
+	font-size: 1.1em;
+}

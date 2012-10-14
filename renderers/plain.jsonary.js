@@ -430,5 +430,6 @@
 			});
 		}
 	};
+	Jsonary.render.linkPrompt = linkPrompt;
 
 })();
