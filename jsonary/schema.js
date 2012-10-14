@@ -156,6 +156,9 @@ Schema.prototype = {
 						return ALL_TYPES.slice(0);
 					}
 				}
+				if (types.indexOf("number") != -1 && types.indexOf("integer") == -1) {
+					types.push("integer");
+				}
 				return types;
 			}
 		}
