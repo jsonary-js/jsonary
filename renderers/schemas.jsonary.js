@@ -398,7 +398,12 @@
 			$('<div class="schema-description" />').renderJson(data.property("description")).appendTo(container);
 			var basicTypeContainer = $('<div class="schema-section"></div>').appendTo(container);
 			function updateBasicTypes() {
-				basicTypeContainer.text(data.asSchema().basicTypes().join(", "));
+				var basicTypes = data.asSchema().basicTypes();
+				if (basicTypes.length == 7) {
+					basicTypeContainer.text("Type: any type");
+				} else {
+					basicTypeContainer.text("Types: " + basicTypes.join(", "));
+				}
 			}
 			query.data('updateBasicTypes', updateBasicTypes);
 			updateBasicTypes();
