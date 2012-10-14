@@ -451,6 +451,7 @@ SchemaList.prototype = {
 	},
 	getFull: function(callback) {
 		if (this.length == 0) {
+			callback.call(this, this);
 			return this;
 		}
 		var pending = 0;
