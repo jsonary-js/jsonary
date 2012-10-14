@@ -767,6 +767,9 @@ function FragmentRequest(request, fragment) {
 	
 	this.baseUrl = request.url;
 	this.fragment = fragment;
+	if (fragment == null) {
+		fragment = "";
+	}
 	this.url = this.baseUrl + "#" + encodeURI(fragment);
 
 	this.getRoot = function (callback) {
@@ -2090,6 +2093,7 @@ Schema.prototype = {
 		}
 		refUrl = this.data.resolveUrl(refUrl);
 		getSchema(refUrl, callback);
+		return this;
 	},
 	title: function () {
 		var title = this.data.propertyValue("title");
@@ -2187,6 +2191,9 @@ Schema.prototype = {
 					} else {
 						return ALL_TYPES.slice(0);
 					}
+				}
+				if (types.indexOf("number") != -1 && types.indexOf("integer") == -1) {
+					types.push("integer");
 				}
 				return types;
 			}
@@ -3111,6 +3118,7 @@ SchemaList.prototype = {
 		for (var i = 0; i < this.length; i++) {
 			callback.call(this, i, this[i]);
 		}
+		return this;
 	},
 	concat: function(other) {
 		var newList = [];
@@ -3275,6 +3283,16 @@ SchemaList.prototype = {
 			}
 		}
 		return minItems;
+	},
+	maxItems: function () {
+		var maxItems = undefined;
+		for (var i = 0; i < this.length; i++) {
+			var otherMaxItems = this[i].maxItems();
+			if (!(otherMaxItems > maxItems)) {
+				maxItems = otherMaxItems;
+			}
+		}
+		return maxItems;
 	},
 	requiredProperties: function () {
 		var required = {};
