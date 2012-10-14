@@ -40,7 +40,7 @@ function forwardToFacebook() {
 	window.location.replace(facebookAuthUrl);
 }
 </pre>
-					<p><a href="fb-forward.html" target="forwardToFacebook">Click here</a> to try it out.  Because of Facebook's security settings, that <code>facebookAppId</code> only works on GitHub, but you should first see a link, and then after successfully authorising with Facebook, it should display an OAuth token.
+					<p><a href="fb-forward.html" target="forwardToFacebook">Click here</a> to try it out.  Because of Facebook's security settings, that <code>facebookAppId</code> only works on the main site, but you should first see a link, and then after successfully authorising with Facebook, it should display an OAuth token.
 				</div>
 
 				<h2>Displaying user information</h2>
@@ -61,7 +61,7 @@ if (authToken == undefined) {
 }
 </pre>
 					<p>This code uses the Jsonary.Hash plugin (which decodes data in the hash as a query string) to check for an auth token.  If so, it makes a request to the Facebook Graph API using that token.
-					<p><a href="fb-forward-display.html" target="forwardToFacebookDisplay">Click here</a> to try it out - you should see some basic data about yourself displayed.  Again, because of Facebook's security settings, that <code>facebookAppId</code> only works on GitHub.
+					<p><a href="fb-forward-display.html" target="forwardToFacebookDisplay">Click here</a> to try it out - you should see some basic data about yourself displayed.  Again, because of Facebook's security settings, that <code>facebookAppId</code> only works on the main site.
 				</div>
 			</div>
 		</div>

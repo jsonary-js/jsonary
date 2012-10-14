@@ -15,10 +15,12 @@
 	$source = str_replace("..", "_", $source);
 	$source = "api/".$source;
 	
+	/* Un-comment for local dev
 	if ($_SERVER['REQUEST_METHOD'] == "PUT") {
 		$jsonData = file_get_contents("php://input");
 		file_put_contents($source, $jsonData);
 	}
+	*/
 	
 	header("Content-Type: application/json; profile=api-schema.json");
 	
