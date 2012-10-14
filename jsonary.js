@@ -4097,21 +4097,18 @@ publicApi.config = configData;
 			};
 		}
 
-		enhancementList.push({
-			"id": elementId,
-			"renderer": renderer,
-			"namespace": namespace,
-			"data": data
+		enhancementList.push(function () {
+			var target = document.getElementById(elementId);
+			renderDepth++;
+			renderer.enhance(target, data, namespace);
+			renderDepth--;
 		});
 		return elementId;
 	}
 	function executeEnhancements() {
 		while (renderDepth == 0 && enhancementList.length > 0) {
 			var enhancement = enhancementList.shift();
-			var target = document.getElementById(enhancement.id);
-			renderDepth++;
-			enhancement.renderer.enhance(target, enhancement.data, enhancement.namespace);
-			renderDepth--;
+			enhancement();
 		}
 	}
 	
@@ -4120,6 +4117,7 @@ publicApi.config = configData;
 		this.renderHtmlFunction = sourceObj.renderHtml;
 		this.updateFunction = sourceObj.update;
 		this.filterFunction = sourceObj.filter;
+		this.actionFunction = sourceObj.action;
 	}
 	Renderer.prototype = {
 		render: function (element, data) {
@@ -4137,10 +4135,6 @@ publicApi.config = configData;
 			executeEnhancements();
 			return this;
 		},
-		enhance: function (element, data, namespace) {
-			this.renderFunction(element, data, namespace);
-			return this;
-		},
 		renderHtml: function (data, namespace) {
 			var innerHtml = "";
 			if (this.renderHtmlFunction != undefined) {
@@ -4149,6 +4143,10 @@ publicApi.config = configData;
 			var elementId = addEnhancement(this, data, namespace);
 			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
+		enhance: function (element, data, namespace) {
+			this.renderFunction(element, data, namespace);
+			return this;
+		},
 		update: function (element, data, operation) {
 			if (this.updateFunction != undefined) {
 				this.updateFunction(element, data, operation);
@@ -4156,6 +4154,22 @@ publicApi.config = configData;
 				this.defaultUpdate(element, data, operation);
 			}
 			return this;
+		},
+		action: function (actionName, data) {
+			this.actionFunction(actionName, data);
+		},
+		actionHtml: function (actionName, data, innerHtml) {
+			var thisRenderer = this;
+			var elementId = ELEMENT_ID_PREFIX + (elementIdCounter++);
+			enhancementList.push(function () {
+				var target = document.getElementById(elementId);
+				target.onclick = function () {
+					thisRenderer.action(actionName, data);
+					return false;
+				};
+				target = null;
+			});
+			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		canRender: function (data, schemas) {
 			if (this.filterFunction != undefined) {
@@ -4255,6 +4269,7 @@ publicApi.config = configData;
 			obj.renderHtml = jQueryObj.renderHtml;
 			obj.namespace = jQueryObj.namespace;
 			obj.update = jQueryObj.update;
+			obj.action = jQueryObj.action;
 			if (jQueryObj.render != undefined) {
 				obj.render = function (element, data) {
 					var query = $(element);

@@ -31,13 +31,18 @@
 	margin-left: 2em;
 }
 
-.api-function-title {
-	font-size: 1.1em;
-	border-bottom: 1px solid black;
+.api-function {
+	margin: 1em;
+	
+	border: 1px solid #888;
+	background-color: #FFF;
+	padding: 5px;
+	border-radius: 10px;
 }
 
-.api-function {
-	margin-left: 2em;
+.api-function h2 {
+	margin: 0em;
+	margin-top: 0.5em;
 }
 
 .api-function-signature {
@@ -52,4 +57,22 @@
 
 .api-function h2 {
 	font-size: 1.1em;
+}
+
+.api-function-remove {
+	font-family: monospace;
+	color: #800;
+	font-weight: bold;
+	float: left;
+	cursor: pointer;
+	position: relative;
+	left: -1em;
+	top: 0;
+}
+
+.api-function-add {
+	font-family: monospace;
+	color: #048;
+	font-weight: bold;
+	cursor: pointer;
 }

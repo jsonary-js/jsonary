@@ -40,7 +40,7 @@
 		render: function (element, data) {
 		},
 		renderHtml: function (data) {
-			var result = '<h1 class="api-function-title">' + Jsonary.renderHtml(data.property("title")) + "</h1>";
+			result = "";
 			result += '<div class="api-function">';
 			result += '<div class="api-function-signature">' + data.parentKey() + '(<span class="api-function-argument">';
 			data.property("arguments").items(function(index, subData) {
@@ -71,6 +71,44 @@
 		},
 		filter: function (data, schemas) {
 			return schemas.containsUrl("api-schema.json#/functionDefinition");
+		}
+	});
+	
+	Jsonary.render.register({
+		render: function (element, data) {
+		},
+		renderHtml: function (data) {
+			var keys = data.keys();
+			keys.sort();
+			var result = "";
+			for (var i = 0; i < keys.length; i++) {
+				if (!data.readOnly()) {
+					result += this.actionHtml("remove", data.property(keys[i]), '<div class="api-function-remove">[X]</div>');
+				}
+				result += Jsonary.renderHtml(data.property(keys[i]));
+			}
+			if (!data.readOnly()) {
+				result += this.actionHtml("add", data, '<div class="api-function-add">+ add</div>');
+			}
+			return result;
+		},
+		action: function (actionName, data) {
+			if (actionName == "add") {
+				var newKey = prompt("New function name:");
+				if (newKey != null && !data.property(newKey).defined()) {
+					data.schemas().createValueForProperty(newKey, function (newValue) {
+						data.property(newKey).setValue(newValue);
+					});
+				}
+			} else if (actionName == "remove") {
+				data.remove();
+			}
+		},
+		update: function (element, data, operation) {
+			this.defaultUpdate(element, data, operation);
+		},
+		filter: function (data, schemas) {
+			return schemas.containsUrl("api-schema.json#/objectDefinition/properties/methods");
 		}
 	});
 	
