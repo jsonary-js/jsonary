@@ -187,6 +187,9 @@ function Data(document, secrets, parent, parentKey) {
 	this.parent = function() {
 		return parent;
 	};
+	this.parentKey = function () {
+		return parentKey;
+	};
 	this.pointerPath = function () {
 		if (this.document.root == this) {
 			return "";
