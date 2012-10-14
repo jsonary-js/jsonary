@@ -17,12 +17,15 @@ function navigateTo(itemUrl, req) {
 	$('#url-bar').val(itemUrl);
 	
 	if (req == undefined) {
-		req = Jsonary.getData(itemUrl);
+		req = Jsonary.getData(itemUrl, null);
 	}
 	$('#main').empty().addClass("loading");
 	window.scrollTo(0, 0);
 	req.getData(function(data, request) {
-		$('#main').removeClass("loading").empty().renderJson(data);
+		data.addSchema("../api/api-schema.json");
+		data.whenSchemasStable(function () {
+			$('#main').removeClass("loading").empty().renderJson(data);
+		});
 	});
 }
 

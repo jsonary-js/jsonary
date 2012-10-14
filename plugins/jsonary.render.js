@@ -41,8 +41,9 @@
 		}
 	}
 	render.empty = function (element) {
-		if (global.jQuery != null) {
-			jQuery(element).empty();
+		try {
+			global.jQuery(element).empty();
+		} catch (e) {
 		}
 		element.innerHTML = "";
 	};

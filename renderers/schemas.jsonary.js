@@ -187,20 +187,24 @@
 				$('<div class="schema-section" />').renderJson(data.property("items")).appendTo(container);
 				$('<div class="schema-section-title">Additional items:</div>').appendTo(container);
 				$('<div class="schema-section" />').renderJson(data.property("additionalItems")).appendTo(container);
+			} else if (!data.readOnly()) {
+				$('<div class="schema-section">(define)</div>').appendTo(container).click(function () {
+					data.property("items").setValue({});
+				});
 			}
+			if (data.property("minItems").defined() || !data.readOnly()) {
+				$('<div class="schema-section-title">Minimum length:</div>').appendTo(container);
+			}
+			$('<div class="schema-section" />').renderJson(data.property("minItems")).appendTo(container);
+			if (data.property("maxItems").defined() || !data.readOnly()) {
+				$('<div class="schema-section-title">Maximum length:</div>').appendTo(container);
+			}
+			$('<div class="schema-section" />').renderJson(data.property("maxItems")).appendTo(container);
+			if (data.property("uniqueItems").defined() || !data.readOnly()) {
+				$('<div class="schema-section-title">Items must be unique:</div>').appendTo(container);
+			}
+			$('<div class="schema-section" />').renderJson(data.property("uniqueItems")).appendTo(container);
 		}
-		if (data.property("minItems").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Minimum length:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("minItems")).appendTo(container);
-		if (data.property("maxItems").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Maximum length:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("maxItems")).appendTo(container);
-		if (data.property("uniqueItems").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Items must be unique:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("uniqueItems")).appendTo(container);
 	}
 	
 	function renderNumberDetails(container, data, schema) {
@@ -255,14 +259,14 @@
 		if (data.property("oneOf").defined() || !data.readOnly()) {
 			$('<div class="schema-section-title">Must be exactly one of:</div>').appendTo(container);
 		}
-		$('<div class="schema-section" />').renderJson(data.property("oneOf")).appendTo(container);
+		$('<div class="schema-section" />').renderJson(data.property("oneOf"), "small").appendTo(container);
 	}
 
 	function renderAnyOfDetails(container, data, schema) {
 		if (data.property("anyOf").defined() || !data.readOnly()) {
 			$('<div class="schema-section-title">Must be at least one of:</div>').appendTo(container);
 		}
-		$('<div class="schema-section" />').renderJson(data.property("anyOf")).appendTo(container);
+		$('<div class="schema-section" />').renderJson(data.property("anyOf"), "small").appendTo(container);
 	}
 
 	function renderAllDetails(container, data, schema) {
@@ -272,7 +276,7 @@
 		if (data.property("extends").defined()) {
 			$('<div class="schema-section" />').renderJson(data.property("extends")).appendTo(container);
 		}
-		$('<div class="schema-section" />').renderJson(data.property("allOf")).appendTo(container);
+		$('<div class="schema-section" />').renderJson(data.property("allOf"), "small").appendTo(container);
 	}
 
 	function renderEnumDetails(container, data, schema) {

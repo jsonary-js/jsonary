@@ -25,9 +25,9 @@
 			result += '<div class="api-object">';
 			result += '<div class="api-description">' + Jsonary.renderHtml(data.property("description")) + "</div>"
 			result += '<h2>Properties:</h2>';
-			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("properties")) + '</div>';
+			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("properties"), "small") + '</div>';
 			result += '<h2>Methods:</h2>';
-			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("methods")) + '</div>';
+			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("methods"), "small") + '</div>';
 			result += '</div>';
 			return result;
 		},
@@ -54,6 +54,7 @@
 				}
 			});
 			result += '</span>)</div>';
+			result += '<div class="api-description">' + Jsonary.renderHtml(data.property("description")) + "</div>"
 			result += '<h2>Arguments</h2>';
 			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("arguments"), "small") + '</div>';
 			result += '<h2>Return value</h2>';

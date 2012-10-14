@@ -1,15 +1,9 @@
 {
 	"title": "API documentation",
 	"allOf": [{"$ref": "#/objectDefinition"}],
-	"links": [
-		{
-			"href": "?",
-			"rel": "edit",
-			"method": "PUT"
-		}
-	],
 	"objectDefinition": {
 		"type": "object",
+		"allOf": [{"$ref": "http://json-schema.org/hyper-schema"}],
 		"properties": {
 			"title": {"title": "Title", "type": "string"},
 			"description": {"title": "Description", "type": "string"},
@@ -28,7 +22,8 @@
 		"links": [
 			{
 				"href": "{$ref}",
-				"rel": "full"
+				"rel": "full",
+				"targetSchema": {"$ref": "#"}
 			}
 		]
 	},
