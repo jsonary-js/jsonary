@@ -16,9 +16,9 @@
     'schema.js',
     'schemamatch.js',
     'schemaset.js',
-    'render.js',
     'main.js',
-    '_footer.js'
+    '_footer.js',
+    '../plugins/jsonary.render.js'
   );
 
   $outputString = "/**\n";
