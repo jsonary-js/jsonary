@@ -535,7 +535,7 @@ SchemaSet.prototype = {
 			linkList = this.links[schemaKey];
 			for (i = 0; i < linkList.length; i++) {
 				linkInstance = linkList[i];
-				if (linkInstance.usesKey(key)) {
+				if (linkInstance.usesKey(key) || key == null) {
 					linksToUpdate.push(linkInstance);
 				}
 			}

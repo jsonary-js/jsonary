@@ -5,20 +5,11 @@
 	var ELEMENT_ID_PREFIX = "Jsonary.element";
 	var elementIdCounter = 0;
 
-	function selectRenderer(data) {
-		var schemas = data.schemas();
-		for (var i = 0; i < rendererList.length; i++) {
-			if (rendererList[i].canRender(data, schemas)) {
-				return rendererList[i];
-			}
-		}
-	}
-
 	var renderDepth = 0;
-	function render(element, data) {
+	function render(element, data, namespace) {
 		if (typeof data == "string") {
 			Jsonary.getData(data, function (actualData) {
-				render(element, actualData);
+				render(element, actualData, namespace);
 			});
 			return;
 		}
@@ -36,23 +27,17 @@
 			elementLookup[uniqueId] = {};
 		}
 		var prevRenderer = elementLookup[uniqueId][element.id];
-		var renderer = selectRenderer(data);
-		renderDepth++;
+		var renderer = selectRenderer(data, namespace);
 		if (renderer != undefined) {
-			if (prevRenderer != renderer) {
-				elementLookup[uniqueId][element.id] = renderer;
+			if (prevRenderer == undefined || prevRenderer.renderer != renderer) {
+				elementLookup[uniqueId][element.id] = {
+					renderer: renderer,
+					namespace: namespace
+				};
 				renderer.render(element, data);
 			}
 		} else {
 			element.innerHTML = "NO RENDERER FOUND";
-		}
-		renderDepth--;
-		while (renderDepth == 0 && enhancementList.length > 0) {
-			var enhancement = enhancementList.shift();
-			var target = document.getElementById(enhancement.id);
-			renderDepth++;
-			enhancement.renderer.enhance(target, enhancement.data);
-			renderDepth--;
 		}
 	}
 	render.empty = function (element) {
@@ -62,9 +47,9 @@
 		element.innerHTML = "";
 	};
 	
-	function renderHtml(data) {
-		var renderer = selectRenderer(data);
-		return renderer.renderHtml(data);
+	function renderHtml(data, namespace) {
+		var renderer = selectRenderer(data, namespace);
+		return renderer.renderHtml(data, namespace);
 	}
 
 	function update(data, operation) {
@@ -76,12 +61,13 @@
 				delete elementIds[elementId];
 				continue;
 			}
-			var prevRenderer = elementIds[elementId];
-			var renderer = selectRenderer(data);
+			var prevRenderer = elementIds[elementId].renderer;
+			var prevNamespace = elementIds[elementId].namespace;
+			var renderer = selectRenderer(data, prevNamespace);
 			if (renderer == prevRenderer) {
 				renderer.update(element, data, operation);
 			} else {
-				render(element, data);
+				render(element, data, prevNamespace);
 			}
 		}
 	}
@@ -103,12 +89,12 @@
 				delete elementIds[elementId];
 				continue;
 			}
-			render(element, data);
+			render(element, data, elementIds[elementId].namespace);
 		}
 	});
 
 	var enhancementList = [];
-	function addEnhancement(renderer, data) {
+	function addEnhancement(renderer, data, namespace) {
 		var elementId = ELEMENT_ID_PREFIX + (elementIdCounter++);
 		if (uniqueIdLookup[elementId] != undefined) {
 			var previousId = uniqueIdLookup[elementId];
@@ -120,17 +106,29 @@
 			elementLookup[uniqueId] = {};
 		}
 		var prevRenderer = elementLookup[uniqueId][elementId];
-		if (prevRenderer != renderer) {
-			elementLookup[uniqueId][elementId] = renderer;
+		if (prevRenderer == undefined || prevRenderer.renderer != renderer) {
+			elementLookup[uniqueId][elementId] = {
+				renderer: renderer,
+				namespace: namespace
+			};
 		}
 
 		enhancementList.push({
 			"id": elementId,
 			"renderer": renderer,
+			"namespace": namespace,
 			"data": data
 		});
-		console.log(enhancementList);
 		return elementId;
+	}
+	function executeEnhancements() {
+		while (renderDepth == 0 && enhancementList.length > 0) {
+			var enhancement = enhancementList.shift();
+			var target = document.getElementById(enhancement.id);
+			renderDepth++;
+			enhancement.renderer.enhance(target, enhancement.data, enhancement.namespace);
+			renderDepth--;
+		}
 	}
 	
 	function Renderer(sourceObj) {
@@ -141,23 +139,30 @@
 	}
 	Renderer.prototype = {
 		render: function (element, data) {
+			if (element[0] != undefined) {
+				element = element[0];
+			}
+			renderDepth++;
+			var namespace = elementLookup[data.uniqueId][element.id].namespace;
 			render.empty(element);
 			if (this.renderHtmlFunction != undefined) {
-				element.innerHTML = this.renderHtmlFunction(data);
+				element.innerHTML = this.renderHtmlFunction(data, namespace);
 			}
-			this.renderFunction(element, data);
+			this.renderFunction(element, data, namespace);
+			renderDepth--;
+			executeEnhancements();
 			return this;
 		},
-		enhance: function (element, data) {
-			this.renderFunction(element, data);
+		enhance: function (element, data, namespace) {
+			this.renderFunction(element, data, namespace);
 			return this;
 		},
-		renderHtml: function (data) {
+		renderHtml: function (data, namespace) {
 			var innerHtml = "";
 			if (this.renderHtmlFunction != undefined) {
 				innerHtml = this.renderHtmlFunction(data);
 			}
-			var elementId = addEnhancement(this, data);
+			var elementId = addEnhancement(this, data, namespace);
 			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		update: function (element, data, operation) {
@@ -191,28 +196,72 @@
 		}
 	}
 
-	var rendererList = [];
+	var rendererList = {};
 	function register(obj) {
-		rendererList.unshift(new Renderer(obj));
+		var namespace = obj.namespace;
+		if (namespace == undefined) {
+			namespace = "";
+		}
+		var namespaceArray = namespace;
+		if (typeof namespace == "string") {
+			namespaceArray = [];
+			parts = namespace.split("/");
+			for (var i = 0; i < parts.length; i++) {
+				namespaceArray.push(parts.slice(0, i).join("/"));
+			}
+		}
+		for (var i = 0; i < namespaceArray.length; i++) {
+			var namespace = namespaceArray[i];
+			if (rendererList[namespace] == undefined) {
+				rendererList[namespace] = [];
+			}
+			rendererList[namespace].unshift(new Renderer(obj));
+		}
 	}
 	render.register = register;
 
+	function selectRenderer(data, namespace) {
+		if (namespace == undefined) {
+			namespace = "";
+		}
+		var namespaceArray = namespace;
+		if (typeof namespace == "string") {
+			namespaceArray = [];
+			parts = namespace.split("/");
+			for (var i = parts.length; i >= 0; i--) {
+				namespaceArray.push(parts.slice(0, i).join("/"));
+			}
+		}
+		var schemas = data.schemas();
+		for (var j = 0; j < namespaceArray.length; j++) {
+			renderers = rendererList[namespaceArray[j]];
+			if (renderers == undefined) {
+				continue;
+			}
+			for (var i = 0; i < renderers.length; i++) {
+				if (renderers[i].canRender(data, schemas)) {
+					return renderers[i];
+				}
+			}
+		}
+	}
+
 	if (typeof global.jQuery != "undefined") {
-		var jQueryRender = function (data) {
+		var jQueryRender = function (data, namespace) {
 			var element = this[0];
 			if (element != undefined) {
-				render(element, data);
+				render(element, data, namespace);
 			}
 			return this;
 		};
 		Jsonary.extendData({
-			$renderTo: function (query) {
+			$renderTo: function (query, namespace) {
 				if (typeof query == "string") {
 					query = jQuery(query);
 				}
 				var element = query[0];
 				if (element != undefined) {
-					render(element, this);
+					render(element, this, namespace);
 				}
 			}
 		});
@@ -220,6 +269,8 @@
 			var obj = {};
 			obj.filter = jQueryObj.filter;
 			obj.renderHtml = jQueryObj.renderHtml;
+			obj.namespace = jQueryObj.namespace;
+			obj.update = jQueryObj.update;
 			if (jQueryObj.render != undefined) {
 				obj.render = function (element, data) {
 					var query = $(element);
@@ -248,8 +299,8 @@
 		renderHtml: renderHtml
 	});
 	Jsonary.extendData({
-		renderTo: function (element) {
-			render(element, this);
+		renderTo: function (element, namespace) {
+			render(element, this, namespace);
 		}
 	});
 })(this);

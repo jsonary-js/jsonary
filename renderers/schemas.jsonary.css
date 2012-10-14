@@ -144,6 +144,7 @@ span.schema-section {
 }
 
 .schema-detail-tabs {
+	margin-top: 0.5em;
 	position: relative;
 	top: 1px;
 }
@@ -170,4 +171,30 @@ span.schema-section {
 	font-family: monospace;
 	color: #080;
 	font-size: 1.2em;
+}
+
+.schema-expand-bar {
+	text-align: right;
+	position: relative;
+}
+
+.schema-expand {
+	margin-top: 0.2em;
+	font-family: sans-serif;
+	position: absolute;
+	right: 1em;
+	color: #048;
+	cursor: pointer;
+	white-space: pre;
+}
+.schema-expand:hover {
+	color: #08F;
+	text-decoration: underline;
+}
+
+.schema-replace {
+	font-size: 0.9em;
+	float: right;
+	cursor: pointer;
+	color: #048;
 }

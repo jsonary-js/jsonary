@@ -50,16 +50,24 @@
 				if (subData.property("title").defined()) {
 					result += subData.propertyValue("title");
 				} else {
-					result += "arg" + index;
+					result += "arg" + (index + 1);
 				}
 			});
 			result += '</span>)</div>';
 			result += '<h2>Arguments</h2>';
-			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("arguments")) + '</div>';
+			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("arguments"), "small") + '</div>';
 			result += '<h2>Return value</h2>';
-			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("return")) + '</div>';
+			result += '<div class="api-section">' + Jsonary.renderHtml(data.property("return"), "small") + '</div>';
 			result += '</div>';
 			return result;
+		},
+		update: function (element, data, operation) {
+			var path = data.pointerPath();
+			var depth = operation.depthFrom(path);
+			if (depth <= 2 && operation.hasPrefix(path + "/arguments")) {
+				this.render(element, data);
+			}
+			this.defaultUpdate(element, data, operation);
 		},
 		filter: function (data, schemas) {
 			return schemas.containsUrl("api-schema.json#/functionDefinition");

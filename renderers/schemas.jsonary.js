@@ -287,6 +287,11 @@
 			var schema = data.asSchema();
 			var container = $('<div class="schema" />').appendTo(query);		
 			$('<div class="schema-title" />').renderJson(data.property("title")).appendTo(container);
+			if (!data.readOnly()) {
+				$('<div class="schema-replace">replace with reference</div>').appendTo(container).click(function () {
+					data.setValue({"$ref": "#"});
+				});
+			}
 			$('<div class="schema-description" />').renderJson(data.property("description")).appendTo(container);
 			
 			$('<div class="schema-section-title">Basic types:</div>').appendTo(container);
@@ -376,10 +381,72 @@
 	});
 
 	$.renderJson.register({
+		namespace: ["small"],
+		render: function (query, data) {
+			var expandBar = $('<div class="schema-expand-bar" />').appendTo(query);
+			var container = $('<div class="schema" />').appendTo(query);
+			$('<div class="schema-title" />').renderJson(data.property("title")).appendTo(container);
+			if (!data.readOnly()) {
+				$('<div class="schema-replace">replace with reference</div>').appendTo(container).click(function () {
+					data.setValue({"$ref": "#"});
+				});
+			}
+			$('<div class="schema-description" />').renderJson(data.property("description")).appendTo(container);
+			var basicTypeContainer = $('<div class="schema-section"></div>').appendTo(container);
+			function updateBasicTypes() {
+				basicTypeContainer.text(data.asSchema().basicTypes().join(", "));
+			}
+			query.data('updateBasicTypes', updateBasicTypes);
+			updateBasicTypes();
+			var renderedFull = false;
+			var displayingFull = false;
+			var switchLink = $('<a class="schema-expand">show full schema</a>').appendTo(expandBar).click(function () {
+				if (!renderedFull) {
+					fullContainer.renderJson(data);
+					renderedFull = true;
+				}
+				if (displayingFull) {
+					updateBasicTypes();
+					fullContainer.slideUp(function () {
+						switchLink.text("show full schema");
+						container.slideDown(100);
+					});
+				} else {
+					container.slideUp(100, function () {
+						switchLink.text("hide full schema");
+						fullContainer.slideDown();
+					});
+				}
+				displayingFull = !displayingFull;
+			});
+			var fullContainer = $('<div class="schema-expand-full"></div>').hide().appendTo(query);
+		},
+		filter: function (data, schemas) {
+			return schemas.containsUrl("http://json-schema.org/schema") && !data.property("$ref").defined();
+		},
+		update: function (query, data, operation) {
+			var path = data.pointerPath();
+			var depth = operation.depthFrom(path)
+			if (depth <= 1) {
+				if (data.readOnly()
+					|| operation.hasPrefix(path + "/title")
+					|| operation.hasPrefix(path + "/description")) {
+					return this.render(query, data);
+				}
+			}
+		}
+	});
+
+	$.renderJson.register({
 		render: function (query, data) {
 			var refUrl = data.propertyValue("$ref");
 			var container = $('<div class="schema-reference"></div>').appendTo(query);
 			var schemaTitle = $('<div class="schema-title" />').appendTo(container)
+			if (!data.readOnly()) {
+				$('<div class="schema-replace">replace with schema</div>').appendTo(container).click(function () {
+					data.setValue({});
+				});
+			}
 			$('<span>Reference:<span>').appendTo(container);
 			var linkQuery = $('<a class="schema-reference-url" />').attr("href", refUrl).text(refUrl).appendTo(container).click(function () {
 				data.getLink("full").follow();
