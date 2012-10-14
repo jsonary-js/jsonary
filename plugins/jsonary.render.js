@@ -50,7 +50,9 @@
 		while (renderDepth == 0 && enhancementList.length > 0) {
 			var enhancement = enhancementList.shift();
 			var target = document.getElementById(enhancement.id);
+			renderDepth++;
 			enhancement.renderer.enhance(target, enhancement.data);
+			renderDepth--;
 		}
 	}
 	render.empty = function (element) {
