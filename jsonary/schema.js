@@ -447,8 +447,10 @@ ActiveLink.prototype = {
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
 		if (submissionSchemas.length == 0 && this.method == "PUT") {
-			callback(this.subjectData.editableCopy());
-			return;
+			Jsonary.getData(this.href, function (data) {
+				callback(data.editableCopy());
+			})
+			return this;
 		}
 		submissionSchemas.getFull(function(fullList) {
 			var value = fullList.createValue();
