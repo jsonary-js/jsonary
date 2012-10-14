@@ -87,6 +87,7 @@ SchemaList.prototype = {
 		for (var i = 0; i < this.length; i++) {
 			callback.call(this, i, this[i]);
 		}
+		return this;
 	},
 	concat: function(other) {
 		var newList = [];
@@ -251,6 +252,16 @@ SchemaList.prototype = {
 			}
 		}
 		return minItems;
+	},
+	maxItems: function () {
+		var maxItems = undefined;
+		for (var i = 0; i < this.length; i++) {
+			var otherMaxItems = this[i].maxItems();
+			if (!(otherMaxItems > maxItems)) {
+				maxItems = otherMaxItems;
+			}
+		}
+		return maxItems;
 	},
 	requiredProperties: function () {
 		var required = {};

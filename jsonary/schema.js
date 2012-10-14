@@ -58,6 +58,7 @@ Schema.prototype = {
 		}
 		refUrl = this.data.resolveUrl(refUrl);
 		getSchema(refUrl, callback);
+		return this;
 	},
 	title: function () {
 		var title = this.data.propertyValue("title");
