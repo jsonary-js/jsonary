@@ -75,6 +75,9 @@ function FragmentRequest(request, fragment) {
 	
 	this.baseUrl = request.url;
 	this.fragment = fragment;
+	if (fragment == null) {
+		fragment = "";
+	}
 	this.url = this.baseUrl + "#" + encodeURI(fragment);
 
 	this.getRoot = function (callback) {
