@@ -538,6 +538,7 @@ Data.prototype = {
 		} else {
 			throw new Error("Can only push() on an array");
 		}
+		return this;
 	},
 	propertyValue: function (key) {
 		return this.property(key).value();
@@ -653,6 +654,7 @@ Data.prototype = {
 			var subData = this.index(i);
 			callback.call(subData, i, subData);
 		}
+		return this;
 	},
 	properties: function (callback) {
 		var keys = this.keys();
@@ -660,6 +662,7 @@ Data.prototype = {
 			var subData = this.property(keys[i]);
 			callback.call(subData, keys[i], subData);
 		}
+		return this;
 	},
 	resolveUrl: function (url) {
 		return this.document.resolveUrl(url);
