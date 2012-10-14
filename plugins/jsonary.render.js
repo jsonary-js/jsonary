@@ -110,6 +110,20 @@
 	var enhancementList = [];
 	function addEnhancement(renderer, data) {
 		var elementId = ELEMENT_ID_PREFIX + (elementIdCounter++);
+		if (uniqueIdLookup[elementId] != undefined) {
+			var previousId = uniqueIdLookup[elementId];
+			delete elementLookup[previousId][elementId];
+		}
+		var uniqueId = data.uniqueId;
+		uniqueIdLookup[elementId] = uniqueId;
+		if (elementLookup[uniqueId] == undefined) {
+			elementLookup[uniqueId] = {};
+		}
+		var prevRenderer = elementLookup[uniqueId][elementId];
+		if (prevRenderer != renderer) {
+			elementLookup[uniqueId][elementId] = renderer;
+		}
+
 		enhancementList.push({
 			"id": elementId,
 			"renderer": renderer,
