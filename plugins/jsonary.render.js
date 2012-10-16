@@ -135,6 +135,11 @@
 		this.updateFunction = sourceObj.update;
 		this.filterFunction = sourceObj.filter;
 		this.actionFunction = sourceObj.action;
+		for (var key in sourceObj) {
+			if (this[key] == undefined) {
+				this[key] = sourceObj[key];
+			}
+		}
 	}
 	Renderer.prototype = {
 		render: function (element, data) {
@@ -281,25 +286,21 @@
 			}
 		});
 		jQueryRender.register = function (jQueryObj) {
-			var obj = {};
-			obj.filter = jQueryObj.filter;
-			obj.renderHtml = jQueryObj.renderHtml;
-			obj.namespace = jQueryObj.namespace;
-			obj.update = jQueryObj.update;
-			obj.action = jQueryObj.action;
 			if (jQueryObj.render != undefined) {
-				obj.render = function (element, data) {
+				var oldRender = jQueryObj.render;
+				jQueryObj.render = function (element, data) {
 					var query = $(element);
-					jQueryObj.render.call(this, query, data);
+					oldRender.call(this, query, data);
 				}
 			}
 			if (jQueryObj.update != undefined) {
-				obj.update = function (element, data, operation) {
+				var oldUpdate = jQueryObj.update;
+				jQueryObj.update = function (element, data, operation) {
 					var query = $(element);
-					jQueryObj.update.call(this, query, data, operation);
+					oldUpdate.call(this, query, data, operation);
 				}
 			}
-			render.register(obj);
+			render.register(jQueryObj);
 		};
 		jQueryRender.empty = function (query) {
 			query.each(function (index, element) {
