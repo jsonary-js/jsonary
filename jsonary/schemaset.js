@@ -519,7 +519,6 @@ function SchemaSet(dataObj) {
 	this.schemasStable = true;
 
 	this.schemasStableListeners = new ListenerSet(dataObj);
-	this.schemaMonitors = new MonitorSet(dataObj);
 
 	this.cachedSchemaList = null;
 	this.cachedLinkList = null;
@@ -808,9 +807,6 @@ SchemaSet.prototype = {
 		this.schemasStable = false;
 		this.checkForSchemasStable();
 	},
-	notifySchemaMonitors: function () {
-		this.schemaMonitors.notify(this.getSchemas());
-	},
 	checkForSchemasStable: function () {
 		if (this.schemaFlux > 0) {
 			// We're in the middle of adding schemas
@@ -832,7 +828,6 @@ SchemaSet.prototype = {
 
 		if (!this.schemasStable) {
 			this.schemasStable = true;
-			this.schemaMonitors.notify(this.getSchemas());
 			notifySchemaChangeListeners(this.dataObj, this.getSchemas());
 		}
 		this.schemasStableListeners.notify(this.dataObj, this.getSchemas());
@@ -869,16 +864,6 @@ SchemaSet.prototype = {
 	whenSchemasStable: function (handlerFunction) {
 		this.schemasStableListeners.add(handlerFunction);
 		this.checkForSchemasStable();
-	},
-	// TODO: we shouldn't be using these at all
-	addSchemaMonitor: function (monitorKey, monitor, executeImmediately) {
-		this.schemaMonitors.add(monitorKey, monitor);
-		if (executeImmediately !== false) {
-			monitor.call(this.dataObj, this.getSchemas());
-		}
-	},
-	removeSchemaMonitor: function (monitorKey) {
-		this.schemaMonitors.remove(monitorKey);
 	}
 };
 
