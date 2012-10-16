@@ -1376,6 +1376,7 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		var thisDocument = this;
 		if (this.readOnly) {
 			throw new Error("Cannot update read-only document");
 		}
@@ -1388,14 +1389,16 @@ function Document(url, isDefinitive, readOnly) {
 			return;
 		}
 		DelayedCallbacks.increment();
+		DelayedCallbacks.add(function () {
+			for (var i = 0; i < changeListeners.length; i++) {
+				changeListeners[i].call(thisDocument, patch, thisDocument);
+			}
+		});
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
 		this.raw.patch(rawPatch);
 		this.root.patch(rootPatch);
 		DelayedCallbacks.decrement();
-		for (var i = 0; i < changeListeners.length; i++) {
-			changeListeners[i].call(this, patch, this);
-		}
 	};
 	this.affectedData = function (operation) {
 		var subject = operation.subject();
@@ -3550,7 +3553,7 @@ function SchemaSet(dataObj) {
 	this.schemasStable = true;
 
 	this.schemasStableListeners = new ListenerSet(dataObj);
-	this.schemaMonitors = new MonitorSet(dataObj);
+	this.pendingNotify = false;
 
 	this.cachedSchemaList = null;
 	this.cachedLinkList = null;
@@ -3839,9 +3842,6 @@ SchemaSet.prototype = {
 		this.schemasStable = false;
 		this.checkForSchemasStable();
 	},
-	notifySchemaMonitors: function () {
-		this.schemaMonitors.notify(this.getSchemas());
-	},
 	checkForSchemasStable: function () {
 		if (this.schemaFlux > 0) {
 			// We're in the middle of adding schemas
@@ -3860,13 +3860,19 @@ SchemaSet.prototype = {
 				}
 			}
 		}
-
-		if (!this.schemasStable) {
-			this.schemasStable = true;
-			this.schemaMonitors.notify(this.getSchemas());
-			notifySchemaChangeListeners(this.dataObj, this.getSchemas());
+		
+		var thisSchemaSet = this;
+		if (!this.pendingNotify) {
+			this.pendingNotify = true;
+			DelayedCallbacks.add(function () {
+				thisSchemaSet.pendingNotify = false;
+				if (!thisSchemaSet.schemasStable) {
+					thisSchemaSet.schemasStable = true;
+					notifySchemaChangeListeners(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+				}
+				thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+			});
 		}
-		this.schemasStableListeners.notify(this.dataObj, this.getSchemas());
 		return true;
 	},
 	addSchemasForProperty: function (key, subData) {
@@ -3900,16 +3906,6 @@ SchemaSet.prototype = {
 	whenSchemasStable: function (handlerFunction) {
 		this.schemasStableListeners.add(handlerFunction);
 		this.checkForSchemasStable();
-	},
-	// TODO: we shouldn't be using these at all
-	addSchemaMonitor: function (monitorKey, monitor, executeImmediately) {
-		this.schemaMonitors.add(monitorKey, monitor);
-		if (executeImmediately !== false) {
-			monitor.call(this.dataObj, this.getSchemas());
-		}
-	},
-	removeSchemaMonitor: function (monitorKey) {
-		this.schemaMonitors.remove(monitorKey);
 	}
 };
 
@@ -4137,6 +4133,11 @@ publicApi.config = configData;
 		this.updateFunction = sourceObj.update;
 		this.filterFunction = sourceObj.filter;
 		this.actionFunction = sourceObj.action;
+		for (var key in sourceObj) {
+			if (this[key] == undefined) {
+				this[key] = sourceObj[key];
+			}
+		}
 	}
 	Renderer.prototype = {
 		render: function (element, data) {
@@ -4283,25 +4284,21 @@ publicApi.config = configData;
 			}
 		});
 		jQueryRender.register = function (jQueryObj) {
-			var obj = {};
-			obj.filter = jQueryObj.filter;
-			obj.renderHtml = jQueryObj.renderHtml;
-			obj.namespace = jQueryObj.namespace;
-			obj.update = jQueryObj.update;
-			obj.action = jQueryObj.action;
 			if (jQueryObj.render != undefined) {
-				obj.render = function (element, data) {
+				var oldRender = jQueryObj.render;
+				jQueryObj.render = function (element, data) {
 					var query = $(element);
-					jQueryObj.render.call(this, query, data);
+					oldRender.call(this, query, data);
 				}
 			}
 			if (jQueryObj.update != undefined) {
-				obj.update = function (element, data, operation) {
+				var oldUpdate = jQueryObj.update;
+				jQueryObj.update = function (element, data, operation) {
 					var query = $(element);
-					jQueryObj.update.call(this, query, data, operation);
+					oldUpdate.call(this, query, data, operation);
 				}
 			}
-			render.register(obj);
+			render.register(jQueryObj);
 		};
 		jQueryRender.empty = function (query) {
 			query.each(function (index, element) {
