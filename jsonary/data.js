@@ -53,6 +53,7 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		var thisDocument = this;
 		if (this.readOnly) {
 			throw new Error("Cannot update read-only document");
 		}
@@ -65,14 +66,16 @@ function Document(url, isDefinitive, readOnly) {
 			return;
 		}
 		DelayedCallbacks.increment();
+		DelayedCallbacks.add(function () {
+			for (var i = 0; i < changeListeners.length; i++) {
+				changeListeners[i].call(thisDocument, patch, thisDocument);
+			}
+		});
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
 		this.raw.patch(rawPatch);
 		this.root.patch(rootPatch);
 		DelayedCallbacks.decrement();
-		for (var i = 0; i < changeListeners.length; i++) {
-			changeListeners[i].call(this, patch, this);
-		}
 	};
 	this.affectedData = function (operation) {
 		var subject = operation.subject();

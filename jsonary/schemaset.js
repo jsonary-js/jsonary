@@ -519,6 +519,7 @@ function SchemaSet(dataObj) {
 	this.schemasStable = true;
 
 	this.schemasStableListeners = new ListenerSet(dataObj);
+	this.pendingNotify = false;
 
 	this.cachedSchemaList = null;
 	this.cachedLinkList = null;
@@ -825,12 +826,19 @@ SchemaSet.prototype = {
 				}
 			}
 		}
-
-		if (!this.schemasStable) {
-			this.schemasStable = true;
-			notifySchemaChangeListeners(this.dataObj, this.getSchemas());
+		
+		var thisSchemaSet = this;
+		if (!this.pendingNotify) {
+			this.pendingNotify = true;
+			DelayedCallbacks.add(function () {
+				thisSchemaSet.pendingNotify = false;
+				if (!thisSchemaSet.schemasStable) {
+					thisSchemaSet.schemasStable = true;
+					notifySchemaChangeListeners(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+				}
+				thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+			});
 		}
-		this.schemasStableListeners.notify(this.dataObj, this.getSchemas());
 		return true;
 	},
 	addSchemasForProperty: function (key, subData) {
