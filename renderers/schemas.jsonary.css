@@ -176,12 +176,15 @@ span.schema-section {
 .schema-expand-bar {
 	text-align: right;
 	position: relative;
+	height: 1px;
+	overflow: show;
 }
 
 .schema-expand {
 	margin-top: 0.2em;
 	font-family: sans-serif;
 	position: absolute;
+	top: 0;
 	right: 1em;
 	color: #048;
 	cursor: pointer;

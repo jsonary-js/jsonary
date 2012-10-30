@@ -3997,47 +3997,154 @@ publicApi.config = configData;
 })(this); // Global wrapper
 
 (function (global) {
-	var elementLookup = {};
-	var uniqueIdLookup = {};
+	var prefixPrefix = "Jsonary";
+	var prefixCounter = 0;
+	function RenderContext(elementIdPrefix) {
+		var thisContext = this;
+		this.elementLookup = {};
 
-	var ELEMENT_ID_PREFIX = "Jsonary.element";
-	var elementIdCounter = 0;
+		if (elementIdPrefix == undefined) {
+			elementIdPrefix = prefixPrefix + "." + (prefixCounter++) + ".";
+		}
+		var elementIdCounter = 0;
+		this.getElementId = function () {
+			return elementIdPrefix + (elementIdCounter++);
+		};
 
-	var renderDepth = 0;
-	function render(element, data, namespace) {
-		if (typeof data == "string") {
-			Jsonary.getData(data, function (actualData) {
-				render(element, actualData, namespace);
+		var renderDepth = 0;
+		this.enhancementData = {};
+
+		Jsonary.registerChangeListener(function (patch, document) {
+			patch.each(function (index, operation) {
+				var dataObjects = document.affectedData(operation);
+				for (var i = 0; i < dataObjects.length; i++) {
+					thisContext.update(dataObjects[i], operation);
+				}
 			});
-			return;
-		}
-
-		if (element.id == undefined || element.id == "") {
-			element.id = ELEMENT_ID_PREFIX + (elementIdCounter++);
-		}
-		if (uniqueIdLookup[element.id] != undefined) {
-			var previousId = uniqueIdLookup[element.id];
-			delete elementLookup[previousId][element.id];
-		}
-		var uniqueId = data.uniqueId;
-		uniqueIdLookup[element.id] = uniqueId;
-		if (elementLookup[uniqueId] == undefined) {
-			elementLookup[uniqueId] = {};
-		}
-		var prevRenderer = elementLookup[uniqueId][element.id];
-		var renderer = selectRenderer(data, namespace);
-		if (renderer != undefined) {
-			if (prevRenderer == undefined || prevRenderer.renderer != renderer) {
-				elementLookup[uniqueId][element.id] = {
-					renderer: renderer,
-					namespace: namespace
-				};
-				renderer.render(element, data);
+		});
+		Jsonary.registerSchemaChangeListener(function (data, schemas) {
+			var uniqueId = data.uniqueId;
+			var elementIds = thisContext.elementLookup[uniqueId];
+			for (var elementId in elementIds) {
+				var element = document.getElementById(elementId);
+				if (element == undefined) {
+					delete elementIds[elementId];
+					continue;
+				}
+				var uiState = thisContext.decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				thisContext.render(element, data, uiState);
 			}
-		} else {
-			element.innerHTML = "NO RENDERER FOUND";
-		}
+		});
 	}
+	RenderContext.prototype = {
+		encodeUiState: function (uiState) {
+			return JSON.stringify(uiState);
+		},
+		decodeUiState: function (uiStateString) {
+			return JSON.parse(uiStateString);
+		},
+		htmlEscapeSingleQuote: function (str) {
+			return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
+		},
+		render: function (element, data, uiStartingState) {
+			var thisContext = this;
+			if (typeof data == "string") {
+				Jsonary.getData(data, function (actualData) {
+					thisContext.render(element, actualData, uiStartingState);
+				});
+				return;
+			}
+			if (typeof uiStartingState != "object") {
+				uiStartingState = {};
+			}
+			element.setAttribute("jsonary-ui-starting-state", this.encodeUiState(uiStartingState));
+
+			if (element.id == undefined || element.id == "") {
+				element.id = this.getElementId();
+			}
+			var previousId = element.getAttribute("jsonary-data-id");
+			if (this.previousId) {
+				var index = this.elementLookup[previousId].indexOf(element.id);
+				if (index >= 0) {
+					this.elementLookup[previousId].splice(index, 1);
+				}
+			}
+			var uniqueId = data.uniqueId;
+			element.setAttribute("jsonary-data-id", uniqueId);
+			if (this.elementLookup[uniqueId] == undefined) {
+				this.elementLookup[uniqueId] = [];
+			}
+			this.elementLookup[uniqueId].push(element.id);
+			var renderer = selectRenderer(data, uiStartingState);
+			if (renderer != undefined) {
+				element.setAttribute("jsonary-renderer-id", renderer.uniqueId);
+				renderer.render(element, data, this, uiStartingState);
+			} else {
+				element.innerHTML = "NO RENDERER FOUND";
+			}
+		},
+		renderHtml: function (data, uiState) {
+			if (typeof uiState != "object") {
+				uiState = {};
+			}
+			var startingStateString = this.encodeUiState(uiState);
+			var renderer = selectRenderer(data, uiState);
+			var innerHtml = renderer.renderHtml(data, this, uiState);
+			var stateString = this.encodeUiState(uiState);
+			var elementId = this.getElementId();
+			this.addEnhancement(elementId, data);
+			return '<span id="' + elementId + '" jsonary-renderer-id="' + renderer.uniqueId + '" jsonary-data-id="' + data.uniqueId + '" jsonary-ui-starting-state=\'' + this.htmlEscapeSingleQuote(startingStateString) + '\' jsonary-ui-state=\'' + this.htmlEscapeSingleQuote(stateString) + '\'>' + innerHtml + '</span>';
+		},
+		update: function (data, operation) {
+			var uniqueId = data.uniqueId;
+			var elementIds = this.elementLookup[uniqueId];
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
+				if (element == undefined) {
+					elementIds.splice(i, 1);
+					i--;
+					continue;
+				}
+				var prevRendererId = element.getAttribute("jsonary-renderer-id");
+				var prevUiState = this.decodeUiState(element.getAttribute("jsonary-ui-state"));
+				var renderer = selectRenderer(data, prevNamespace);
+				if (renderer == prevRenderer) {
+					renderer.update(element, data, operation);
+				} else {
+					render(element, data, prevNamespace);
+				}
+			}
+		},
+		addEnhancement: function(elementId, data) {
+			this.enhancementData[elementId] = data;
+		},
+		enhanceElement: function (element) {
+			var data = this.enhancementData[element.id];
+			if (data != undefined) {
+				delete this.enhancementData[element.id];
+				var renderer = lookupRenderer(element.getAttribute("jsonary-renderer-id"));
+				var uiState = this.decodeUiState(element.getAttribute("jsonary-ui-state"));
+				if (renderer != undefined) {
+					renderer.enhance(element, data, this, uiState);
+				}
+			}
+			for (var i = 0; i < element.childNodes.length; i++) {
+				if (element.childNodes[i].nodeType == 1) {
+					this.enhanceElement(element.childNodes[i]);
+				}
+			}
+		}
+	};
+	var pageContext = new RenderContext();
+
+	function render(element, data, uiStartingState) {
+		pageContext.render(element, data, uiStartingState);
+		return this;
+	}
+	function renderHtml(data, uiStartingState) {
+		return pageContext.renderHtml(data, uiStartingState);
+	}
+
 	render.empty = function (element) {
 		try {
 			global.jQuery(element).empty();
@@ -4046,86 +4153,9 @@ publicApi.config = configData;
 		element.innerHTML = "";
 	};
 	
-	function renderHtml(data, namespace) {
-		var renderer = selectRenderer(data, namespace);
-		return renderer.renderHtml(data, namespace);
-	}
+	/**********/
 
-	function update(data, operation) {
-		var uniqueId = data.uniqueId;
-		var elementIds = elementLookup[uniqueId];
-		for (var elementId in elementIds) {
-			var element = document.getElementById(elementId);
-			if (element == undefined) {
-				delete elementIds[elementId];
-				continue;
-			}
-			var prevRenderer = elementIds[elementId].renderer;
-			var prevNamespace = elementIds[elementId].namespace;
-			var renderer = selectRenderer(data, prevNamespace);
-			if (renderer == prevRenderer) {
-				renderer.update(element, data, operation);
-			} else {
-				render(element, data, prevNamespace);
-			}
-		}
-	}
-
-	Jsonary.registerChangeListener(function (patch, document) {
-		patch.each(function (index, operation) {
-			var dataObjects = document.affectedData(operation);
-			for (var i = 0; i < dataObjects.length; i++) {
-				update(dataObjects[i], operation);
-			}
-		});
-	});
-	Jsonary.registerSchemaChangeListener(function (data, schemas) {
-		var uniqueId = data.uniqueId;
-		var elementIds = elementLookup[uniqueId];
-		for (var elementId in elementIds) {
-			var element = document.getElementById(elementId);
-			if (element == undefined) {
-				delete elementIds[elementId];
-				continue;
-			}
-			render(element, data, elementIds[elementId].namespace);
-		}
-	});
-
-	var enhancementList = [];
-	function addEnhancement(renderer, data, namespace) {
-		var elementId = ELEMENT_ID_PREFIX + (elementIdCounter++);
-		if (uniqueIdLookup[elementId] != undefined) {
-			var previousId = uniqueIdLookup[elementId];
-			delete elementLookup[previousId][elementId];
-		}
-		var uniqueId = data.uniqueId;
-		uniqueIdLookup[elementId] = uniqueId;
-		if (elementLookup[uniqueId] == undefined) {
-			elementLookup[uniqueId] = {};
-		}
-		var prevRenderer = elementLookup[uniqueId][elementId];
-		if (prevRenderer == undefined || prevRenderer.renderer != renderer) {
-			elementLookup[uniqueId][elementId] = {
-				renderer: renderer,
-				namespace: namespace
-			};
-		}
-
-		enhancementList.push(function () {
-			var target = document.getElementById(elementId);
-			renderDepth++;
-			renderer.enhance(target, data, namespace);
-			renderDepth--;
-		});
-		return elementId;
-	}
-	function executeEnhancements() {
-		while (renderDepth == 0 && enhancementList.length > 0) {
-			var enhancement = enhancementList.shift();
-			enhancement();
-		}
-	}
+	var rendererIdCounter = 0;
 	
 	function Renderer(sourceObj) {
 		this.renderFunction = sourceObj.render;
@@ -4138,33 +4168,28 @@ publicApi.config = configData;
 				this[key] = sourceObj[key];
 			}
 		}
+		this.uniqueId = rendererIdCounter++;
 	}
 	Renderer.prototype = {
-		render: function (element, data) {
+		render: function (element, data, context, uiState) {
 			if (element[0] != undefined) {
 				element = element[0];
 			}
-			renderDepth++;
-			var namespace = elementLookup[data.uniqueId][element.id].namespace;
 			render.empty(element);
-			if (this.renderHtmlFunction != undefined) {
-				element.innerHTML = this.renderHtmlFunction(data, namespace);
-			}
-			this.renderFunction(element, data, namespace);
-			renderDepth--;
-			executeEnhancements();
+			element.innerHTML = this.renderHtml(data, context, uiState);
+			this.renderFunction(element, data, context, uiState);
+			context.enhanceElement(element);
 			return this;
 		},
-		renderHtml: function (data, namespace) {
+		renderHtml: function (data, context, uiState) {
 			var innerHtml = "";
 			if (this.renderHtmlFunction != undefined) {
-				innerHtml = this.renderHtmlFunction(data);
+				innerHtml = this.renderHtmlFunction(data, context, uiState);
 			}
-			var elementId = addEnhancement(this, data, namespace);
-			return '<span id="' + elementId + '">' + innerHtml + '</span>';
+			return innerHtml;
 		},
-		enhance: function (element, data, namespace) {
-			this.renderFunction(element, data, namespace);
+		enhance: function (element, data, context, uiState) {
+			this.renderFunction(element, data, context, uiState);
 			return this;
 		},
 		update: function (element, data, operation) {
@@ -4191,9 +4216,9 @@ publicApi.config = configData;
 			});
 			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
-		canRender: function (data, schemas) {
+		canRender: function (data, schemas, uiState) {
 			if (this.filterFunction != undefined) {
-				return this.filterFunction(data, schemas);
+				return this.filterFunction(data, schemas, uiState);
 			}
 			return true;
 		},
@@ -4214,61 +4239,34 @@ publicApi.config = configData;
 		}
 	}
 
-	var rendererList = {};
+	var rendererLookup = {};
+	var rendererList = [];
 	function register(obj) {
-		var namespace = obj.namespace;
-		if (namespace == undefined) {
-			namespace = "";
-		}
-		var namespaceArray = namespace;
-		if (typeof namespace == "string") {
-			namespaceArray = [];
-			parts = namespace.split("/");
-			for (var i = 0; i < parts.length; i++) {
-				namespaceArray.push(parts.slice(0, i).join("/"));
-			}
-		}
-		for (var i = 0; i < namespaceArray.length; i++) {
-			var namespace = namespaceArray[i];
-			if (rendererList[namespace] == undefined) {
-				rendererList[namespace] = [];
-			}
-			rendererList[namespace].unshift(new Renderer(obj));
-		}
+		var renderer = new Renderer(obj);
+		rendererLookup[renderer.uniqueId] = renderer;
+		rendererList.push(renderer);
 	}
 	render.register = register;
+	
+	function lookupRenderer(rendererId) {
+		return rendererLookup[rendererId];
+	}
 
-	function selectRenderer(data, namespace) {
-		if (namespace == undefined) {
-			namespace = "";
-		}
-		var namespaceArray = namespace;
-		if (typeof namespace == "string") {
-			namespaceArray = [];
-			parts = namespace.split("/");
-			for (var i = parts.length; i >= 0; i--) {
-				namespaceArray.push(parts.slice(0, i).join("/"));
-			}
-		}
+	function selectRenderer(data, uiStartingState) {
 		var schemas = data.schemas();
-		for (var j = 0; j < namespaceArray.length; j++) {
-			renderers = rendererList[namespaceArray[j]];
-			if (renderers == undefined) {
-				continue;
-			}
-			for (var i = 0; i < renderers.length; i++) {
-				if (renderers[i].canRender(data, schemas)) {
-					return renderers[i];
-				}
+		for (var i = rendererList.length - 1; i >= 0; i--) {
+			var renderer = rendererList[i];
+			if (renderer.canRender(data, schemas, uiStartingState)) {
+				return renderer;
 			}
 		}
 	}
 
 	if (typeof global.jQuery != "undefined") {
-		var jQueryRender = function (data, namespace) {
+		var jQueryRender = function (data, uiStartingState) {
 			var element = this[0];
 			if (element != undefined) {
-				render(element, data, namespace);
+				render(element, data, uiStartingState);
 			}
 			return this;
 		};

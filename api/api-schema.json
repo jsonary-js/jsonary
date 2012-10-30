@@ -3,7 +3,10 @@
 	"allOf": [{"$ref": "#/objectDefinition"}],
 	"objectDefinition": {
 		"type": "object",
-		"allOf": [{"$ref": "http://json-schema.org/hyper-schema"}],
+		"anyOf": [
+			{"$ref": "http://json-schema.org/hyper-schema"},
+			{"$ref": "#/functionDefinition"}
+		],
 		"properties": {
 			"title": {"title": "Title", "type": "string"},
 			"description": {"title": "Description", "type": "string"},
@@ -38,6 +41,7 @@
 				"items": {"$ref": "http://json-schema.org/hyper-schema"}
 			},
 			"return": {"$ref": "http://json-schema.org/hyper-schema"}
-		}
+		},
+		"required": ["arguments"]
 	}
 }

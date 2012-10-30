@@ -259,14 +259,14 @@
 		if (data.property("oneOf").defined() || !data.readOnly()) {
 			$('<div class="schema-section-title">Must be exactly one of:</div>').appendTo(container);
 		}
-		$('<div class="schema-section" />').renderJson(data.property("oneOf"), "small").appendTo(container);
+		$('<div class="schema-section" />').renderJson(data.property("oneOf"), {size: "small"}).appendTo(container);
 	}
 
 	function renderAnyOfDetails(container, data, schema) {
 		if (data.property("anyOf").defined() || !data.readOnly()) {
 			$('<div class="schema-section-title">Must be at least one of:</div>').appendTo(container);
 		}
-		$('<div class="schema-section" />').renderJson(data.property("anyOf"), "small").appendTo(container);
+		$('<div class="schema-section" />').renderJson(data.property("anyOf"), {size: "small"}).appendTo(container);
 	}
 
 	function renderAllDetails(container, data, schema) {
@@ -276,7 +276,7 @@
 		if (data.property("extends").defined()) {
 			$('<div class="schema-section" />').renderJson(data.property("extends")).appendTo(container);
 		}
-		$('<div class="schema-section" />').renderJson(data.property("allOf"), "small").appendTo(container);
+		$('<div class="schema-section" />').renderJson(data.property("allOf"), {size: "small"}).appendTo(container);
 	}
 
 	function renderEnumDetails(container, data, schema) {
@@ -284,6 +284,28 @@
 			$('<div class="schema-section-title">Must be exactly equal to one of:</div>').appendTo(container);
 		}
 		$('<div class="schema-section" />').renderJson(data.property("enum")).appendTo(container);
+	}
+
+	function renderUnknownDetails(container, data, schema) {
+		var knownProperties = {
+			title: true,
+			description: true,
+			properties: true
+		};
+		var allProperties = data.keys();
+		if (!data.readOnly()) {
+			allProperties = allProperties.concat(schema.definedProperties);
+		}
+		allProperties.sort();
+		for (var i = 0; i < allProperties.length; i++) {
+			var key = allProperties[i];
+			if (knownProperties[key]) {
+				continue;
+			}
+			knownProperties[key] = true;
+			$('<div class="schema-section-title"><div>').text(key + ":").appendTo(container);
+			$('<div class="schema-section" />').renderJson(data.property(key)).appendTo(container);
+		}
 	}
 
 	$.renderJson.register({
@@ -326,6 +348,7 @@
 						renderAllDetails($('<div />').appendTo(tabContent), data, schema);
 						renderOneOfDetails($('<div />').appendTo(tabContent), data, schema);
 						renderAnyOfDetails($('<div />').appendTo(tabContent), data, schema);
+						renderUnknownDetails($('<div />').appendTo(tabContent), data, schema);
 						break;
 					case "object":
 						renderObjectDetails(tabContent, data, schema);
@@ -385,7 +408,6 @@
 	});
 
 	$.renderJson.register({
-		namespace: ["small"],
 		render: function (query, data) {
 			var expandBar = $('<div class="schema-expand-bar" />').appendTo(query);
 			var container = $('<div class="schema" />').appendTo(query);
@@ -430,8 +452,8 @@
 			});
 			var fullContainer = $('<div class="schema-expand-full"></div>').hide().appendTo(query);
 		},
-		filter: function (data, schemas) {
-			return schemas.containsUrl("http://json-schema.org/schema") && !data.property("$ref").defined();
+		filter: function (data, schemas, uiState) {
+			return uiState.size == "small" && schemas.containsUrl("http://json-schema.org/schema") && !data.property("$ref").defined();
 		},
 		update: function (query, data, operation) {
 			var path = data.pointerPath();

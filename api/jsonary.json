@@ -1,1 +1,406 @@
-{"title":"Jsonary main object","description":"The main Jsonary object","properties":{"config":{"$ref":"data.json"}},"methods":{"create":{"arguments":[{"title":"jsonData"},{"title":"baseUrl","type":["null","string"],"description":"The URL to use for resolving any links/URIs in the data"},{"title":"readOnly","type":["boolean"]}],"return":{"$ref":"data.json"}},"createSchema":{"arguments":[{"title":"jsonData"},{"title":"baseUrl"}],"return":{"$ref":"schema.json"},"title":"createSchema"},"addLinkHandler":{"arguments":[{"title":"handler","description":"handler(link, submittedData, request)\n\nReturn boolean false if handled, and no further handlers will be called.","allOf":[]}],"return":{"$ref":"#"}},"addLinkPreHandler":{"arguments":[{"title":"preHandler","description":"preHandler(link, submissionData)\n\nReturn boolean false to cancel the link."}],"return":{"$ref":"#"}},"addToCache":{"arguments":[{"title":"url","description":"The URL for the inserted data","type":["string"]},{"title":"rawData","description":"The JSON data to store"},{"title":"schemaUrl","description":"URL of the schema to associate with the data","type":["string"]}],"return":{"$ref":"#"}},"batch":{"arguments":[{"title":"[optionalFunction]","description":"If this argument is present, then it is called immediately, and batchDone() does not need to be called."}],"return":{"$ref":"#"},"description":"start collating changes to data, so they are processed as a single change."},"batchDone":{"return":{"$ref":"#"},"description":"Stop collating changes to data, and process any collated changes.\n\nThis does not need to be called when a function is passed to batch()."},"createSchemaList":{"arguments":[{"title":"schemaList","description":"A list of Jsonary Schema objects","type":["array"],"items":{"$ref":"schema.json"}}],"return":{"$ref":"schemalist.json"}},"decodeData":{"description":"encode/decode JSON or form-encoded strings","arguments":[{"title":"dataString","type":["string"]},{"title":"encodingMediaType","description":"defaults to application/x-www-form-urlencoded, the default HTML form encoding.","type":["string"]}],"return":{"title":"JSON data","description":"(raw, not in a Jsonary wrapper)"}},"decodePointerComponent":{"description":"performs the un-escaping for JSON Pointer path components.\n\ne.g.  \"test~0\" -> \"test~\"","return":{"title":"unescaped","type":["string"]},"arguments":[{"title":"escaped","type":["string"]}]},"encodeData":{"arguments":[{"title":"jsonData"},{"title":"encodingMediaType","description":"defaults to \"application/x-www-form-urlencoded\"","type":["string"]}],"return":{"title":"stringData","type":["string"]}},"extend":{"description":"Add data/functions to the Jsonary main object","arguments":[{"title":"obj","description":"Object containing properties to add","type":["object"],"additionalProperties":{"title":"Anything"}}]},"extendData":{"description":"Add data/functions to Jsonary Data objects","arguments":[{"title":"obj","description":"Object containing properties to add","type":["object"]}]},"extendSchema":{"description":"Add data/functions to Jsonary Schema objects","arguments":[{"title":"obj","description":"Object containing properties to add","type":["object"]}]},"getData":{"description":"Fetch data using AJAX","arguments":[{"type":["string","object"],"description":"URL or request parameters","title":"urlOrParams","additionalProperties":false,"properties":{"url":{"title":"Url","type":["string"],"description":"URL of the data"},"method":{"title":"HTTP method","type":["string"]},"data":{"title":"Submission data"},"encType":{"title":"Media type","description":"Defaults to:\n* \"application/x-www-form-urlencoded\" for GET requests\n* \"application/json\" for everything else","type":["string"]}},"required":["url"]},{"title":"callback","description":"callback(data)"},{"title":"hintSchema","type":["string","object"],"oneOf":[{"title":"Schema URL","type":["string"]},{"$ref":"schema.json"}],"description":"If no schema is supplied in the HTTP response headers, this is used."}],"return":{"$ref":"request.json"}},"getSchema":{"description":"Fetches a schema","arguments":[{"title":"url","type":["string"]},{"title":"callback","description":"callback(schema)"}]},"invalidate":{"description":"Invalidates data in the cache","arguments":[{"title":"stringOrRegex","type":["string","object"],"oneOf":[{"title":"Search string","description":"If this occurs anywhere in the URL, the data is invalidated","type":["string"]},{"title":"RegExp object","description":"A regular expression.\n\nAny URL matching this expression is invalidated","type":["object"]}]}]},"joinPointer":{"description":"Joins path components into a JSON Pointer path","arguments":[{"title":"components","type":["array"],"items":{"title":"unescaped","type":["string"]}}],"return":{"title":"JSON Pointer path","type":["string"]}},"registerChangeListener":{"description":"Registers a callback to be called whenever any data change is made","arguments":[{"title":"callback","description":"callback(patch, document)"}]},"registerSchemaChangeListener":{"description":"Registers a callback to be called whenever data has schemas added or removed","arguments":[{"title":"callback","description":"callback(data, schemas)"}]},"splitPointer":{"arguments":[{"title":"pointerPath","type":["string"],"description":"JSON Pointer path"}],"description":"Split a JSON Pointer path into individual components\n\nE.g. \"/key1/key2~0\" -> [\"key1\", \"key2~\"]","return":{"title":"path components","type":["array"],"items":{"title":"component","type":["string"]}}}}}
+{
+   "title":"Jsonary main object",
+   "description":"The main Jsonary object",
+   "properties":{
+      "config":{
+         "$ref":"data.json"
+      },
+      "create":{
+         "arguments":[
+            {
+               "title":"jsonData"
+            },
+            {
+               "title":"baseUrl",
+               "type":[
+                  "null",
+                  "string"
+               ],
+               "description":"The URL to use for resolving any links/URIs in the data"
+            },
+            {
+               "title":"readOnly",
+               "type":[
+                  "boolean"
+               ]
+            }
+         ],
+         "return":{
+            "$ref":"data.json"
+         }
+      },
+      "createSchema":{
+         "arguments":[
+            {
+               "title":"jsonData"
+            },
+            {
+               "title":"baseUrl"
+            }
+         ],
+         "return":{
+            "$ref":"schema.json"
+         },
+         "title":"createSchema"
+      },
+      "addLinkHandler":{
+         "arguments":[
+            {
+               "title":"handler",
+               "description":"handler(link, submittedData, request)\n\nReturn boolean false if handled, and no further handlers will be called.",
+               "allOf":[
+
+               ]
+            }
+         ],
+         "return":{
+            "$ref":"#"
+         }
+      },
+      "addLinkPreHandler":{
+         "arguments":[
+            {
+               "title":"preHandler",
+               "description":"preHandler(link, submissionData)\n\nReturn boolean false to cancel the link."
+            }
+         ],
+         "return":{
+            "$ref":"#"
+         }
+      },
+      "addToCache":{
+         "arguments":[
+            {
+               "title":"url",
+               "description":"The URL for the inserted data",
+               "type":[
+                  "string"
+               ]
+            },
+            {
+               "title":"rawData",
+               "description":"The JSON data to store"
+            },
+            {
+               "title":"schemaUrl",
+               "description":"URL of the schema to associate with the data",
+               "type":[
+                  "string"
+               ]
+            }
+         ],
+         "return":{
+            "$ref":"#"
+         }
+      },
+      "batch":{
+         "arguments":[
+            {
+               "title":"[optionalFunction]",
+               "description":"If this argument is present, then it is called immediately, and batchDone() does not need to be called."
+            }
+         ],
+         "return":{
+            "$ref":"#"
+         },
+         "description":"start collating changes to data, so they are processed as a single change."
+      },
+      "batchDone":{
+         "return":{
+            "$ref":"#"
+         },
+         "description":"Stop collating changes to data, and process any collated changes.\n\nThis does not need to be called when a function is passed to batch()."
+      },
+      "createSchemaList":{
+         "arguments":[
+            {
+               "title":"schemaList",
+               "description":"A list of Jsonary Schema objects",
+               "type":[
+                  "array"
+               ],
+               "items":{
+                  "$ref":"schema.json"
+               }
+            }
+         ],
+         "return":{
+            "$ref":"schemalist.json"
+         }
+      },
+      "decodeData":{
+         "description":"encode/decode JSON or form-encoded strings",
+         "arguments":[
+            {
+               "title":"dataString",
+               "type":[
+                  "string"
+               ]
+            },
+            {
+               "title":"encodingMediaType",
+               "description":"defaults to application/x-www-form-urlencoded, the default HTML form encoding.",
+               "type":[
+                  "string"
+               ]
+            }
+         ],
+         "return":{
+            "title":"JSON data",
+            "description":"(raw, not in a Jsonary wrapper)"
+         }
+      },
+      "decodePointerComponent":{
+         "description":"performs the un-escaping for JSON Pointer path components.\n\ne.g.  \"test~0\" -> \"test~\"",
+         "return":{
+            "title":"unescaped",
+            "type":[
+               "string"
+            ]
+         },
+         "arguments":[
+            {
+               "title":"escaped",
+               "type":[
+                  "string"
+               ]
+            }
+         ]
+      },
+      "encodeData":{
+         "arguments":[
+            {
+               "title":"jsonData"
+            },
+            {
+               "title":"encodingMediaType",
+               "description":"defaults to \"application/x-www-form-urlencoded\"",
+               "type":[
+                  "string"
+               ]
+            }
+         ],
+         "return":{
+            "title":"stringData",
+            "type":[
+               "string"
+            ]
+         }
+      },
+      "extend":{
+         "description":"Add data/functions to the Jsonary main object",
+         "arguments":[
+            {
+               "title":"obj",
+               "description":"Object containing properties to add",
+               "type":[
+                  "object"
+               ],
+               "additionalProperties":{
+                  "title":"Anything"
+               }
+            }
+         ]
+      },
+      "extendData":{
+         "description":"Add data/functions to Jsonary Data objects",
+         "arguments":[
+            {
+               "title":"obj",
+               "description":"Object containing properties to add",
+               "type":[
+                  "object"
+               ]
+            }
+         ]
+      },
+      "extendSchema":{
+         "description":"Add data/functions to Jsonary Schema objects",
+         "arguments":[
+            {
+               "title":"obj",
+               "description":"Object containing properties to add",
+               "type":[
+                  "object"
+               ]
+            }
+         ]
+      },
+      "getData":{
+         "description":"Fetch data using AJAX",
+         "arguments":[
+            {
+               "type":[
+                  "string",
+                  "object"
+               ],
+               "description":"URL or request parameters",
+               "title":"urlOrParams",
+               "additionalProperties":false,
+               "properties":{
+                  "url":{
+                     "title":"Url",
+                     "type":[
+                        "string"
+                     ],
+                     "description":"URL of the data"
+                  },
+                  "method":{
+                     "title":"HTTP method",
+                     "type":[
+                        "string"
+                     ]
+                  },
+                  "data":{
+                     "title":"Submission data"
+                  },
+                  "encType":{
+                     "title":"Media type",
+                     "description":"Defaults to:\n* \"application/x-www-form-urlencoded\" for GET requests\n* \"application/json\" for everything else",
+                     "type":[
+                        "string"
+                     ]
+                  }
+               },
+               "required":[
+                  "url"
+               ]
+            },
+            {
+               "title":"callback",
+               "description":"callback(data)"
+            },
+            {
+               "title":"hintSchema",
+               "type":[
+                  "string",
+                  "object"
+               ],
+               "oneOf":[
+                  {
+                     "title":"Schema URL",
+                     "type":[
+                        "string"
+                     ]
+                  },
+                  {
+                     "$ref":"schema.json"
+                  }
+               ],
+               "description":"If no schema is supplied in the HTTP response headers, this is used."
+            }
+         ],
+         "return":{
+            "$ref":"request.json"
+         }
+      },
+      "getSchema":{
+         "description":"Fetches a schema",
+         "arguments":[
+            {
+               "title":"url",
+               "type":[
+                  "string"
+               ]
+            },
+            {
+               "title":"callback",
+               "description":"callback(schema)"
+            }
+         ]
+      },
+      "invalidate":{
+         "description":"Invalidates data in the cache",
+         "arguments":[
+            {
+               "title":"stringOrRegex",
+               "type":[
+                  "string",
+                  "object"
+               ],
+               "oneOf":[
+                  {
+                     "title":"Search string",
+                     "description":"If this occurs anywhere in the URL, the data is invalidated",
+                     "type":[
+                        "string"
+                     ]
+                  },
+                  {
+                     "title":"RegExp object",
+                     "description":"A regular expression.\n\nAny URL matching this expression is invalidated",
+                     "type":[
+                        "object"
+                     ]
+                  }
+               ]
+            }
+         ]
+      },
+      "joinPointer":{
+         "description":"Joins path components into a JSON Pointer path",
+         "arguments":[
+            {
+               "title":"components",
+               "type":[
+                  "array"
+               ],
+               "items":{
+                  "title":"unescaped",
+                  "type":[
+                     "string"
+                  ]
+               }
+            }
+         ],
+         "return":{
+            "title":"JSON Pointer path",
+            "type":[
+               "string"
+            ]
+         }
+      },
+      "registerChangeListener":{
+         "description":"Registers a callback to be called whenever any data change is made",
+         "arguments":[
+            {
+               "title":"callback",
+               "description":"callback(patch, document)"
+            }
+         ]
+      },
+      "registerSchemaChangeListener":{
+         "description":"Registers a callback to be called whenever data has schemas added or removed",
+         "arguments":[
+            {
+               "title":"callback",
+               "description":"callback(data, schemas)"
+            }
+         ]
+      },
+      "splitPointer":{
+         "arguments":[
+            {
+               "title":"pointerPath",
+               "type":[
+                  "string"
+               ],
+               "description":"JSON Pointer path"
+            }
+         ],
+         "description":"Split a JSON Pointer path into individual components\n\nE.g. \"/key1/key2~0\" -> [\"key1\", \"key2~\"]",
+         "return":{
+            "title":"path components",
+            "type":[
+               "array"
+            ],
+            "items":{
+               "title":"component",
+               "type":[
+                  "string"
+               ]
+            }
+         }
+      }
+   }
+}
