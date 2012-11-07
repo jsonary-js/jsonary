@@ -27,10 +27,14 @@
 		Jsonary.registerSchemaChangeListener(function (data, schemas) {
 			var uniqueId = data.uniqueId;
 			var elementIds = thisContext.elementLookup[uniqueId];
-			for (var elementId in elementIds) {
-				var element = document.getElementById(elementId);
+			if (elementIds == undefined) {
+				return;
+			}
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
 				if (element == undefined) {
-					delete elementIds[elementId];
+					elementIds.splice(i, 1);
+					i--;
 					continue;
 				}
 				var uiState = thisContext.decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
@@ -76,7 +80,9 @@
 			if (this.elementLookup[uniqueId] == undefined) {
 				this.elementLookup[uniqueId] = [];
 			}
-			this.elementLookup[uniqueId].push(element.id);
+			if (this.elementLookup[uniqueId].indexOf(element.id) == -1) {
+				this.elementLookup[uniqueId].push(element.id);
+			}
 			var renderer = selectRenderer(data, uiStartingState);
 			if (renderer != undefined) {
 				element.setAttribute("jsonary-renderer-id", renderer.uniqueId);
@@ -100,6 +106,9 @@
 		update: function (data, operation) {
 			var uniqueId = data.uniqueId;
 			var elementIds = this.elementLookup[uniqueId];
+			if (elementIds == undefined) {
+				return;
+			}
 			for (var i = 0; i < elementIds.length; i++) {
 				var element = document.getElementById(elementIds[i]);
 				if (element == undefined) {
@@ -108,12 +117,12 @@
 					continue;
 				}
 				var prevRendererId = element.getAttribute("jsonary-renderer-id");
-				var prevUiState = this.decodeUiState(element.getAttribute("jsonary-ui-state"));
-				var renderer = selectRenderer(data, prevNamespace);
-				if (renderer == prevRenderer) {
-					renderer.update(element, data, operation);
+				var prevUiState = this.decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				var renderer = selectRenderer(data, prevUiState);
+				if (renderer.uniqueId == prevRendererId) {
+					renderer.update(element, data, this, operation);
 				} else {
-					render(element, data, prevNamespace);
+					render(element, data, prevUiState);
 				}
 			}
 		},
@@ -194,11 +203,11 @@
 			this.renderFunction(element, data, context, uiState);
 			return this;
 		},
-		update: function (element, data, operation) {
+		update: function (element, data, context, operation) {
 			if (this.updateFunction != undefined) {
-				this.updateFunction(element, data, operation);
+				this.updateFunction(element, data, context, operation);
 			} else {
-				this.defaultUpdate(element, data, operation);
+				this.defaultUpdate(element, data, context, operation);
 			}
 			return this;
 		},
@@ -224,7 +233,7 @@
 			}
 			return true;
 		},
-		defaultUpdate: function (element, data, operation) {
+		defaultUpdate: function (element, data, context, operation) {
 			var redraw = false;
 			var checkChildren = operation.action() != "replace";
 			var pointerPath = data.pointerPath();
@@ -236,7 +245,7 @@
 				}
 			}
 			if (redraw) {
-				this.render(element, data);
+				this.render(element, data, context);
 			}
 		}
 	}
@@ -273,13 +282,13 @@
 			return this;
 		};
 		Jsonary.extendData({
-			$renderTo: function (query, namespace) {
+			$renderTo: function (query, uiState) {
 				if (typeof query == "string") {
 					query = jQuery(query);
 				}
 				var element = query[0];
 				if (element != undefined) {
-					render(element, this, namespace);
+					render(element, this, uiState);
 				}
 			}
 		});
@@ -314,8 +323,8 @@
 		renderHtml: renderHtml
 	});
 	Jsonary.extendData({
-		renderTo: function (element, namespace) {
-			render(element, this, namespace);
+		renderTo: function (element, uiState) {
+			render(element, this, uiState);
 		}
 	});
 })(this);

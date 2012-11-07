@@ -15,13 +15,10 @@ var publicApi = {
         return "[JsonApi]";
     }
 };
-window.Jsonary = publicApi;
+global.Jsonary = publicApi;
 
 function setTimeout(fn, t) {
 	throw new Error("setTimeout() should not be used");
-	fn();
-	//Utils.log(Utils.logLevel.DEBUG, "setTimeout()");
-	//return window.setTimeout(fn, t);
 }
 
 
@@ -140,8 +137,10 @@ Uri.prototype = {
 };
 Uri.resolve = function(base, relative) {
 	if (relative == undefined) {
-		relative = base;
-		base = window.location.toString();
+		return base;
+		//  We used to resolve relative to window.location, but we want to be able to run outside the browser as well
+		//relative = base;
+		//base = window.location.toString();
 	}
 	if (base == undefined) {
 		return relative;
@@ -713,7 +712,7 @@ if (typeof XMLHttpRequest == "undefined") {
 (function () {
 	var cacheData = {};
 	var cacheTimes = {};
-	var emptyTimeout = window.setInterval(function () {
+	var emptyTimeout = setInterval(function () {
 		defaultCache.empty();
 	}, 10*1000);
 
@@ -742,7 +741,7 @@ if (typeof XMLHttpRequest == "undefined") {
 	};
 	defaultCache.invalidate = function (urlPattern) {
 		if (typeof urlPattern == "string") {
-			urlPattern = Utils.resolveRelativeUri(window.location.toString(), urlPattern);
+			urlPattern = Utils.resolveRelativeUri(urlPattern);
 		}
 		for (var key in cacheData) {
 			var request = cacheData[key];
@@ -801,7 +800,7 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 	if (url == undefined) {
 		throw new Error("URL cannot be undefined");
 	}
-	url = Utils.resolveRelativeUri(window.location.toString(), url);
+	url = Utils.resolveRelativeUri(url);
 	if (method == undefined) {
 		method = "GET";
 	}
@@ -845,7 +844,7 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 }
 
 function addToCache(url, rawData, schemaUrl, cacheFunction) {
-	url = Utils.resolveRelativeUri(window.location.toString(), url);
+	url = Utils.resolveRelativeUri(url);
 	if (cacheFunction == undefined) {
 		cacheFunction = publicApi.defaultCache;
 	}
@@ -868,7 +867,7 @@ publicApi.getData = function(params, callback, hintSchema) {
 var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
 
 function Request(url, method, data, encType, hintSchema) {
-	url = Utils.resolveRelativeUri(window.location.toString(), url);
+	url = Utils.resolveRelativeUri(url);
 
 	data = Utils.encodeData(data, encType);
 	if (method == "GET" && data != "") {
@@ -4025,10 +4024,14 @@ publicApi.config = configData;
 		Jsonary.registerSchemaChangeListener(function (data, schemas) {
 			var uniqueId = data.uniqueId;
 			var elementIds = thisContext.elementLookup[uniqueId];
-			for (var elementId in elementIds) {
-				var element = document.getElementById(elementId);
+			if (elementIds == undefined) {
+				return;
+			}
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
 				if (element == undefined) {
-					delete elementIds[elementId];
+					elementIds.splice(i, 1);
+					i--;
 					continue;
 				}
 				var uiState = thisContext.decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
@@ -4074,7 +4077,9 @@ publicApi.config = configData;
 			if (this.elementLookup[uniqueId] == undefined) {
 				this.elementLookup[uniqueId] = [];
 			}
-			this.elementLookup[uniqueId].push(element.id);
+			if (this.elementLookup[uniqueId].indexOf(element.id) == -1) {
+				this.elementLookup[uniqueId].push(element.id);
+			}
 			var renderer = selectRenderer(data, uiStartingState);
 			if (renderer != undefined) {
 				element.setAttribute("jsonary-renderer-id", renderer.uniqueId);
@@ -4098,6 +4103,9 @@ publicApi.config = configData;
 		update: function (data, operation) {
 			var uniqueId = data.uniqueId;
 			var elementIds = this.elementLookup[uniqueId];
+			if (elementIds == undefined) {
+				return;
+			}
 			for (var i = 0; i < elementIds.length; i++) {
 				var element = document.getElementById(elementIds[i]);
 				if (element == undefined) {
@@ -4106,12 +4114,12 @@ publicApi.config = configData;
 					continue;
 				}
 				var prevRendererId = element.getAttribute("jsonary-renderer-id");
-				var prevUiState = this.decodeUiState(element.getAttribute("jsonary-ui-state"));
-				var renderer = selectRenderer(data, prevNamespace);
-				if (renderer == prevRenderer) {
-					renderer.update(element, data, operation);
+				var prevUiState = this.decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				var renderer = selectRenderer(data, prevUiState);
+				if (renderer.uniqueId == prevRendererId) {
+					renderer.update(element, data, this, operation);
 				} else {
-					render(element, data, prevNamespace);
+					render(element, data, prevUiState);
 				}
 			}
 		},
@@ -4192,11 +4200,11 @@ publicApi.config = configData;
 			this.renderFunction(element, data, context, uiState);
 			return this;
 		},
-		update: function (element, data, operation) {
+		update: function (element, data, context, operation) {
 			if (this.updateFunction != undefined) {
-				this.updateFunction(element, data, operation);
+				this.updateFunction(element, data, context, operation);
 			} else {
-				this.defaultUpdate(element, data, operation);
+				this.defaultUpdate(element, data, context, operation);
 			}
 			return this;
 		},
@@ -4222,7 +4230,7 @@ publicApi.config = configData;
 			}
 			return true;
 		},
-		defaultUpdate: function (element, data, operation) {
+		defaultUpdate: function (element, data, context, operation) {
 			var redraw = false;
 			var checkChildren = operation.action() != "replace";
 			var pointerPath = data.pointerPath();
@@ -4234,7 +4242,7 @@ publicApi.config = configData;
 				}
 			}
 			if (redraw) {
-				this.render(element, data);
+				this.render(element, data, context);
 			}
 		}
 	}
@@ -4271,13 +4279,13 @@ publicApi.config = configData;
 			return this;
 		};
 		Jsonary.extendData({
-			$renderTo: function (query, namespace) {
+			$renderTo: function (query, uiState) {
 				if (typeof query == "string") {
 					query = jQuery(query);
 				}
 				var element = query[0];
 				if (element != undefined) {
-					render(element, this, namespace);
+					render(element, this, uiState);
 				}
 			}
 		});
@@ -4312,8 +4320,8 @@ publicApi.config = configData;
 		renderHtml: renderHtml
 	});
 	Jsonary.extendData({
-		renderTo: function (element, namespace) {
-			render(element, this, namespace);
+		renderTo: function (element, uiState) {
+			render(element, this, uiState);
 		}
 	});
 })(this);

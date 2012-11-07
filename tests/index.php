@@ -2,9 +2,9 @@
 define("TEST_START_DIR", "tests/");
 define("TODO_FILE", "todo.html");
 
-$currentTest = $_REQUEST["test"];
-if (!isset($currentTest)) {
-    $currentTest = "";
+$currentTest = "";;
+if (isset($_REQUEST["test"])) {
+    $currentTest = $_REQUEST["test"];
 }
 $currentDirPath = NULL;
 $currentTestPath = NULL;
