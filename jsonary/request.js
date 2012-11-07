@@ -21,7 +21,7 @@ if (typeof XMLHttpRequest == "undefined") {
 (function () {
 	var cacheData = {};
 	var cacheTimes = {};
-	var emptyTimeout = window.setInterval(function () {
+	var emptyTimeout = setInterval(function () {
 		defaultCache.empty();
 	}, 10*1000);
 
@@ -50,7 +50,7 @@ if (typeof XMLHttpRequest == "undefined") {
 	};
 	defaultCache.invalidate = function (urlPattern) {
 		if (typeof urlPattern == "string") {
-			urlPattern = Utils.resolveRelativeUri(window.location.toString(), urlPattern);
+			urlPattern = Utils.resolveRelativeUri(urlPattern);
 		}
 		for (var key in cacheData) {
 			var request = cacheData[key];
@@ -109,7 +109,7 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 	if (url == undefined) {
 		throw new Error("URL cannot be undefined");
 	}
-	url = Utils.resolveRelativeUri(window.location.toString(), url);
+	url = Utils.resolveRelativeUri(url);
 	if (method == undefined) {
 		method = "GET";
 	}
@@ -153,7 +153,7 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 }
 
 function addToCache(url, rawData, schemaUrl, cacheFunction) {
-	url = Utils.resolveRelativeUri(window.location.toString(), url);
+	url = Utils.resolveRelativeUri(url);
 	if (cacheFunction == undefined) {
 		cacheFunction = publicApi.defaultCache;
 	}
@@ -176,7 +176,7 @@ publicApi.getData = function(params, callback, hintSchema) {
 var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
 
 function Request(url, method, data, encType, hintSchema) {
-	url = Utils.resolveRelativeUri(window.location.toString(), url);
+	url = Utils.resolveRelativeUri(url);
 
 	data = Utils.encodeData(data, encType);
 	if (method == "GET" && data != "") {
