@@ -15,6 +15,7 @@
 
 		var renderDepth = 0;
 		this.enhancementData = {};
+		this.enhancementActions = {};
 
 		Jsonary.registerChangeListener(function (patch, document) {
 			patch.each(function (index, operation) {
@@ -129,6 +130,13 @@
 		addEnhancement: function(elementId, data) {
 			this.enhancementData[elementId] = data;
 		},
+		addEnhancementAction: function (elementId, actionName, data, renderer) {
+			this.enhancementActions[elementId] = {
+				actionName: actionName,
+				data: data,
+				renderer: renderer
+			};
+		},
 		enhanceElement: function (element) {
 			var data = this.enhancementData[element.id];
 			if (data != undefined) {
@@ -139,11 +147,20 @@
 					renderer.enhance(element, data, this, uiState);
 				}
 			}
+			var action = this.enhancementActions[element.id];
+			if (action != undefined) {
+				delete this.enhancementActions[element.id];
+				element.onclick = function () {
+					action.renderer.action(action.actionName, action.data);
+					return false;
+				};
+			}
 			for (var i = 0; i < element.childNodes.length; i++) {
 				if (element.childNodes[i].nodeType == 1) {
 					this.enhanceElement(element.childNodes[i]);
 				}
 			}
+			element = null;
 		}
 	};
 	var pageContext = new RenderContext();
@@ -188,7 +205,9 @@
 			}
 			render.empty(element);
 			element.innerHTML = this.renderHtml(data, context, uiState);
-			this.renderFunction(element, data, context, uiState);
+			if (this.renderFunction != null) {
+				this.renderFunction(element, data, context, uiState);
+			}
 			context.enhanceElement(element);
 			return this;
 		},
@@ -200,7 +219,9 @@
 			return innerHtml;
 		},
 		enhance: function (element, data, context, uiState) {
-			this.renderFunction(element, data, context, uiState);
+			if (this.renderFunction != null) {
+				this.renderFunction(element, data, context, uiState);
+			}
 			return this;
 		},
 		update: function (element, data, context, operation) {
@@ -214,18 +235,11 @@
 		action: function (actionName, data) {
 			this.actionFunction(actionName, data);
 		},
-		actionHtml: function (actionName, data, innerHtml) {
+		actionHtml: function (actionName, data, innerHtml, context) {
 			var thisRenderer = this;
-			var elementId = ELEMENT_ID_PREFIX + (elementIdCounter++);
-			enhancementList.push(function () {
-				var target = document.getElementById(elementId);
-				target.onclick = function () {
-					thisRenderer.action(actionName, data);
-					return false;
-				};
-				target = null;
-			});
-			return '<span id="' + elementId + '">' + innerHtml + '</span>';
+			var elementId = context.getElementId();
+			context.addEnhancementAction(elementId, actionName, data, thisRenderer);
+			return '<a href="javascript:void(0)" id="' + elementId + '">' + innerHtml + '</a>';
 		},
 		canRender: function (data, schemas, uiState) {
 			if (this.filterFunction != undefined) {
