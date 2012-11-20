@@ -88,6 +88,7 @@
 			if (renderer != undefined) {
 				element.setAttribute("jsonary-renderer-id", renderer.uniqueId);
 				renderer.render(element, data, this, uiStartingState);
+				element.setAttribute("jsonary-ui-state", thisContext.encodeUiState(uiStartingState));
 			} else {
 				element.innerHTML = "NO RENDERER FOUND";
 			}
@@ -101,6 +102,13 @@
 			var innerHtml = renderer.renderHtml(data, this, uiState);
 			var stateString = this.encodeUiState(uiState);
 			var elementId = this.getElementId();
+			var uniqueId = data.uniqueId;
+			if (this.elementLookup[uniqueId] == undefined) {
+				this.elementLookup[uniqueId] = [];
+			}
+			if (this.elementLookup[uniqueId].indexOf(elementId) == -1) {
+				this.elementLookup[uniqueId].push(elementId);
+			}
 			this.addEnhancement(elementId, data);
 			return '<span id="' + elementId + '" jsonary-renderer-id="' + renderer.uniqueId + '" jsonary-data-id="' + data.uniqueId + '" jsonary-ui-starting-state=\'' + this.htmlEscapeSingleQuote(startingStateString) + '\' jsonary-ui-state=\'' + this.htmlEscapeSingleQuote(stateString) + '\'>' + innerHtml + '</span>';
 		},
@@ -121,7 +129,9 @@
 				var prevUiState = this.decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
 				var renderer = selectRenderer(data, prevUiState);
 				if (renderer.uniqueId == prevRendererId) {
-					renderer.update(element, data, this, operation);
+					var uiState = this.decodeUiState(element.getAttribute("jsonary-ui-state"));
+					renderer.update(element, data, this, operation, uiState);
+					element.setAttribute("jsonary-ui-state", this.encodeUiState(uiState));
 				} else {
 					render(element, data, prevUiState);
 				}
@@ -138,6 +148,7 @@
 			};
 		},
 		enhanceElement: function (element) {
+			var thisContext = this;
 			var data = this.enhancementData[element.id];
 			if (data != undefined) {
 				delete this.enhancementData[element.id];
@@ -146,12 +157,15 @@
 				if (renderer != undefined) {
 					renderer.enhance(element, data, this, uiState);
 				}
+				element.setAttribute("jsonary-ui-state", this.encodeUiState(uiState));
 			}
 			var action = this.enhancementActions[element.id];
 			if (action != undefined) {
 				delete this.enhancementActions[element.id];
 				element.onclick = function () {
-					action.renderer.action(action.actionName, action.data);
+					var uiState = thisContext.decodeUiState(this.getAttribute("jsonary-ui-state"));
+					action.renderer.action(action.actionName, action.data, uiState);
+					this.setAttribute("jsonary-ui-state", thisContext.encodeUiState(uiState));
 					return false;
 				};
 			}
@@ -203,6 +217,9 @@
 			if (element[0] != undefined) {
 				element = element[0];
 			}
+			if (uiState == undefined) {
+				uiState = context.decodeUiState(element.getAttribute("jsonary-ui-state"));
+			}
 			render.empty(element);
 			element.innerHTML = this.renderHtml(data, context, uiState);
 			if (this.renderFunction != null) {
@@ -224,16 +241,16 @@
 			}
 			return this;
 		},
-		update: function (element, data, context, operation) {
+		update: function (element, data, context, operation, uiState) {
 			if (this.updateFunction != undefined) {
-				this.updateFunction(element, data, context, operation);
+				this.updateFunction(element, data, context, operation, uiState);
 			} else {
-				this.defaultUpdate(element, data, context, operation);
+				this.defaultUpdate(element, data, context, operation, uiState);
 			}
 			return this;
 		},
-		action: function (actionName, data) {
-			this.actionFunction(actionName, data);
+		action: function (actionName, data, uiState) {
+			this.actionFunction(actionName, data, uiState);
 		},
 		actionHtml: function (actionName, data, innerHtml, context) {
 			var thisRenderer = this;
@@ -247,7 +264,7 @@
 			}
 			return true;
 		},
-		defaultUpdate: function (element, data, context, operation) {
+		defaultUpdate: function (element, data, context, operation, uiState) {
 			var redraw = false;
 			var checkChildren = operation.action() != "replace";
 			var pointerPath = data.pointerPath();
@@ -259,7 +276,7 @@
 				}
 			}
 			if (redraw) {
-				this.render(element, data, context);
+				this.render(element, data, context, uiState);
 			}
 		}
 	}

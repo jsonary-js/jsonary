@@ -1,0 +1,15 @@
+{
+	"type": "array",
+	"items": {
+		"type": "object",
+		"properties": {
+			"number": {"type": "number"},
+			"text": {"type": "string"},
+			"alt": {
+				"type": "array",
+				"items": {"type": "string"}
+			}
+		},
+		"required": ["number", "text"]
+	}
+}
