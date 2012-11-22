@@ -1,7 +1,6 @@
 body {
   font-family: Verdana, sans-serif;
   font-size: 12px;
-  padding: 20px;
 }
 
 table {
@@ -9,9 +8,12 @@ table {
 }
 #main {
 	width: 100%;
+	background-color: #DDD;
+	background-color: rgba(255, 255, 255, 0.6);
 }
 
 td {
+	padding: 20px;
 	vertical-align: top;
 }
 
@@ -71,6 +73,7 @@ h1 {
     font-size: 1.5em;
     letter-spacing: 0.2ex;
     font-family: Trebuchet MS;
+    background-color: inherit;
 }
 
 /**********************/

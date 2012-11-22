@@ -513,6 +513,9 @@ Data.prototype = {
 		if (typeof newValue == "undefined") {
 			return this.remove();
 		}
+		if (this.basicType() != "object" && this.basicType() != "array" && this.value() === newValue) {
+			return this;
+		}
 		var patch = new Patch();
 		if (this.defined()) {
 			patch.replace(this.pointerPath(), newValue);

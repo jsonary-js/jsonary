@@ -1852,6 +1852,9 @@ Data.prototype = {
 		if (typeof newValue == "undefined") {
 			return this.remove();
 		}
+		if (this.basicType() != "object" && this.basicType() != "array" && this.value() === newValue) {
+			return this;
+		}
 		var patch = new Patch();
 		if (this.defined()) {
 			patch.replace(this.pointerPath(), newValue);
@@ -4013,8 +4016,19 @@ publicApi.config = configData;
 })(this); // Global wrapper
 
 (function (global) {
+	function encodeUiState (uiState) {
+		return JSON.stringify(uiState);
+	}
+	function decodeUiState (uiStateString) {
+		return JSON.parse(uiStateString);
+	}
+	function htmlEscapeSingleQuote (str) {
+		return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
+	}
+
 	var prefixPrefix = "Jsonary";
 	var prefixCounter = 0;
+
 	function RenderContext(elementIdPrefix) {
 		var thisContext = this;
 		this.elementLookup = {};
@@ -4028,7 +4042,7 @@ publicApi.config = configData;
 		};
 
 		var renderDepth = 0;
-		this.enhancementData = {};
+		this.enhancementContexts = {};
 		this.enhancementActions = {};
 
 		Jsonary.registerChangeListener(function (patch, document) {
@@ -4042,9 +4056,10 @@ publicApi.config = configData;
 		Jsonary.registerSchemaChangeListener(function (data, schemas) {
 			var uniqueId = data.uniqueId;
 			var elementIds = thisContext.elementLookup[uniqueId];
-			if (elementIds == undefined) {
+			if (elementIds == undefined || elementIds.length == 0) {
 				return;
 			}
+			var elements = [];
 			for (var i = 0; i < elementIds.length; i++) {
 				var element = document.getElementById(elementIds[i]);
 				if (element == undefined) {
@@ -4052,46 +4067,68 @@ publicApi.config = configData;
 					i--;
 					continue;
 				}
-				var uiState = thisContext.decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
-				thisContext.render(element, data, uiState);
+				elements[i] = element;
+			}
+			for (var i = 0; i < elements.length; i++) {
+				var element = elements[i];
+				var prevContext = element.jsonaryContext;
+				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				var renderer = selectRenderer(data, prevUiState);
+				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+					renderer.render(element, data, prevContext);
+				} else {
+					prevContext.render(element, data, prevUiState);
+				}
 			}
 		});
 	}
 	RenderContext.prototype = {
-		encodeUiState: function (uiState) {
-			return JSON.stringify(uiState);
-		},
-		decodeUiState: function (uiStateString) {
-			return JSON.parse(uiStateString);
-		},
-		htmlEscapeSingleQuote: function (str) {
-			return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
+		baseContext: null,
+		subContext: function (elementId, data, uiStartingState) {
+			if (typeof elementId == "object") {
+				elementId = elementId.id;
+			}
+			function F(baseContext, elementId, data, uiState) {
+				this.baseContext = baseContext;
+				this.elementId = elementId;
+				this.data = data;
+				this.uiState = uiState;
+			}
+			var base = (this.baseContext != undefined) ? this.baseContext : this;
+			F.prototype = base;
+			return new F(base, elementId, data, uiStartingState);
 		},
 		render: function (element, data, uiStartingState) {
-			var thisContext = this;
+			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
+				var thisContext = this;
 				Jsonary.getData(data, function (actualData) {
 					thisContext.render(element, actualData, uiStartingState);
 				});
 				return;
 			}
+
 			if (typeof uiStartingState != "object") {
 				uiStartingState = {};
 			}
-			element.setAttribute("jsonary-ui-starting-state", this.encodeUiState(uiStartingState));
-
 			if (element.id == undefined || element.id == "") {
 				element.id = this.getElementId();
 			}
-			var previousId = element.getAttribute("jsonary-data-id");
-			if (this.previousId) {
+
+			var previousContext = element.jsonaryContext;
+			var subContext = this.subContext(element, data, uiStartingState);
+			element.setAttribute("jsonary-ui-starting-state", encodeUiState(uiStartingState));
+			element.jsonaryContext = subContext;
+
+			if (previousContext) {
+				// Something was rendered here before - remove this element from the lookup list for that data ID
+				var previousId = previousContext.data.uniqueId;
 				var index = this.elementLookup[previousId].indexOf(element.id);
 				if (index >= 0) {
 					this.elementLookup[previousId].splice(index, 1);
 				}
 			}
 			var uniqueId = data.uniqueId;
-			element.setAttribute("jsonary-data-id", uniqueId);
 			if (this.elementLookup[uniqueId] == undefined) {
 				this.elementLookup[uniqueId] = [];
 			}
@@ -4100,22 +4137,24 @@ publicApi.config = configData;
 			}
 			var renderer = selectRenderer(data, uiStartingState);
 			if (renderer != undefined) {
-				element.setAttribute("jsonary-renderer-id", renderer.uniqueId);
-				renderer.render(element, data, this, uiStartingState);
-				element.setAttribute("jsonary-ui-state", thisContext.encodeUiState(uiStartingState));
+				subContext.renderer = renderer;
+				renderer.render(element, data, subContext);
 			} else {
 				element.innerHTML = "NO RENDERER FOUND";
 			}
 		},
-		renderHtml: function (data, uiState) {
-			if (typeof uiState != "object") {
-				uiState = {};
-			}
-			var startingStateString = this.encodeUiState(uiState);
-			var renderer = selectRenderer(data, uiState);
-			var innerHtml = renderer.renderHtml(data, this, uiState);
-			var stateString = this.encodeUiState(uiState);
+		renderHtml: function (data, uiStartingState) {
 			var elementId = this.getElementId();
+			if (typeof uiStartingState != "object") {
+				uiStartingState = {};
+			}
+			var subContext = this.subContext(elementId, data, uiStartingState);
+
+			var startingStateString = encodeUiState(uiStartingState);
+			var renderer = selectRenderer(data, uiStartingState);
+			subContext.renderer = renderer;
+			
+			var innerHtml = renderer.renderHtml(data, subContext);
 			var uniqueId = data.uniqueId;
 			if (this.elementLookup[uniqueId] == undefined) {
 				this.elementLookup[uniqueId] = [];
@@ -4123,15 +4162,16 @@ publicApi.config = configData;
 			if (this.elementLookup[uniqueId].indexOf(elementId) == -1) {
 				this.elementLookup[uniqueId].push(elementId);
 			}
-			this.addEnhancement(elementId, data);
-			return '<span id="' + elementId + '" jsonary-renderer-id="' + renderer.uniqueId + '" jsonary-data-id="' + data.uniqueId + '" jsonary-ui-starting-state=\'' + this.htmlEscapeSingleQuote(startingStateString) + '\' jsonary-ui-state=\'' + this.htmlEscapeSingleQuote(stateString) + '\'>' + innerHtml + '</span>';
+			this.addEnhancement(elementId, subContext);
+			return '<span id="' + elementId + '" jsonary-ui-starting-state=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>' + innerHtml + '</span>';
 		},
 		update: function (data, operation) {
 			var uniqueId = data.uniqueId;
 			var elementIds = this.elementLookup[uniqueId];
-			if (elementIds == undefined) {
+			if (elementIds == undefined || elementIds.length == 0) {
 				return;
 			}
+			var elements = [];
 			for (var i = 0; i < elementIds.length; i++) {
 				var element = document.getElementById(elementIds[i]);
 				if (element == undefined) {
@@ -4139,53 +4179,72 @@ publicApi.config = configData;
 					i--;
 					continue;
 				}
-				var prevRendererId = element.getAttribute("jsonary-renderer-id");
-				var prevUiState = this.decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				elements[i] = element;
+			}
+			for (var i = 0; i < elements.length; i++) {
+				var element = elements[i];
+				var prevContext = element.jsonaryContext;
+				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
 				var renderer = selectRenderer(data, prevUiState);
-				if (renderer.uniqueId == prevRendererId) {
-					var uiState = this.decodeUiState(element.getAttribute("jsonary-ui-state"));
-					renderer.update(element, data, this, operation, uiState);
-					element.setAttribute("jsonary-ui-state", this.encodeUiState(uiState));
+				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+					renderer.update(element, data, prevContext, operation);
 				} else {
-					render(element, data, prevUiState);
+					this.render(element, data, prevUiState);
 				}
 			}
 		},
-		addEnhancement: function(elementId, data) {
-			this.enhancementData[elementId] = data;
+		actionHtml: function(innerHtml, actionName) {
+			var params = [];
+			for (var i = 2; i < arguments.length; i++) {
+				params.push(arguments[i]);
+			}
+			var elementId = this.getElementId();
+			this.addEnhancementAction(elementId, actionName, this, params);
+			return '<a href="javascript:void(0)" id="' + elementId + '">' + innerHtml + '</a>';
 		},
-		addEnhancementAction: function (elementId, actionName, data, renderer) {
+		addEnhancement: function(elementId, context) {
+			this.enhancementContexts[elementId] = context;
+		},
+		addEnhancementAction: function (elementId, actionName, context, params) {
+			if (params == null) {
+				params = [];
+			}
 			this.enhancementActions[elementId] = {
 				actionName: actionName,
-				data: data,
-				renderer: renderer
+				context: context,
+				params: params
 			};
 		},
 		enhanceElement: function (element) {
-			var thisContext = this;
-			var data = this.enhancementData[element.id];
-			if (data != undefined) {
-				delete this.enhancementData[element.id];
-				var renderer = lookupRenderer(element.getAttribute("jsonary-renderer-id"));
-				var uiState = this.decodeUiState(element.getAttribute("jsonary-ui-state"));
+			var context = this.enhancementContexts[element.id];
+			if (context != undefined) {
+				element.jsonaryContext = context;
+				delete this.enhancementContexts[element.id];
+				var renderer = context.renderer;
+				var data = context.data;
 				if (renderer != undefined) {
-					renderer.enhance(element, data, this, uiState);
+					renderer.enhance(element, data, this);
 				}
-				element.setAttribute("jsonary-ui-state", this.encodeUiState(uiState));
+			} else {
+				context = this;
 			}
 			var action = this.enhancementActions[element.id];
 			if (action != undefined) {
 				delete this.enhancementActions[element.id];
 				element.onclick = function () {
-					var uiState = thisContext.decodeUiState(this.getAttribute("jsonary-ui-state"));
-					action.renderer.action(action.actionName, action.data, uiState);
-					this.setAttribute("jsonary-ui-state", thisContext.encodeUiState(uiState));
+					var actionContext = action.context;
+					var args = [actionContext, action.actionName].concat(action.params);
+					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
+						// Action returned positive - we should force a re-render
+						var element = document.getElementById(actionContext.elementId);
+						actionContext.renderer.render(element, actionContext.data, actionContext);
+					}
 					return false;
 				};
 			}
 			for (var i = 0; i < element.childNodes.length; i++) {
 				if (element.childNodes[i].nodeType == 1) {
-					this.enhanceElement(element.childNodes[i]);
+					context.enhanceElement(element.childNodes[i]);
 				}
 			}
 			element = null;
@@ -4227,50 +4286,41 @@ publicApi.config = configData;
 		this.uniqueId = rendererIdCounter++;
 	}
 	Renderer.prototype = {
-		render: function (element, data, context, uiState) {
+		render: function (element, data, context) {
 			if (element[0] != undefined) {
 				element = element[0];
 			}
-			if (uiState == undefined) {
-				uiState = context.decodeUiState(element.getAttribute("jsonary-ui-state"));
-			}
 			render.empty(element);
-			element.innerHTML = this.renderHtml(data, context, uiState);
+			element.innerHTML = this.renderHtml(data, context);
 			if (this.renderFunction != null) {
-				this.renderFunction(element, data, context, uiState);
+				this.renderFunction(element, data, context);
 			}
 			context.enhanceElement(element);
 			return this;
 		},
-		renderHtml: function (data, context, uiState) {
+		renderHtml: function (data, context) {
 			var innerHtml = "";
 			if (this.renderHtmlFunction != undefined) {
-				innerHtml = this.renderHtmlFunction(data, context, uiState);
+				innerHtml = this.renderHtmlFunction(data, context);
 			}
 			return innerHtml;
 		},
-		enhance: function (element, data, context, uiState) {
+		enhance: function (element, data, context) {
 			if (this.renderFunction != null) {
-				this.renderFunction(element, data, context, uiState);
+				this.renderFunction(element, data, context);
 			}
 			return this;
 		},
-		update: function (element, data, context, operation, uiState) {
+		update: function (element, data, context, operation) {
 			if (this.updateFunction != undefined) {
-				this.updateFunction(element, data, context, operation, uiState);
+				this.updateFunction(element, data, context, operation);
 			} else {
-				this.defaultUpdate(element, data, context, operation, uiState);
+				this.defaultUpdate(element, data, context, operation);
 			}
 			return this;
 		},
-		action: function (actionName, data, uiState) {
-			this.actionFunction(actionName, data, uiState);
-		},
-		actionHtml: function (actionName, data, innerHtml, context) {
-			var thisRenderer = this;
-			var elementId = context.getElementId();
-			context.addEnhancementAction(elementId, actionName, data, thisRenderer);
-			return '<a href="javascript:void(0)" id="' + elementId + '">' + innerHtml + '</a>';
+		action: function (context, actionName, data) {
+			return this.actionFunction.apply(this, arguments);
 		},
 		canRender: function (data, schemas, uiState) {
 			if (this.filterFunction != undefined) {
@@ -4278,7 +4328,7 @@ publicApi.config = configData;
 			}
 			return true;
 		},
-		defaultUpdate: function (element, data, context, operation, uiState) {
+		defaultUpdate: function (element, data, context, operation) {
 			var redraw = false;
 			var checkChildren = operation.action() != "replace";
 			var pointerPath = data.pointerPath();
@@ -4290,7 +4340,7 @@ publicApi.config = configData;
 				}
 			}
 			if (redraw) {
-				this.render(element, data, context, uiState);
+				this.render(element, data, context);
 			}
 		}
 	}

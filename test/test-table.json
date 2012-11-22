@@ -3,7 +3,7 @@
 	"items": {
 		"type": "object",
 		"properties": {
-			"number": {"type": "number"},
+			"number": {"type": "integer"},
 			"text": {"type": "string"},
 			"alt": {
 				"type": "array",

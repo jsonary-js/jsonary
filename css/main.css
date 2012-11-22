@@ -2,6 +2,8 @@ body {
 	padding: 0;
 	margin: 0;
 	background-color: #F8F8F0;
+	background-image: URL('background-blue.png');
+	background-repeat: repeat-x;
 	font-family: Trebuchet MS, sans-serif;
 	font-size: 0.9em;
 }
@@ -10,6 +12,7 @@ h1 {
 	border-bottom: 1px solid black;
 	margin: 0;
 	background-color: #FFF;
+	background-color: rgba(255, 255, 255, 0.8);
 	text-align: center;
 }
 
@@ -31,6 +34,8 @@ h2 {
 	padding-bottom: 1em;
 	margin-bottom: 1.5em;
 	background-color: #F8F8FF;
+	background-color: rgba(248, 248, 255, 0.5);
+	background-image: URL('background-grey.png');
 	width: 900px;
 	text-align: left;
 }

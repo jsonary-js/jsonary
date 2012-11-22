@@ -86,7 +86,7 @@
 	
 	// Display/edit objects
 	Jsonary.render.register({
-		render: function (element, data, context, uiState) {
+		render: function (element, data, context) {
 			element.appendChild(document.createTextNode("{"));
 			listLinks(element, data.links());
 			data.properties(function (key, subData) {
@@ -102,7 +102,7 @@
 				var valueElement = document.createElement("span");
 				valueElement['class'] = "json-object-value";
 				rowElement.appendChild(valueElement);
-				context.render(valueElement, subData, uiState);
+				context.render(valueElement, subData);
 			
 				element.appendChild(rowElement);
 				
@@ -174,7 +174,7 @@
 
 	// Display/edit arrays
 	Jsonary.render.register({
-		render: function (element, data, context, uiState) {
+		render: function (element, data, context) {
 			listLinks(element, data.links());
 			data.indices(function (index, subData) {
 				var rowElement = document.createElement("div");
@@ -183,7 +183,7 @@
 				var valueElement = document.createElement("span");
 				valueElement['class'] = "json-array-value";
 				rowElement.appendChild(valueElement);
-				context.render(valueElement, subData, uiState);
+				context.render(valueElement, subData);
 			
 				element.appendChild(rowElement);
 				

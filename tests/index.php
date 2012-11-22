@@ -76,6 +76,7 @@ function includeDir($directory) {
 <html>
   <head>
     <title>Testing</title>
+    <link rel="stylesheet" href="../css/main.css" />
     <link rel="stylesheet" href="page.test.css" />
   </head>
   <body>
@@ -88,7 +89,7 @@ function includeDir($directory) {
     ?>
     </div>
     </td>
-    <td rowspan=2>
+    <td rowspan=2 id="results-pane">
 	<h1><?php echo $currentTestName ?></h1>
     <div id="test-container">
     </div>
@@ -123,4 +124,5 @@ function includeDir($directory) {
     </tr>
     </table>
   </body>
+  <script src="../js/page-effects.js"></script>
 </html>

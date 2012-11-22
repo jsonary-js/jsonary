@@ -1,12 +1,12 @@
 var testRenderer = new Jsonary.TableRenderer();
-testRenderer.addColumn("number", "Number");
-testRenderer.addColumn("text", "Text");
+testRenderer.addColumn("number", "Number", true);
+testRenderer.addColumn("text", "Text", true);
 testRenderer.addColumn("alt", "");
 testRenderer.filter = function (data, schemas) {
 	return schemas.containsUrl("test-table.json");
 };
 
-testRenderer.style.addClass = "test-table-add";
-testRenderer.style.addHtml = "+ add row";
+testRenderer.config.addClass = "test-table-add";
+testRenderer.config.addHtml = "+ add row";
 
 Jsonary.render.register(testRenderer);
