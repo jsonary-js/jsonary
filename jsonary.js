@@ -162,23 +162,40 @@ Uri.resolve = function(base, relative) {
 				if (result.query == null) {
 					result.query = base.query;
 				}
-			} else if (result.path.charAt(0) != "/" && base.path != null && base.path.charAt(0) == "/") {
-				var baseParts = base.path.substring(1).split("/");
+			} else if (result.path.charAt(0) != "/" && base.path != null) {
+				var precedingSlash = base.path.charAt(0) == "/";
+				var baseParts;
+				if (precedingSlash) {
+					baseParts = base.path.substring(1).split("/");
+				} else {
+					baseParts = base.path.split("/");
+				}
+				if (baseParts[baseParts.length - 1] == "..") {
+					baseParts.push("");
+				}
 				baseParts.pop();
+				for (var i = baseParts.length - 1; i >= 0; i--) {
+					if (baseParts[i] == ".") {
+						baseParts.slice(i, 1);
+					}
+				}
 				var resultParts = result.path.split("/");
 				for (var i = 0; i < resultParts.length; i++) {
 					var part = resultParts[i];
 					if (part == ".") {
 						continue;
 					} else if (part == "..") {
-						if (baseParts.length > 0) {
+						if (baseParts.length > 0 && baseParts[baseParts.length - 1] != "..") {
 							baseParts.pop();
+						} else if (!precedingSlash) {
+							baseParts = baseParts.concat(resultParts.slice(i));
+							break;
 						}
 					} else {
 						baseParts.push(part);
 					}
 				}
-				result.path = "/" + baseParts.join("/");
+				result.path = (precedingSlash ? "/" : "") + baseParts.join("/");
 			}
 		}
 	}
