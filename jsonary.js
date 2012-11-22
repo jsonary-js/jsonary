@@ -4273,7 +4273,7 @@ publicApi.config = configData;
 	var rendererIdCounter = 0;
 	
 	function Renderer(sourceObj) {
-		this.renderFunction = sourceObj.render;
+		this.renderFunction = sourceObj.render || sourceObj.enhance;
 		this.renderHtmlFunction = sourceObj.renderHtml;
 		this.updateFunction = sourceObj.update;
 		this.filterFunction = sourceObj.filter;
