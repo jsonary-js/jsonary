@@ -1,0 +1,12 @@
+{
+	"title": "title",
+	"description": "Provides a title for the schema",
+	"content": [
+	],
+	"exampleSchema": {
+		"title": "Example Schema"
+	},
+	"exampleData": {
+		"key": "value"
+	}
+}
