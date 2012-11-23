@@ -151,6 +151,7 @@
 				valueElement = null;
 			});
 			if (!data.readOnly()) {
+				var addLinkUsed = false;
 				var addLink = document.createElement("span");
 				addLink.setAttribute("class", "json-object-add");
 				addLink.innerHTML = "add: ";
@@ -171,24 +172,30 @@
 								return false;
 							};
 							keyLink = null;
+							addLinkUsed = true;
 						}
 					})(i, definedProperties[i]);
 				}
-				var newKeyLink = document.createElement("a");
-				newKeyLink.setAttribute("href", "#");
-				newKeyLink.setAttribute("class", "json-object-add-key-new");
-				newKeyLink.appendChild(document.createTextNode("+ new"));
-				newKeyLink.onclick = function () {
-					var newKey = prompt("New key:", "key");
-					if (newKey !== null && !data.property(newKey).defined()) {
-						data.schemas().createValueForProperty(newKey, function (newValue) {
-							data.property(newKey).setValue(newValue);
-						});
-					}
-					return false;
-				};
-				addLink.appendChild(newKeyLink);				
-				element.appendChild(addLink);
+				if (schemas.allowedAdditionalProperties()) {
+					var newKeyLink = document.createElement("a");
+					newKeyLink.setAttribute("href", "#");
+					newKeyLink.setAttribute("class", "json-object-add-key-new");
+					newKeyLink.appendChild(document.createTextNode("+ new"));
+					newKeyLink.onclick = function () {
+						var newKey = prompt("New key:", "key");
+						if (newKey !== null && !data.property(newKey).defined()) {
+							data.schemas().createValueForProperty(newKey, function (newValue) {
+								data.property(newKey).setValue(newValue);
+							});
+						}
+						return false;
+					};
+					addLink.appendChild(newKeyLink);				
+					addLinkUsed = true;
+				}	
+				if (addLinkUsed) {
+					element.appendChild(addLink);
+				}
 				newKeyLink = null;
 				addLink = null;
 			}

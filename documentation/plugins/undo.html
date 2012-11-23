@@ -1,0 +1,85 @@
+<html>
+  <head>
+		<title>Jsonary Undo/Redo Plugin</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<link rel="stylesheet" href="../../renderers/plain.jsonary.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<script src="../../jsonary.js"></script>
+		<script src="../../renderers/plain.jsonary.js"></script>
+		<script src="../../plugins/jsonary.undo.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>Jsonary Undo/Redo Plugin</h1>
+				<div class="tagline">&nbsp;</div>
+
+				<div id="nav">
+					back to
+					<a class="nav-link" href="../../">main page</a>
+				</div>
+				
+				<div class="resource-list">
+					The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">plain.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">plain.jsonary.css</span> - the stylesheet used by the above renderers
+						<li><span class="filename">jsonary.undo.js</span> - the undo/redo plugin
+					</ul>
+				</div>
+	
+				<h2>How it works</h2>
+				<div class="section">
+					<p>Internally, Jsonary uses the "JSON Patch" format to communicate changes to the data.  When a change listener is registered, and data changes are made, the listener is passed an object representing the JSON Patch that was applied, along with the document it was applied to.
+					<p>So to obtain an "undo history", we simply have to collect these patch/document pairs.
+<pre class="example code">
+Jsonary.registerChangeListener(function (patch, document) {
+	undoList.push({patch: patch, document: document});
+});
+</pre>
+					<p>We can then create a method <code>Jsonary.undo()</code> that pops off the latest change from this list, reverses it, and applies the resulting patch to the appropriate document.
+<pre class="example code">
+Jsonary.extend({
+	undo: function () {
+		var lastChange = undoList.pop();
+		if (lastChange != undefined) {
+			lastChange.document.patch(lastChange.patch.inverse());
+		}
+	}
+});
+</pre>
+					<p>Actually, the full code is slightly more complicated than that, because when the patch is applied, the change listener callback is called again.  It also maintains a "redo" list.
+					<p>However, it is still extremely short: <a href="../../plugins/jsonary.undo.js">have a look!</a>
+				</div>
+
+				<h2>Working example</h2>
+				<div class="section">
+					<p>Try editing this item, and then pressing CTRL+Z, CTRL+SHIFT+Z or CTRL+Y (Mac users should be able to use CMD instead).
+					<div class="example" id="example-undo"></div>
+					<script>
+Jsonary.undo.historyLength = 20;
+
+Jsonary.create({
+	"hello": "world!",
+	"integer": 0,
+	"arrayOfBooleans": [true]
+}).addSchema(Jsonary.createSchema({
+	"type": "object",
+	"properties": {
+		"hello": {"type": "string", "default": "world!"},
+		"integer": {"type": "integer"},
+		"arrayOfBooleans": {
+			"type": "array",
+			"items": {"type": "boolean"}
+		}
+	},
+	"additionalProperties": false
+})).renderTo(document.getElementById("example-undo"));
+					</script>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

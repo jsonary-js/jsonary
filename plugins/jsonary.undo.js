@@ -1,27 +1,37 @@
-(function (global) {
+(function () {
 	var modKeyDown = false;
 	var shiftKeyDown = false;
+	var otherKeys = {};
 
+	// Register key down/up listeners to catch undo/redo key combos
 	window.onkeydown = function (e) {
 		var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
 		if (keyCode == 17) {
 			modKeyDown = true;
-		}
-		if (keyCode == 16) {
+		} else if (keyCode == 16) {
 			shiftKeyDown = true;
+		} else {
+			otherKeys[keyCode] = true;
 		}
-		if (keyCode == 90) {	// Z
-			if (modKeyDown) {
-				if (shiftKeyDown) {
-					Jsonary.redo();
-				} else {
-					Jsonary.undo();
-				}
+		var otherKeyCount = 0;
+		for (var otherKeyCode in otherKeys) {
+			if (otherKeyCode != 90 && otherKeyCode != 89) {
+				otherKeyCount++;
 			}
 		}
-		if (keyCode == 89) {	// Y
-			if (modKeyDown && !shiftKeyDown) {
-				Jsonary.redo();
+		if (otherKeyCount == 0) {
+			if (keyCode == 90) {	// Z
+				if (modKeyDown) {
+					if (shiftKeyDown) {
+						Jsonary.redo();
+					} else {
+						Jsonary.undo();
+					}
+				}
+			} else if (keyCode == 89) {	// Y
+				if (modKeyDown && !shiftKeyDown) {
+					Jsonary.redo();
+				}
 			}
 		}
 	};
@@ -29,9 +39,10 @@
 		var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
 		if (keyCode == 17) {
 			modKeyDown = false;
-		}
-		if (keyCode == 16) {
+		} else if (keyCode == 16) {
 			shiftKeyDown = false;
+		} else {
+			delete otherKeys[keyCode];
 		}
 	};
 	
@@ -72,4 +83,4 @@
 		}
 	});
 	Jsonary.undo.historyLength = 10;
-})(this);
+})();

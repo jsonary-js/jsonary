@@ -17,10 +17,22 @@ h1 {
 }
 
 h2 {
+	font-size: 1.5em;
 	border-bottom: 1px solid #BBB;
 	margin-top: 1em;
 	margin-bottom: 0;
 	padding-left: 2.5em;
+}
+
+h3 {
+	font-size: 1em;
+	padding: 0;
+	margin: 0;
+	padding-left: 1em;
+	padding-top: 0.5em;
+	padding-bottom: 0.5em;
+	background-color: #CCC;
+	background-color: rgba(164, 164, 164, 0.5);
 }
 
 .tagline {
@@ -38,6 +50,20 @@ h2 {
 	background-image: URL('background-grey.png');
 	width: 900px;
 	text-align: left;
+}
+
+.box {
+	margin-top: 1em;
+	margin-left: 10%;
+	margin-right: 10%;
+	background-color: #F4F4F4;
+	background-image: URL('background-grey.png');
+	border: 1px solid black;
+}
+
+.box p {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
 }
 
 #nav {
