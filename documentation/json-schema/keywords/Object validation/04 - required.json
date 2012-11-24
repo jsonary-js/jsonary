@@ -1,0 +1,31 @@
+{
+	"title": "required",
+	"description": "specifies which properties must exist in an instance object",
+	"content": [
+		"In the following example, it is not possible to delete \"firstName\" or \"lastName\", although \"middleName\" is still optional.",
+		"In version 3 of the draft, \"required\" was a boolean flag that was set in the child schema (the schema inside \"properties\") to indicate that the property was non-optional.",
+		"In version 4 of the draft, \"required\" is an array of strings in the parent schema, specifying which properties the item must have.",
+		"Jsonary can deal with either form interchangeably."
+	],
+	"exampleSchema": {
+		"type": "object",
+		"properties": {
+			"firstName": {
+				"type": "string"
+			},
+			"middleName": {
+				"type": "string"
+			},
+			"lastName": {
+				"type": "string"
+			}
+		},
+		"required": ["firstName", "lastName"],
+		"additionalProperties": false
+	},
+	"exampleData": {
+		"firstName": "Dwayne",
+		"lastName": "Johnson",
+		"middleName": "Douglas"
+	}
+}

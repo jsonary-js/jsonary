@@ -1,0 +1,8 @@
+{
+	"title": "$schema",
+	"description": "The URI of the JSON Schema meta-schema ",
+	"content": [
+		"This can be used to specify a particular version/variant of the JSON Schema specification being used, by using the URI of the meta-schema for that version.",
+		"The treatment of some properties may depend on the version of the specification being used, so tools can use this value (if present) to choose what behaviour to apply"
+	]
+}

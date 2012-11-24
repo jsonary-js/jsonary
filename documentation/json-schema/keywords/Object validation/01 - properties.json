@@ -1,0 +1,22 @@
+{
+	"title": "properties",
+	"description": "specifies schema(s) for the object properties",
+	"content": [
+		"The value of this property must be an object, containing schemas.",
+		"If an instance has a property defined, and the \"property\" object contains a corresponding entry, then the value of the instance's property is defined by the corresponding sub-schema.",
+		"Jsonary uses the properties defined in this object (as well as the \"required\" keyword) to provide a <code>requiredProperties()</code> function, which is used by the default renderers to provide hints about which properties to add."
+	],
+	"exampleSchema": {
+		"type": "object",
+		"properties": {
+			"firstName": {
+				"title": "First name",
+				"type": "string"
+			},
+			"lastName": {
+				"title": "Last name",
+				"type": "string"
+			}
+		}
+	}
+}

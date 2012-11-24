@@ -1,0 +1,15 @@
+{
+	"title": "items",
+	"description": "specifies schema(s) for the items in an array",
+	"content": [
+		"If this property is a schema, then all items in the instance must match that schema.",
+		"If this property is an array, then it must contain schemas.  In that case, all items in the instance must be valid according to the schema at the corresponding index - this is called \"<I>tuple typing</I>\".  Any surplus items are described by the \"additionalItems\" schema property."
+	],
+	"exampleSchema": {
+		"type": "array",
+		"items": {
+			"title": "Array item",
+			"type": "boolean"
+		}
+	}
+}

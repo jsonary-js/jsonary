@@ -1,0 +1,13 @@
+{
+	"title": "exclusiveMaximum",
+	"description": "Whether numerical values are allowed to exactly equal the maximum",
+	"content": [
+		"If this property is present, \"maximum\" must also be present."
+	],
+	"exampleSchema": {
+		"type": "number",
+		"maximum": 10,
+		"exclusiveMaximum": true
+	},
+	"exampleData": 9.99
+}

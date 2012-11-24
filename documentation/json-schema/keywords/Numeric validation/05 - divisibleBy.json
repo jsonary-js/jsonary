@@ -1,0 +1,11 @@
+{
+	"title": "divisibleBy",
+	"description": "Numeric values must be a multiple of this factor",
+	"content": [
+	],
+	"exampleSchema": {
+		"type": "number",
+		"divisibleBy": 2
+	},
+	"exampleData": 4
+}

@@ -1,0 +1,11 @@
+{
+	"title": "maxLength",
+	"description": "Maximum allowed string length",
+	"content": [
+	],
+	"exampleSchema": {
+		"type": "string",
+		"maxLength": 20
+	},
+	"exampleData": "string value"
+}

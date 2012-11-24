@@ -113,6 +113,7 @@
 			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
 			var lastRow = null;
+			var requiredProperties = data.schemas().requiredProperties();
 			data.properties(function (key, subData) {
 				if (lastRow != null) {
 					lastRow.appendChild(document.createTextNode(","));
@@ -135,16 +136,18 @@
 				element.appendChild(rowElement);
 				
 				if (!data.readOnly()) {
-					var deleteLink = document.createElement("a");
-					deleteLink.setAttribute("href", "#");
-					deleteLink.setAttribute("class", "json-object-delete");
-					deleteLink.appendChild(document.createTextNode("X"));
-					deleteLink.onclick = function () {
-						data.removeProperty(key);
-						return false;
+					if (requiredProperties.indexOf(key) == -1) {
+						var deleteLink = document.createElement("a");
+						deleteLink.setAttribute("href", "#");
+						deleteLink.setAttribute("class", "json-object-delete");
+						deleteLink.appendChild(document.createTextNode("X"));
+						deleteLink.onclick = function () {
+							data.removeProperty(key);
+							return false;
+						}
+						rowElement.insertBefore(deleteLink, keyElement);
+						deleteLink = null;
 					}
-					rowElement.insertBefore(deleteLink, keyElement);
-					deleteLink = null;
 				}
 				rowElement = null;
 				keyElement = null;
@@ -215,6 +218,9 @@
 			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
 			var lastRow = null;
+			var tupleTypingLength = data.schemas().tupleTypingLength();
+			var minItems = data.schemas().minItems();
+			var maxItems = data.schemas().maxItems();
 			data.indices(function (index, subData) {
 				if (lastRow != null) {
 					lastRow.appendChild(document.createTextNode(","));
@@ -231,34 +237,39 @@
 				element.appendChild(rowElement);
 				
 				if (!data.readOnly()) {
-					var deleteLink = document.createElement("a");
-					deleteLink.setAttribute("href", "#");
-					deleteLink.setAttribute("class", "json-object-delete");
-					deleteLink.appendChild(document.createTextNode("X"));
-					deleteLink.onclick = function () {
-						data.removeIndex(index);
-						return false;
+					if ((index >= tupleTypingLength || index == data.length() - 1)
+						&& data.length() > minItems) {
+						var deleteLink = document.createElement("a");
+						deleteLink.setAttribute("href", "#");
+						deleteLink.setAttribute("class", "json-object-delete");
+						deleteLink.appendChild(document.createTextNode("X"));
+						deleteLink.onclick = function () {
+							data.removeIndex(index);
+							return false;
+						}
+						rowElement.insertBefore(deleteLink, valueElement);
+						deleteLink = null;
 					}
-					rowElement.insertBefore(deleteLink, valueElement);
-					deleteLink = null;
 				}
 				rowElement = null;
 				valueElement = null;
 			});
 
 			if (!data.readOnly()) {
-				var addLink = document.createElement("span");
-				addLink.setAttribute("class", "json-array-add");
-				addLink.innerHTML = "+ add";
-				addLink.onclick = function () {
-					var index = data.length();
-					data.schemas().createValueForIndex(index, function (newValue) {
-						data.index(index).setValue(newValue);
-					});
-					return false;
-				};
-				element.appendChild(addLink);
-				addLink = null;
+				if (maxItems == null || data.length() < maxItems) {
+					var addLink = document.createElement("span");
+					addLink.setAttribute("class", "json-array-add");
+					addLink.innerHTML = "+ add";
+					addLink.onclick = function () {
+						var index = data.length();
+						data.schemas().createValueForIndex(index, function (newValue) {
+							data.index(index).setValue(newValue);
+						});
+						return false;
+					};
+					element.appendChild(addLink);
+					addLink = null;
+				}
 			}
 			
 			element.appendChild(document.createTextNode("]"));
@@ -286,20 +297,41 @@
 
 	// Edit string
 	Jsonary.render.register({
-		render: function (element, data) {
+		render: function (element, data, context) {
+			var minLength = data.schemas().minLength();
+			var maxLength = data.schemas().maxLength();
 			listSchemas(element, data.schemas());
 			listLinks(element, data.links());
+			var noticeBox = document.createElement("span");
+			noticeBox.className="json-string-notice";
+			function updateNoticeBox(stringValue) {
+				if (stringValue.length < minLength) {
+					noticeBox.innerHTML = 'Too short (minimum ' + minLength + ' characters)';
+				} else if (maxLength != null && stringValue.length > maxLength) {
+					noticeBox.innerHTML = 'Too long (+' + (stringValue.length - maxLength) + ' characters)';
+				} else if (maxLength != null) {
+					noticeBox.innerHTML = (maxLength - stringValue.length) + ' characters left';
+				} else {
+					noticeBox.innerHTML = "";
+				}
+			}
 			var textarea = document.createElement("textarea");
 			textarea.setAttribute("class", "json-string");
 			textarea.value = data.value()
 			updateTextAreaSize(textarea);
 			textarea.onkeyup = function () {
 				updateTextAreaSize(this);
+				updateNoticeBox(this.value);
+			};
+			textarea.onfocus = function () {
+				updateNoticeBox(data.value());
 			};
 			textarea.onblur = function () {
 				data.setValue(this.value);
+				noticeBox.innerHTML = "";
 			};
 			element.appendChild(textarea);
+			element.appendChild(noticeBox);
 			textarea = null;
 			element = null;
 		},
@@ -353,6 +385,22 @@
 				if (!isNaN(value)) {
 					if (interval != undefined) {
 						value = Math.round(value/interval)*interval;
+					}
+					var valid = true;
+					var minimum = data.schemas().minimum();
+					if (minimum != undefined) {
+						if (value < minimum || (value == minimum && data.schemas().exclusiveMinimum())) {
+							valid = false;
+						}
+					}
+					var maximum = data.schemas().maximum();
+					if (maximum != undefined) {
+						if (value > maximum || (value == maximum && data.schemas().exclusiveMaximum())) {
+							valid = false;
+						}
+					}
+					if (!valid) {
+						value = data.schemas().createValueNumber();
 					}
 					data.setValue(value);
 				}

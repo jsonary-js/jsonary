@@ -1,0 +1,6 @@
+{
+	"title": "uniqueItems",
+	"description": "whether all the values in the array must be distinct",
+	"content": [
+	]
+}

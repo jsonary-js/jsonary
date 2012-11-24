@@ -1,0 +1,14 @@
+{
+	"title": "minItems",
+	"description": "minimum length of an array",
+	"content": [
+	],
+	"exampleSchema": {
+		"type": "array",
+		"minItems": 3,
+		"items": {
+			"title": "Array item",
+			"type": "integer"
+		}
+	}
+}

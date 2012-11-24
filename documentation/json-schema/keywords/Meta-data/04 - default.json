@@ -1,0 +1,15 @@
+{
+	"title": "default",
+	"description": "A default value for any instances following this schema",
+	"content": [
+		"In cases where a default value is required (editing, automated processing), this property provides a value that can be used.",
+		"Jsonary uses this value when editing instances, to fill out new properties/items with appropriate values."
+	],
+	"exampleSchema": {
+		"type": "array",
+		"items": {
+			"type": "string",
+			"default": "default item value"
+		}
+	}
+}

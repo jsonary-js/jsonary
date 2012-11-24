@@ -313,6 +313,22 @@
 					if (interval != undefined) {
 						value = Math.round(value/interval)*interval;
 					}
+					var valid = true;
+					var minimum = data.schemas().minimum();
+					if (minimum != undefined) {
+						if (value < minimum || (value == minimum && data.schemas().exclusiveMinimum())) {
+							valid = false;
+						}
+					}
+					var maximum = data.schemas().maximum();
+					if (maximum != undefined) {
+						if (value > maximum || (value == maximum && data.schemas().exclusiveMaximum())) {
+							valid = false;
+						}
+					}
+					if (!valid) {
+						value = data.schemas().createValueNumber();
+					}
 					data.setValue(value);
 				}
 				return false;

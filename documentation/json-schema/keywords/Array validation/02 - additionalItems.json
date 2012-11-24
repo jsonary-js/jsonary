@@ -1,0 +1,17 @@
+{
+	"title": "additionalItems",
+	"description": "describes extra items, if \"tuple typing\" is being used.",
+	"content": [
+		"If the value of \"items\" is an array (\"<I>tuple typing</I>\"), and if the instance is longer than the list of schemas in \"items\", then the additional items are described by the schema in this property.",
+		"If this value is <code>false</code>, then the instance cannot be longer than the list of schemas in \"items\".  If this value is \"true\", that is equivalent to the empty schema (anything goes)."
+	],
+	"exampleSchema": {
+		"type": "array",
+		"items": [
+			{"type": "boolean"},
+			{"type": "integer"},
+			{"type": "string"}
+		],
+		"additionalItems": {"type": "boolean", "default": false}
+	}
+}

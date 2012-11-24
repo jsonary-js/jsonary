@@ -1,0 +1,13 @@
+{
+	"title": "exclusiveMinimum",
+	"description": "Whether numerical values are allowed to exactly equal the minimum",
+	"content": [
+		"If this property is present, \"minimum\" must also be present."
+	],
+	"exampleSchema": {
+		"type": "number",
+		"minimum": 0,
+		"exclusiveMinimum": true
+	},
+	"exampleData": 1
+}

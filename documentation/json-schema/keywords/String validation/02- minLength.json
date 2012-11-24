@@ -1,0 +1,11 @@
+{
+	"title": "minLength",
+	"description": "Minimum allowed string length",
+	"content": [
+	],
+	"exampleSchema": {
+		"type": "string",
+		"minLength":5
+	},
+	"exampleData": "string value"
+}

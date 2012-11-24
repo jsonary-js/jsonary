@@ -46,7 +46,7 @@
 				if (isset($jsonObj->exampleData)) {
 					$mainHtml .= "var data = Jsonary.create(".json_encode($jsonObj->exampleData).");\n";
 				} else {
-					$mainHtml .= "var data = schema.asList().createValue();\n";
+					$mainHtml .= "var data = Jsonary.create(schema.asList().createValue());\n";
 				}
 				$mainHtml .= "data.addSchema(schema).renderTo(document.getElementById('example{$exampleNumber}'));\n";
 				$mainHtml .= "document.getElementById('example-schema{$exampleNumber}').appendChild(document.createTextNode(JSON.stringify(".json_encode($jsonObj->exampleSchema).", null, 4)));\n";

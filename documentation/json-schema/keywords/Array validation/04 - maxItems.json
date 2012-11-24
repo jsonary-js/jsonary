@@ -1,0 +1,14 @@
+{
+	"title": "maxItems",
+	"description": "maximum length of an array",
+	"content": [
+	],
+	"exampleSchema": {
+		"type": "array",
+		"maxItems": 5,
+		"items": {
+			"title": "Array item",
+			"type": "integer"
+		}
+	}
+}

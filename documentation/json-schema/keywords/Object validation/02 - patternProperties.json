@@ -1,0 +1,25 @@
+{
+	"title": "patternProperties",
+	"description": "describes schemas for properties, matching keys using regular expressions",
+	"content": [
+		"The keys of the \"patternProperties\" objects are used as regular expressions (ECMA 262).  Each property key in the instance is matched against these regular expressions, and for any that match, the corresponding instance property is described by the corresponding schema.",
+		"If a key matches more than one of these regular expressions, or it matches a regular expression in addition to matching a key in \"properties\", then all the relevant sub-schemas apply."
+	],
+	"exampleSchema": {
+		"type": "object",
+		"properties": {
+			"firstName": {
+				"title": "First name"
+			}
+		},
+		"patternProperties": {
+			"[nN]ame": {
+				"type": "string"
+			}
+		}
+	},
+	"exampleData": {
+		"firstName": "Json",
+		"lastName": "Schema"
+	}
+}

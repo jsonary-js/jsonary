@@ -1,0 +1,11 @@
+{
+	"title": "maximum",
+	"description": "Maximum allowed numerical value",
+	"content": [
+	],
+	"exampleSchema": {
+		"type": "number",
+		"maximum": 10
+	},
+	"exampleData": 5
+}

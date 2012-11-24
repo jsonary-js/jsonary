@@ -56,6 +56,7 @@ h3 {
 	margin-top: 1em;
 	margin-left: 10%;
 	margin-right: 10%;
+	padding-bottom: 0.5em;
 	background-color: #F4F4F4;
 	background-image: URL('background-grey.png');
 	border: 1px solid black;
@@ -63,7 +64,12 @@ h3 {
 
 .box p {
 	margin-top: 0.5em;
-	margin-bottom: 0.5em;
+	margin-bottom: 0em;
+}
+
+.description {
+	padding-left: 3em;
+	font-style: italic;
 }
 
 #nav {

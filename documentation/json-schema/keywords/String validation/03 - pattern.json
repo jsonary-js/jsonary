@@ -1,0 +1,7 @@
+{
+	"title": "pattern",
+	"description": "A regular expression (ECMA 262) that a string value must match",
+	"content": [
+		"Because of variations in regular expression implementations between languages, if you expect to be validating in more than one language, it's probably best to stick to the basic features (for instance, no lookaheads)."
+	]
+}

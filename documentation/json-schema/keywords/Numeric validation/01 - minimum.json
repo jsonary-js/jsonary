@@ -1,0 +1,11 @@
+{
+	"title": "minimum",
+	"description": "Minimum allowed numerical value",
+	"content": [
+	],
+	"exampleSchema": {
+		"type": "number",
+		"minimum": 0
+	},
+	"exampleData": 1
+}
