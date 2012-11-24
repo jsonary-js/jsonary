@@ -55,7 +55,8 @@ SchemaMatch.prototype = {
 		this.andMatches = [];
 		var andSchemas = this.schema.andSchemas();
 		andSchemas.each(function (index, subSchema) {
-			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchema, function () {
+			var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "and" + index);
+			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
 				thisSchemaMatch.update();
 			}, false);
 			thisSchemaMatch.andMatches.push(subMatch);
@@ -66,7 +67,8 @@ SchemaMatch.prototype = {
 		this.notMatches = [];
 		var notSchemas = this.schema.notSchemas();
 		notSchemas.each(function (index, subSchema) {
-			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchema, function () {
+			var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "not" + index);
+			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
 				thisSchemaMatch.update();
 			}, false);
 			thisSchemaMatch.notMatches.push(subMatch);

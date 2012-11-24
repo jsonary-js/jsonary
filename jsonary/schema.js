@@ -164,9 +164,9 @@ Schema.prototype = {
 				result.push(disallowData.asSchema());
 			}
 		}
-		this.data.property("not").items(function (index, data) {
-			result.push(data.asSchema());
-		});
+		if (this.data.property("not").defined()) {
+			result.push(this.data.property("not").asSchema());
+		}
 		return new SchemaList(result);
 	},
 	types: function () {

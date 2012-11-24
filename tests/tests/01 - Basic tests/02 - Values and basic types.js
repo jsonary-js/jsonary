@@ -47,7 +47,7 @@ tests.add("Basic type (new)", function () {
 tests.add("Basic type (setValue)", function () {
 	var data, basicType, i;
 	// Yes, we have 5 in there twice.  When the previous basic type was a number, we shouldn't be guessing type as integer
-	var basicTypes = ["null", "boolean", "integer", "number", "number", "string", "array", "object"];
+	var basicTypes = ["null", "boolean", "integer", "number", "integer", "string", "array", "object"];
 	var values = [null, true, 5, 5.3, 5, "string", [], {}];
 	data = Jsonary.create("Initial value");
 	for (i = 0; i < basicTypes.length; i++) {
