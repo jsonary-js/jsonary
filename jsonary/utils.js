@@ -9,7 +9,7 @@ var Utils = {
 		} else if (typeof data == "string") {
 			return "string";
 		} else if (typeof data == "number") {
-			if (data % 1 == 0 && prevType !== "number") {
+			if (data % 1 == 0) { // we used to persist "number" if the previous type was "number", but that caused problems for no real benefit.
 				return "integer";
 			} else {
 				return "number";

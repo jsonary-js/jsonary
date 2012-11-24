@@ -146,6 +146,29 @@ Schema.prototype = {
 		});
 		return new SchemaList(result);
 	},
+	notSchemas: function () {
+		var result = [];
+		var disallowData = this.data.property("disallow");
+		if (disallowData.defined()) {
+			if (disallowData.basicType() == "array") {
+				disallowData.indices(function (i, e) {
+					if (e.basicType() == "string") {
+						result.push(publicApi.createSchema({type: e.value()}));
+					} else {
+						result.push(e.asSchema());
+					}
+				});
+			} else if (disallowData.basicType() == "string") {
+				result.push(publicApi.createSchema({type: disallowData.value()}));
+			} else {
+				result.push(disallowData.asSchema());
+			}
+		}
+		this.data.property("not").items(function (index, data) {
+			result.push(data.asSchema());
+		});
+		return new SchemaList(result);
+	},
 	types: function () {
 		var typeData = this.data.property("type");
 		if (typeData.defined()) {

@@ -287,3 +287,80 @@ tests.add("Exclusive min/max (number)", function () {
 	
 	return true;
 });
+
+tests.add("min/max and oneOf", function () {
+	var data = Jsonary.create(5);
+	var schema = Jsonary.createSchema({
+		"oneOf": [
+			{
+				"minimum": 0
+			},
+			{
+				"maximum": 10
+			}
+		]
+	});
+
+	var match = null;
+	var failReason = null;
+	var notificationCount = 0;
+	var schemaKey = Jsonary.getMonitorKey();
+	data.addSchemaMatchMonitor(schemaKey, schema, function (m, fr) {
+		notificationCount++;
+		match = m;
+		failReason = fr;
+	});
+
+	this.assert(!match, "should not match initially");
+	this.assert(notificationCount == 1, "notificationCount == 1, not " + notificationCount);
+
+	data.setValue(11);
+	this.assert(match, "should match after stage 2");
+	this.assert(notificationCount == 2, "notificationCount == 2, not " + notificationCount);
+
+	data.setValue(5);
+	this.assert(!match, "should not match after stage 3");
+	this.assert(notificationCount == 3, "notificationCount == 3, not " + notificationCount);
+
+	data.setValue(-1);
+	this.assert(match, "should match after stage 4");
+	this.assert(notificationCount == 4, "notificationCount == 4, not " + notificationCount);
+
+	return true;
+});
+
+tests.add("\"not\" match (disallow)", function () {
+	var data = Jsonary.create("other value");
+	var schema = Jsonary.createSchema({
+		"disallow": ["integer", {
+			"enum": ["value"]
+		}]
+	});
+
+	var match = null;
+	var failReason = null;
+	var notificationCount = 0;
+	var schemaKey = Jsonary.getMonitorKey();
+	data.addSchemaMatchMonitor(schemaKey, schema, function (m, fr) {
+		notificationCount++;
+		match = m;
+		failReason = fr;
+	});
+
+	this.assert(match, "should match initially");
+	this.assert(notificationCount == 1, "notificationCount == 1, not " + notificationCount);
+
+	data.setValue("value");
+	this.assert(!match, "should not match after stage 2");
+	this.assert(notificationCount == 2, "notificationCount == 2, not " + notificationCount);
+
+	data.setValue(5.5);
+	this.assert(match, "should match after stage 3");
+	this.assert(notificationCount == 3, "notificationCount == 3, not " + notificationCount);
+
+	data.setValue(5);
+	this.assert(!match, "should not match after stage 4");
+	this.assert(notificationCount == 4, "notificationCount == 4, not " + notificationCount);
+
+	return true;
+});

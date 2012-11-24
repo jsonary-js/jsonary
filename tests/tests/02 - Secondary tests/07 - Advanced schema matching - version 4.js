@@ -77,3 +77,34 @@ tests.add("Required properties (v4-style)", function () {
 	return true;
 });
 
+tests.add("\"not\" match (not keyword)", function () {
+	var data = Jsonary.create("other value");
+	var schema = Jsonary.createSchema({
+		"not": {
+			"enum": ["value"]
+		}
+	});
+
+	var match = null;
+	var failReason = null;
+	var notificationCount = 0;
+	var schemaKey = Jsonary.getMonitorKey();
+	data.addSchemaMatchMonitor(schemaKey, schema, function (m, fr) {
+		notificationCount++;
+		match = m;
+		failReason = fr;
+	});
+
+	this.assert(match, "should match initially");
+	this.assert(notificationCount == 1, "notificationCount == 1, not " + notificationCount);
+
+	data.setValue("value");
+	this.assert(!match, "should not match after stage 2");
+	this.assert(notificationCount == 2, "notificationCount == 2, not " + notificationCount);
+
+	data.setValue(5);
+	this.assert(match, "should match after stage 3");
+	this.assert(notificationCount == 3, "notificationCount == 3, not " + notificationCount);
+
+	return true;
+});

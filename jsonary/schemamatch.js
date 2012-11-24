@@ -21,6 +21,7 @@ function SchemaMatch(monitorKey, data, schema) {
 		thisSchemaMatch.setupXorSelectors();
 		thisSchemaMatch.setupOrSelectors();
 		thisSchemaMatch.setupAndMatches();
+		thisSchemaMatch.setupNotMatches();
 		thisSchemaMatch.dataUpdated();
 	});
 }
@@ -58,6 +59,17 @@ SchemaMatch.prototype = {
 				thisSchemaMatch.update();
 			}, false);
 			thisSchemaMatch.andMatches.push(subMatch);
+		});
+	},
+	setupNotMatches: function () {
+		var thisSchemaMatch = this;
+		this.notMatches = [];
+		var notSchemas = this.schema.notSchemas();
+		notSchemas.each(function (index, subSchema) {
+			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchema, function () {
+				thisSchemaMatch.update();
+			}, false);
+			thisSchemaMatch.notMatches.push(subMatch);
 		});
 	},
 	addMonitor: function (monitor, executeImmediately) {
@@ -213,6 +225,13 @@ SchemaMatch.prototype = {
 			if (!andMatch.match) {
 				var message = "extended schema #" + i + ": " + andMatch.message;
 				throw new SchemaMatchFailReason(message, this.schema, andMatch.failReason);
+			}
+		}
+		for (var i = 0; i < this.notMatches.length; i++) {
+			var notMatch = this.notMatches[i];
+			if (notMatch.match) {
+				var message = "\"not\" schema #" + i + " matches";
+				throw new SchemaMatchFailReason(message, this.schema);
 			}
 		}
 		for (var key in this.xorSelectors) {
