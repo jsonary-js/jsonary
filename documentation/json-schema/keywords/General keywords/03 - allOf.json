@@ -1,0 +1,19 @@
+{
+	"title": "allOf",
+	"description": "<B>version 4 only</B> - provides a list of schemas, all of which apply to the instance",
+	"content": [
+	],
+	"exampleSchema": {
+		"title": "Container schema",
+		"type": "string",
+		"allOf": [
+			{
+				"title": "First sub-schema"
+			},
+			{
+				"title": "Second sub-schema"
+			}
+		]
+	},
+	"exampleData": "test string"
+}

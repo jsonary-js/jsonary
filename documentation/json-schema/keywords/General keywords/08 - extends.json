@@ -1,0 +1,8 @@
+{
+	"title": "extends",
+	"description": "<B>version 3 only</B> - basically equivalent to \"allOf\"",
+	"content": [
+		"This property can either be a schema or a list of schemas, all of which describe the instance.  It was renamed to \"allOf\" in version 4, as the name was causing confusion.",
+		"Jsonary bundles the contents of this property (if present) up with the \"allOf\" property, for its <code>andSchemas()</code> method."
+	]
+}

@@ -1,0 +1,38 @@
+{
+	"title": "oneOf",
+	"description": "<B>version 4 only</B> - provides a list of schemas, exactly one of must apply to the instance",
+	"content": [
+		"If exactly one schema from the list matches the instance, then that schema describes the instance.  If more than one schema matches, then none of the schemas apply.",
+		"Jsonary makes this list of schemas available using the <code>xorSchemas()</code> method of schemas / schema lists.",
+		"The example below illustrates this.  If the value is five or greater, then one sub-schema applies.  If it's zero or less, then the other applies.  If it's in between, then neither applies (and in fact, the instance is not valid according to the parent schema)."
+	],
+	"exampleSchema": {
+		"type": "object",
+		"properties": {
+			"numberProperty": {"type": "integer"}
+		},
+		"required": ["numberProperty"],
+		"additionalProperties": false,
+		"oneOf": [
+			{
+				"title": "Less than 5",
+				"properties": {
+					"numberProperty": {
+						"maximum": 5,
+						"exclusiveMaximum": true
+					}
+				}
+			},
+			{
+				"title": "More than 0",
+				"properties": {
+					"numberProperty": {
+						"minimum": 0,
+						"exclusiveMinimum": true
+					}
+				}
+			}
+		]
+	},
+	"exampleData": {"numberProperty": 10}
+}

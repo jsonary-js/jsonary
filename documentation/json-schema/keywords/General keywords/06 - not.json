@@ -1,0 +1,7 @@
+{
+	"title": "not",
+	"description": "<B>version 4 only</B> - schema negation",
+	"content": [
+		"The instance must not be valid according to the schema specified in this property."
+	]
+}

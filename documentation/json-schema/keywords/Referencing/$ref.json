@@ -1,0 +1,8 @@
+{
+	"title": "$ref",
+	"description": "defines a reference to another JSON Schema",
+	"content": [
+		"If present, this property defines a reference.  The URI should be resolved relative to the URI of the current schema, and the result should be used in place of the current schema.",
+		"As of version 4, the best way to refer to a sub-schema is with a JSON Pointer fragment (e.g. <code>myschema.json#/properties/myKey</code>)."
+	]
+}

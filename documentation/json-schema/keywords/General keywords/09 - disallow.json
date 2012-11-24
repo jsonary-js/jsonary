@@ -1,0 +1,8 @@
+{
+	"title": "disallow",
+	"description": "<B>version 3 only</B> - old-style schema negation",
+	"content": [
+		"This value is basically the inverse of version 3's \"type\".  It can be a simple string (\"object\", \"array\" etc.), or an array of strings and schemas.",
+		"Jsonary parses this property (along with \"not\") for the result of the <code>notSchemas()</code> method, allowing seamless use of version 3 and version 4 schemas."
+	]
+}

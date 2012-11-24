@@ -1,0 +1,19 @@
+{
+	"title": "format",
+	"description": "semantic format of the instance value",
+	"content": [
+		"This property is a string, that provides more information about the specify type of data the instance represents.",
+		"The specification provides some example values:",
+		[
+			"date-time",
+			"email",
+			"hostname",
+			"ipv4",
+			"ipv6",
+			"uri"
+		],
+		"Any string value is allowed, though, and version 3 provided more example values.",
+		"Validation is not guaranteed to use this keyword - it is therefore unwise to use this keyword inside \"not\", \"oneOf\" or \"anyOf\" clauses, as behaviour could be inconsitent across environments.",
+		"Jsonary does not use this keyword for validation."
+	]
+}
