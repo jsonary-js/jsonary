@@ -85,7 +85,7 @@
 				<h2>Introduction to JSON Schemas</h2>
 				<div class="section">
 					<p>A JSON Schema is always an object.  "Keywords" are properties of this object which have special meaning.
-					<p>This page documents the keywords defined for JSON Schemas.  The keywords have been grouped into sections, and most keywords have an interactive example.
+					<p>This page documents the <U>validation</U> keywords defined for JSON Schemas.  The keywords have been grouped into sections, and most keywords have an interactive example.
 					<p>This page is currently incomplete.
 					<!--<p>If you want to try out writing some schemas of your own, then try <a href="../../demos/index-input.html">this page</a>, which allows you to edit a schema and a data item.-->
 				</div>

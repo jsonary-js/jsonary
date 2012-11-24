@@ -276,7 +276,7 @@ var Utils = {
 		} else if (typeof data == "string") {
 			return "string";
 		} else if (typeof data == "number") {
-			if (data % 1 == 0 && prevType !== "number") {
+			if (data % 1 == 0) { // we used to persist "number" if the previous type was "number", but that caused problems for no real benefit.
 				return "integer";
 			} else {
 				return "number";
@@ -2203,6 +2203,29 @@ Schema.prototype = {
 		});
 		return new SchemaList(result);
 	},
+	notSchemas: function () {
+		var result = [];
+		var disallowData = this.data.property("disallow");
+		if (disallowData.defined()) {
+			if (disallowData.basicType() == "array") {
+				disallowData.indices(function (i, e) {
+					if (e.basicType() == "string") {
+						result.push(publicApi.createSchema({type: e.value()}));
+					} else {
+						result.push(e.asSchema());
+					}
+				});
+			} else if (disallowData.basicType() == "string") {
+				result.push(publicApi.createSchema({type: disallowData.value()}));
+			} else {
+				result.push(disallowData.asSchema());
+			}
+		}
+		this.data.property("not").items(function (index, data) {
+			result.push(data.asSchema());
+		});
+		return new SchemaList(result);
+	},
 	types: function () {
 		var typeData = this.data.property("type");
 		if (typeData.defined()) {
@@ -2629,6 +2652,7 @@ function SchemaMatch(monitorKey, data, schema) {
 		thisSchemaMatch.setupXorSelectors();
 		thisSchemaMatch.setupOrSelectors();
 		thisSchemaMatch.setupAndMatches();
+		thisSchemaMatch.setupNotMatches();
 		thisSchemaMatch.dataUpdated();
 	});
 }
@@ -2666,6 +2690,17 @@ SchemaMatch.prototype = {
 				thisSchemaMatch.update();
 			}, false);
 			thisSchemaMatch.andMatches.push(subMatch);
+		});
+	},
+	setupNotMatches: function () {
+		var thisSchemaMatch = this;
+		this.notMatches = [];
+		var notSchemas = this.schema.notSchemas();
+		notSchemas.each(function (index, subSchema) {
+			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchema, function () {
+				thisSchemaMatch.update();
+			}, false);
+			thisSchemaMatch.notMatches.push(subMatch);
 		});
 	},
 	addMonitor: function (monitor, executeImmediately) {
@@ -2823,6 +2858,13 @@ SchemaMatch.prototype = {
 				throw new SchemaMatchFailReason(message, this.schema, andMatch.failReason);
 			}
 		}
+		for (var i = 0; i < this.notMatches.length; i++) {
+			var notMatch = this.notMatches[i];
+			if (notMatch.match) {
+				var message = "\"not\" schema #" + i + " matches";
+				throw new SchemaMatchFailReason(message, this.schema);
+			}
+		}
 		for (var key in this.xorSelectors) {
 			var selector = this.xorSelectors[key];
 			if (selector.selectedOption == null) {
@@ -2888,14 +2930,22 @@ SchemaMatch.prototype = {
 			}
 		}
 		var minimum = this.schema.minimum();
-		if (minimum != undefined) {
-			if (value < minimum) {
+		if (minimum !== undefined) {
+			if (this.schema.exclusiveMinimum()) {
+				if (value <= minimum) {
+					throw new SchemaMatchFailReason("Number must be > " + minimum);
+				}
+			} else if (value < minimum) {
 				throw new SchemaMatchFailReason("Number must be >= " + minimum);
 			}
 		}
 		var maximum = this.schema.maximum();
 		if (maximum != undefined) {
-			if (value > maximum) {
+			if (this.schema.exclusiveMaximum()) {
+				if (value >= maximum) {
+					throw new SchemaMatchFailReason("Number must be < " + maximum);
+				}
+			} else if (value > maximum) {
 				throw new SchemaMatchFailReason("Number must be <= " + maximum);
 			}
 		}

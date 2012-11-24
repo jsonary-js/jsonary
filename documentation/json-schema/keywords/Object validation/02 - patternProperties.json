@@ -14,6 +14,7 @@
 		},
 		"patternProperties": {
 			"[nN]ame": {
+				"title": "Name",
 				"type": "string"
 			}
 		}
