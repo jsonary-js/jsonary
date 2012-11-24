@@ -1648,7 +1648,7 @@ function Data(document, secrets, parent, parentKey) {
 							value.splice(index, 0, operation.value());
 							length++;
 							if (indexData[index] != undefined) {
-								secrets.schemas.addSchemasForIndex(key, indexData[index]);
+								secrets.schemas.addSchemasForIndex(index, indexData[index]);
 							}
 						} else if (operation.action() == "remove" || operation.action() == "move") {
 							if (index >= length) {
@@ -2131,15 +2131,24 @@ Schema.prototype = {
 		return this.data.propertyValue("default");
 	},
 	propertySchemas: function (key) {
+		var schemas = [];
 		var subSchema = this.data.property("properties").property(key);
-		if (!subSchema.defined()) {
-			subSchema = this.data.property("additionalProperties");
-		}
 		if (subSchema.defined()) {
-			var result = subSchema.asSchema();
-			return new SchemaList([result]);
+			schemas.push(subSchema.asSchema());
 		}
-		return new SchemaList();
+		this.data.property("patternProperties").properties(function (patternKey, subData) {
+			var regEx = new RegExp(patternKey);
+			if (regEx.test(key)) {
+				schemas.push(subData.asSchema());
+			}
+		});
+		if (schemas.length == 0) {
+			subSchema = this.data.property("additionalProperties");
+			if (subSchema.defined()) {
+				schemas.push(subSchema.asSchema());
+			}
+		}
+		return new SchemaList(schemas);
 	},
 	propertyDependencies: function (key) {
 		var dependencies = this.data.property("dependencies");
@@ -2278,10 +2287,30 @@ Schema.prototype = {
 		return this.data.property("enum");
 	},
 	minItems: function () {
-		return this.data.propertyValue("minItems");
+		var result = this.data.propertyValue("minItems");
+		if (result == undefined) {
+			return 0;
+		}
+		return result;
 	},
 	maxItems: function () {
 		return this.data.propertyValue("maxItems");
+	},
+	tupleTypingLength: function () {
+		if (this.data.property("items").basicType() != "array") {
+			return 0;
+		}
+		return this.data.property("items").length();
+	},
+	minLength: function () {
+		var result = this.data.propertyValue("minLength");
+		if (result == undefined) {
+			return 0;
+		}
+		return result;
+	},
+	maxLength: function () {
+		return this.data.propertyValue("maxLength");
 	},
 	numberInterval: function() {
 		return this.data.propertyValue("divisibleBy");
@@ -2297,6 +2326,16 @@ Schema.prototype = {
 	},
 	exclusiveMaximum: function () {
 		return !!this.data.propertyValue("exclusiveMaximum");
+	},
+	minProperties: function () {
+		var result = this.data.propertyValue("minProperties");
+		if (result == undefined) {
+			return 0;
+		}
+		return result;
+	},
+	maxProperties: function () {
+		return this.data.propertyValue("maxProperties");
 	},
 	definedProperties: function() {
 		var result = {};
@@ -3199,6 +3238,26 @@ SchemaList.prototype = {
 		});
 		return additionalProperties;
 	},
+	minProperties: function () {
+		var minProperties = 0;
+		for (var i = 0; i < this.length; i++) {
+			var otherMinProperties = this[i].minProperties();
+			if (otherMinProperties > minProperties) {
+				minProperties = otherMinProperties;
+			}
+		}
+		return minProperties;
+	},
+	maxProperties: function () {
+		var maxProperties = undefined;
+		for (var i = 0; i < this.length; i++) {
+			var otherMaxProperties = this[i].maxProperties();
+			if (!(otherMaxProperties > maxProperties)) {
+				maxProperties = otherMaxProperties;
+			}
+		}
+		return maxProperties;
+	},
 	basicTypes: function () {
 		var basicTypes = ALL_TYPES_DICT;
 		for (var i = 0; i < this.length; i++) {
@@ -3296,6 +3355,26 @@ SchemaList.prototype = {
 		this.minimum();
 		return this.exclusiveMinimum;
 	},
+	minLength: function () {
+		var minLength = 0;
+		for (var i = 0; i < this.length; i++) {
+			var otherMinLength = this[i].minLength();
+			if (otherMinLength > minLength) {
+				minLength = otherMinLength;
+			}
+		}
+		return minLength;
+	},
+	maxLength: function () {
+		var maxLength = undefined;
+		for (var i = 0; i < this.length; i++) {
+			var otherMaxLength = this[i].maxLength();
+			if (!(otherMaxLength > maxLength)) {
+				maxLength = otherMaxLength;
+			}
+		}
+		return maxLength;
+	},
 	minItems: function () {
 		var minItems = 0;
 		for (var i = 0; i < this.length; i++) {
@@ -3315,6 +3394,16 @@ SchemaList.prototype = {
 			}
 		}
 		return maxItems;
+	},
+	tupleTypingLength: function () {
+		var maxTuple = 0;
+		for (var i = 0; i < this.length; i++) {
+			var otherTuple = this[i].tupleTypingLength();
+			if (otherTuple > maxTuple) {
+				maxTuple = otherTuple;
+			}
+		}
+		return maxTuple;
 	},
 	requiredProperties: function () {
 		var required = {};

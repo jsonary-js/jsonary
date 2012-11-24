@@ -94,14 +94,19 @@ tests.add("Adding duplicate schema", function () {
 tests.add("Child property schemas", function () {
 	var data = Jsonary.create(exampleData);
 	var schema = Jsonary.createSchema(exampleSchemaData);
-	data.addSchema(schema);
+	var extraSchema = Jsonary.createSchema({
+		"patternProperties": {
+			"[Yy]": {"title": "Property containing a Y"}
+		}
+	});
+	data.addSchema(schema).addSchema(extraSchema);
 	var schemas = data.property("title").schemas();
 	this.assert(schemas.length === 1, "schema count for title should be 1");
 	var schemas = data.property("key").schemas();
 	this.assert(schemas.length === 0, "schema count for key should be 0");
 	data.property("key").setValue("value");
 	var schemas = data.property("key").schemas();
-	this.assert(schemas.length === 1, "schema count for key should now be 1");
+	this.assert(schemas.length === 2, "schema count for key should now be 2, was " + schemas.length);
 	data.property("key").remove();
 	var schemas = data.property("key").schemas();
 	this.assert(schemas.length === 0, "schema count for key should be 0 again");

@@ -309,7 +309,7 @@ function Data(document, secrets, parent, parentKey) {
 							value.splice(index, 0, operation.value());
 							length++;
 							if (indexData[index] != undefined) {
-								secrets.schemas.addSchemasForIndex(key, indexData[index]);
+								secrets.schemas.addSchemasForIndex(index, indexData[index]);
 							}
 						} else if (operation.action() == "remove" || operation.action() == "move") {
 							if (index >= length) {

@@ -74,15 +74,24 @@ Schema.prototype = {
 		return this.data.propertyValue("default");
 	},
 	propertySchemas: function (key) {
+		var schemas = [];
 		var subSchema = this.data.property("properties").property(key);
-		if (!subSchema.defined()) {
-			subSchema = this.data.property("additionalProperties");
-		}
 		if (subSchema.defined()) {
-			var result = subSchema.asSchema();
-			return new SchemaList([result]);
+			schemas.push(subSchema.asSchema());
 		}
-		return new SchemaList();
+		this.data.property("patternProperties").properties(function (patternKey, subData) {
+			var regEx = new RegExp(patternKey);
+			if (regEx.test(key)) {
+				schemas.push(subData.asSchema());
+			}
+		});
+		if (schemas.length == 0) {
+			subSchema = this.data.property("additionalProperties");
+			if (subSchema.defined()) {
+				schemas.push(subSchema.asSchema());
+			}
+		}
+		return new SchemaList(schemas);
 	},
 	propertyDependencies: function (key) {
 		var dependencies = this.data.property("dependencies");
@@ -221,10 +230,30 @@ Schema.prototype = {
 		return this.data.property("enum");
 	},
 	minItems: function () {
-		return this.data.propertyValue("minItems");
+		var result = this.data.propertyValue("minItems");
+		if (result == undefined) {
+			return 0;
+		}
+		return result;
 	},
 	maxItems: function () {
 		return this.data.propertyValue("maxItems");
+	},
+	tupleTypingLength: function () {
+		if (this.data.property("items").basicType() != "array") {
+			return 0;
+		}
+		return this.data.property("items").length();
+	},
+	minLength: function () {
+		var result = this.data.propertyValue("minLength");
+		if (result == undefined) {
+			return 0;
+		}
+		return result;
+	},
+	maxLength: function () {
+		return this.data.propertyValue("maxLength");
 	},
 	numberInterval: function() {
 		return this.data.propertyValue("divisibleBy");
@@ -240,6 +269,16 @@ Schema.prototype = {
 	},
 	exclusiveMaximum: function () {
 		return !!this.data.propertyValue("exclusiveMaximum");
+	},
+	minProperties: function () {
+		var result = this.data.propertyValue("minProperties");
+		if (result == undefined) {
+			return 0;
+		}
+		return result;
+	},
+	maxProperties: function () {
+		return this.data.propertyValue("maxProperties");
 	},
 	definedProperties: function() {
 		var result = {};
