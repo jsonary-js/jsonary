@@ -3,7 +3,7 @@
 	"description": "defines the URI of the current instance",
 	"content": [
 		"The value of this property is the URI that the schema is claiming to have.  The client is not obliged to believe this value.",
-		"In version 3, this was the only way to refer to sub-schemas (you had to define <code>\"id\": \"#someFragment\"</code> and then reference that using <code>$ref</code> elsewhere.",
+		"In version 3, this was the only way to refer to sub-schemas (you had to define <code>\"id\": \"#someFragment\"</code> and then reference that using <code>$ref</code> elsewhere).",
 		"As of version 4, the best way to reference sub-schemas is using a JSON Pointer fragment.",
 		"Jsonary ignores this property, relying entirely on JSON Pointer fragments."
 	]
