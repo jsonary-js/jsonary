@@ -280,14 +280,22 @@ SchemaMatch.prototype = {
 			}
 		}
 		var minimum = this.schema.minimum();
-		if (minimum != undefined) {
-			if (value < minimum) {
+		if (minimum !== undefined) {
+			if (this.schema.exclusiveMinimum()) {
+				if (value <= minimum) {
+					throw new SchemaMatchFailReason("Number must be > " + minimum);
+				}
+			} else if (value < minimum) {
 				throw new SchemaMatchFailReason("Number must be >= " + minimum);
 			}
 		}
 		var maximum = this.schema.maximum();
 		if (maximum != undefined) {
-			if (value > maximum) {
+			if (this.schema.exclusiveMaximum()) {
+				if (value >= maximum) {
+					throw new SchemaMatchFailReason("Number must be < " + maximum);
+				}
+			} else if (value > maximum) {
 				throw new SchemaMatchFailReason("Number must be <= " + maximum);
 			}
 		}
