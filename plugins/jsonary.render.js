@@ -11,7 +11,9 @@
 
 	var prefixPrefix = "Jsonary";
 	var prefixCounter = 0;
-
+	
+	var componentList = ["type-selector", "renderer"];
+	
 	function RenderContext(elementIdPrefix) {
 		var thisContext = this;
 		this.elementLookup = {};
@@ -56,7 +58,7 @@
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
 				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
-				var renderer = selectRenderer(data, prevUiState);
+				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.render(element, data, prevContext);
 				} else {
@@ -66,20 +68,29 @@
 		});
 	}
 	RenderContext.prototype = {
+		usedComponents: [],
 		baseContext: null,
 		subContext: function (elementId, data, uiStartingState) {
+			var usedComponents = [];
+			if (this.data == data) {
+				usedComponents = this.usedComponents.slice(0);
+				if (this.renderer != undefined) {
+					usedComponents.push(this.renderer.component);
+				}
+			}
 			if (typeof elementId == "object") {
 				elementId = elementId.id;
 			}
-			function F(baseContext, elementId, data, uiState) {
+			function F(baseContext, elementId, data, uiState, usedComponents) {
 				this.baseContext = baseContext;
 				this.elementId = elementId;
 				this.data = data;
 				this.uiState = uiState;
+				this.usedComponents = usedComponents;
 			}
 			var base = (this.baseContext != undefined) ? this.baseContext : this;
 			F.prototype = base;
-			return new F(base, elementId, data, uiStartingState);
+			return new F(base, elementId, data, uiStartingState, usedComponents);
 		},
 		render: function (element, data, uiStartingState) {
 			// If data is a URL, then fetch it and call back
@@ -118,7 +129,7 @@
 			if (this.elementLookup[uniqueId].indexOf(element.id) == -1) {
 				this.elementLookup[uniqueId].push(element.id);
 			}
-			var renderer = selectRenderer(data, uiStartingState);
+			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
 			if (renderer != undefined) {
 				subContext.renderer = renderer;
 				renderer.render(element, data, subContext);
@@ -134,7 +145,7 @@
 			var subContext = this.subContext(elementId, data, uiStartingState);
 
 			var startingStateString = encodeUiState(uiStartingState);
-			var renderer = selectRenderer(data, uiStartingState);
+			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
 			subContext.renderer = renderer;
 			
 			var innerHtml = renderer.renderHtml(data, subContext);
@@ -168,7 +179,7 @@
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
 				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
-				var renderer = selectRenderer(data, prevUiState);
+				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
@@ -267,6 +278,7 @@
 			}
 		}
 		this.uniqueId = rendererIdCounter++;
+		this.component = (sourceObj.component != undefined) ? sourceObj.component : componentList[componentList.length - 1];
 	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
@@ -341,12 +353,20 @@
 		return rendererLookup[rendererId];
 	}
 
-	function selectRenderer(data, uiStartingState) {
+	function selectRenderer(data, uiStartingState, usedComponents) {
 		var schemas = data.schemas();
-		for (var i = rendererList.length - 1; i >= 0; i--) {
-			var renderer = rendererList[i];
-			if (renderer.canRender(data, schemas, uiStartingState)) {
-				return renderer;
+		for (var j = 0; j < componentList.length; j++) {
+			if (usedComponents.indexOf(componentList[j]) == -1) {
+				var component = componentList[j];
+				for (var i = rendererList.length - 1; i >= 0; i--) {
+					var renderer = rendererList[i];
+					if (renderer.component != component) {
+						continue;
+					}
+					if (renderer.canRender(data, schemas, uiStartingState)) {
+						return renderer;
+					}
+				}
 			}
 		}
 	}

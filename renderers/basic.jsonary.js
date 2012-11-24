@@ -1,4 +1,20 @@
 (function () {
+	Jsonary.render.register({
+		component: "type-selector",
+		renderHtml: function (data, context) {
+			return "WRAPPER: " + context.renderHtml(data);
+		},
+		update: function () {
+		},
+		filter: function (data) {
+			return true;
+		}
+	});
+
+	function escapeHtml(text) {
+		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+	}
+
 	function listSchemas(element, schemaList) {
 		var linkElement = null;
 		schemaList.each(function (index, schema) {
@@ -37,7 +53,7 @@
 		element = null;
 		linkElement = null;
 	}
-
+	
 	// Display raw JSON
 	Jsonary.render.register({
 		render: function (element, data) {
