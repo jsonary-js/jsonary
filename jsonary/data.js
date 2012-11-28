@@ -308,8 +308,8 @@ function Data(document, secrets, parent, parentKey) {
 							}
 							value.splice(index, 0, operation.value());
 							length++;
-							if (indexData[index] != undefined) {
-								secrets.schemas.addSchemasForIndex(index, indexData[index]);
+							if (indexData[value.length - 1] != undefined) {
+								secrets.schemas.addSchemasForIndex(value.length - 1, indexData[value.length - 1]);
 							}
 						} else if (operation.action() == "remove" || operation.action() == "move") {
 							if (index >= length) {
@@ -373,8 +373,8 @@ function Data(document, secrets, parent, parentKey) {
 							}
 							value.splice(index, 0, operation.subjectValue());
 							length++;
-							if (indexData[index] != undefined) {
-								secrets.schemas.addSchemasForIndex(key, indexData[index]);
+							if (indexData[value.length - 1] != undefined) {
+								secrets.schemas.addSchemasForIndex(key, indexData[value.length - 1]);
 							}
 						}
 					}
@@ -536,6 +536,15 @@ Data.prototype = {
 	},
 	removeItem: function (index) {
 		this.index(index).remove();
+		return this;
+	},
+	insertItem: function (index, value) {
+		if (this.basicType() != "array") {
+			throw Error("cannot insert into a non-array");
+		}
+		var patch = new Patch();
+		patch.add(this.item(index).pointerPath(), value);
+		this.document.patch(patch, this);
 		return this;
 	},
 	push: function (value) {

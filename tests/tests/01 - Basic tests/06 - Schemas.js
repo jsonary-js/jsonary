@@ -130,6 +130,17 @@ tests.add("Child index schemas", function () {
 	return true;
 });
 
+tests.add("Inserting array items", function () {
+	var data = Jsonary.create([0]).addSchema(Jsonary.createSchema({
+		"items": {}
+	}));
+	this.assert(data.item(0).schemas().length == 1, "first item should have a schema");	
+	this.assert(data.item(1).schemas().length == 0, "second item should not have a schema");
+	data.insertItem(0, "test");
+	this.assert(data.item(1).schemas().length == 1, "second item should now have one schema");
+	return true;
+});
+
 tests.add("Remote schema", function () {
 	var thisTest = this;
 	var schemaUrl = "http://example.com/schema";
