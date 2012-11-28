@@ -11,8 +11,12 @@
 
 	var prefixPrefix = "Jsonary";
 	var prefixCounter = 0;
-	
-	var componentList = ["type-selector", "renderer"];
+
+	var componentNames = {
+		TYPE_SELECTOR: "type-selector",
+		RENDERER: "renderer",
+	};	
+	var componentList = [componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
 	function RenderContext(elementIdPrefix) {
 		var thisContext = this;
@@ -81,7 +85,7 @@
 			if (typeof elementId == "object") {
 				elementId = elementId.id;
 			}
-			function F(baseContext, elementId, data, uiState, usedComponents) {
+			function Context(baseContext, elementId, data, uiState, usedComponents) {
 				this.baseContext = baseContext;
 				this.elementId = elementId;
 				this.data = data;
@@ -89,8 +93,8 @@
 				this.usedComponents = usedComponents;
 			}
 			var base = (this.baseContext != undefined) ? this.baseContext : this;
-			F.prototype = base;
-			return new F(base, elementId, data, uiStartingState, usedComponents);
+			Context.prototype = base;
+			return new Context(base, elementId, data, uiStartingState, usedComponents);
 		},
 		render: function (element, data, uiStartingState) {
 			// If data is a URL, then fetch it and call back
@@ -261,6 +265,7 @@
 		}
 		element.innerHTML = "";
 	};
+	render.Components = componentNames;
 	
 	/**********/
 

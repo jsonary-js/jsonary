@@ -1,8 +1,30 @@
 (function () {
+	function escapeHtml(text) {
+		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+	}
+
 	Jsonary.render.register({
-		component: "type-selector",
+		component: Jsonary.render.Components.TYPE_SELECTOR,
+		render: function (element, data, context) {
+			var container = document.createElement("span");
+			listSchemas(container, data.schemas());
+			listLinks(container, data.links());
+			element.insertBefore(container, element.childNodes[0]);
+		},
 		renderHtml: function (data, context) {
-			return "WRAPPER: " + context.renderHtml(data);
+			if (context.uiState.subState == undefined) {
+				context.uiState.subState = {};
+			}
+			return context.actionHtml("action", "displaySchemas") + ": " + context.renderHtml(data, context.uiState.subState);
+		},
+		action: function (context, actionName) {
+			if (actionName == "displaySchemas") {
+				var data = context.data;
+				var explicitSchemas = data.schemas().explicitSchemas();
+				console.log(explicitSchemas);
+			} else {
+				alert("Unkown action: " + actionName);
+			}
 		},
 		update: function () {
 		},
@@ -10,10 +32,6 @@
 			return true;
 		}
 	});
-
-	function escapeHtml(text) {
-		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
-	}
 
 	function listSchemas(element, schemaList) {
 		var linkElement = null;
@@ -60,8 +78,6 @@
 			var spanElement = document.createElement("span");
 			spanElement.setAttribute("class", "json-raw");
 			spanElement.appendChild(document.createTextNode(JSON.stringify(data.value())));
-			listSchemas(element, data.schemas());
-			listLinks(element, data.links());
 			element.appendChild(spanElement);
 			spanElement = null;
 			element = null;
@@ -86,8 +102,6 @@
 	// Edit raw JSON
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
-			listLinks(element, data.links());
 			var textarea = document.createElement("textarea");
 			textarea.setAttribute("class", "json-raw");
 			textarea.value = JSON.stringify(data.value(), null, 4);
@@ -126,8 +140,6 @@
 	Jsonary.render.register({
 		render: function (element, data) {
 			element.appendChild(document.createTextNode("{"));
-			listSchemas(element, data.schemas());
-			listLinks(element, data.links());
 			var lastRow = null;
 			var requiredProperties = data.schemas().requiredProperties();
 			data.properties(function (key, subData) {
@@ -231,8 +243,6 @@
 	Jsonary.render.register({
 		render: function (element, data) {
 			element.appendChild(document.createTextNode("["));
-			listSchemas(element, data.schemas());
-			listLinks(element, data.links());
 			var lastRow = null;
 			var tupleTypingLength = data.schemas().tupleTypingLength();
 			var minItems = data.schemas().minItems();
@@ -299,8 +309,6 @@
 	// Display string
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
-			listLinks(element, data.links());
 			var textspan = document.createElement("span");
 			textspan.setAttribute("class", "json-string");
 			textspan.appendChild(document.createTextNode(data.value()));
@@ -316,8 +324,6 @@
 		render: function (element, data, context) {
 			var minLength = data.schemas().minLength();
 			var maxLength = data.schemas().maxLength();
-			listSchemas(element, data.schemas());
-			listLinks(element, data.links());
 			var noticeBox = document.createElement("span");
 			noticeBox.className="json-string-notice";
 			function updateNoticeBox(stringValue) {
@@ -359,8 +365,6 @@
 	// Display/edit boolean	
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
-			listLinks(element, data.links());
 			var valueSpan = document.createElement("a");
 			if (data.value()) {
 				valueSpan.setAttribute("class", "json-boolean-true");
@@ -388,8 +392,6 @@
 	// Edit number
 	Jsonary.render.register({
 		render: function (element, data) {
-			listSchemas(element, data.schemas());
-			listLinks(element, data.links());
 			var valueSpan = document.createElement("a");
 			valueSpan.setAttribute("href", "#");
 			valueSpan.setAttribute("class", "json-number");

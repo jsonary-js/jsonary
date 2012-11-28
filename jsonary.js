@@ -3811,6 +3811,8 @@ SchemaSet.prototype = {
 
 			thisSchemaSet.schemas[schemaKey][thisSchemaSet.schemas[schemaKey].length] = schema;
 
+			// TODO: this actually forces us to walk the entire data tree, as far as it is defined by the schemas
+			//       Do we really want to do this?  I mean, it's necessary if we ever want to catch the "self" links, but if not then it's not that helpful.
 			thisSchemaSet.dataObj.properties(function (key, child) {
 				var subSchemas = schema.propertySchemas(key);
 				for (var i = 0; i < subSchemas.length; i++) {
@@ -4096,7 +4098,7 @@ LinkInstance.prototype = {
 };
 
 function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
-	var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "auto");
+	var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "$");
 	this.xorSelector = new XorSelector(schemaKey, options, schemaSet.dataObj);
 	this.xorSelector.onMatchChange(function (selectedOption) {
 		schemaSet.removeSchema(inferredSchemaKey);
@@ -4110,7 +4112,7 @@ function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 	var inferredSchemaKeys = [];
 	var optionsApplied = [];
 	for (var i = 0; i < options.length; i++) {
-		inferredSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "auto" + i);
+		inferredSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "$" + i);
 		optionsApplied[i] = false;
 	}
 	this.orSelector = new OrSelector(schemaKey, options, schemaSet.dataObj);
@@ -4169,8 +4171,12 @@ publicApi.config = configData;
 
 	var prefixPrefix = "Jsonary";
 	var prefixCounter = 0;
-	
-	var componentList = ["type-selector", "renderer"];
+
+	var componentNames = {
+		TYPE_SELECTOR: "type-selector",
+		RENDERER: "renderer",
+	};	
+	var componentList = [componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
 	function RenderContext(elementIdPrefix) {
 		var thisContext = this;
@@ -4239,7 +4245,7 @@ publicApi.config = configData;
 			if (typeof elementId == "object") {
 				elementId = elementId.id;
 			}
-			function F(baseContext, elementId, data, uiState, usedComponents) {
+			function Context(baseContext, elementId, data, uiState, usedComponents) {
 				this.baseContext = baseContext;
 				this.elementId = elementId;
 				this.data = data;
@@ -4247,8 +4253,8 @@ publicApi.config = configData;
 				this.usedComponents = usedComponents;
 			}
 			var base = (this.baseContext != undefined) ? this.baseContext : this;
-			F.prototype = base;
-			return new F(base, elementId, data, uiStartingState, usedComponents);
+			Context.prototype = base;
+			return new Context(base, elementId, data, uiStartingState, usedComponents);
 		},
 		render: function (element, data, uiStartingState) {
 			// If data is a URL, then fetch it and call back
@@ -4419,6 +4425,7 @@ publicApi.config = configData;
 		}
 		element.innerHTML = "";
 	};
+	render.Components = componentNames;
 	
 	/**********/
 

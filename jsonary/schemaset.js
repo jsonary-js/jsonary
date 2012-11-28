@@ -667,6 +667,8 @@ SchemaSet.prototype = {
 
 			thisSchemaSet.schemas[schemaKey][thisSchemaSet.schemas[schemaKey].length] = schema;
 
+			// TODO: this actually forces us to walk the entire data tree, as far as it is defined by the schemas
+			//       Do we really want to do this?  I mean, it's necessary if we ever want to catch the "self" links, but if not then it's not that helpful.
 			thisSchemaSet.dataObj.properties(function (key, child) {
 				var subSchemas = schema.propertySchemas(key);
 				for (var i = 0; i < subSchemas.length; i++) {
@@ -952,7 +954,7 @@ LinkInstance.prototype = {
 };
 
 function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
-	var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "auto");
+	var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "$");
 	this.xorSelector = new XorSelector(schemaKey, options, schemaSet.dataObj);
 	this.xorSelector.onMatchChange(function (selectedOption) {
 		schemaSet.removeSchema(inferredSchemaKey);
@@ -966,7 +968,7 @@ function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 	var inferredSchemaKeys = [];
 	var optionsApplied = [];
 	for (var i = 0; i < options.length; i++) {
-		inferredSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "auto" + i);
+		inferredSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "$" + i);
 		optionsApplied[i] = false;
 	}
 	this.orSelector = new OrSelector(schemaKey, options, schemaSet.dataObj);

@@ -2,7 +2,7 @@
 	"title": "allOf",
 	"description": "<B>version 4 only</B> - provides a list of schemas, all of which apply to the instance",
 	"content": [
-		"Jsonary makes these schemas (along with any schemas in \"extends\") available using the <code>andSchemas()</code> method of schemas / schema lists.",
+		"Jsonary makes these schemas (along with any schemas in \"extends\") available using the <code>andSchemas()</code> method of schemas / schema lists."
 	],
 	"exampleSchema": {
 		"title": "Container schema",
