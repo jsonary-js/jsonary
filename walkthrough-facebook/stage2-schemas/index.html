@@ -48,7 +48,7 @@ Jsonary.getData({
 	url: "https://graph.facebook.com/me",
 	data: {access_token: authToken}
 }, function (data) {
-	$('<div></div>').renderJson(data).appendTo('#main');
+	$('&lt;div&gt;&lt;/div&gt;').renderJson(data).appendTo('#main');
 }, <B>"schemas/me.json"</B>);
 </pre>
 					<p>You can see that in action <a href="fb-schema-me.html" target="facebookSchemaMe">here</a>.  As you can hopefully see, the data displayed about the current user is associated with a schema titled "Current user".

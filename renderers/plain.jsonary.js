@@ -1,4 +1,166 @@
 (function () {
+	function escapeHtml(text) {
+		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+	}
+
+	Jsonary.render.register({
+		component: Jsonary.render.Components.ADD_REMOVE,
+		renderHtml: function (data, context) {
+			if (!data.defined()) {
+				if (!data.readOnly()) {
+					return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
+				}
+				return "";
+			}
+			if (context.uiState.subState == undefined) {
+				context.uiState.subState = {};
+			}
+			var showDelete = false;
+			if (!data.readOnly() && data.parent() != null) {
+				var parent = data.parent();
+				if (parent.basicType() == "object") {
+					var required = parent.schemas().requiredProperties();
+					showDelete = required.indexOf(data.parentKey()) == -1;
+				} else if (parent.basicType() == "array") {
+					var tupleTypingLength = parent.schemas().tupleTypingLength();
+					var minItems = parent.schemas().minItems();
+					var index = parseInt(data.parentKey());
+					if ((index >= tupleTypingLength || index == parent.length() - 1)
+						&& parent.length() > minItems) {
+						showDelete = true;
+					}
+				}
+			}
+			var result = "";
+			if (showDelete) {
+				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
+			}
+			result += context.renderHtml(data, context.uiState.subState);
+			return result;
+		},
+		action: function (context, actionName) {
+			if (actionName == "create") {
+				var data = context.data;
+				var parent = data.parent();
+				var finalComponent = data.parentKey();
+				var parentSchemas = parent.schemas();
+				if (parent.basicType() == "array") {
+					parentSchemas.createValueForIndex(finalComponent, function (newValue) {
+						parent.index(finalComponent).setValue(newValue);
+					});
+				} else {
+					if (parent.basicType() != "object") {
+						parent.setValue({});
+					}
+					parentSchemas.createValueForProperty(finalComponent, function (newValue) {
+						parent.property(finalComponent).setValue(newValue);
+					});
+				}
+			} else if (actionName == "remove") {
+				context.data.remove();
+			} else {
+				alert("Unkown action: " + actionName);
+			}
+		},
+		update: function () {
+		},
+		filter: function (data) {
+			return true;
+		}
+	});
+
+	Jsonary.render.register({
+		component: Jsonary.render.Components.TYPE_SELECTOR,
+		render: function (element, data, context) {
+			var container = document.createElement("span");
+			listLinks(container, data.links());
+			element.insertBefore(container, element.childNodes[0]);
+		},
+		renderHtml: function (data, context) {
+			if (context.uiState.subState == undefined) {
+				context.uiState.subState = {};
+			}
+			if (data.readOnly()) {
+				return context.renderHtml(data, context.uiState.subState);
+			}
+			var result = "";
+			var decisionSchemas = data.schemas().decisionSchemas();
+			var basicTypes = data.schemas().basicTypes();
+			if (context.uiState.dialogOpen) {
+				result += '<span class="json-select-type-dialog">';
+				result += context.actionHtml('close', "closeDialog");
+				decisionSchemas.each(function (index, schema) {
+				});
+				if (basicTypes.length > 1) {
+					result += '<br>Select basic type:<ul>';
+					for (var i = 0; i < basicTypes.length; i++) {
+						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
+							continue;
+						}
+						if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
+							result += '<li>' + basicTypes[i];
+						} else {
+							result += '<li>' + context.actionHtml(basicTypes[i], 'select-basic-type', basicTypes[i]);
+						}
+					}
+					result += '</ul>';
+				}
+				result += '</span>';
+			}
+			//if (decisionSchemas.length > 0 || basicTypes.length > 1) {
+			// Only select basic types for now
+			if (basicTypes.length > 1) {
+				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
+			}
+			result += context.renderHtml(data, context.uiState.subState);
+			return result;
+		},
+		action: function (context, actionName, basicType) {
+			if (actionName == "closeDialog") {
+				context.uiState.dialogOpen = false;
+				return true;
+			} else if (actionName == "openDialog") {
+				context.uiState.dialogOpen = true;
+				return true;
+			} else if (actionName == "select-basic-type") {
+				context.uiState.dialogOpen = false;
+				var schemas = context.data.schemas().concat([Jsonary.createSchema({type: basicType})]);
+				schemas.createValue(function (newValue) {
+					context.data.setValue(newValue);
+				});
+			} else {
+				alert("Unkown action: " + actionName);
+			}
+		},
+		update: function (element, data, context, operation) {
+			var pointerPath = data.pointerPath();
+			return operation.subjectEquals(pointerPath) || operation.targetEquals(pointerPath);
+		},
+		filter: function (data) {
+			return true;
+		}
+	});
+
+	function listSchemas(element, schemaList) {
+		var linkElement = null;
+		schemaList.each(function (index, schema) {
+			if (schema.title() == null) {
+				return;
+			}
+			linkElement = document.createElement("a");
+			linkElement.setAttribute("href", schema.referenceUrl());
+			linkElement.setAttribute("class", "json-schema");
+			linkElement.appendChild(document.createTextNode(schema.title()));
+			element.appendChild(linkElement);
+			linkElement.onclick = function () {
+				alert(schema.referenceUrl() + "\n" + JSON.stringify(schema.data.value(), null, 4));
+				return false;
+			};
+		});
+		element = null;
+		linkElement = null;
+	}
+
 	function listLinks(element, links) {
 		var linkElement = null;
 		for (var i = 0; i < links.length; i++) {
@@ -17,14 +179,13 @@
 		element = null;
 		linkElement = null;
 	}
-
+	
 	// Display raw JSON
 	Jsonary.render.register({
 		render: function (element, data) {
 			var spanElement = document.createElement("span");
 			spanElement.setAttribute("class", "json-raw");
 			spanElement.appendChild(document.createTextNode(JSON.stringify(data.value())));
-			listLinks(element, data.links());
 			element.appendChild(spanElement);
 			spanElement = null;
 			element = null;
@@ -49,7 +210,6 @@
 	// Edit raw JSON
 	Jsonary.render.register({
 		render: function (element, data) {
-			listLinks(element, data.links());
 			var textarea = document.createElement("textarea");
 			textarea.setAttribute("class", "json-raw");
 			textarea.value = JSON.stringify(data.value(), null, 4);
@@ -86,12 +246,16 @@
 	
 	// Display/edit objects
 	Jsonary.render.register({
-		render: function (element, data, context) {
+		render: function (element, data) {
 			element.appendChild(document.createTextNode("{"));
-			listLinks(element, data.links());
+			var lastRow = null;
 			data.properties(function (key, subData) {
+				if (lastRow != null) {
+					lastRow.appendChild(document.createTextNode(","));
+				}
 				var rowElement = document.createElement("div");
 				rowElement.setAttribute('class', "json-object-pair");
+				lastRow = rowElement;
 
 				var keyElement = document.createElement("span");
 				keyElement.setAttribute('class', "json-object-key");
@@ -102,22 +266,10 @@
 				var valueElement = document.createElement("span");
 				valueElement['class'] = "json-object-value";
 				rowElement.appendChild(valueElement);
-				context.render(valueElement, subData);
+				Jsonary.render(valueElement, subData);
 			
 				element.appendChild(rowElement);
 				
-				if (!data.readOnly()) {
-					var deleteLink = document.createElement("a");
-					deleteLink.setAttribute("href", "#");
-					deleteLink.setAttribute("class", "json-object-delete");
-					deleteLink.appendChild(document.createTextNode("X"));
-					deleteLink.onclick = function () {
-						data.removeProperty(key);
-						return false;
-					}
-					rowElement.insertBefore(deleteLink, keyElement);
-					deleteLink = null;
-				}
 				rowElement = null;
 				keyElement = null;
 				valueElement = null;
@@ -162,7 +314,7 @@
 						}
 						return false;
 					};
-					addLink.appendChild(newKeyLink);		
+					addLink.appendChild(newKeyLink);				
 					addLinkUsed = true;
 				}	
 				if (addLinkUsed) {
@@ -172,6 +324,7 @@
 				addLink = null;
 			}
 			element.appendChild(document.createTextNode("}"));
+			
 			element = null;
 		},
 		filter: function (data) {
@@ -181,48 +334,45 @@
 
 	// Display/edit arrays
 	Jsonary.render.register({
-		render: function (element, data, context) {
-			listLinks(element, data.links());
+		render: function (element, data) {
+			var lastRow = null;
+			var tupleTypingLength = data.schemas().tupleTypingLength();
+			var minItems = data.schemas().minItems();
+			var maxItems = data.schemas().maxItems();
 			data.indices(function (index, subData) {
+				if (lastRow != null) {
+					lastRow.appendChild(document.createTextNode(","));
+				}
 				var rowElement = document.createElement("div");
 				rowElement.setAttribute('class', "json-array-item");
+				lastRow = rowElement;
 
 				var valueElement = document.createElement("span");
 				valueElement['class'] = "json-array-value";
 				rowElement.appendChild(valueElement);
-				context.render(valueElement, subData);
+				Jsonary.render(valueElement, subData);
 			
 				element.appendChild(rowElement);
 				
-				if (!data.readOnly()) {
-					var deleteLink = document.createElement("a");
-					deleteLink.setAttribute("href", "#");
-					deleteLink.setAttribute("class", "json-object-delete");
-					deleteLink.appendChild(document.createTextNode("X"));
-					deleteLink.onclick = function () {
-						data.removeIndex(index);
-						return false;
-					}
-					rowElement.insertBefore(deleteLink, valueElement);
-					deleteLink = null;
-				}
 				rowElement = null;
 				valueElement = null;
 			});
 
 			if (!data.readOnly()) {
-				var addLink = document.createElement("span");
-				addLink.setAttribute("class", "json-array-add");
-				addLink.innerHTML = "+ add";
-				addLink.onclick = function () {
-					var index = data.length();
-					data.schemas().createValueForIndex(index, function (newValue) {
-						data.index(data.length()).setValue(newValue);
-					});
-					return false;
-				};
-				element.appendChild(addLink);
-				addLink = null;
+				if (maxItems == null || data.length() < maxItems) {
+					var addLink = document.createElement("span");
+					addLink.setAttribute("class", "json-array-add");
+					addLink.innerHTML = "+ add";
+					addLink.onclick = function () {
+						var index = data.length();
+						data.schemas().createValueForIndex(index, function (newValue) {
+							data.index(index).setValue(newValue);
+						});
+						return false;
+					};
+					element.appendChild(addLink);
+					addLink = null;
+				}
 			}
 			
 			element = null;
@@ -235,7 +385,6 @@
 	// Display string
 	Jsonary.render.register({
 		render: function (element, data) {
-			listLinks(element, data.links());
 			var textspan = document.createElement("span");
 			textspan.setAttribute("class", "json-string");
 			textspan.appendChild(document.createTextNode(data.value()));
@@ -248,19 +397,39 @@
 
 	// Edit string
 	Jsonary.render.register({
-		render: function (element, data) {
-			listLinks(element, data.links());
+		render: function (element, data, context) {
+			var minLength = data.schemas().minLength();
+			var maxLength = data.schemas().maxLength();
+			var noticeBox = document.createElement("span");
+			noticeBox.className="json-string-notice";
+			function updateNoticeBox(stringValue) {
+				if (stringValue.length < minLength) {
+					noticeBox.innerHTML = 'Too short (minimum ' + minLength + ' characters)';
+				} else if (maxLength != null && stringValue.length > maxLength) {
+					noticeBox.innerHTML = 'Too long (+' + (stringValue.length - maxLength) + ' characters)';
+				} else if (maxLength != null) {
+					noticeBox.innerHTML = (maxLength - stringValue.length) + ' characters left';
+				} else {
+					noticeBox.innerHTML = "";
+				}
+			}
 			var textarea = document.createElement("textarea");
 			textarea.setAttribute("class", "json-string");
 			textarea.value = data.value()
 			updateTextAreaSize(textarea);
 			textarea.onkeyup = function () {
 				updateTextAreaSize(this);
+				updateNoticeBox(this.value);
+			};
+			textarea.onfocus = function () {
+				updateNoticeBox(data.value());
 			};
 			textarea.onblur = function () {
 				data.setValue(this.value);
+				noticeBox.innerHTML = "";
 			};
 			element.appendChild(textarea);
+			element.appendChild(noticeBox);
 			textarea = null;
 			element = null;
 		},
@@ -272,7 +441,6 @@
 	// Display/edit boolean	
 	Jsonary.render.register({
 		render: function (element, data) {
-			listLinks(element, data.links());
 			var valueSpan = document.createElement("a");
 			if (data.value()) {
 				valueSpan.setAttribute("class", "json-boolean-true");
@@ -300,7 +468,6 @@
 	// Edit number
 	Jsonary.render.register({
 		render: function (element, data) {
-			listLinks(element, data.links());
 			var valueSpan = document.createElement("a");
 			valueSpan.setAttribute("href", "#");
 			valueSpan.setAttribute("class", "json-number");
@@ -361,44 +528,6 @@
 		},
 		filter: function (data) {
 			return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
-		}
-	});
-
-	// Display undefined JSON
-	Jsonary.render.register({
-		render: function (element, data) {
-			if (!data.readOnly()) {
-				var parent = data.parent();
-				var pointerComponent = Jsonary.splitPointer(data.pointerPath());
-				var finalComponent = pointerComponent.pop();
-				if (parent != null) {
-					var addLink = document.createElement("a");
-					addLink.href = "#";
-					addLink.className = "json-undefined-create";
-					addLink.innerHTML = "+" + finalComponent;
-					addLink.onclick = function () {
-						var parentSchemas = parent.schemas();
-						if (parent.basicType() == "array") {
-							parentSchemas.createValueForIndex(finalComponent, function (newValue) {
-								parent.index(finalComponent).setValue(newValue);
-							});
-						} else {
-							if (parent.basicType() != "object") {
-								parent.setValue({});
-							}
-							parentSchemas.createValueForProperty(finalComponent, function (newValue) {
-								parent.property(finalComponent).setValue(newValue);
-							});
-						}
-						return false;
-					};
-					element.appendChild(addLink);
-					addLink = null;
-				}
-			}
-		},
-		filter: function (data) {
-			return !data.defined();
 		}
 	});
 

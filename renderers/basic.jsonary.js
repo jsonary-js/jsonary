@@ -81,6 +81,9 @@
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
 			}
+			if (data.readOnly()) {
+				return context.renderHtml(data, context.uiState.subState);
+			}
 			var result = "";
 			var decisionSchemas = data.schemas().decisionSchemas();
 			var basicTypes = data.schemas().basicTypes();
@@ -92,6 +95,9 @@
 				if (basicTypes.length > 1) {
 					result += '<br>Select basic type:<ul>';
 					for (var i = 0; i < basicTypes.length; i++) {
+						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
+							continue;
+						}
 						if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
 							result += '<li>' + basicTypes[i];
 						} else {
