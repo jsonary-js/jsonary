@@ -55,7 +55,7 @@ textarea {
 	font-weight: bold;
 	color: #F00;
 	text-decoration: none;
-	margin-right: 1em;	
+	margin-right: 1em;
 }
 
 .json-object-add {
@@ -77,6 +77,23 @@ textarea {
 	border: 1px dotted #BBB;
 	background-color: #EEF;
 	font-style: italic;
+}
+
+.json-select-type-dialog {
+	position: absolute;
+	border: 2px solid black;
+	border-radius: 10px;
+	background-color: white;
+}
+
+.json-select-type {
+	font-family: monospace;
+	border: 1px solid #666;
+	color: #666;
+	font-weight: bold;
+	padding-left: 0.3em;
+	padding-right: 0.3em;
+	background-color: #DDD;
 }
 
 /**** JSON Array ****/

@@ -6,8 +6,20 @@
 			"number": {"type": "integer"},
 			"text": {"type": "string"},
 			"alt": {
-				"type": "array",
-				"items": {"type": "string"}
+				"type": ["array", "string"],
+				"items": {
+					"oneOf": [
+						{
+							"title": "String",
+							"type": "string"
+						},
+						{
+							"title": "Integer",
+							"type": "integer"
+						}
+					]
+				},
+				"default": []
 			}
 		},
 		"required": ["number", "text"]

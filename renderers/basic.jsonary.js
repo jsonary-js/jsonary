@@ -4,6 +4,72 @@
 	}
 
 	Jsonary.render.register({
+		component: Jsonary.render.Components.ADD_REMOVE,
+		renderHtml: function (data, context) {
+			if (!data.defined()) {
+				if (!data.readOnly()) {
+					return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
+				}
+				return "";
+			}
+			if (context.uiState.subState == undefined) {
+				context.uiState.subState = {};
+			}
+			var showDelete = false;
+			if (!data.readOnly() && data.parent() != null) {
+				var parent = data.parent();
+				if (parent.basicType() == "object") {
+					var required = parent.schemas().requiredProperties();
+					showDelete = required.indexOf(data.parentKey()) == -1;
+				} else if (parent.basicType() == "array") {
+					var tupleTypingLength = parent.schemas().tupleTypingLength();
+					var minItems = parent.schemas().minItems();
+					var index = parseInt(data.parentKey());
+					if ((index >= tupleTypingLength || index == parent.length() - 1)
+						&& parent.length() > minItems) {
+						showDelete = true;
+					}
+				}
+			}
+			var result = "";
+			if (showDelete) {
+				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
+			}
+			result += context.renderHtml(data, context.uiState.subState);
+			return result;
+		},
+		action: function (context, actionName) {
+			if (actionName == "create") {
+				var data = context.data;
+				var parent = data.parent();
+				var finalComponent = data.parentKey();
+				var parentSchemas = parent.schemas();
+				if (parent.basicType() == "array") {
+					parentSchemas.createValueForIndex(finalComponent, function (newValue) {
+						parent.index(finalComponent).setValue(newValue);
+					});
+				} else {
+					if (parent.basicType() != "object") {
+						parent.setValue({});
+					}
+					parentSchemas.createValueForProperty(finalComponent, function (newValue) {
+						parent.property(finalComponent).setValue(newValue);
+					});
+				}
+			} else if (actionName == "remove") {
+				context.data.remove();
+			} else {
+				alert("Unkown action: " + actionName);
+			}
+		},
+		update: function () {
+		},
+		filter: function (data) {
+			return true;
+		}
+	});
+
+	Jsonary.render.register({
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		render: function (element, data, context) {
 			var container = document.createElement("span");
@@ -15,13 +81,45 @@
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
 			}
-			return context.actionHtml("action", "displaySchemas") + ": " + context.renderHtml(data, context.uiState.subState);
+			var result = "";
+			var decisionSchemas = data.schemas().decisionSchemas();
+			var basicTypes = data.schemas().basicTypes();
+			if (context.uiState.dialogOpen) {
+				result += '<span class="json-select-type-dialog">';
+				result += context.actionHtml('close', "closeDialog");
+				decisionSchemas.each(function (index, schema) {
+				});
+				if (basicTypes.length > 1) {
+					result += '<br>Select basic type:<ul>';
+					for (var i = 0; i < basicTypes.length; i++) {
+						if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
+							result += '<li>' + basicTypes[i];
+						} else {
+							result += '<li>' + context.actionHtml(basicTypes[i], 'select-basic-type', basicTypes[i]);
+						}
+					}
+					result += '</ul>';
+				}
+				result += '</span>';
+			}
+			if (decisionSchemas.length > 0 || basicTypes.length > 1) {
+				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
+			}
+			result += context.renderHtml(data, context.uiState.subState);
+			return result;
 		},
-		action: function (context, actionName) {
-			if (actionName == "displaySchemas") {
-				var data = context.data;
-				var explicitSchemas = data.schemas().explicitSchemas();
-				console.log(explicitSchemas);
+		action: function (context, actionName, basicType) {
+			if (actionName == "closeDialog") {
+				context.uiState.dialogOpen = false;
+				return true;
+			} else if (actionName == "openDialog") {
+				context.uiState.dialogOpen = true;
+				return true;
+			} else if (actionName == "select-basic-type") {
+				var schemas = context.data.schemas().concat([Jsonary.createSchema({type: basicType})]);
+				schemas.createValue(function (newValue) {
+					context.data.setValue(newValue);
+				});
 			} else {
 				alert("Unkown action: " + actionName);
 			}
@@ -141,7 +239,6 @@
 		render: function (element, data) {
 			element.appendChild(document.createTextNode("{"));
 			var lastRow = null;
-			var requiredProperties = data.schemas().requiredProperties();
 			data.properties(function (key, subData) {
 				if (lastRow != null) {
 					lastRow.appendChild(document.createTextNode(","));
@@ -163,20 +260,6 @@
 			
 				element.appendChild(rowElement);
 				
-				if (!data.readOnly()) {
-					if (requiredProperties.indexOf(key) == -1) {
-						var deleteLink = document.createElement("a");
-						deleteLink.setAttribute("href", "#");
-						deleteLink.setAttribute("class", "json-object-delete");
-						deleteLink.appendChild(document.createTextNode("X"));
-						deleteLink.onclick = function () {
-							data.removeProperty(key);
-							return false;
-						}
-						rowElement.insertBefore(deleteLink, keyElement);
-						deleteLink = null;
-					}
-				}
 				rowElement = null;
 				keyElement = null;
 				valueElement = null;
@@ -262,21 +345,6 @@
 			
 				element.appendChild(rowElement);
 				
-				if (!data.readOnly()) {
-					if ((index >= tupleTypingLength || index == data.length() - 1)
-						&& data.length() > minItems) {
-						var deleteLink = document.createElement("a");
-						deleteLink.setAttribute("href", "#");
-						deleteLink.setAttribute("class", "json-object-delete");
-						deleteLink.appendChild(document.createTextNode("X"));
-						deleteLink.onclick = function () {
-							data.removeIndex(index);
-							return false;
-						}
-						rowElement.insertBefore(deleteLink, valueElement);
-						deleteLink = null;
-					}
-				}
 				rowElement = null;
 				valueElement = null;
 			});
@@ -452,44 +520,6 @@
 		},
 		filter: function (data) {
 			return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
-		}
-	});
-
-	// Display undefined JSON
-	Jsonary.render.register({
-		render: function (element, data) {
-			if (!data.readOnly()) {
-				var parent = data.parent();
-				if (parent != null) {
-					var addLink = document.createElement("a");
-					addLink.href = "#";
-					addLink.className = "json-undefined-create";
-					addLink.innerHTML = "+ create";
-					addLink.onclick = function () {
-						var pointerComponent = Jsonary.splitPointer(data.pointerPath());
-						var parentSchemas = parent.schemas();
-						var finalComponent = pointerComponent.pop();
-						if (parent.basicType() == "array") {
-							parentSchemas.createValueForIndex(finalComponent, function (newValue) {
-								parent.index(finalComponent).setValue(newValue);
-							});
-						} else {
-							if (parent.basicType() != "object") {
-								parent.setValue({});
-							}
-							parentSchemas.createValueForProperty(finalComponent, function (newValue) {
-								parent.property(finalComponent).setValue(newValue);
-							});
-						}
-						return false;
-					};
-					element.appendChild(addLink);
-					addLink = null;
-				}
-			}
-		},
-		filter: function (data) {
-			return !data.defined();
 		}
 	});
 

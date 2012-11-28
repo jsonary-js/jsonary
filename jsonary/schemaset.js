@@ -99,6 +99,16 @@ SchemaList.prototype = {
 		}
 		return new SchemaList(newList);
 	},
+	decisionSchemas: function () {
+		var result = [];
+		for (var i = 0; i < this.length; i++) {
+			var schema = this[i];
+			if (schema.xorSchemas().length > 0 || schema.orSchemas().length > 0) {
+				result.push(schema);
+			}
+		}
+		return new SchemaList(result);
+	},
 	definedProperties: function () {
 		var additionalProperties = true;
 		var definedKeys = {};
@@ -372,13 +382,13 @@ SchemaList.prototype = {
 				candidates.push(this[i].defaultValue());
 			}
 		}
+		var basicTypes = this.basicTypes();
 		var enumValues = this.enumValues();
 		if (enumValues != undefined) {
 			for (var i = 0; i < enumValues.length; i++) {
 				candidates.push(enumValues[i]);
 			}
 		} else {
-			var basicTypes = this.basicTypes();
 			for (var i = 0; i < basicTypes.length; i++) {
 				var basicType = basicTypes[i];
 				if (basicType == "null") {
@@ -410,6 +420,10 @@ SchemaList.prototype = {
 		}
 		for (var candidateIndex = 0; candidateIndex < candidates.length; candidateIndex++) {
 			var candidate = candidates[candidateIndex];
+			var newBasicType = Utils.guessBasicType(candidate);
+			if (basicTypes.indexOf(newBasicType) == -1 && (newBasicType != "integer" || basicTypes.indexOf("number") == -1)) {
+				continue;
+			}
 			return candidate;
 		}
 		return null;

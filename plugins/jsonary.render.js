@@ -13,10 +13,11 @@
 	var prefixCounter = 0;
 
 	var componentNames = {
+		ADD_REMOVE: "add/remove",
 		TYPE_SELECTOR: "type-selector",
-		RENDERER: "renderer",
+		RENDERER: "data renderer",
 	};	
-	var componentList = [componentNames.TYPE_SELECTOR, componentNames.RENDERER];
+	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
 	function RenderContext(elementIdPrefix) {
 		var thisContext = this;
@@ -66,7 +67,7 @@
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.render(element, data, prevContext);
 				} else {
-					prevContext.render(element, data, prevUiState);
+					prevContext.baseContext.render(element, data, prevUiState);
 				}
 			}
 		});
@@ -187,7 +188,7 @@
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
-					this.render(element, data, prevUiState);
+					prevContext.baseContext.render(element, data, prevUiState);
 				}
 			}
 		},
@@ -198,7 +199,7 @@
 			}
 			var elementId = this.getElementId();
 			this.addEnhancementAction(elementId, actionName, this, params);
-			return '<a href="javascript:void(0)" id="' + elementId + '">' + innerHtml + '</a>';
+			return '<a href="javascript:void(0)" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
 		},
 		addEnhancement: function(elementId, context) {
 			this.enhancementContexts[elementId] = context;
@@ -258,13 +259,15 @@
 		return pageContext.renderHtml(data, uiStartingState);
 	}
 
-	render.empty = function (element) {
-		try {
+	if (global.jQuery != undefined) {
+		render.empty = function (element) {
 			global.jQuery(element).empty();
-		} catch (e) {
-		}
-		element.innerHTML = "";
-	};
+		};
+	} else {
+		render.empty = function (element) {
+			element.innerHTML = "";
+		};
+	}
 	render.Components = componentNames;
 	
 	/**********/

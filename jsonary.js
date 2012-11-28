@@ -1587,6 +1587,9 @@ function Data(document, secrets, parent, parentKey) {
 				if (operation.action() == "replace" || operation.action() == "add") {
 					operation.setSubjectValue(thisData.value());
 					secrets.setValue(operation.value());
+					if (basicType == "object") {
+						
+					}
 				} else if (operation.action() == "remove") {
 				} else if (operation.action() == "move") {
 				} else {
@@ -1609,6 +1612,7 @@ function Data(document, secrets, parent, parentKey) {
 							keys.push(child);
 							value[child] = operation.value();
 							if (propertyData[child] != undefined) {
+								propertyDataSecrets[child].setValue(operation.value());
 								secrets.schemas.addSchemasForProperty(child, propertyData[child]);
 							}
 						} else if (operation.action() == "remove" || operation.action() == "move") {
@@ -1647,8 +1651,8 @@ function Data(document, secrets, parent, parentKey) {
 							}
 							value.splice(index, 0, operation.value());
 							length++;
-							if (indexData[index] != undefined) {
-								secrets.schemas.addSchemasForIndex(index, indexData[index]);
+							if (indexData[value.length - 1] != undefined) {
+								secrets.schemas.addSchemasForIndex(value.length - 1, indexData[value.length - 1]);
 							}
 						} else if (operation.action() == "remove" || operation.action() == "move") {
 							if (index >= length) {
@@ -1712,8 +1716,8 @@ function Data(document, secrets, parent, parentKey) {
 							}
 							value.splice(index, 0, operation.subjectValue());
 							length++;
-							if (indexData[index] != undefined) {
-								secrets.schemas.addSchemasForIndex(key, indexData[index]);
+							if (indexData[value.length - 1] != undefined) {
+								secrets.schemas.addSchemasForIndex(value.length - 1, indexData[value.length - 1]);
 							}
 						}
 					}
@@ -1762,6 +1766,9 @@ function Data(document, secrets, parent, parentKey) {
 		if (newBasicType == "object") {
 			for (var key in propertyData) {
 				if (newValue.hasOwnProperty(key)) {
+					if (!propertyData[key].defined()) {
+						secrets.schemas.addSchemasForProperty(key, propertyData[key]);
+					}
 					propertyDataSecrets[key].setValue(newValue[key]);
 				} else {
 					propertyDataSecrets[key].setValue(undefined);
@@ -1772,6 +1779,9 @@ function Data(document, secrets, parent, parentKey) {
 		} else if (newBasicType == "array") {
 			for (var index in indexData) {
 				if (index < newValue.length) {
+					if (!indexData[index].defined()) {
+						secrets.schemas.addSchemasForIndex(index, indexData[index]);
+					}
 					indexDataSecrets[index].setValue(newValue[index]);
 				} else {
 					indexDataSecrets[index].setValue(undefined);
@@ -1875,6 +1885,15 @@ Data.prototype = {
 	},
 	removeItem: function (index) {
 		this.index(index).remove();
+		return this;
+	},
+	insertItem: function (index, value) {
+		if (this.basicType() != "array") {
+			throw Error("cannot insert into a non-array");
+		}
+		var patch = new Patch();
+		patch.add(this.item(index).pointerPath(), value);
+		this.document.patch(patch, this);
 		return this;
 	},
 	push: function (value) {
@@ -3243,6 +3262,16 @@ SchemaList.prototype = {
 		}
 		return new SchemaList(newList);
 	},
+	decisionSchemas: function () {
+		var result = [];
+		for (var i = 0; i < this.length; i++) {
+			var schema = this[i];
+			if (schema.xorSchemas().length > 0 || schema.orSchemas().length > 0) {
+				result.push(schema);
+			}
+		}
+		return new SchemaList(result);
+	},
 	definedProperties: function () {
 		var additionalProperties = true;
 		var definedKeys = {};
@@ -3516,13 +3545,13 @@ SchemaList.prototype = {
 				candidates.push(this[i].defaultValue());
 			}
 		}
+		var basicTypes = this.basicTypes();
 		var enumValues = this.enumValues();
 		if (enumValues != undefined) {
 			for (var i = 0; i < enumValues.length; i++) {
 				candidates.push(enumValues[i]);
 			}
 		} else {
-			var basicTypes = this.basicTypes();
 			for (var i = 0; i < basicTypes.length; i++) {
 				var basicType = basicTypes[i];
 				if (basicType == "null") {
@@ -3554,6 +3583,10 @@ SchemaList.prototype = {
 		}
 		for (var candidateIndex = 0; candidateIndex < candidates.length; candidateIndex++) {
 			var candidate = candidates[candidateIndex];
+			var newBasicType = Utils.guessBasicType(candidate);
+			if (basicTypes.indexOf(newBasicType) == -1 && (newBasicType != "integer" || basicTypes.indexOf("number") == -1)) {
+				continue;
+			}
 			return candidate;
 		}
 		return null;
@@ -4173,10 +4206,11 @@ publicApi.config = configData;
 	var prefixCounter = 0;
 
 	var componentNames = {
+		ADD_REMOVE: "add/remove",
 		TYPE_SELECTOR: "type-selector",
-		RENDERER: "renderer",
+		RENDERER: "data renderer",
 	};	
-	var componentList = [componentNames.TYPE_SELECTOR, componentNames.RENDERER];
+	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
 	function RenderContext(elementIdPrefix) {
 		var thisContext = this;
@@ -4226,7 +4260,7 @@ publicApi.config = configData;
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.render(element, data, prevContext);
 				} else {
-					prevContext.render(element, data, prevUiState);
+					prevContext.baseContext.render(element, data, prevUiState);
 				}
 			}
 		});
@@ -4347,7 +4381,7 @@ publicApi.config = configData;
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
-					this.render(element, data, prevUiState);
+					prevContext.baseContext.render(element, data, prevUiState);
 				}
 			}
 		},
@@ -4358,7 +4392,7 @@ publicApi.config = configData;
 			}
 			var elementId = this.getElementId();
 			this.addEnhancementAction(elementId, actionName, this, params);
-			return '<a href="javascript:void(0)" id="' + elementId + '">' + innerHtml + '</a>';
+			return '<a href="javascript:void(0)" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
 		},
 		addEnhancement: function(elementId, context) {
 			this.enhancementContexts[elementId] = context;
@@ -4418,13 +4452,15 @@ publicApi.config = configData;
 		return pageContext.renderHtml(data, uiStartingState);
 	}
 
-	render.empty = function (element) {
-		try {
+	if (global.jQuery != undefined) {
+		render.empty = function (element) {
 			global.jQuery(element).empty();
-		} catch (e) {
-		}
-		element.innerHTML = "";
-	};
+		};
+	} else {
+		render.empty = function (element) {
+			element.innerHTML = "";
+		};
+	}
 	render.Components = componentNames;
 	
 	/**********/
