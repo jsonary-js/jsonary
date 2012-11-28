@@ -270,6 +270,7 @@ function Data(document, secrets, parent, parentKey) {
 							keys.push(child);
 							value[child] = operation.value();
 							if (propertyData[child] != undefined) {
+								propertyDataSecrets[child].setValue(operation.value());
 								secrets.schemas.addSchemasForProperty(child, propertyData[child]);
 							}
 						} else if (operation.action() == "remove" || operation.action() == "move") {
