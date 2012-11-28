@@ -102,7 +102,9 @@
 				}
 				result += '</span>';
 			}
-			if (decisionSchemas.length > 0 || basicTypes.length > 1) {
+			//if (decisionSchemas.length > 0 || basicTypes.length > 1) {
+			// Only select basic types for now
+			if (basicTypes.length > 1) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
 			result += context.renderHtml(data, context.uiState.subState);
@@ -116,6 +118,7 @@
 				context.uiState.dialogOpen = true;
 				return true;
 			} else if (actionName == "select-basic-type") {
+				context.uiState.dialogOpen = false;
 				var schemas = context.data.schemas().concat([Jsonary.createSchema({type: basicType})]);
 				schemas.createValue(function (newValue) {
 					context.data.setValue(newValue);
@@ -124,7 +127,9 @@
 				alert("Unkown action: " + actionName);
 			}
 		},
-		update: function () {
+		update: function (element, data, context, operation) {
+			var pointerPath = data.pointerPath();
+			return operation.subjectEquals(pointerPath) || operation.targetEquals(pointerPath);
 		},
 		filter: function (data) {
 			return true;

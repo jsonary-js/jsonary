@@ -93,7 +93,7 @@
 				this.uiState = uiState;
 				this.usedComponents = usedComponents;
 			}
-			var base = (this.baseContext != undefined) ? this.baseContext : this;
+			var base = this;
 			Context.prototype = base;
 			return new Context(base, elementId, data, uiStartingState, usedComponents);
 		},
@@ -315,10 +315,14 @@
 			return this;
 		},
 		update: function (element, data, context, operation) {
+			var redraw;
 			if (this.updateFunction != undefined) {
-				this.updateFunction(element, data, context, operation);
+				redraw = this.updateFunction(element, data, context, operation);
 			} else {
-				this.defaultUpdate(element, data, context, operation);
+				redraw = this.defaultUpdate(element, data, context, operation);
+			}
+			if (redraw) {
+				this.render(element, data, context);
 			}
 			return this;
 		},
@@ -342,9 +346,7 @@
 					redraw = true;
 				}
 			}
-			if (redraw) {
-				this.render(element, data, context);
-			}
+			return redraw;
 		}
 	}
 

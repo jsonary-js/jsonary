@@ -15,6 +15,10 @@
 			"<code>any</code> (indicates the instance can be any of the above types)"
 		],
 		"Custom-defined string values are possible (according to the standard), but they are ignored.",
-		"If the value of \"type\" is an array, version 3 of the draft allows it to also contain schemas.  This has been removed for version 4, in favour of the \"anyOf\" property."
-	]
+		"If the value of \"type\" is an array, version 3 of the draft allows it to also contain schemas.  This has been removed for version 4, in favour of the \"anyOf\" property.",
+		"The default (basic) renderer set for Jsonary provides a default type-switcher - this is represented by a \"<code>T</code>\" next to the data."
+	],
+	"exampleSchema": {
+		"type": ["integer", "boolean", "null"]
+	}
 }
