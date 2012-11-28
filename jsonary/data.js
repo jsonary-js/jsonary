@@ -248,6 +248,9 @@ function Data(document, secrets, parent, parentKey) {
 				if (operation.action() == "replace" || operation.action() == "add") {
 					operation.setSubjectValue(thisData.value());
 					secrets.setValue(operation.value());
+					if (basicType == "object") {
+						
+					}
 				} else if (operation.action() == "remove") {
 				} else if (operation.action() == "move") {
 				} else {
@@ -375,7 +378,7 @@ function Data(document, secrets, parent, parentKey) {
 							value.splice(index, 0, operation.subjectValue());
 							length++;
 							if (indexData[value.length - 1] != undefined) {
-								secrets.schemas.addSchemasForIndex(key, indexData[value.length - 1]);
+								secrets.schemas.addSchemasForIndex(value.length - 1, indexData[value.length - 1]);
 							}
 						}
 					}
@@ -424,6 +427,9 @@ function Data(document, secrets, parent, parentKey) {
 		if (newBasicType == "object") {
 			for (var key in propertyData) {
 				if (newValue.hasOwnProperty(key)) {
+					if (!propertyData[key].defined()) {
+						secrets.schemas.addSchemasForProperty(key, propertyData[key]);
+					}
 					propertyDataSecrets[key].setValue(newValue[key]);
 				} else {
 					propertyDataSecrets[key].setValue(undefined);
@@ -434,6 +440,9 @@ function Data(document, secrets, parent, parentKey) {
 		} else if (newBasicType == "array") {
 			for (var index in indexData) {
 				if (index < newValue.length) {
+					if (!indexData[index].defined()) {
+						secrets.schemas.addSchemasForIndex(index, indexData[index]);
+					}
 					indexDataSecrets[index].setValue(newValue[index]);
 				} else {
 					indexDataSecrets[index].setValue(undefined);

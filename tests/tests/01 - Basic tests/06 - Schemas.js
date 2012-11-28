@@ -113,6 +113,22 @@ tests.add("Child property schemas", function () {
 	return true;
 });
 
+tests.add("Child property schemas 2", function () {
+	var data = Jsonary.create({});
+	var schema = Jsonary.createSchema({
+		"properties": {
+			"key": {}
+		}
+	});
+	data.addSchema(schema);
+	var schemas = data.property("key").schemas();
+	this.assert(schemas.length === 0, "schema count for key should be 0");
+	data.setValue({key: "value"});
+	var schemas = data.property("key").schemas();
+	this.assert(schemas.length === 1, "schema count for key should be 1");
+	return true;
+});
+
 tests.add("Child index schemas", function () {
 	var data = Jsonary.create([0]);
 	var schema = Jsonary.createSchema(exampleSchemaData);
