@@ -146,6 +146,23 @@ tests.add("Child index schemas", function () {
 	return true;
 });
 
+
+tests.add("Child index schemas 2", function () {
+	var data = Jsonary.create([]);
+	var schema = Jsonary.createSchema({
+		"items": {
+			"key": {}
+		}
+	});
+	data.addSchema(schema);
+	var schemas = data.item(0).schemas();
+	this.assert(schemas.length === 0, "schema count for item should be 0");
+	data.setValue([true]);
+	var schemas = data.item(0).schemas();
+	this.assert(schemas.length === 1, "schema count for item should be 1");
+	return true;
+});
+
 tests.add("Inserting array items", function () {
 	var data = Jsonary.create([0]).addSchema(Jsonary.createSchema({
 		"items": {}
