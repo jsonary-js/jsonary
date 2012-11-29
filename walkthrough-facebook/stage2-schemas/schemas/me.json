@@ -1,3 +1,15 @@
 {
-	"title": "Current user"
+	"title": "Current User",
+	"links": [
+		{
+			"rel": "home",
+			"href": "/me/home",
+			"targetSchema": {"$ref": "arrays/posts.json"}
+		},
+		{
+			"rel": "likes",
+			"href": "/me/likes",
+			"targetSchema": {"$ref": "arrays/likes.json"}
+		}
+	]
 }

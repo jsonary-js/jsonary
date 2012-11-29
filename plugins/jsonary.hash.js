@@ -1,6 +1,13 @@
 (function (global) {
 	var hashJsonaryData = Jsonary.create(null);
 
+	var addHistoryPoint = false;
+	hashJsonaryData.addHistoryPoint = function () {
+		addHistoryPoint = true;
+	};
+
+	var ignoreUpdates = 0;
+	var lastHash = null;
 	function updateHash() {
 		var hashString = window.location.hash;
 		if (hashString.length > 0 && hashString.charAt(0) == "#") {
@@ -17,12 +24,34 @@
 		} catch (e) {
 			console.log(e);
 		}
+		ignoreUpdates++;
 		hashJsonaryData.setValue(hashData);
 	}
 	
-	var lastHash = null;
 	setInterval(updateHash, 100);
 	updateHash();
+	
+	var changeListeners = [];
+	hashJsonaryData.document.registerChangeListener(function (patch) {
+		for (var i = 0; i < changeListeners.length; i++) {
+			changeListeners[i].call(hashJsonaryData, hashJsonaryData);
+		}
+
+		if (ignoreUpdates > 0) {
+			ignoreUpdates--;
+			return;
+		}
+		lastHash = Jsonary.encodeData(hashJsonaryData.value(), "application/x-www-form-urlencoded").replace("%2F", "/");
+		if (addHistoryPoint) {
+			window.location.href = "#" + lastHash;
+		} else {
+			window.location.replace("#" + lastHash);
+		}
+	});
+	hashJsonaryData.onChange = function (callback) {
+		changeListeners.push(callback);
+		callback.call(hashJsonaryData, hashJsonaryData);
+	};
 
 	Jsonary.extend({
 		hash: hashJsonaryData

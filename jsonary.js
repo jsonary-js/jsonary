@@ -1375,6 +1375,11 @@ function Document(url, isDefinitive, readOnly) {
 	this.raw = new Data(this, rawSecrets);
 	this.root = null;
 	
+	var documentChangeListeners = [];
+	this.registerChangeListener = function (listener) {
+		documentChangeListeners.push(listener);
+	};
+
 	this.setRaw = function (value) {
 		rawSecrets.setValue(value);
 	};
@@ -1405,9 +1410,10 @@ function Document(url, isDefinitive, readOnly) {
 			return;
 		}
 		DelayedCallbacks.increment();
+		var listeners = changeListeners.concat(documentChangeListeners);
 		DelayedCallbacks.add(function () {
-			for (var i = 0; i < changeListeners.length; i++) {
-				changeListeners[i].call(thisDocument, patch, thisDocument);
+			for (var i = 0; i < listeners.length; i++) {
+				listeners[i].call(thisDocument, patch, thisDocument);
 			}
 		});
 		var rawPatch = patch.filter("?");

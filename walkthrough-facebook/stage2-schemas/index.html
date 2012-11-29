@@ -20,7 +20,6 @@
 				<div class="resource-list">
 					The demos on this page use the following files:
 					<ul>
-						<li><span class="filename">jquery.js</span> - the jQuery library, to help assemble our interface faster
 						<li><span class="filename">jsonary.js</span> - the core Jsonary library
 						<li><span class="filename">jsonary.hash.js</span> - the Jsonary.Hash plugin
 						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
@@ -44,14 +43,50 @@
 </pre>
 					<p>Then, we use the "schema hint" argument of <code>Jsonary.getData()</code>.
 <pre class="example code">
+var mainElement = document.getElementById("main");
+function renderToMain(data) {
+	Jsonary.render(mainElement, data);
+}
+
 Jsonary.getData({
 	url: "https://graph.facebook.com/me",
 	data: {access_token: authToken}
 }, function (data) {
-	$('&lt;div&gt;&lt;/div&gt;').renderJson(data).appendTo('#main');
+	renderToMain(data);
 }, <B>"schemas/me.json"</B>);
 </pre>
 					<p>You can see that in action <a href="fb-schema-me.html" target="facebookSchemaMe">here</a>.  As you can hopefully see, the data displayed about the current user is associated with a schema titled "Current user".
+				</div>
+
+				<h2>Handling links</h2>
+				<div class="section">
+					<p>In the example above, the "me" schema defines some links.
+					<p>Not only does nothing happen when you click the links, but Jsonary doesn't know to include the OAuth token in the requests it makes, so it doesn't even get the correct data back.
+					<p>We solve the second problem by adding a link pre-handler that attaches the OAuth token to the submitted data:
+<pre class="example code">
+// Add access token to all outgoing requests
+Jsonary.addLinkPreHandler(function(link, data) {
+	if (accessToken != null) {
+		if (data.basicType() == undefined) {
+			data.setValue({access_token: accessToken});
+		} else if (data.basicType() == "object") {
+			data.property("access_token").setValue(accessToken);
+		}
+	}
+});
+</pre>
+					<p>The first problem, we solve by rendering the result in the main element:
+<pre class="example code">
+// Any link that isn't otherwise handled is rendered in the main element
+Jsonary.addLinkHandler(function (link, submissionData, request) {
+	mainElement.innerHTML = "Loading: " + link.href;
+	request.getData(function (data) {
+		renderToMain(data);
+	});
+});
+</pre>
+					<p>We also do a bit of fancy jiggery-pokery with the Jsonary.Hash plugin, storing a URL in the URI fragment, and checking the result to see if we should be rendering anything.
+					<p>You can see all that in action <a href="fb-schema-me-2.html" target="facebookSchemaMe">here</a>.
 				</div>
 			</div>
 		</div>

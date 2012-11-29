@@ -6,7 +6,6 @@
 	</head>
 	<body>
 		<div id="main"></div>
-		<script src="../../js/jquery.js"></script>
 		<script src="../../jsonary.js"></script>
 		<script src="../../plugins/jsonary.hash.js"></script>
 		<script src="../../renderers/basic.jsonary.js"></script>
@@ -21,14 +20,15 @@
 			}
 			
 			var authToken = Jsonary.hash.propertyValue("access_token");
+			var mainElement = document.getElementById("main");
 			if (authToken == undefined) {
-				$('<a>Authorise with Facebook</a>').attr("href", "javascript:forwardToFacebook()").appendTo($('#main'));
+				mainElement.innerHTML = '<a href="javascript:forwardToFacebook()">Authorise with Facebook</a>';
 			} else {
 				Jsonary.getData({
 					url: "https://graph.facebook.com/me",
 					data: {access_token: authToken}
 				}, function (data) {
-					$('<div></div>').renderJson(data).appendTo('#main');
+					Jsonary.render(mainElement, data);
 				});
 			}
 		</script>

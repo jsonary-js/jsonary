@@ -7,11 +7,13 @@
 		component: Jsonary.render.Components.ADD_REMOVE,
 		renderHtml: function (data, context) {
 			if (!data.defined()) {
+				context.uiState.undefined = true;
 				if (!data.readOnly()) {
 					return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
 				}
 				return "";
 			}
+			delete context.uiState.undefined;
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
 			}
@@ -43,17 +45,23 @@
 				var data = context.data;
 				var parent = data.parent();
 				var finalComponent = data.parentKey();
-				var parentSchemas = parent.schemas();
-				if (parent.basicType() == "array") {
-					parentSchemas.createValueForIndex(finalComponent, function (newValue) {
-						parent.index(finalComponent).setValue(newValue);
-					});
-				} else {
-					if (parent.basicType() != "object") {
-						parent.setValue({});
+				if (parent != undefined) {
+					var parentSchemas = parent.schemas();
+					if (parent.basicType() == "array") {
+						parentSchemas.createValueForIndex(finalComponent, function (newValue) {
+							parent.index(finalComponent).setValue(newValue);
+						});
+					} else {
+						if (parent.basicType() != "object") {
+							parent.setValue({});
+						}
+						parentSchemas.createValueForProperty(finalComponent, function (newValue) {
+							parent.property(finalComponent).setValue(newValue);
+						});
 					}
-					parentSchemas.createValueForProperty(finalComponent, function (newValue) {
-						parent.property(finalComponent).setValue(newValue);
+				} else {
+					data.schemas().createValue(function (newValue) {
+						data.setValue(newValue);
 					});
 				}
 			} else if (actionName == "remove") {
@@ -62,7 +70,8 @@
 				alert("Unkown action: " + actionName);
 			}
 		},
-		update: function () {
+		update: function (element, data, context, operation) {
+			return context.uiState.undefined;
 		},
 		filter: function (data) {
 			return true;
@@ -95,9 +104,6 @@
 				if (basicTypes.length > 1) {
 					result += '<br>Select basic type:<ul>';
 					for (var i = 0; i < basicTypes.length; i++) {
-						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
-							continue;
-						}
 						if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
 							result += '<li>' + basicTypes[i];
 						} else {

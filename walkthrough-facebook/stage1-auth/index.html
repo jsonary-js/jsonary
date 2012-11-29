@@ -20,7 +20,6 @@
 				<div class="resource-list">
 					The demos on this page use the following files:
 					<ul>
-						<li><span class="filename">jquery.js</span> - the jQuery library, to help assemble our interface faster
 						<li><span class="filename">jsonary.js</span> - the core Jsonary library
 						<li><span class="filename">jsonary.hash.js</span> - the Jsonary.Hash plugin
 						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
@@ -56,7 +55,7 @@ if (authToken == undefined) {
 		url: "https://graph.facebook.com/me",
 		data: {access_token: authToken}
 	}, function (data) {
-		$('&lt;div&gt;&lt;/div&gt;').renderJson(data).appendTo('#main');
+		$('<div></div>').renderJson(data).appendTo('#main');
 	});
 }
 </pre>

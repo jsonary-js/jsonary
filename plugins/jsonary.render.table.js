@@ -14,6 +14,39 @@
 		
 	};
 	TableRenderer.prototype = {
+		getRowOrder: function (context) {
+			if (context.uiState.rowOrder != undefined && context.uiState.rowOrder.length == context.data.length()) {
+				return context.uiState.rowOrder;
+			}
+			var order = [];
+			for (var i = 0; i < context.data.length(); i++) {
+				order[i] = i;
+			}
+			var sortColumns = context.uiState.sortColumns;
+			if (sortColumns == undefined) {
+				return order;
+			}
+			var columns = this.columns;
+			var sortFunction = function (aIndex, bIndex) {
+				for (var i = 0; i < sortColumns.length; i++) {
+					var columnIndex = sortColumns[i].index;
+					var columnKey = columns[columnIndex].key;
+					var aValue = data.item(aIndex).property(columnKey).value();
+					var bValue = data.item(bIndex).property(columnKey).value();
+					var cmp = columns[sortColumns[i].index].sortFunction(aValue, bValue);
+					if (cmp != 0) {
+						if (sortColumns[i].mode != "asc") {
+							cmp *= -1;
+						}
+						return cmp;
+					}
+				}
+				return aIndex - bIndex;
+			};
+			order.sort(sortFunction);
+			context.uiState.rowOrder = order;
+			return order;
+		},
 		renderHtml: function (data, context) {
 			var config = this.config;
 			var columns = this.columns;
@@ -38,34 +71,11 @@
 				html += '</tr></thead>';
 			}
 			html += '<tbody>';
-			var order = [];
-			for (var i = 0; i < data.length(); i++) {
-				order[i] = i;
-			}
-			if (context.uiState.sortColumns != undefined) {
-				var sortColumns = context.uiState.sortColumns;
-				var sortFunction = function (aIndex, bIndex) {
-					for (var i = 0; i < sortColumns.length; i++) {
-						var columnIndex = sortColumns[i].index;
-						var columnKey = columns[columnIndex].key;
-						var aValue = data.item(aIndex).property(columnKey).value();
-						var bValue = data.item(bIndex).property(columnKey).value();
-						var cmp = columns[sortColumns[i].index].sortFunction(aValue, bValue);
-						if (cmp != 0) {
-							if (sortColumns[i].mode != "asc") {
-								cmp *= -1;
-							}
-							return cmp;
-						}
-					}
-					return aIndex - bIndex;
-				};
-				order.sort(sortFunction);
-			}
+			var order = this.getRowOrder(context);
 			var renderFunc = function (index, subData) {
 				html += '<tr>';
 				if (!data.readOnly()) {
-					html += '<td class="' + config.removeClass + '">' + context.actionHtml(config.removeHtml, "remove", subData) + '</td>';
+					html += '<td class="' + config.removeClass + '">' + context.actionHtml(config.removeHtml, "remove", index) + '</td>';
 				}
 				for (var i = 0; i < columns.length; i++) {
 					var column = columns[i];
@@ -79,27 +89,45 @@
 			html += '</tbody>';
 			if (!data.readOnly()) {
 				html += '<tfoot><tr><td class="' + this.config.addClass + '" colspan=' + columnCount + '>';
-				html += context.actionHtml(config.addHtml, "add", data);
+				html += context.actionHtml(config.addHtml, "append");
 
 			html += '</td></tr></tfoot>';
 			}
 			html += '</table>';
 			return html;
 		},
-		action: function (context, actionName, data) {
-			if (actionName == "add") {
+		action: function (context, actionName, arg1) {
+			if (actionName == "append") {
+				var data = context.data;
 				var index = data.length();
+				if (context.uiState.rowOrder != undefined) {
+					context.uiState.rowOrder[index] = index;
+				}
 				data.schemas().createValueForIndex(index, function (newValue) {
 					data.index(index).setValue(newValue);
 				});
 			} else if (actionName == "remove") {
-				data.remove();
+				var index = arg1;
+				if (context.uiState.rowOrder != undefined) {
+					var newRowOrder = [];
+					for (var i = 0; i < context.uiState.rowOrder.length; i++) {
+						var orderIndex = context.uiState.rowOrder[i];
+						if (orderIndex < index) {
+							newRowOrder.push(orderIndex);
+						} else if (orderIndex > index) {
+							newRowOrder.push(orderIndex - 1);
+						}
+					}
+					context.uiState.rowOrder = newRowOrder;
+				}
+				context.data.item(index).remove();
 			} else if (actionName == "clearSort") {
 				uiState.sortColumns = [];
 				return true;
 			} else if (actionName == "sort") {
 				var uiState = context.uiState;
-				var index = data;
+				var index = arg1;
+				var data = context.data;
 				if (uiState.sortColumns == undefined) {
 					uiState.sortColumns = [];
 				}
@@ -114,6 +142,7 @@
 						i--;
 					}
 				}
+				delete context.uiState.rowOrder;
 				return true;
 			} else {
 				alert("Unknown action: " + actionName);

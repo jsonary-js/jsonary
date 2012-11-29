@@ -2,10 +2,16 @@
 	$exampleCounter = 0;
 	$mainHtml = '';
 	$navHtml = "";
-	function walkDir($directory) {
+	$currentDir = "";
+	if (isset($_GET["section"])) {
+		$currentDir = $_GET["section"];
+	}
+	function walkDir($directory, $list=NULL) {
+		global $currentDir;
 		global $navHtml, $mainHtml, $exampleCounter;
-		$list = scandir($directory);
-		sort($list);
+		if ($list == NULL) {
+			$list = scandir($directory);
+		}
 		$navHtml .= '<ul>';
 		foreach ($list as $filename) {
 			if ($filename[0] == ".") {
@@ -14,9 +20,13 @@
 			$origFilename = $filename;
 			$filename = $directory."/".$filename;
 			if (is_dir($filename)) {
-				$navHtml .= "<li>$origFilename:";
-				$mainHtml .= "<h2>$origFilename</h2>";
-				walkDir($filename);
+				if (substr($currentDir, 0, strlen($filename)) == $filename) {
+					$navHtml .= "<li>$origFilename:";
+					$mainHtml .= "<h2>$origFilename</h2>";
+					walkDir($filename);
+				} else {
+					$navHtml .= "<li><a href=\"?section={$filename}\">$origFilename</a>";
+				}
 				continue;
 			}
 			$jsonObj = json_decode(file_get_contents($filename));
@@ -57,7 +67,15 @@
 		$navHtml .= "</ul>";
 		$mainHtml .= "";
 	}
-	walkDir("keywords");
+	walkDir("keywords", array(
+		"General keywords",
+		"Meta-data",
+		"Referencing",
+		"Object validation",
+		"Array validation",
+		"Numeric validation",
+		"String validation"
+	));
 ?>
 <html>
   <head>
@@ -79,16 +97,21 @@
 				<div id="nav">
 					back to
 					<a class="nav-link" href="../../">main page</a>
+					<?php if ($currentDir != "") { ?>
+						> <a href="?">JSON Schema documentation</a>
+					<?php } ?>
 					<?php echo $navHtml; ?>
 				</div>
 				
-				<h2>Introduction to JSON Schemas</h2>
-				<div class="section">
-					<p>A JSON Schema is always an object.  "Keywords" are properties of this object which have special meaning.
-					<p>This page documents the <U>validation</U> keywords defined for JSON Schemas.  The keywords have been grouped into sections, and most keywords have an interactive example.
-					<p>This page is currently incomplete.
-					<!--<p>If you want to try out writing some schemas of your own, then try <a href="../../demos/index-input.html">this page</a>, which allows you to edit a schema and a data item.-->
-				</div>
+				<?php if ($currentDir == "") { ?>
+					<h2>Introduction to JSON Schemas</h2>
+					<div class="section">
+						<p>A JSON Schema is always an object.  "Keywords" are properties of this object which have special meaning.
+						<p>This page documents the <U>validation</U> keywords defined for JSON Schemas.  The keywords have been grouped into sections, and most keywords have an interactive example.
+						<p>This page is currently incomplete.
+						<!--<p>If you want to try out writing some schemas of your own, then try <a href="../../demos/index-input.html">this page</a>, which allows you to edit a schema and a data item.-->
+					</div>
+				<?php } ?>
 
 				<?php echo $mainHtml; ?>
 			</div>
