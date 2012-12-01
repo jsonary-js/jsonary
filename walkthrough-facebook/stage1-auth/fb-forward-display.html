@@ -1,4 +1,4 @@
-<html>
+<html><html>
 	<head>
 		<title>Forward to Facebook demo</title>
 		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
@@ -15,7 +15,75 @@
 				var facebookAppId = 219375971524697;
 				var facebookRedirectUri = window.location;
 				var facebookPermissions = ["user_about_me"];
-				var facebookAuthUrl = "https://www.facebook.com/dialog/oauth?client_id=" + facebookAppId + "&redirect_uri=" + encodeURIComponent(facebookRedirectUri + window.location.hash) + "&response_type=token&scope=" + facebookPermissions.join(",");
+				var facebookAuthUrl = "https://www.facebook.com/dialog/oauth?client_id=" + facebookAppId + "&redirect_uri=" + encodeURIComponent(facebookRedirectUri) + "&response_type=token&scope=" + facebookPermissions.join(",");
+				window.location.replace(facebookAuthUrl);
+			}
+			
+			var authToken = Jsonary.hash.propertyValue("access_token");
+			if (authToken == undefined) {
+				$('<a>Authorise with Facebook</a>').attr("href", "javascript:forwardToFacebook()").appendTo($('#main'));
+			} else {
+				Jsonary.getData({
+					url: "https://graph.facebook.com/me",
+					data: {access_token: authToken}
+				}, function (data) {
+					$('<div></div>').renderJson(data).appendTo('#main');
+				}, "schemas/me.json");
+			}
+		</script>
+	</body>
+</html>
+
+	<head>
+		<title>Forward to Facebook demo</title>
+		<link rel="stylesheet" href="../../renderers/basic.jsonary.css"><html>
+	<head>
+		<title>Forward to Facebook demo</title>
+		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<div id="main"></div>
+		<script src="../../js/jquery.js"></script>
+		<script src="../../jsonary.js"></script>
+		<script src="../../plugins/jsonary.hash.js"></script>
+		<script src="../../renderers/basic.jsonary.js"></script>
+		<script>
+			// Facebook auth
+			function forwardToFacebook() {
+				var facebookAppId = 219375971524697;
+				var facebookRedirectUri = window.location;
+				var facebookPermissions = ["user_about_me"];
+				var facebookAuthUrl = "https://www.facebook.com/dialog/oauth?client_id=" + facebookAppId + "&redirect_uri=" + encodeURIComponent(facebookRedirectUri) + "&response_type=token&scope=" + facebookPermissions.join(",");
+				window.location.replace(facebookAuthUrl);
+			}
+			
+			var authToken = Jsonary.hash.propertyValue("access_token");
+			if (authToken == undefined) {
+				$('<a>Authorise with Facebook</a>').attr("href", "javascript:forwardToFacebook()").appendTo($('#main'));
+			} else {
+				$('<span>Auth token:</span>').appendTo($('#main'));
+				$('<pre></pre>').text(authToken).appendTo($('#main'));
+			}
+		</script>
+	</body>
+</html>
+
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<div id="main"></div>
+		<script src="../../js/jquery.js"></script>
+		<script src="../../jsonary.js"></script>
+		<script src="../../plugins/jsonary.hash.js"></script>
+		<script src="../../renderers/basic.jsonary.js"></script>
+		<script>
+			// Facebook auth
+			function forwardToFacebook() {
+				var facebookAppId = 219375971524697;
+				var facebookRedirectUri = window.location;
+				var facebookPermissions = ["user_about_me"];
+				var facebookAuthUrl = "https://www.facebook.com/dialog/oauth?client_id=" + facebookAppId + "&redirect_uri=" + encodeURIComponent(facebookRedirectUri) + "&response_type=token&scope=" + facebookPermissions.join(",");
 				window.location.replace(facebookAuthUrl);
 			}
 			
