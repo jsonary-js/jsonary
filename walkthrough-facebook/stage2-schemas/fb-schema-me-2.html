@@ -15,7 +15,7 @@
 				var facebookAppId = 219375971524697;
 				var facebookRedirectUri = window.location;
 				var facebookPermissions = ["user_about_me"];
-				var facebookAuthUrl = "https://www.facebook.com/dialog/oauth?client_id=" + facebookAppId + "&redirect_uri=" + encodeURIComponent(facebookRedirectUri + window.location.hash) + "&response_type=token&scope=" + facebookPermissions.join(",");
+				var facebookAuthUrl = "https://www.facebook.com/dialog/oauth?client_id=" + facebookAppId + "&redirect_uri=" + encodeURIComponent(facebookRedirectUri) + "&response_type=token&scope=" + facebookPermissions.join(",");
 				window.location.replace(facebookAuthUrl);
 			}
 
