@@ -1,0 +1,24 @@
+{
+	"title": "Facebook array",
+	"type": "object",
+	"properties": {
+		"data": {
+			"title": "Array data",
+			"type": "array",
+			"items": {"$ref": "../object.json"}
+		},
+		"paging": {
+			"title": "Paging",
+			"type": "object",
+			"properties": {
+				"previous": {"type": "string"},
+				"next": {"type": "string"}
+			},
+			"links": [
+				{"rel": "previous", "href": "{+previous}", "targetSchema": {"$ref": "#"}},
+				{"rel": "next", "href": "{+next}", "targetSchema": {"$ref": "#"}}
+			]
+		}
+	},
+	"required": ["data"]
+}

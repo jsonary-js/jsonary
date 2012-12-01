@@ -6,7 +6,7 @@
 		addHistoryPoint = true;
 	};
 
-	var ignoreUpdates = 0;
+	var ignoreUpdates = false;
 	var lastHash = null;
 	function updateHash() {
 		var hashString = window.location.hash;
@@ -24,8 +24,9 @@
 		} catch (e) {
 			console.log(e);
 		}
-		ignoreUpdates++;
+		ignoreUpdate = true;
 		hashJsonaryData.setValue(hashData);
+		ignoreUpdate = false;
 	}
 	
 	setInterval(updateHash, 100);
@@ -37,8 +38,8 @@
 			changeListeners[i].call(hashJsonaryData, hashJsonaryData);
 		}
 
-		if (ignoreUpdates > 0) {
-			ignoreUpdates--;
+		if (ignoreUpdate) {
+			ignoreUpdate = false;
 			return;
 		}
 		lastHash = Jsonary.encodeData(hashJsonaryData.value(), "application/x-www-form-urlencoded").replace("%2F", "/");

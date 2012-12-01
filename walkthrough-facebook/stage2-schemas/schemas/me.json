@@ -1,5 +1,8 @@
 {
 	"title": "Current User",
+	"properties": {
+		"timezone": {"title": "Timezone", "description": "Current user's timezone, relative to GMT", "type": "number"}
+	},
 	"links": [
 		{
 			"rel": "home",
@@ -7,9 +10,35 @@
 			"targetSchema": {"$ref": "arrays/posts.json"}
 		},
 		{
-			"rel": "likes",
-			"href": "/me/likes",
-			"targetSchema": {"$ref": "arrays/likes.json"}
+			"rel": "notifications",
+			"href": "/me/notifications",
+			"targetSchema": {"$ref": "arrays/object.json"}
+		},
+		{
+			"rel": "create_post",
+			"href": "/me/feed",
+			"method": "POST",
+			"encType": "application/x-www-form-urlencoded",
+			"schema": {
+				"title": "New post",
+				"type": "object",
+				"properties": {
+					"message": {"title": "Message", "type": "string"},
+					"link": {"title": "Link URL", "type": "string", "format": "uri"}
+				},
+				"dependencies": {
+					"link": {
+						"properties": {
+							"name": {"title": "Link name", "type": "string"},
+							"caption": {"title": "Link caption", "type": "string"},
+							"description": {"title": "Link description", "type": "string"},
+							"picture": {"title": "Link thumbnail", "type": "string", "format": "uri"}
+						}
+					}
+				},
+				"required": ["message"]
+			}
 		}
-	]
+	],
+	"allOf": [{"$ref": "user.json"}]
 }

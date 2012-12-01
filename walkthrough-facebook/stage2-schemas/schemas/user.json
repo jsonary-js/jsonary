@@ -1,0 +1,112 @@
+{
+	"title": "User",
+	"type": "object",
+	"properties": {
+		"id": {"title":"User ID", "type": "string"},
+		"name": {"title": "Full name", "type": "string"},
+		"first_name": {"title": "First name", "type": "string"},
+		"last_name": {"title": "Last name", "type": "string"},
+		"username": {"title": "Username", "type": "string"},
+		"gender": {"title": "Gender", "type": "string", "enum": ["male", "female"]},
+		"locale": {"title": "User's locale", "type": "string"},
+		"languages": {"title": "User's languages"},
+		"link": {"title": "Profile on Facebook.com", "type": "string"},
+		"updated_time": {"title": "Last updated", "type": "string", "format": "date-time"},
+		"verified": {"title": "Verified", "type": "boolean"},
+		"bio": {"title": "About", "type": "string"},
+		"birthday": {"title": "Birthday", "type": "string", "format": "date"},
+		"education": {"$ref": "#/definitions/education"},
+		"email": {"title": "Email", "type": "string"},
+		"hometown": {"title": "Hometown", "allOf": [{"$ref": "object.json#/definitions/reference"}]},
+		"interested_in": {"title": "Interested in", "description": "List of genders"},
+		"location": {"title": "Location", "allOf": [{"$ref": "object.json#/definitions/reference"}]},
+		"political": {"title": "Political views", "type": "string"},
+		"quotes": {"title": "Favourite quotes", "type": "string"},
+		"relationship_status": {"$ref": "#/definitions/relationship_status"},
+		"religion": {"title": "Religious views", "type": "string"},
+		"significant_other": {"title": "Significant other", "allOf": [{"$ref": "object.json#/definitions/reference"}]},
+		"website": {"title": "Website", "type": "string", "format": "uri"},
+		"work": {"$ref": "#/definitions/work"}
+		
+	},
+	"required": ["id", "name", "first_name", "last_name", "username", "gender", "locale"],
+	"links": [
+		{
+			"rel": "alternate",
+			"href": "+{link}",
+			"mediaType": "text/html"
+		},
+		{
+			"rel": "albums",
+			"href": "/{id}/albums",
+			"targetSchema": {"$ref": "arrays/album.json"}
+		},
+		{
+			"rel": "feed",
+			"href": "/{id}/feed",
+			"targetSchema": {"$ref": "arrays/post.json"}
+		},
+		{
+			"rel": "friends",
+			"href": "/{id}/friends",
+			"targetSchema": {"$ref": "arrays/user.json"}
+		},
+		{
+			"rel": "groups",
+			"href": "/{id}/groups",
+			"targetSchema": {"$ref": "arrays/group.json"}
+		},
+		{
+			"rel": "likes",
+			"href": "/{id}/likes",
+			"targetSchema": {"$ref": "arrays/object.json"}
+		},
+		{
+			"rel": "photos",
+			"href": "/{id}/photos",
+			"targetSchema": {"$ref": "arrays/photo.json"}
+		},
+		{
+			"rel": "picture",
+			"href": "/{id}/picture",
+			"mediaType": "image/jpeg"
+		},
+		{
+			"rel": "posts",
+			"href": "/{id}/posts",
+			"targetSchema": {"$ref": "arrays/post.json"}
+		},
+		{
+			"rel": "statuses",
+			"href": "/{id}/statuses",
+			"targetSchema": {"$ref": "arrays/statuses.json"}
+		},
+		{
+			"rel": "tagged",
+			"href": "/{id}/tagged",
+			"targetSchema": {"$ref": "arrays/tagged.json"}
+		}
+	],
+	"definitions": {
+		"education": {"title": "Education"},
+		"relationship_status": {
+			"title": "Relationship status",
+			"type": "string",
+			"enum": [
+				"Single",
+				"In a relationship",
+				"Engaged",
+				"Married",
+				"It's complicated",
+				"In an open relationship",
+				"Widowed",
+				"Separated",
+				"Divorced",
+				"In a civil union",
+				"In a domestic partnership"
+			]
+		},
+		"work": {"title": "Work"}
+	},
+	"allOf": [{"$ref": "object.json"}]
+}

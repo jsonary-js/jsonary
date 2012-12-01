@@ -42,7 +42,7 @@
 						}
 					}
 				});
-				Jsonary.hash.removeProperty("access_token").removeProperty("expires_in");
+				//Jsonary.hash.removeProperty("access_token").removeProperty("expires_in");
 
 				// When the fragment changes, get the page URL from it, and fetch/render it if needed
 				Jsonary.hash.onChange(function (hash) {
@@ -59,7 +59,9 @@
 					// The Facebook Graph API doesn't provide JSON Schema documentation, so we're adding our own
 					var schemaHint = null;
 					if (hashUrl == prefix + "/me") {
-						schemaHint = "schemas-basic/me.json";
+						schemaHint = "schemas/me.json";
+					} else {
+						schemaHint = "schemas/guess.json";
 					}
 					// Fetch the URL specified by the hash, and 
 					Jsonary.getData({

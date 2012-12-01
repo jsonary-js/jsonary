@@ -1,0 +1,9 @@
+{
+	"title": "Guess",
+	"anyOf": [
+		{},
+		{"$ref": "object.json"},
+		{"$ref": "user.json"},
+		{"$ref": "arrays/guess.json"}
+	]
+}

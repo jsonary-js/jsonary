@@ -1,0 +1,13 @@
+{
+	"title": "Current User",
+	"links": [
+		{
+			"rel": "home",
+			"href": "/me/home"
+		},
+		{
+			"rel": "likes",
+			"href": "/me/likes"
+		}
+	]
+}
