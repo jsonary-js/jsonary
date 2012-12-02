@@ -5,6 +5,19 @@ body {
 	background-color: #EEE;
 }
 
+.facebook-button {
+	display: inline;
+	display: inline-block;
+	padding: 0.3em;
+	padding-left: 1em;
+	padding-right: 1em;
+	margin: 0.5em;
+	border: 2px solid black;
+	border-radius: 10px;
+	background-color: #468;
+	color: #FFF;
+}
+
 .facebook-user {
 	background-color: #EEE;
 }

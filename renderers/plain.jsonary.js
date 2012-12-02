@@ -1,6 +1,9 @@
 (function () {
 	function escapeHtml(text) {
-		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;").replace('"', "&quot;");
+	}
+	if (window.escapeHtml == undefined) {
+		window.escapeHtml = escapeHtml;
 	}
 
 	Jsonary.render.register({
@@ -78,6 +81,25 @@
 		}
 	});
 	
+	function listLinks(element, links) {
+		var linkElement = null;
+		for (var i = 0; i < links.length; i++) {
+			(function (index, link) {
+				linkElement = document.createElement("a");
+				linkElement.setAttribute("href", link.href);
+				linkElement.setAttribute("class", "json-link");
+				linkElement.appendChild(document.createTextNode(link.rel));
+				element.appendChild(linkElement);
+				linkElement.onclick = function (event) {
+					linkPrompt(link, event);
+					return false;
+				};
+			})(i, links[i]);
+		}
+		element = null;
+		linkElement = null;
+	}
+	
 	Jsonary.render.Components.add("LIST_LINKS");
 	Jsonary.render.register({
 		component: Jsonary.render.Components.LIST_LINKS,
@@ -117,6 +139,9 @@
 				if (basicTypes.length > 1) {
 					result += '<br>Select basic type:<ul>';
 					for (var i = 0; i < basicTypes.length; i++) {
+						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
+							continue;
+						}
 						if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
 							result += '<li>' + basicTypes[i];
 						} else {
@@ -161,25 +186,6 @@
 		}
 	});
 
-	function listLinks(element, links) {
-		var linkElement = null;
-		for (var i = 0; i < links.length; i++) {
-			(function (index, link) {
-				linkElement = document.createElement("a");
-				linkElement.setAttribute("href", link.href);
-				linkElement.setAttribute("class", "json-link");
-				linkElement.appendChild(document.createTextNode(link.rel));
-				element.appendChild(linkElement);
-				linkElement.onclick = function (event) {
-					linkPrompt(link, event);
-					return false;
-				};
-			})(i, links[i]);
-		}
-		element = null;
-		linkElement = null;
-	}
-	
 	// Display raw JSON
 	Jsonary.render.register({
 		render: function (element, data) {
@@ -191,7 +197,7 @@
 			element = null;
 		},
 		filter: function (data) {
-			return data.readOnly();
+			return true;
 		}
 	});
 	
@@ -207,99 +213,65 @@
 		textarea.setAttribute("rows", lines.length);
 	}
 
-	// Edit raw JSON
-	Jsonary.render.register({
-		render: function (element, data) {
-			var textarea = document.createElement("textarea");
-			textarea.setAttribute("class", "json-raw");
-			textarea.value = JSON.stringify(data.value(), null, 4);
-			updateTextAreaSize(textarea);
-			textarea.setAttribute("class", "valid");
-			textarea.onkeyup = function () {
-				updateTextAreaSize(this);
-				try {
-					var jsonString = this.value;
-					var value = JSON.parse(jsonString);
-					this.setAttribute("class", "valid");
-				} catch (e) {
-					this.setAttribute("class", "invalid");
-				}
-			};
-			textarea.onblur = function () {
-				try {
-					var jsonString = this.value;
-					var value = JSON.parse(jsonString);
-					data.setValue(value);
-					this.setAttribute("class", "valid");
-				} catch (e) {
-					this.setAttribute("class", "invalid");
-				}
-			};
-			element.appendChild(textarea);
-			textarea = null;
-			element = null;
-		},
-		filter: function (data) {
-			return !data.readOnly();
-		}
-	});
-	
 	// Display/edit objects
-	Jsonary.render.register({
-		render: function (element, data) {
-			element.appendChild(document.createTextNode("{"));
-			var lastRow = null;
+	Jsonary.render.register({	
+		renderHtml: function (data, context) {
+			var uiState = context.uiState;
+			var result = "{";
 			data.properties(function (key, subData) {
-				if (lastRow != null) {
-					lastRow.appendChild(document.createTextNode(","));
-				}
-				var rowElement = document.createElement("div");
-				rowElement.setAttribute('class', "json-object-pair");
-				lastRow = rowElement;
-
-				var keyElement = document.createElement("span");
-				keyElement.setAttribute('class', "json-object-key");
-				keyElement.appendChild(document.createTextNode(key));
-				rowElement.appendChild(keyElement);
-				rowElement.appendChild(document.createTextNode(": "));
-			
-				var valueElement = document.createElement("span");
-				valueElement['class'] = "json-object-value";
-				rowElement.appendChild(valueElement);
-				Jsonary.render(valueElement, subData);
-			
-				element.appendChild(rowElement);
-				
-				rowElement = null;
-				keyElement = null;
-				valueElement = null;
+				result += '<div class="json-object-pair">';
+				result +=	'<span class="json-object-key">' + escapeHtml(key) + '</span>: ';
+				result += '<span class="json-object-value">' + context.renderHtml(subData) + '</span>';
+				result += '</div>';
 			});
+			if (!data.readOnly()) {
+				var addLinkHtml = "";
+				var schemas = data.schemas();
+				var definedProperties = schemas.definedProperties();
+				var keyFunction = function (index, key) {
+					var addHtml = '<span class="json-object-add-key">' + escapeHtml(key) + '</span>';
+					addLinkHtml += context.actionHtml(addHtml, "add-named", key);
+				};
+				for (var i = 0; i < definedProperties.length; i++) {
+					if (!data.property(definedProperties[i]).defined()) {
+						keyFunction(i, definedProperties[i]);
+					}
+				}
+				if (schemas.allowedAdditionalProperties()) {
+					var newHtml = '<span class="json-object-add-key-new">+ new</span>';
+					addLinkHtml += context.actionHtml(newHtml, "add-new");
+				}
+				if (addLinkHtml != "") {
+					result += '<span class="json-object-add">add: ' + addLinkHtml + '</span>';
+				}
+			}
+			return result + "}";
+		},
+		action: function (context, actionName, arg1) {
+			var data = context.data;
+			if (actionName == "add-named") {
+				var key = arg1;
+				data.schemas().createValueForProperty(key, function (newValue) {
+					data.property(key).setValue(newValue);
+				});
+			} else if (actionName == "add-new") {
+				var key = window.prompt("New key:", "key");
+				if (key != null && !data.property(key).defined()) {
+					data.schemas().createValueForProperty(key, function (newValue) {
+						data.property(key).setValue(newValue);
+					});
+				}
+			}
+		},
+		render: function (element, data) {
+			return;
+			element.appendChild(document.createTextNode("{"));
 			if (!data.readOnly()) {
 				var addLinkUsed = false;
 				var addLink = document.createElement("span");
 				addLink.setAttribute("class", "json-object-add");
 				addLink.innerHTML = "add: ";
 				var schemas = data.schemas();
-				var definedProperties = schemas.definedProperties();
-				for (var i = 0; i < definedProperties.length; i++) {
-					(function (index, key) {
-						if (!data.property(key).defined()) {
-							var keyLink = document.createElement("a");
-							keyLink.setAttribute("href", "#");
-							keyLink.setAttribute("class", "json-object-add-key");
-							keyLink.appendChild(document.createTextNode(key));
-							addLink.appendChild(keyLink);
-							keyLink.onclick = function () {
-								data.schemas().createValueForProperty(key, function (newValue) {
-									data.property(key).setValue(newValue);
-								});
-								return false;
-							};
-							keyLink = null;
-							addLinkUsed = true;
-						}
-					})(i, definedProperties[i]);
-				}
 				if (schemas.allowedAdditionalProperties()) {
 					var newKeyLink = document.createElement("a");
 					newKeyLink.setAttribute("href", "#");
@@ -334,48 +306,31 @@
 
 	// Display/edit arrays
 	Jsonary.render.register({
-		render: function (element, data) {
-			var lastRow = null;
+		renderHtml: function (data, context) {
+			var result = "";
 			var tupleTypingLength = data.schemas().tupleTypingLength();
-			var minItems = data.schemas().minItems();
 			var maxItems = data.schemas().maxItems();
 			data.indices(function (index, subData) {
-				if (lastRow != null) {
-					lastRow.appendChild(document.createTextNode(","));
-				}
-				var rowElement = document.createElement("div");
-				rowElement.setAttribute('class', "json-array-item");
-				lastRow = rowElement;
-
-				var valueElement = document.createElement("span");
-				valueElement['class'] = "json-array-value";
-				rowElement.appendChild(valueElement);
-				Jsonary.render(valueElement, subData);
-			
-				element.appendChild(rowElement);
-				
-				rowElement = null;
-				valueElement = null;
+				result += '<div class="json-array-item">';
+				result += '<span class="json-array-value">' + context.renderHtml(subData) + '</span>';
+				result += '</div>';
 			});
-
 			if (!data.readOnly()) {
 				if (maxItems == null || data.length() < maxItems) {
-					var addLink = document.createElement("span");
-					addLink.setAttribute("class", "json-array-add");
-					addLink.innerHTML = "+ add";
-					addLink.onclick = function () {
-						var index = data.length();
-						data.schemas().createValueForIndex(index, function (newValue) {
-							data.index(index).setValue(newValue);
-						});
-						return false;
-					};
-					element.appendChild(addLink);
-					addLink = null;
+					var addHtml = '<span class="json-array-add">+ add</span>';
+					result += context.actionHtml(addHtml, "add");
 				}
 			}
-			
-			element = null;
+			return result + "";
+		},
+		action: function (context, actionName) {
+			var data = context.data;
+			if (actionName == "add") {
+				var index = data.length();
+				data.schemas().createValueForIndex(index, function (newValue) {
+					data.index(index).setValue(newValue);
+				});
+			}
 		},
 		filter: function (data) {
 			return data.basicType() == "array";
@@ -384,11 +339,8 @@
 	
 	// Display string
 	Jsonary.render.register({
-		render: function (element, data) {
-			var textspan = document.createElement("span");
-			textspan.setAttribute("class", "json-string");
-			textspan.appendChild(document.createTextNode(data.value()));
-			element.appendChild(textspan);
+		renderHtml: function (data, context) {
+			return '<span class="json-string">' + escapeHtml(data.value()) + '</span>';
 		},
 		filter: function (data) {
 			return data.basicType() == "string" && data.readOnly();

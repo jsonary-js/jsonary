@@ -28,7 +28,10 @@ Jsonary.render.register({
 				var postLink = data.links('create_post')[0];
 				var submissionData = postLink.createSubmissionData();
 				html += '<div class="facebook-user-section-title">New post</div>';
-				html += '<div class="facebook-user-section">' + context.renderHtml(submissionData) + '</div>';
+				html += '<div class="facebook-user-section">';
+				html += context.renderHtml(submissionData);
+				html += context.actionHtml('<div class="facebook-button">Post</div>', "post", submissionData);
+				html += '</div>';
 				html += '<div style="clear: left"></div>';
 				var feedLink = data.links('feed')[0];
 				feedLink.follow(function (link, submissionData, request) {
@@ -126,6 +129,12 @@ Jsonary.render.register({
 	action: function (context, actionName, arg1) {
 		if (actionName == "select-tab") {
 			context.uiState.tab = arg1;
+			return true;
+		} else if (actionName == "post") {
+			var data = context.data;
+			var submissionData = arg1;
+			var submissionLink = data.links("create_post")[0];
+			submissionLink.follow(submissionData.value(), function () {return false;});
 			return true;
 		}
 	},

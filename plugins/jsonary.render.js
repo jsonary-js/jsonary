@@ -41,6 +41,15 @@
 		this.getElementId = function () {
 			return elementIdPrefix + (elementIdCounter++);
 		};
+		this.getInputName = this.getElementId;
+		this.getInputValue = function (inputName) {
+			var inputs = document.getElementsByName(inputName);
+			if (inputs.length == 0) {
+				return null;
+			}
+			var input = inputs[0];
+			return input.value;
+		};
 
 		var renderDepth = 0;
 		this.enhancementContexts = {};
@@ -74,7 +83,7 @@
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
 				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
-				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+				var renderer = selectRenderer(data, prevUiState, prevContext.baseContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.render(element, data, prevContext);
 				} else {
@@ -218,7 +227,7 @@
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
 				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
-				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+				var renderer = selectRenderer(data, prevUiState, prevContext.baseContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
