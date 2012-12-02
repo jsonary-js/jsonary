@@ -131,12 +131,15 @@ textarea {
 /**** String ****/
 
 .json-string {
-	white-space: pre;
+	white-space: pre-wrap;
 }
 
 textarea.json-string {
 	font-size: inherit;
 	font-weight: inherit;
+	background-color: #FFF;
+	border: 1px solid #000;
+	background-color: rgba(255, 255, 255, 0.5);
 }
 
 /**** Number ****/

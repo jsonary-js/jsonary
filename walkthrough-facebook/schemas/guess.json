@@ -3,7 +3,8 @@
 	"anyOf": [
 		{},
 		{"$ref": "object.json"},
+		{"$ref": "object.json#/definitions/reference"},
 		{"$ref": "user.json"},
-		{"$ref": "arrays/guess.json"}
+		{"$ref": "array.php?type=guess"}
 	]
 }

@@ -1,0 +1,19 @@
+{
+	"title": "Current User",
+	"properties": {
+		"timezone": {"title": "Timezone", "description": "Current user's timezone, relative to GMT", "type": "number"}
+	},
+	"links": [
+		{
+			"rel": "home",
+			"href": "/me/home",
+			"targetSchema": {"$ref": "arrays/posts.json"}
+		},
+		{
+			"rel": "notifications",
+			"href": "/me/notifications",
+			"targetSchema": {"$ref": "arrays/object.json"}
+		}
+	],
+	"allOf": [{"$ref": "user.json"}]
+}

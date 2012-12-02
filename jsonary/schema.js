@@ -515,21 +515,28 @@ ActiveLink.prototype = {
 	createSubmissionData: function(callback) {
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
-		if (submissionSchemas.length == 0 && this.method == "PUT") {
+		if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 			Jsonary.getData(this.href, function (data) {
 				callback(data.editableCopy());
 			})
 			return this;
 		}
-		submissionSchemas.getFull(function(fullList) {
-			var value = fullList.createValue();
+		if (callback != undefined) {
+			submissionSchemas.createValue(function (value) {
+				var data = publicApi.create(value, hrefBase);
+				for (var i = 0; i < submissionSchemas.length; i++) {
+					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
+				}
+				callback(data);
+			});
+		} else {
+			var value = submissionSchemas.createValue();
 			var data = publicApi.create(value, hrefBase);
-			for (var i = 0; i < fullList.length; i++) {
-				data.addSchema(fullList[i], ACTIVE_LINK_SCHEMA_KEY);
+			for (var i = 0; i < submissionSchemas.length; i++) {
+				data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
 			}
-			callback(data);
-		});
-		return this;
+			return data;
+		}
 	},
 	follow: function(submissionData, extraHandler) {
 		if (typeof submissionData == 'function') {

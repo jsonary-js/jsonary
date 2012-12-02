@@ -24,47 +24,47 @@
 		"quotes": {"title": "Favourite quotes", "type": "string"},
 		"relationship_status": {"$ref": "#/definitions/relationship_status"},
 		"religion": {"title": "Religious views", "type": "string"},
-		"significant_other": {"title": "Significant other", "allOf": [{"$ref": "object.json#/definitions/reference"}]},
+		"significant_other": {"$ref": "user.json#/definitions/reference"},
 		"website": {"title": "Website", "type": "string", "format": "uri"},
 		"work": {"$ref": "#/definitions/work"}
 		
 	},
-	"required": ["id", "name", "first_name", "last_name", "username", "gender", "locale"],
+	"required": ["id", "name", "first_name", "last_name", "gender", "locale"],
 	"links": [
 		{
 			"rel": "alternate",
-			"href": "+{link}",
+			"href": "{+link}",
 			"mediaType": "text/html"
 		},
 		{
 			"rel": "albums",
 			"href": "/{id}/albums",
-			"targetSchema": {"$ref": "arrays/album.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=album"}
 		},
 		{
 			"rel": "feed",
 			"href": "/{id}/feed",
-			"targetSchema": {"$ref": "arrays/post.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=post"}
 		},
 		{
 			"rel": "friends",
 			"href": "/{id}/friends",
-			"targetSchema": {"$ref": "arrays/user.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=user"}
 		},
 		{
 			"rel": "groups",
 			"href": "/{id}/groups",
-			"targetSchema": {"$ref": "arrays/group.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=group"}
 		},
 		{
 			"rel": "likes",
 			"href": "/{id}/likes",
-			"targetSchema": {"$ref": "arrays/object.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=object"}
 		},
 		{
 			"rel": "photos",
 			"href": "/{id}/photos",
-			"targetSchema": {"$ref": "arrays/photo.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=photo"}
 		},
 		{
 			"rel": "picture",
@@ -74,20 +74,46 @@
 		{
 			"rel": "posts",
 			"href": "/{id}/posts",
-			"targetSchema": {"$ref": "arrays/post.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=post"}
 		},
 		{
 			"rel": "statuses",
 			"href": "/{id}/statuses",
-			"targetSchema": {"$ref": "arrays/statuses.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=statuses"}
 		},
 		{
 			"rel": "tagged",
 			"href": "/{id}/tagged",
-			"targetSchema": {"$ref": "arrays/tagged.json"}
+			"targetSchema": {"$ref": "array-ref.php?type=tagged"}
+		},
+		{
+			"rel": "create_post",
+			"href": "/{id}/feed",
+			"method": "POST",
+			"encType": "application/x-www-form-urlencoded",
+			"schema": {
+				"title": "New post",
+				"type": "object",
+				"properties": {
+					"message": {"title": "Message", "type": "string"},
+					"link": {"title": "Link URL", "type": "string", "format": "uri"}
+				},
+				"dependencies": {
+					"link": {
+						"properties": {
+							"name": {"title": "Link name", "type": "string"},
+							"caption": {"title": "Link caption", "type": "string"},
+							"description": {"title": "Link description", "type": "string"},
+							"picture": {"title": "Link thumbnail", "type": "string", "format": "uri"}
+						}
+					}
+				},
+				"required": ["message"]
+			}
 		}
 	],
 	"definitions": {
+		"reference": {"title": "User reference", "links": [{"rel": "full", "href": "/{id}"}]},
 		"education": {"title": "Education"},
 		"relationship_status": {
 			"title": "Relationship status",

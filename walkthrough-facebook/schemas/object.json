@@ -5,11 +5,13 @@
 	],
 	"definitions": {
 		"reference": {
+			"title": "Object reference",
 			"type": "object",
 			"properties": {
 				"name": {"title": "Name", "type": "string"},
 				"id": {"title": "ID", "type": "string"}
 			},
+			"required": ["name", "id"],
 			"links": [
 				{
 					"rel": "full",

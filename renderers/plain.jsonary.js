@@ -77,9 +77,10 @@
 			return true;
 		}
 	});
-
+	
+	Jsonary.render.Components.add("LIST_LINKS");
 	Jsonary.render.register({
-		component: Jsonary.render.Components.TYPE_SELECTOR,
+		component: Jsonary.render.Components.LIST_LINKS,
 		render: function (element, data, context) {
 			var container = document.createElement("span");
 			listLinks(container, data.links());
@@ -89,7 +90,20 @@
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
 			}
-			if (!data.readOnly()) {
+			return context.renderHtml(data, context.uiState.subState);
+		},
+		filter: function () {
+			return true;
+		}
+	});
+
+	Jsonary.render.register({
+		component: Jsonary.render.Components.TYPE_SELECTOR,
+		renderHtml: function (data, context) {
+			if (context.uiState.subState == undefined) {
+				context.uiState.subState = {};
+			}
+			if (data.readOnly()) {
 				return context.renderHtml(data, context.uiState.subState);
 			}
 			var result = "";
@@ -146,26 +160,6 @@
 			return true;
 		}
 	});
-
-	function listSchemas(element, schemaList) {
-		var linkElement = null;
-		schemaList.each(function (index, schema) {
-			if (schema.title() == null) {
-				return;
-			}
-			linkElement = document.createElement("a");
-			linkElement.setAttribute("href", schema.referenceUrl());
-			linkElement.setAttribute("class", "json-schema");
-			linkElement.appendChild(document.createTextNode(schema.title()));
-			element.appendChild(linkElement);
-			linkElement.onclick = function () {
-				alert(schema.referenceUrl() + "\n" + JSON.stringify(schema.data.value(), null, 4));
-				return false;
-			};
-		});
-		element = null;
-		linkElement = null;
-	}
 
 	function listLinks(element, links) {
 		var linkElement = null;
@@ -341,7 +335,7 @@
 	// Display/edit arrays
 	Jsonary.render.register({
 		render: function (element, data) {
-		var lastRow = null;
+			var lastRow = null;
 			var tupleTypingLength = data.schemas().tupleTypingLength();
 			var minItems = data.schemas().minItems();
 			var maxItems = data.schemas().maxItems();
@@ -380,6 +374,7 @@
 					addLink = null;
 				}
 			}
+			
 			element = null;
 		},
 		filter: function (data) {
@@ -397,6 +392,17 @@
 		},
 		filter: function (data) {
 			return data.basicType() == "string" && data.readOnly();
+		}
+	});
+
+	// Display string
+	Jsonary.render.register({
+		renderHtml: function (data, context) {
+			var date = new Date(data.value());
+			return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
+		},
+		filter: function (data, schemas) {
+			return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;
 		}
 	});
 
@@ -419,11 +425,14 @@
 				}
 			}
 			var textarea = document.createElement("textarea");
+			textarea.style.fontFamily = "sans-serif";
+			if (maxLength != null) {
+				textarea.style.maxWidth = (maxLength + 1) + "ex";
+				textarea.style.height = "1.5em";
+			}
 			textarea.setAttribute("class", "json-string");
 			textarea.value = data.value()
-			updateTextAreaSize(textarea);
 			textarea.onkeyup = function () {
-				updateTextAreaSize(this);
 				updateNoticeBox(this.value);
 			};
 			textarea.onfocus = function () {

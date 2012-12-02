@@ -16,6 +16,17 @@
 		ADD_REMOVE: "add/remove",
 		TYPE_SELECTOR: "type-selector",
 		RENDERER: "data renderer",
+		add: function (newName, beforeName) {
+			if (this[newName] != undefined) {
+				return;
+			}
+			this[newName] = newName;
+			if (componentList.indexOf(beforeName) != -1) {
+				componentList.splice(componentList.indexOf(beforeName), 0, this[newName]);
+			} else {
+				componentList.unshift(this[newName]);
+			}
+		}
 	};	
 	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
@@ -80,7 +91,7 @@
 			if (this.data == data) {
 				usedComponents = this.usedComponents.slice(0);
 				if (this.renderer != undefined) {
-					usedComponents.push(this.renderer.component);
+					usedComponents = usedComponents.concat(this.renderer.component);
 				}
 			}
 			if (typeof elementId == "object") {
@@ -100,8 +111,11 @@
 		render: function (element, data, uiStartingState) {
 			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
+				data = Jsonary.getData(data);
+			}
+			if (data.getData != undefined) {
 				var thisContext = this;
-				Jsonary.getData(data, function (actualData) {
+				data.getData(function (actualData) {
 					thisContext.render(element, actualData, uiStartingState);
 				});
 				return;
@@ -144,6 +158,26 @@
 		},
 		renderHtml: function (data, uiStartingState) {
 			var elementId = this.getElementId();
+			if (typeof data == "string") {
+				data = Jsonary.getData(data);
+			}
+			if (data.getData != undefined) {
+				var thisContext = this;
+				var rendered = false;
+				data.getData(function (actualData) {
+					if (!rendered) {
+						rendered = true;
+						data = actualData;
+					} else {
+						thisContext.render(document.getElementById(elementId), actualData, uiStartingState);
+					}
+				});
+				if (!rendered) {
+					rendered = true;
+					return '<span id="' + elementId + '">Loading...</span>';
+				}
+			}
+
 			if (typeof uiStartingState != "object") {
 				uiStartingState = {};
 			}
@@ -287,6 +321,9 @@
 		}
 		this.uniqueId = rendererIdCounter++;
 		this.component = (sourceObj.component != undefined) ? sourceObj.component : componentList[componentList.length - 1];
+		if (typeof this.component == "string") {
+			this.component = [this.component];
+		}
 	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
@@ -370,7 +407,7 @@
 				var component = componentList[j];
 				for (var i = rendererList.length - 1; i >= 0; i--) {
 					var renderer = rendererList[i];
-					if (renderer.component != component) {
+					if (renderer.component.indexOf(component) == -1) {
 						continue;
 					}
 					if (renderer.canRender(data, schemas, uiStartingState)) {

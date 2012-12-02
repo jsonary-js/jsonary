@@ -1,0 +1,152 @@
+<html>
+  <head>
+		<title>Starting the UI</title>
+		<link rel="stylesheet" href="../../css/main.css">
+		<meta name="viewport" content="width=960">
+	</head>
+	<body>
+		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
+		<div align="center">
+			<div id="content">
+				<h1>Starting the UI</h1>
+				<div class="tagline">making it pretty</div>
+
+				<div id="nav">
+					back to
+					<a class="nav-link" href="../../">main page</a>
+					<a class="nav-link" href="../">Facebook walkthrough</a>
+				</div>
+				
+				<div class="resource-list">
+					The demos on this page use the following files:
+					<ul>
+						<li><span class="filename">jsonary.js</span> - the core Jsonary library
+						<li><span class="filename">jsonary.hash.js</span> - the Jsonary.Hash plugin
+						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
+						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+					</ul>
+				</div>
+	
+				<h2>Starting off: Users</h2>
+				<div class="section">
+					<p>Starting using the page and schemas we created in the previous step of the walkthrough, we're going to start creating custom renderers for certain schemas, one-by-one.
+					<p>Let's start with the User schema:
+<pre class="example code">
+Jsonary.render.register({
+	renderHtml: function (data, context) {
+		// Render header
+		var result = '&lt;div class="facebook-user"&gt;';
+		var pictureLink = data.links("picture")[0];
+		result += '&lt;img class="facebook-user-picture" src="' + pictureLink.href + '"&gt;';
+		result += '&lt;div class="facebook-user-name"&gt;' + context.renderHtml(data.property("name")) + '&lt;/div&gt;';
+		result += '&lt;div class="facebook-user-update-time"&gt;last updated ' + context.renderHtml(data.property("updated_time")) + '&lt;/div&gt;';
+		return result;
+	},
+	filter: function (data, schemas, uiState) {
+		return schemas.containsUrl("user.json");
+	}
+});
+</pre>
+					<p><code>user.json</code> is one of the schemas we used to document the Facebook Graph API.  This renderer deals only with that object, and renders some basic info about the user.
+					<p>You can see that in action <a href="fb-ui-user-start.html" target="facebookUiUserStart">here</a>.  All User objects should now be rendered with the new renderer, but everything else still looks the same.
+				</div>
+
+				<h2>Creating a tabbed interface</h2>
+				<div class="section">
+					<p>We want the put more information in that User renderer, but we ideally want it in tabs.
+					<p>For this, we use the <code>uiState</code> property of the context object.  We defined a property called <code>tab</code>, and use it to determine which tab to display.
+					<p>We display a list of tabs, each one using <code>context.actionHtml()</code> to harness the click action.  The <code>action</code> method of our renderer actually does the tab-switching, and returns boolean <code>true</code> to force a re-render.
+<pre class="example code">
+Jsonary.render.register({
+	tabs: {
+		"about": {
+			title: "Info",
+			renderHtml: function (data, context) {
+				...
+			}
+		},
+		...
+	},
+	tabOrder: ["about", ...],
+	renderHtml: function (data, context) {
+		var uiState = context.uiState;
+		if (uiState.tab == undefined) {
+			uiState.tab = this.tabOrder[0];
+		}
+	
+		// Render header
+		...
+
+		// Render the tab switcher
+		result += '&lt;div class="facebook-user-tabs"&gt;';
+		for (var i = 0; i &lt; this.tabOrder.length; i++) {
+			var tabKey = this.tabOrder[i];
+			var selected = (tabKey == uiState.tab) ? ' selected' : '';
+			var tabHtml = '&lt;div class="facebook-user-tab' + selected + '"&gt;' + this.tabs[tabKey].title + '&lt;/div&gt;';
+			result += context.actionHtml(tabHtml, "select-tab", tabKey);
+		}
+		result += '&lt;/div&gt;';
+		// Render the actual tab data
+		result += '&lt;div class="facebook-user-tab-content"&gt;' + this.tabs[uiState.tab].renderHtml(data, context) + '&lt;div style="clear: both"&gt;&lt;/div&gt;&lt;/div&gt;';
+
+		result += '&lt;/div&gt;';
+		return result;
+	},
+	action: function (context, actionName, arg1) {
+		if (actionName == "select-tab") {
+			context.uiState.tab = arg1;
+			return true;
+		}
+	},
+	...
+});
+</pre>
+					<p>As you can see, we're storing a list of tabs in the <code>tabOrder</code> property, and we're storing the title and a tab-specific rendering function inside the <code>tabs</code> property.
+					<p>The full code is <a href="fb-ui-user.js" target="facebookUiUserTabs-code">here</a>, and you can see that in action <a href="fb-ui-user.html" target="facebookUiUser">here</a>.
+					<p>
+				</div>
+
+				<h2>Including data from other URLs</h2>
+				<div class="section">
+					<p>You may note that some of the links (such as "Friends") actually require additional data to be fetched.  The way we're doing this is quite neat:
+					<p>The schema files we wrote for the User object defines a link, with a relationship of "friends" (parametrised by the user ID):
+<pre class="example code">
+{
+	"title": "User",
+	"type": "object",
+	"properties": {
+		...
+	},
+	"links": [
+		{
+			"rel": "friends",
+			"href": "/{id}/friends",
+			"targetSchema": {"$ref": "array-ref.php?type=user"}
+		}
+	]
+}
+</pre>
+					<p>When rendering, we can retrieve an object representing the link.  First, we call the <code>links()</code> method of the data object, passing in a parameter of <code>"friends"</code>.  This gives us a list of links with that relationship value, and we just choose the first one:
+<pre class="example code">
+var friendsLink = data.links('friends')[0];
+</pre>
+					<p>We then <U>immediately follow the link</U>, using <code>friendsLink.follow()</code>.  Because of the global link handler we defined elsewhere, if we just called <code>follow()</code>, it would fill the screen with that new data.
+					<p>So we provide a custom link handler, <U>which is called immediately</U>:
+<pre class="example code">
+// Rendering function for the "friends" tab:
+renderHtml: function (data, context) {
+	var friendsLink = data.links('friends')[0];
+	var html;
+	friendsLink.follow(function (link, submissionData, request) {
+		html = context.renderHtml(request);
+		return false;
+	});
+	return html;
+}
+</pre>
+					<p>The third parameter that the callback gets is a Jsonary Request object.  Although we probably haven't actually received the data yet, the render context can put in some placeholder HTML, and come back and fill it in later when the AJAX request finishes.
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

@@ -2428,7 +2428,10 @@ Schema.prototype = {
 	},
 	asList: function () {
 		return new SchemaList([this]);
-	}
+	},
+	format: function () {
+		return this.data.propertyValue("format");
+	},
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
 Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
@@ -2470,7 +2473,7 @@ function PotentialLink(linkData) {
 		this.submissionSchemas = new SchemaList();
 	}
 	var targetSchemaData = linkData.property("targetSchema");
-	if (targetSchemaData != undefined) {
+	if (targetSchemaData.defined()) {
 		this.targetSchema = targetSchemaData.asSchema();
 	}
 	
@@ -2594,21 +2597,28 @@ ActiveLink.prototype = {
 	createSubmissionData: function(callback) {
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
-		if (submissionSchemas.length == 0 && this.method == "PUT") {
+		if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 			Jsonary.getData(this.href, function (data) {
 				callback(data.editableCopy());
 			})
 			return this;
 		}
-		submissionSchemas.getFull(function(fullList) {
-			var value = fullList.createValue();
+		if (callback != undefined) {
+			submissionSchemas.createValue(function (value) {
+				var data = publicApi.create(value, hrefBase);
+				for (var i = 0; i < submissionSchemas.length; i++) {
+					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
+				}
+				callback(data);
+			});
+		} else {
+			var value = submissionSchemas.createValue();
 			var data = publicApi.create(value, hrefBase);
-			for (var i = 0; i < fullList.length; i++) {
-				data.addSchema(fullList[i], ACTIVE_LINK_SCHEMA_KEY);
+			for (var i = 0; i < submissionSchemas.length; i++) {
+				data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
 			}
-			callback(data);
-		});
-		return this;
+			return data;
+		}
 	},
 	follow: function(submissionData, extraHandler) {
 		if (typeof submissionData == 'function') {
@@ -3727,6 +3737,16 @@ SchemaList.prototype = {
 		}
 		addAll(this);
 		return this;
+	},
+	formats: function () {
+		var result = [];
+		for (var i = 0; i < this.length; i++) {
+			var format = this[0].format();
+			if (format != null) {
+				result.push(format);
+			}
+		}
+		return result;
 	}
 };
 
@@ -4215,6 +4235,17 @@ publicApi.config = configData;
 		ADD_REMOVE: "add/remove",
 		TYPE_SELECTOR: "type-selector",
 		RENDERER: "data renderer",
+		add: function (newName, beforeName) {
+			if (this[newName] != undefined) {
+				return;
+			}
+			this[newName] = newName;
+			if (componentList.indexOf(beforeName) != -1) {
+				componentList.splice(componentList.indexOf(beforeName), 0, this[newName]);
+			} else {
+				componentList.unshift(this[newName]);
+			}
+		}
 	};	
 	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
@@ -4279,7 +4310,7 @@ publicApi.config = configData;
 			if (this.data == data) {
 				usedComponents = this.usedComponents.slice(0);
 				if (this.renderer != undefined) {
-					usedComponents.push(this.renderer.component);
+					usedComponents = usedComponents.concat(this.renderer.component);
 				}
 			}
 			if (typeof elementId == "object") {
@@ -4299,8 +4330,11 @@ publicApi.config = configData;
 		render: function (element, data, uiStartingState) {
 			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
+				data = Jsonary.getData(data);
+			}
+			if (data.getData != undefined) {
 				var thisContext = this;
-				Jsonary.getData(data, function (actualData) {
+				data.getData(function (actualData) {
 					thisContext.render(element, actualData, uiStartingState);
 				});
 				return;
@@ -4343,6 +4377,26 @@ publicApi.config = configData;
 		},
 		renderHtml: function (data, uiStartingState) {
 			var elementId = this.getElementId();
+			if (typeof data == "string") {
+				data = Jsonary.getData(data);
+			}
+			if (data.getData != undefined) {
+				var thisContext = this;
+				var rendered = false;
+				data.getData(function (actualData) {
+					if (!rendered) {
+						rendered = true;
+						data = actualData;
+					} else {
+						thisContext.render(document.getElementById(elementId), actualData, uiStartingState);
+					}
+				});
+				if (!rendered) {
+					rendered = true;
+					return '<span id="' + elementId + '">Loading...</span>';
+				}
+			}
+
 			if (typeof uiStartingState != "object") {
 				uiStartingState = {};
 			}
@@ -4486,6 +4540,9 @@ publicApi.config = configData;
 		}
 		this.uniqueId = rendererIdCounter++;
 		this.component = (sourceObj.component != undefined) ? sourceObj.component : componentList[componentList.length - 1];
+		if (typeof this.component == "string") {
+			this.component = [this.component];
+		}
 	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
@@ -4569,7 +4626,7 @@ publicApi.config = configData;
 				var component = componentList[j];
 				for (var i = rendererList.length - 1; i >= 0; i--) {
 					var renderer = rendererList[i];
-					if (renderer.component != component) {
+					if (renderer.component.indexOf(component) == -1) {
 						continue;
 					}
 					if (renderer.canRender(data, schemas, uiStartingState)) {

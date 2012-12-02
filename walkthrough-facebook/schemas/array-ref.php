@@ -1,11 +1,17 @@
+<?php
+	header("Content-Type: application/json");
+	if (!isset($_GET["type"])) {
+		die('{"title": "Facebook array"}');
+	}
+?>
 {
-	"title": "Facebook array",
+	"title": "User array",
 	"type": "object",
 	"properties": {
 		"data": {
 			"title": "Array data",
 			"type": "array",
-			"items": {"$ref": "../object.json"}
+			"items": {"$ref": <?php echo json_encode($_GET["type"].".json#/definitions/reference"); ?>}
 		},
 		"paging": {
 			"title": "Paging",
@@ -20,5 +26,6 @@
 			]
 		}
 	},
-	"required": ["data"]
+	"required": ["data"],
+	"allOf": [{"$ref": "array.php"}]
 }

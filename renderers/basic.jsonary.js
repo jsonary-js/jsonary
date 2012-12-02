@@ -77,15 +77,29 @@
 			return true;
 		}
 	});
-
+	
+	Jsonary.render.Components.add("LIST_LINKS");
 	Jsonary.render.register({
-		component: Jsonary.render.Components.TYPE_SELECTOR,
+		component: Jsonary.render.Components.LIST_LINKS,
 		render: function (element, data, context) {
 			var container = document.createElement("span");
 			listSchemas(container, data.schemas());
 			listLinks(container, data.links());
 			element.insertBefore(container, element.childNodes[0]);
 		},
+		renderHtml: function (data, context) {
+			if (context.uiState.subState == undefined) {
+				context.uiState.subState = {};
+			}
+			return context.renderHtml(data, context.uiState.subState);
+		},
+		filter: function () {
+			return true;
+		}
+	});
+
+	Jsonary.render.register({
+		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
@@ -404,6 +418,17 @@
 		}
 	});
 
+	// Display string
+	Jsonary.render.register({
+		renderHtml: function (data, context) {
+			var date = new Date(data.value());
+			return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
+		},
+		filter: function (data, schemas) {
+			return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;
+		}
+	});
+
 	// Edit string
 	Jsonary.render.register({
 		render: function (element, data, context) {
@@ -423,11 +448,14 @@
 				}
 			}
 			var textarea = document.createElement("textarea");
+			textarea.style.fontFamily = "sans-serif";
+			if (maxLength != null) {
+				textarea.style.maxWidth = (maxLength + 1) + "ex";
+				textarea.style.height = "1.5em";
+			}
 			textarea.setAttribute("class", "json-string");
 			textarea.value = data.value()
-			updateTextAreaSize(textarea);
 			textarea.onkeyup = function () {
-				updateTextAreaSize(this);
 				updateNoticeBox(this.value);
 			};
 			textarea.onfocus = function () {
