@@ -388,7 +388,7 @@ function PotentialLink(linkData) {
 		this.submissionSchemas = new SchemaList();
 	}
 	var targetSchemaData = linkData.property("targetSchema");
-	if (targetSchemaData != undefined) {
+	if (targetSchemaData.defined()) {
 		this.targetSchema = targetSchemaData.asSchema();
 	}
 	
