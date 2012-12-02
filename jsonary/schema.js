@@ -346,7 +346,10 @@ Schema.prototype = {
 	},
 	asList: function () {
 		return new SchemaList([this]);
-	}
+	},
+	format: function () {
+		return this.data.propertyValue("format");
+	},
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
 Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
