@@ -91,9 +91,11 @@
 				}
 			}
 		});
+		this.rootContext = this;
 	}
 	RenderContext.prototype = {
 		usedComponents: [],
+		rootContext: null,
 		baseContext: null,
 		subContext: function (elementId, data, uiStartingState) {
 			var usedComponents = [];
@@ -106,16 +108,16 @@
 			if (typeof elementId == "object") {
 				elementId = elementId.id;
 			}
-			function Context(baseContext, elementId, data, uiState, usedComponents) {
+			function Context(rootContext, baseContext, elementId, data, uiState, usedComponents) {
+				this.rootContext = rootContext;
 				this.baseContext = baseContext;
 				this.elementId = elementId;
 				this.data = data;
 				this.uiState = uiState;
 				this.usedComponents = usedComponents;
 			}
-			var base = this;
-			Context.prototype = base;
-			return new Context(base, elementId, data, uiStartingState, usedComponents);
+			Context.prototype = this.rootContext;
+			return new Context(this.rootContext, this, elementId, data, uiStartingState, usedComponents);
 		},
 		render: function (element, data, uiStartingState) {
 			// If data is a URL, then fetch it and call back
@@ -258,17 +260,34 @@
 			};
 		},
 		enhanceElement: function (element) {
-			var context = this.enhancementContexts[element.id];
+			var rootElement = element;
+			while (element) {
+				if (element.nodeType == 1) {
+					this.enhanceElementSingle(element);
+				}
+				if (element.firstChild) {
+					element = element.firstChild;
+					continue;
+				}
+				while (!element.nextSibling && element != rootElement) {
+					element = element.parentNode;
+				}
+				if (element == rootElement) {
+					break;
+				}
+				element = element.nextSibling;
+			}
+		},
+		enhanceElementSingle: function (element) {
+			var elementId = element.id;
+			var context = this.enhancementContexts[elementId];
 			if (context != undefined) {
 				element.jsonaryContext = context;
-				delete this.enhancementContexts[element.id];
+				delete this.enhancementContexts[elementId];
 				var renderer = context.renderer;
-				var data = context.data;
 				if (renderer != undefined) {
-					renderer.enhance(element, data, this);
+					renderer.enhance(element, context.data, context);
 				}
-			} else {
-				context = this;
 			}
 			var action = this.enhancementActions[element.id];
 			if (action != undefined) {
@@ -283,11 +302,6 @@
 					}
 					return false;
 				};
-			}
-			for (var i = 0; i < element.childNodes.length; i++) {
-				if (element.childNodes[i].nodeType == 1) {
-					context.enhanceElement(element.childNodes[i]);
-				}
 			}
 			element = null;
 		}
