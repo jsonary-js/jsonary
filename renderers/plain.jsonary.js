@@ -104,8 +104,12 @@
 	Jsonary.render.register({
 		component: Jsonary.render.Components.LIST_LINKS,
 		render: function (element, data, context) {
+			var links = data.links();
+			if (links.length == 0) {
+				return;
+			}
 			var container = document.createElement("span");
-			listLinks(container, data.links());
+			listLinks(container, links);
 			element.insertBefore(container, element.childNodes[0]);
 		},
 		renderHtml: function (data, context) {
@@ -188,13 +192,8 @@
 
 	// Display raw JSON
 	Jsonary.render.register({
-		render: function (element, data) {
-			var spanElement = document.createElement("span");
-			spanElement.setAttribute("class", "json-raw");
-			spanElement.appendChild(document.createTextNode(JSON.stringify(data.value())));
-			element.appendChild(spanElement);
-			spanElement = null;
-			element = null;
+		renderHtml: function (data, context) {
+			return '<span class="json-raw">' + escapeHtml(JSON.stringify(data.value())) + '</span>';
 		},
 		filter: function (data) {
 			return true;
@@ -262,42 +261,6 @@
 					});
 				}
 			}
-		},
-		render: function (element, data) {
-			return;
-			element.appendChild(document.createTextNode("{"));
-			if (!data.readOnly()) {
-				var addLinkUsed = false;
-				var addLink = document.createElement("span");
-				addLink.setAttribute("class", "json-object-add");
-				addLink.innerHTML = "add: ";
-				var schemas = data.schemas();
-				if (schemas.allowedAdditionalProperties()) {
-					var newKeyLink = document.createElement("a");
-					newKeyLink.setAttribute("href", "#");
-					newKeyLink.setAttribute("class", "json-object-add-key-new");
-					newKeyLink.appendChild(document.createTextNode("+ new"));
-					newKeyLink.onclick = function () {
-						var newKey = prompt("New key:", "key");
-						if (newKey !== null && !data.property(newKey).defined()) {
-							data.schemas().createValueForProperty(newKey, function (newValue) {
-								data.property(newKey).setValue(newValue);
-							});
-						}
-						return false;
-					};
-					addLink.appendChild(newKeyLink);				
-					addLinkUsed = true;
-				}	
-				if (addLinkUsed) {
-					element.appendChild(addLink);
-				}
-				newKeyLink = null;
-				addLink = null;
-			}
-			element.appendChild(document.createTextNode("}"));
-			
-			element = null;
 		},
 		filter: function (data) {
 			return data.basicType() == "object";
