@@ -4587,6 +4587,9 @@ publicApi.config = configData;
 	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
+			if (data.parent() == null) {
+				console.log("Rendering: " + data.referenceUrl());
+			}
 			if (element[0] != undefined) {
 				element = element[0];
 			}

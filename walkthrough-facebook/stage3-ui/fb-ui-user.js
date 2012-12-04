@@ -1,3 +1,11 @@
+Jsonary.getSchema("../schemas/object.json");
+Jsonary.getSchema("../schemas/me.json");
+Jsonary.getSchema("../schemas/user.json");
+Jsonary.getSchema("../schemas/post.json");
+Jsonary.getSchema("../schemas/photo.json");
+Jsonary.getSchema("../schemas/album.json");
+Jsonary.getSchema("../schemas/guess.json");
+
 Jsonary.render.register({
 	component: [Jsonary.render.Components.RENDERER, Jsonary.render.Components.LIST_LINKS],
 	tabs: {
