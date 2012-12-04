@@ -2083,7 +2083,9 @@ publicApi.create = function (rawData, baseUrl, readOnly) {
 function getSchema(url, callback) {
 	return publicApi.getData(url, function(data, fragmentRequest) {
 		var schema = data.asSchema();
-		callback.call(schema, schema, fragmentRequest);
+		if (callback != undefined) {
+			callback.call(schema, schema, fragmentRequest);
+		}
 	});
 }
 publicApi.createSchema = function (rawData, baseUrl) {
