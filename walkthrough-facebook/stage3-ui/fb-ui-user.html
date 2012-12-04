@@ -23,11 +23,18 @@
 
 			var mainElement = document.getElementById("main");
 			var currentUrl = null;
+			var currentData = null;
 			var prefix = "https://graph.facebook.com";
 			function renderToMain(url, data) {
+				mainElement.innerHTML = "Loading schemas...";
 				currentUrl = url;
+				currentData = data;
 				Jsonary.hash.property("page").setValue(currentUrl.substring(prefix.length));
-				Jsonary.render(mainElement, data);
+				data.whenSchemasStable(function () {
+					if (currentData == data) {
+						Jsonary.render(mainElement, data);
+					}
+				});
 			}
 
 			var authToken = Jsonary.hash.propertyValue("access_token");
