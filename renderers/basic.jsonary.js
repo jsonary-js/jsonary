@@ -11,17 +11,14 @@
 		renderHtml: function (data, context) {
 			if (!data.defined()) {
 				context.uiState.undefined = true;
-				if (!data.readOnly()) {
-					return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
-				}
-				return "";
+				return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
 			}
 			delete context.uiState.undefined;
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
 			}
 			var showDelete = false;
-			if (!data.readOnly() && data.parent() != null) {
+			if (data.parent() != null) {
 				var parent = data.parent();
 				if (parent.basicType() == "object") {
 					var required = parent.schemas().requiredProperties();
@@ -77,7 +74,7 @@
 			return context.uiState.undefined;
 		},
 		filter: function (data) {
-			return true;
+			return !data.readOnly();
 		}
 	});
 	
@@ -149,9 +146,6 @@
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
 			}
-			if (data.readOnly()) {
-				return context.renderHtml(data, context.uiState.subState);
-			}
 			var result = "";
 			var decisionSchemas = data.schemas().decisionSchemas();
 			var basicTypes = data.schemas().basicTypes();
@@ -206,13 +200,16 @@
 			return operation.subjectEquals(pointerPath) || operation.targetEquals(pointerPath);
 		},
 		filter: function (data) {
-			return true;
+			return !data.readOnly();
 		}
 	});
 
 	// Display raw JSON
 	Jsonary.render.register({
 		renderHtml: function (data, context) {
+			if (!data.defined()) {
+				return "";
+			}
 			return '<span class="json-raw">' + escapeHtml(JSON.stringify(data.value())) + '</span>';
 		},
 		filter: function (data) {

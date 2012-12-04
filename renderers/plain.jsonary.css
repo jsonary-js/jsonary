@@ -56,6 +56,9 @@ textarea {
 	color: #F00;
 	text-decoration: none;
 	margin-right: 1em;
+	position: relative;
+	left: -1em;
+	float: left;
 }
 
 .json-object-add {
@@ -77,23 +80,6 @@ textarea {
 	border: 1px dotted #BBB;
 	background-color: #EEF;
 	font-style: italic;
-}
-
-.json-select-type-dialog {
-	position: absolute;
-	border: 2px solid black;
-	border-radius: 10px;
-	background-color: white;
-}
-
-.json-select-type {
-	font-family: monospace;
-	border: 1px solid #666;
-	color: #666;
-	font-weight: bold;
-	padding-left: 0.3em;
-	padding-right: 0.3em;
-	background-color: #DDD;
 }
 
 /**** JSON Array ****/
@@ -140,6 +126,13 @@ textarea.json-string {
 	background-color: #FFF;
 	border: 1px solid #000;
 	background-color: rgba(255, 255, 255, 0.5);
+}
+
+textarea.json-string:focus {
+	color: #000;
+	background: #FFF;
+	border: 1px solid black;
+	border-radius: 3px;
 }
 
 /**** Number ****/
@@ -201,6 +194,7 @@ textarea.json-string {
 	padding-left: 15%;
 	padding-right: 15%;
 	background-color: rgba(100, 100, 100, 0.5);
+	overflow: scroll;
 }
 
 .prompt-buttons {
