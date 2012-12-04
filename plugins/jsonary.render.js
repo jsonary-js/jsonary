@@ -1,8 +1,15 @@
 (function (global) {
 	function encodeUiState (uiState) {
-		return JSON.stringify(uiState);
+		var json = JSON.stringify(uiState);
+		if (json == "{}") {
+			return null;
+		}
+		return json;
 	}
 	function decodeUiState (uiStateString) {
+		if (uiStateString == "" || uiStateString == null) {
+			return {};
+		}
 		return JSON.parse(uiStateString);
 	}
 	function htmlEscapeSingleQuote (str) {
@@ -82,7 +89,7 @@
 			for (var i = 0; i < elements.length; i++) {
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
-				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
 				var renderer = selectRenderer(data, prevUiState, prevContext.baseContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.render(element, data, prevContext);
@@ -141,7 +148,12 @@
 
 			var previousContext = element.jsonaryContext;
 			var subContext = this.subContext(element, data, uiStartingState);
-			element.setAttribute("jsonary-ui-starting-state", encodeUiState(uiStartingState));
+			var encodedState = encodeUiState(uiStartingState);
+			if (encodedState != null) {
+				element.setAttribute("data-jsonary", encodedState);
+			} else {
+				element.removeAttribute("data-jsonary");
+			}
 			element.jsonaryContext = subContext;
 
 			if (previousContext) {
@@ -207,7 +219,11 @@
 				this.elementLookup[uniqueId].push(elementId);
 			}
 			this.addEnhancement(elementId, subContext);
-			return '<span id="' + elementId + '" jsonary-ui-starting-state=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>' + innerHtml + '</span>';
+			if (startingStateString != null) {
+				return '<span id="' + elementId + '" data-jsonary=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>' + innerHtml + '</span>';
+			} else {
+				return '<span id="' + elementId + '">' + innerHtml + '</span>';
+			}
 		},
 		update: function (data, operation) {
 			var uniqueId = data.uniqueId;
@@ -228,7 +244,7 @@
 			for (var i = 0; i < elements.length; i++) {
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
-				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
 				var renderer = selectRenderer(data, prevUiState, prevContext.baseContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);

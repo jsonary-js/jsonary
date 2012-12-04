@@ -4219,9 +4219,16 @@ publicApi.config = configData;
 
 (function (global) {
 	function encodeUiState (uiState) {
-		return JSON.stringify(uiState);
+		var json = JSON.stringify(uiState);
+		if (json == "{}") {
+			return null;
+		}
+		return json;
 	}
 	function decodeUiState (uiStateString) {
+		if (uiStateString == "" || uiStateString == null) {
+			return {};
+		}
 		return JSON.parse(uiStateString);
 	}
 	function htmlEscapeSingleQuote (str) {
@@ -4301,7 +4308,7 @@ publicApi.config = configData;
 			for (var i = 0; i < elements.length; i++) {
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
-				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
 				var renderer = selectRenderer(data, prevUiState, prevContext.baseContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.render(element, data, prevContext);
@@ -4360,7 +4367,12 @@ publicApi.config = configData;
 
 			var previousContext = element.jsonaryContext;
 			var subContext = this.subContext(element, data, uiStartingState);
-			element.setAttribute("jsonary-ui-starting-state", encodeUiState(uiStartingState));
+			var encodedState = encodeUiState(uiStartingState);
+			if (encodedState != null) {
+				element.setAttribute("data-jsonary", encodedState);
+			} else {
+				element.removeAttribute("data-jsonary");
+			}
 			element.jsonaryContext = subContext;
 
 			if (previousContext) {
@@ -4426,7 +4438,11 @@ publicApi.config = configData;
 				this.elementLookup[uniqueId].push(elementId);
 			}
 			this.addEnhancement(elementId, subContext);
-			return '<span id="' + elementId + '" jsonary-ui-starting-state=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>' + innerHtml + '</span>';
+			if (startingStateString != null) {
+				return '<span id="' + elementId + '" data-jsonary=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>' + innerHtml + '</span>';
+			} else {
+				return '<span id="' + elementId + '">' + innerHtml + '</span>';
+			}
 		},
 		update: function (data, operation) {
 			var uniqueId = data.uniqueId;
@@ -4447,7 +4463,7 @@ publicApi.config = configData;
 			for (var i = 0; i < elements.length; i++) {
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
-				var prevUiState = decodeUiState(element.getAttribute("jsonary-ui-starting-state"));
+				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
 				var renderer = selectRenderer(data, prevUiState, prevContext.baseContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
@@ -4573,10 +4589,7 @@ publicApi.config = configData;
 				element = element[0];
 			}
 			render.empty(element);
-			var innerHtml = this.renderHtml(data, context);
-			(function part2() {
-				element.innerHTML = innerHtml;
-			}).call(this);
+			element.innerHTML = this.renderHtml(data, context);
 			if (this.renderFunction != null) {
 				this.renderFunction(element, data, context);
 			}
