@@ -15,6 +15,29 @@
 	function htmlEscapeSingleQuote (str) {
 		return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
 	}
+	
+	function HtmlBuilder() {
+		this.content = [];
+		this._base = this;
+	}
+	HtmlBuilder.prototype = {
+		html: function (html) {
+			this.content.push(html);
+		},
+		build: function () {
+			var joined = this.content.join("");
+			return joined;
+		},
+		/*
+		forContext: function (context) {
+			function Builder(context) {
+				this.context = context;
+			}
+			Builder.prototype = this;
+			return new Builder(context);
+		}
+		*/
+	};
 
 	var prefixPrefix = "Jsonary";
 	var prefixCounter = 0;
@@ -180,6 +203,11 @@
 			}
 		},
 		renderHtml: function (data, uiStartingState) {
+			var builder = new HtmlBuilder();
+			this.buildHtml(builder, data, uiStartingState);
+			return builder.build();
+		},
+		buildHtml: function (htmlBuilder, data, uiStartingState) {
 			var elementId = this.getElementId();
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -197,7 +225,8 @@
 				});
 				if (!rendered) {
 					rendered = true;
-					return '<span id="' + elementId + '">Loading...</span>';
+					htmlBuilder.html('<span id="' + elementId + '">Loading...</span>');
+					return;
 				}
 			}
 
@@ -210,7 +239,14 @@
 			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
 			subContext.renderer = renderer;
 			
-			var innerHtml = renderer.renderHtml(data, subContext);
+			if (startingStateString != null) {
+				htmlBuilder.html('<span id="' + elementId + '" data-jsonary=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>');
+			} else {
+				htmlBuilder.html('<span id="' + elementId + '">');
+			}
+			renderer.buildHtml(htmlBuilder, data, subContext);
+			htmlBuilder.html('</span>');
+
 			var uniqueId = data.uniqueId;
 			if (this.elementLookup[uniqueId] == undefined) {
 				this.elementLookup[uniqueId] = [];
@@ -219,11 +255,6 @@
 				this.elementLookup[uniqueId].push(elementId);
 			}
 			this.addEnhancement(elementId, subContext);
-			if (startingStateString != null) {
-				return '<span id="' + elementId + '" data-jsonary=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>' + innerHtml + '</span>';
-			} else {
-				return '<span id="' + elementId + '">' + innerHtml + '</span>';
-			}
 		},
 		update: function (data, operation) {
 			var uniqueId = data.uniqueId;
@@ -349,7 +380,13 @@
 	
 	function Renderer(sourceObj) {
 		this.renderFunction = sourceObj.render || sourceObj.enhance;
-		this.renderHtmlFunction = sourceObj.renderHtml;
+		this.buildHtmlFunction = sourceObj.buildHtml;
+		if (sourceObj.renderHtml != undefined) {
+			var renderFunction = sourceObj.renderHtml;
+			this.buildHtmlFunction = function (builder, data, context) {
+				builder.html(renderFunction.call(this, data, context));
+			};
+		}
 		this.updateFunction = sourceObj.update;
 		this.filterFunction = sourceObj.filter;
 		this.actionFunction = sourceObj.action;
@@ -377,12 +414,10 @@
 			context.enhanceElement(element);
 			return this;
 		},
-		renderHtml: function (data, context) {
-			var innerHtml = "";
-			if (this.renderHtmlFunction != undefined) {
-				innerHtml = this.renderHtmlFunction(data, context);
+		buildHtml: function (builder, data, context) {
+			if (this.buildHtmlFunction != undefined) {
+				this.buildHtmlFunction(builder, data, context);
 			}
-			return innerHtml;
 		},
 		enhance: function (element, data, context) {
 			if (this.renderFunction != null) {
@@ -504,7 +539,8 @@
 
 	Jsonary.extend({
 		render: render,
-		renderHtml: renderHtml
+		renderHtml: renderHtml,
+		HtmlBuilder: HtmlBuilder
 	});
 	Jsonary.extendData({
 		renderTo: function (element, uiState) {
