@@ -4424,6 +4424,7 @@ publicApi.config = configData;
 			}
 		},
 		renderHtml: function (data, uiStartingState) {
+			console.log("renderHtml :(");
 			var builder = new HtmlBuilder();
 			this.buildHtml(builder, data, uiStartingState);
 			return builder.build();
@@ -4605,6 +4606,7 @@ publicApi.config = configData;
 		if (sourceObj.renderHtml != undefined) {
 			var renderFunction = sourceObj.renderHtml;
 			this.buildHtmlFunction = function (builder, data, context) {
+				console.log("forwarding to renderHtml :(");
 				builder.html(renderFunction.call(this, data, context));
 			};
 		}
@@ -4622,17 +4624,43 @@ publicApi.config = configData;
 			this.component = [this.component];
 		}
 	}
+	function Timer() {
+		var times = [(new Date).getTime()];
+		var labels = [];
+		this.mark = function (label) {
+			labels.push(label);
+			times.push((new Date).getTime());
+		};
+		this.log = function () {
+			var result = [];
+			for (var i = 1; i < times.length; i++) {
+				result.push(labels[i - 1] + ": " + (times[i] - times[i - 1]) + "ms");
+			}
+			result.push("TOTAL: " + (times[times.length - 1] - times[0]) + "ms");
+			console.log(result.join("\n"));
+		};
+	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
 			if (element[0] != undefined) {
 				element = element[0];
 			}
+			var builder = new HtmlBuilder();
+			var timer = new Timer();
 			render.empty(element);
-			element.innerHTML = this.renderHtml(data, context);
+			timer.mark("empty");
+			this.buildHtml(builder, data, context);
+			timer.mark("buildHtml");
+			var html = builder.build();
+			timer.mark("build");
+			element.innerHTML = html;
+			timer.mark("set innerHTML");
 			if (this.renderFunction != null) {
 				this.renderFunction(element, data, context);
 			}
 			context.enhanceElement(element);
+			timer.mark("enhance");
+			timer.log();
 			return this;
 		},
 		buildHtml: function (builder, data, context) {

@@ -8,10 +8,11 @@
 
 	Jsonary.render.register({
 		component: Jsonary.render.Components.ADD_REMOVE,
-		renderHtml: function (data, context) {
+		buildHtml: function (builder, data, context) {
 			if (!data.defined()) {
 				context.uiState.undefined = true;
-				return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
+				builder.html(context.actionHtml('<span class="json-undefined-create">+ create</span>', "create"));
+				return;
 			}
 			delete context.uiState.undefined;
 			if (context.uiState.subState == undefined) {
@@ -33,12 +34,10 @@
 					}
 				}
 			}
-			var result = "";
 			if (showDelete) {
-				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
+				builder.html(context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ");
 			}
-			result += context.renderHtml(data, context.uiState.subState);
-			return result;
+			context.buildHtml(builder, data, context.uiState.subState);
 		},
 		action: function (context, actionName) {
 			if (actionName == "create") {
@@ -109,11 +108,11 @@
 			listLinks(container, links);
 			element.insertBefore(container, element.childNodes[0]);
 		},
-		renderHtml: function (data, context) {
+		buildHtml: function (builder, data, context) {
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
 			}
-			return context.renderHtml(data, context.uiState.subState);
+			context.buildHtml(builder, data, context.uiState.subState);
 		},
 		filter: function (data) {
 			return data.links().length > 0;
@@ -122,41 +121,39 @@
 
 	Jsonary.render.register({
 		component: Jsonary.render.Components.TYPE_SELECTOR,
-		renderHtml: function (data, context) {
+		buildHtml: function (builder, data, context) {
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
 			}
-			var result = "";
 			var decisionSchemas = data.schemas().decisionSchemas();
 			var basicTypes = data.schemas().basicTypes();
 			if (context.uiState.dialogOpen) {
-				result += '<span class="json-select-type-dialog">';
-				result += context.actionHtml('close', "closeDialog");
+				builder.html('<span class="json-select-type-dialog">');
+				builder.html(context.actionHtml('close', "closeDialog"));
 				decisionSchemas.each(function (index, schema) {
 				});
 				if (basicTypes.length > 1) {
-					result += '<br>Select basic type:<ul>';
+					builder.html('<br>Select basic type:<ul>');
 					for (var i = 0; i < basicTypes.length; i++) {
 						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
 							continue;
 						}
 						if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
-							result += '<li>' + basicTypes[i];
+							builder.html('<li>' + basicTypes[i]);
 						} else {
-							result += '<li>' + context.actionHtml(basicTypes[i], 'select-basic-type', basicTypes[i]);
+							builder.html('<li>' + context.actionHtml(basicTypes[i], 'select-basic-type', basicTypes[i]));
 						}
 					}
-					result += '</ul>';
+					builder.html('</ul>');
 				}
-				result += '</span>';
+				builder.html('</span>');
 			}
 			//if (decisionSchemas.length > 0 || basicTypes.length > 1) {
 			// Only select basic types for now
 			if (basicTypes.length > 1) {
-				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
+				builder.html(context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ");
 			}
-			result += context.renderHtml(data, context.uiState.subState);
-			return result;
+			context.buildHtml(builder, data, context.uiState.subState);
 		},
 		action: function (context, actionName, basicType) {
 			if (actionName == "closeDialog") {
@@ -186,11 +183,11 @@
 
 	// Display raw JSON
 	Jsonary.render.register({
-		renderHtml: function (data, context) {
+		buildHtml: function (builder, data, context) {
 			if (!data.defined()) {
-				return "";
+				return;
 			}
-			return '<span class="json-raw">' + escapeHtml(JSON.stringify(data.value())) + '</span>';
+			builder.html('<span class="json-raw">' + escapeHtml(JSON.stringify(data.value())) + '</span>');
 		},
 		filter: function (data) {
 			return true;
@@ -211,14 +208,16 @@
 
 	// Display/edit objects
 	Jsonary.render.register({	
-		renderHtml: function (data, context) {
+		buildHtml: function (builder, data, context) {
 			var uiState = context.uiState;
-			var result = "{";
+			builder.html("{");
 			data.properties(function (key, subData) {
-				result += '<div class="json-object-pair">';
-				result +=	'<span class="json-object-key">' + escapeHtml(key) + '</span>: ';
-				result += '<span class="json-object-value">' + context.renderHtml(subData) + '</span>';
-				result += '</div>';
+				builder.html('<div class="json-object-pair">');
+				builder.html('<span class="json-object-key">' + escapeHtml(key) + '</span>: ');
+				builder.html('<span class="json-object-value">');
+				context.buildHtml(builder, subData);
+				builder.html('</span>');
+				builder.html('</div>');
 			});
 			if (!data.readOnly()) {
 				var addLinkHtml = "";
@@ -238,10 +237,10 @@
 					addLinkHtml += context.actionHtml(newHtml, "add-new");
 				}
 				if (addLinkHtml != "") {
-					result += '<span class="json-object-add">add: ' + addLinkHtml + '</span>';
+					builder.html('<span class="json-object-add">add: ' + addLinkHtml + '</span>');
 				}
 			}
-			return result + "}";
+			builder.html("}");
 		},
 		action: function (context, actionName, arg1) {
 			var data = context.data;
@@ -266,22 +265,22 @@
 
 	// Display/edit arrays
 	Jsonary.render.register({
-		renderHtml: function (data, context) {
-			var result = "";
+		buildHtml: function (builder, data, context) {
 			var tupleTypingLength = data.schemas().tupleTypingLength();
 			var maxItems = data.schemas().maxItems();
 			data.indices(function (index, subData) {
-				result += '<div class="json-array-item">';
-				result += '<span class="json-array-value">' + context.renderHtml(subData) + '</span>';
-				result += '</div>';
+				builder.html('<div class="json-array-item">');
+				builder.html('<span class="json-array-value">');
+				context.buildHtml(builder, subData);
+				builder.html('</span>');
+				builder.html('</div>');
 			});
 			if (!data.readOnly()) {
 				if (maxItems == null || data.length() < maxItems) {
 					var addHtml = '<span class="json-array-add">+ add</span>';
-					result += context.actionHtml(addHtml, "add");
+					builder.html(context.actionHtml(addHtml, "add"));
 				}
 			}
-			return result + "";
 		},
 		action: function (context, actionName) {
 			var data = context.data;
@@ -299,8 +298,8 @@
 	
 	// Display string
 	Jsonary.render.register({
-		renderHtml: function (data, context) {
-			return '<span class="json-string">' + escapeHtml(data.value()) + '</span>';
+		buildHtml: function (builder, data, context) {
+			builder.html('<span class="json-string">' + escapeHtml(data.value()) + '</span>');
 		},
 		filter: function (data) {
 			return data.basicType() == "string" && data.readOnly();
@@ -309,9 +308,9 @@
 
 	// Display string
 	Jsonary.render.register({
-		renderHtml: function (data, context) {
+		buildHtml: function (builder, data, context) {
 			var date = new Date(data.value());
-			return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
+			builder.html('<span class="json-string json-string-date">' + date.toLocaleString() + '</span>');
 		},
 		filter: function (data, schemas) {
 			return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;

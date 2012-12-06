@@ -351,7 +351,7 @@ Schema.prototype = {
 	},
 	format: function () {
 		return this.data.propertyValue("format");
-	},
+	}
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
 Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
