@@ -2433,7 +2433,7 @@ Schema.prototype = {
 	},
 	format: function () {
 		return this.data.propertyValue("format");
-	},
+	}
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
 Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
@@ -4587,9 +4587,6 @@ publicApi.config = configData;
 	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
-			if (data.parent() == null) {
-				console.log("Rendering: " + data.referenceUrl());
-			}
 			if (element[0] != undefined) {
 				element = element[0];
 			}
