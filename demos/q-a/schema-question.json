@@ -1,0 +1,14 @@
+{
+	"title": "Quiz question",
+	"type": "object",
+	"properties": {
+		"id": {"type": "integer"},
+		"question": {"type": "string"},
+		"options": {
+			"type": "array",
+			"items": {"type": "string"}
+		},
+		"answerSchema": {"$ref": "http://json-schema.org/hyper-schema"}
+	},
+	"required": ["id", "question"]
+}

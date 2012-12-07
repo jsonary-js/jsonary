@@ -1,0 +1,10 @@
+{
+	"id": 2,
+	"question": "Whom do you serve?",
+	"options": ["Sauron", "Saruman"],
+	"answerSchema": {
+		"properties": {
+			"answer": {"enum": ["Sauron", "Saruman"]}
+		}
+	}
+}
