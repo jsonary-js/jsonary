@@ -8,6 +8,10 @@
 	"title": "User array",
 	"type": "object",
 	"properties": {
+		"count": {
+			"title": "Total number",
+			"type": "integer"
+		},
 		"data": {
 			"title": "Array data",
 			"type": "array",

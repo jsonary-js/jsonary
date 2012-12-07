@@ -1,8 +1,9 @@
 <html>
 	<head>
-		<title>Starting the Facebook UI</title>
+		<title>Facebook UI demo</title>
 		<link rel="stylesheet" href="../../renderers/plain.jsonary.css">
-		<link rel="stylesheet" href="fb-ui-user.css">
+		<link rel="stylesheet" href="renderers.general.css">
+		<link rel="stylesheet" href="renderers.user.css">
 		<meta name="viewport" content="width=960">
 	</head>
 	<body>
@@ -10,7 +11,8 @@
 		<script src="../../jsonary.js"></script>
 		<script src="../../plugins/jsonary.hash.js"></script>
 		<script src="../../renderers/plain.jsonary.js"></script>
-		<script src="fb-ui-user-start.js"></script>
+		<script src="renderers.general.js"></script>
+		<script src="renderers.user.js"></script>
 		<script>
 			// Facebook auth
 			function forwardToFacebook() {
@@ -23,11 +25,18 @@
 
 			var mainElement = document.getElementById("main");
 			var currentUrl = null;
+			var currentData = null;
 			var prefix = "https://graph.facebook.com";
 			function renderToMain(url, data) {
+				mainElement.innerHTML = "Loading schemas...";
 				currentUrl = url;
+				currentData = data;
 				Jsonary.hash.property("page").setValue(currentUrl.substring(prefix.length));
-				Jsonary.render(mainElement, data);
+				data.whenSchemasStable(function () {
+					if (currentData == data) {
+						Jsonary.render(mainElement, data);
+					}
+				});
 			}
 
 			var authToken = Jsonary.hash.propertyValue("access_token");

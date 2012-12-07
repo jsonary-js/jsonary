@@ -36,6 +36,13 @@
 						},
 						"required": ["message"],
 						"additionalProperties": false
+					},
+					"target": {
+						"title": "New comment ID",
+						"type": "string",
+						"links": [
+							{"rel": "full", "href": "/{$}"}
+						]
 					}
 				},
 				{
@@ -48,6 +55,11 @@
 						"type": "object",
 						"additionalProperties": false
 					}
+				},
+				{
+					"rel": "unlike",
+					"href": "/{id}/likes",
+					"method": "DELETE"
 				}
 			]
 		}

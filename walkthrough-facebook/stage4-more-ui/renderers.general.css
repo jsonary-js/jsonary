@@ -1,0 +1,20 @@
+body {
+	font-family: sans-serif;
+	margin: 0;
+	padding: 0;
+	background-color: #EEE;
+	font-size: 0.9em;
+}
+
+.facebook-button {
+	display: inline;
+	display: inline-block;
+	padding: 0.3em;
+	padding-left: 1em;
+	padding-right: 1em;
+	margin: 0.5em;
+	border: 2px solid black;
+	border-radius: 10px;
+	background-color: #468;
+	color: #FFF;
+}

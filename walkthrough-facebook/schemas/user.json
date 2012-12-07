@@ -27,7 +27,6 @@
 		"significant_other": {"$ref": "user.json#/definitions/reference"},
 		"website": {"title": "Website", "type": "string", "format": "uri"},
 		"work": {"$ref": "#/definitions/work"}
-		
 	},
 	"required": ["id", "name", "first_name", "last_name", "gender", "locale"],
 	"links": [
@@ -39,12 +38,12 @@
 		{
 			"rel": "albums",
 			"href": "/{id}/albums",
-			"targetSchema": {"$ref": "array-ref.php?type=album"}
+			"targetSchema": {"$ref": "array.php?type=album"}
 		},
 		{
 			"rel": "feed",
 			"href": "/{id}/feed",
-			"targetSchema": {"$ref": "array-ref.php?type=post"}
+			"targetSchema": {"$ref": "array.php?type=post"}
 		},
 		{
 			"rel": "friends",
@@ -64,7 +63,7 @@
 		{
 			"rel": "photos",
 			"href": "/{id}/photos",
-			"targetSchema": {"$ref": "array-ref.php?type=photo"}
+			"targetSchema": {"$ref": "array.php?type=photo"}
 		},
 		{
 			"rel": "picture",
@@ -74,17 +73,17 @@
 		{
 			"rel": "posts",
 			"href": "/{id}/posts",
-			"targetSchema": {"$ref": "array-ref.php?type=post"}
+			"targetSchema": {"$ref": "array.php?type=post"}
 		},
 		{
 			"rel": "statuses",
 			"href": "/{id}/statuses",
-			"targetSchema": {"$ref": "array-ref.php?type=statuses"}
+			"targetSchema": {"$ref": "array.php?type=status"}
 		},
 		{
 			"rel": "tagged",
 			"href": "/{id}/tagged",
-			"targetSchema": {"$ref": "array-ref.php?type=tagged"}
+			"targetSchema": {"$ref": "array.php?type=post"}
 		},
 		{
 			"rel": "create_post",
@@ -113,7 +112,13 @@
 		}
 	],
 	"definitions": {
-		"reference": {"title": "User reference", "links": [{"rel": "full", "href": "/{id}"}]},
+		"reference": {
+			"title": "User reference",
+			"links": [
+				{"rel": "full", "href": "/{id}"},
+				{"rel": "picture", "href": "/{id}/picture"}
+			]
+		},
 		"education": {"title": "Education"},
 		"relationship_status": {
 			"title": "Relationship status",
