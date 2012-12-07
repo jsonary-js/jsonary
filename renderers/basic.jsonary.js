@@ -122,10 +122,12 @@
 		component: Jsonary.render.Components.LIST_LINKS,
 		render: function (element, data, context) {
 			var links = data.links();
-			if (links.length == 0) {
+			var schemas = data.schemas();
+			if (links.length == 0 && schemas.length == 0) {
 				return;
 			}
 			var container = document.createElement("span");
+			listSchemas(container, schemas);
 			listLinks(container, links);
 			element.insertBefore(container, element.childNodes[0]);
 		},
@@ -149,6 +151,7 @@
 			var result = "";
 			var decisionSchemas = data.schemas().decisionSchemas();
 			var basicTypes = data.schemas().basicTypes();
+			var enums = data.schemas().enumValues();
 			if (context.uiState.dialogOpen) {
 				result += '<span class="json-select-type-dialog">';
 				result += context.actionHtml('close', "closeDialog");
@@ -172,7 +175,7 @@
 			}
 			//if (decisionSchemas.length > 0 || basicTypes.length > 1) {
 			// Only select basic types for now
-			if (basicTypes.length > 1) {
+			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
 			result += context.renderHtml(data, context.uiState.subState);
@@ -474,6 +477,33 @@
 		},
 		filter: function (data) {
 			return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
+		}
+	});
+
+	// Edit enums
+	Jsonary.render.register({
+		render: function (element, data, context) {
+			var enumValues = data.schemas().enumValues();
+			var select = document.createElement("select");
+			for (var i = 0; i < enumValues.length; i++) {
+				var option = document.createElement("option");
+				option.setAttribute("value", i);
+				if (data.equals(Jsonary.create(enumValues[i]))) {
+					option.selected = true;
+				}
+				option.appendChild(document.createTextNode(enumValues[i]));
+				select.appendChild(option);
+			}
+			select.onchange = function () {
+				var index = this.value;
+				console.log(index);
+				data.setValue(enumValues[index]);
+			}
+			element.appendChild(select);
+			element = select = option = null;
+		},
+		filter: function (data) {
+			return !data.readOnly() && data.schemas().enumValues() != null;
 		}
 	});
 
