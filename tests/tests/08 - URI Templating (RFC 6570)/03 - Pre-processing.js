@@ -12,6 +12,34 @@ tests.add("Bracket escaping", function () {
 	return true;
 });
 
+tests.add("Bracket escaping escaping: ))", function () {
+	var data = Jsonary.create({
+		"a/b)": "#",
+		"a/b": "wrong"
+	});
+	var link = Jsonary.create({
+		"rel": "test",
+		"href": "prefix_{(a/b)))}_suffix"
+	}).asLink(data);
+	var expected = "prefix_%23_suffix";
+	this.assert(link.href == expected, JSON.stringify(link.href) + " != " + JSON.stringify(expected));
+	return true;
+});
+
+tests.add("Extra character escaping: *", function () {
+	var data = Jsonary.create({
+		"a*": "value",
+		"a": ["wrong", "wrong"]
+	});
+	var link = Jsonary.create({
+		"rel": "test",
+		"href": "prefix_{(a*)}_suffix"
+	}).asLink(data);
+	var expected = "prefix_value_suffix";
+	this.assert(link.href == expected, JSON.stringify(link.href) + " != " + JSON.stringify(expected));
+	return true;
+});
+
 tests.add("Bracket escaping with modifiers", function () {
 	var data = Jsonary.create({
 		"a/b": "#",
@@ -60,6 +88,7 @@ tests.add("$ escaped", function () {
 	this.assert(link.href == expected, JSON.stringify(link.href) + " != " + JSON.stringify(expected));
 	return true;
 });
+
 tests.add("() == empty", function () {
 	var data = Jsonary.create({
 		"empty": "wrong",

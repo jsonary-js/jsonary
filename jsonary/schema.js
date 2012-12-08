@@ -362,6 +362,13 @@ publicApi.extendSchema = function (obj) {
 	}
 };
 
+var extraEscaping = {
+	"!": "%21",
+	"'": "%27",
+	"(": "%28",
+	")": "%29",
+	"*": "%2A"
+};
 function preProcessUriTemplate(template) {
 	var newTemplate = [];
 	var curlyBrackets = false;
@@ -392,14 +399,18 @@ function preProcessUriTemplate(template) {
 		} else {
 			if (tChar == ")") {
 				if (template.charAt(i + 1) == ")") {
-					newTemplate.push(encodeURIComponent(")"));
+					newTemplate.push(extraEscaping[")"]);
 					i++;
 				} else {
 					roundBrackets = false;
 				}
 				continue;
 			}
-			newTemplate.push(encodeURIComponent(tChar));
+			if (extraEscaping[tChar] != undefined) {
+				newTemplate.push(extraEscaping[tChar])
+			} else {
+				newTemplate.push(encodeURIComponent(tChar));
+			}
 		}
 	}
 	return newTemplate.join("");
