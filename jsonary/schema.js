@@ -363,25 +363,10 @@ publicApi.extendSchema = function (obj) {
 };
 
 function PotentialLink(linkData) {
-	var i, part, index, partConstant, partName;
-	var parts = linkData.propertyValue("href").split("{");
-	this.constantParts = [];
-	this.dataParts = [];
 	this.data = linkData;
-
-	this.constantParts[0] = parts[0];
-	for (i = 1; i < parts.length; i++) {
-		part = parts[i];
-		index = part.indexOf("}");
-		partName = part.substring(0, index);
-		partConstant = part.substring(index + 1);
-		if (partName == "@") {
-			this.dataParts[i - 1] = null;
-		} else {
-			this.dataParts[i - 1] = partName;
-		}
-		this.constantParts[i] = partConstant;
-	}
+	
+	this.uriTemplate = new UriTemplate(linkData.propertyValue("href"));
+	this.dataParts = this.uriTemplate.varNames;
 	
 	var schemaData = linkData.property("schema");
 	if (schemaData.defined()) {
@@ -429,22 +414,15 @@ PotentialLink.prototype = {
 		return true;
 	},
 	linkForData: function (publicData) {
-		var href = this.constantParts[0];
-		var i, key, subData;
-		for (i = 0; i < this.dataParts.length; i++) {
-			key = this.dataParts[i];
-			if (key === null) {
-				subData = publicData;
-			} else if (publicData.basicType() == "object") {
-				subData = publicData.property(key);
-			} else {
-				subData = publicData.index(key);
-			}
-			href += subData.value();
-			href += this.constantParts[i + 1];
-		}
 		var rawLink = this.data.value();
-		rawLink.href = publicData.resolveUrl(href);
+		rawLink.href = this.uriTemplate.fill(function (varName) {
+			varName = decodeURIComponent(varName);
+			if (publicData.basicType() == "array") {
+				return publicData.itemValue(varName);
+			} else {
+				return publicData.propertyValue(varName);
+			}
+		});
 		return new ActiveLink(rawLink, this, publicData);
 	},
 	usesKey: function (key) {

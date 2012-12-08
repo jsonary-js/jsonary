@@ -46,6 +46,7 @@ function uriTemplateSubstitution(spec) {
 		showVariables = true;
 	}
 
+	var varNames = [];
 	var varList = spec.split(",");
 	var varSpecs = [];
 	for (var i = 0; i < varList.length; i++) {
@@ -66,8 +67,9 @@ function uriTemplateSubstitution(spec) {
 			name: varSpec,
 			suffices: suffices
 		});
+		varNames.push(varSpec);
 	}
-	return function (valueFunction) {
+	var resultFunction = function (valueFunction) {
 		var result = prefix;
 		for (var i = 0; i < varSpecs.length; i++) {
 			var varSpec = varSpecs[i];
@@ -114,18 +116,23 @@ function uriTemplateSubstitution(spec) {
 		}
 		return result;
 	};
+	resultFunction.varNames = varNames;
+	return resultFunction;
 }
 
 function UriTemplate(template) {
 	var parts = template.split("{");
 	var textParts = [parts.shift()];
 	var substitutions = [];
+	var varNames = [];
 	while (parts.length > 0) {
 		var part = parts.shift();
 		var spec = part.split("}")[0];
 		var remainder = part.substring(spec.length + 1);
-		substitutions.push(uriTemplateSubstitution(spec));
+		var substitution = uriTemplateSubstitution(spec);
+		substitutions.push(substitution);
 		textParts.push(remainder);
+		varNames = varNames.concat(substitution.varNames);
 	}
 	this.fill = function (valueFunction) {
 		var result = textParts[0];
@@ -136,4 +143,5 @@ function UriTemplate(template) {
 		}
 		return result;
 	};
+	this.varNames = varNames;
 }
