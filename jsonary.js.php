@@ -8,6 +8,7 @@
   $files = array(
     '_header.js',
     'uri.js',
+    'uri-template.js',
     'utils.js',
     'monitors.js',
     'request.js',
