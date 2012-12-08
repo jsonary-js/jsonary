@@ -362,11 +362,57 @@ publicApi.extendSchema = function (obj) {
 	}
 };
 
+function preProcessUriTemplate(template) {
+	var newTemplate = [];
+	var curlyBrackets = false;
+	var roundBrackets = false;
+	for (var i = 0; i < template.length; i++) {
+		var tChar = template.charAt(i);
+		if (!curlyBrackets) {
+			if (tChar == "{") {
+				curlyBrackets = true;
+			}
+			newTemplate.push(tChar);
+		} else if (!roundBrackets) {
+			if (tChar == "$") {
+				newTemplate.push("%73elf");
+				continue;
+			} else if (tChar == "(") {
+				if (template.charAt(i + 1) == ")") {
+					newTemplate.push("%65mpty");
+					i++;
+				} else {
+					roundBrackets = true;
+				}
+				continue;
+			} else if (tChar == "}") {
+				curlyBrackets = false;
+			}
+			newTemplate.push(tChar);
+		} else {
+			if (tChar == ")") {
+				if (template.charAt(i + 1) == ")") {
+					newTemplate.push(encodeURIComponent(")"));
+					i++;
+				} else {
+					roundBrackets = false;
+				}
+				continue;
+			}
+			newTemplate.push(encodeURIComponent(tChar));
+		}
+	}
+	return newTemplate.join("");
+}
+
 function PotentialLink(linkData) {
 	this.data = linkData;
 	
-	this.uriTemplate = new UriTemplate(linkData.propertyValue("href"));
-	this.dataParts = this.uriTemplate.varNames;
+	this.uriTemplate = new UriTemplate(preProcessUriTemplate(linkData.propertyValue("href")));
+	this.dataParts = [];
+	for (var i = 0; i < this.uriTemplate.varNames.length; i++) {
+		this.dataParts.push(translateUriTemplateName(this.uriTemplate.varNames[i]));
+	}
 	
 	var schemaData = linkData.property("schema");
 	if (schemaData.defined()) {
@@ -382,6 +428,14 @@ function PotentialLink(linkData) {
 	
 	this.handlers = [];
 	this.preHandlers = [];
+}
+function translateUriTemplateName(varName) {
+	if (varName == "%65mpty") {
+		return "";
+	} else if (varName == "%73elf") {
+		return null;
+	}
+	return decodeURIComponent(varName);
 }
 PotentialLink.prototype = {
 	addHandler: function(handler) {
@@ -415,14 +469,18 @@ PotentialLink.prototype = {
 	},
 	linkForData: function (publicData) {
 		var rawLink = this.data.value();
-		rawLink.href = this.uriTemplate.fill(function (varName) {
-			varName = decodeURIComponent(varName);
+		var href = this.uriTemplate.fill(function (varName) {
+			varName = translateUriTemplateName(varName);
+			if (varName == null) {
+				return publicData.value();
+			}
 			if (publicData.basicType() == "array") {
 				return publicData.itemValue(varName);
 			} else {
 				return publicData.propertyValue(varName);
 			}
 		});
+		rawLink.href = publicData.resolveUrl(href);
 		return new ActiveLink(rawLink, this, publicData);
 	},
 	usesKey: function (key) {

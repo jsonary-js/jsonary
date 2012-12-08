@@ -16,7 +16,7 @@ var exampleSchemaData = {
 var inferralSchemaData = {
     links: [
         {
-            href: "{schema_url}",
+            href: "{+schema_url}",
             rel: "describedby"
         }
     ]
