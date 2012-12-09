@@ -1,0 +1,33 @@
+<html>
+	<head>
+		<title>Q&A demo</title>
+		<link rel="stylesheet" href="../../renderers/basic.jsonary.css" />
+	</head>
+	<body>
+		<ul>
+			<li><a href="schema-question.json">schema-question.json</a>
+			<li><a href="schema-answer.json">schema-answer.json</a>
+			<li><a href="questions/1.json">questions/1.json</a> (multiple choice)
+			<li><a href="questions/2.json">questions/2.json</a> (multiple choice)
+			<li><a href="questions/3.json">questions/3.json</a> (free-text)
+		</ul>
+		<div id="main">
+		</div>
+		
+		<script src="../../jsonary.js"></script>
+		<script src="../../renderers/basic.jsonary.js"></script>
+		<script>
+			var data = Jsonary.create({
+				"question": 1,
+				"answer": ""
+			}).addSchema("schema-answer.json");
+			Jsonary.render(document.getElementById("main"), data);
+			
+			Jsonary.addLinkHandler(function (link, submissionData, request) {
+				request.getData(function (data) {
+					alert(link.href + ":\n" + JSON.stringify(data.value(), null, 4));
+				});
+			});
+		</script>
+	</body>
+</html>

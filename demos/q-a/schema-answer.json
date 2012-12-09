@@ -1,0 +1,21 @@
+{
+	"title": "Quiz answer",
+	"type": "object",
+	"properties": {
+		"question": {
+			"type": "integer",
+			"links": [
+				{"rel": "full", "href": "/demos/q-a/questions/{@}.json"}
+			]
+		},
+		"answer": {"type": "string"}
+	},
+	"required": ["question", "answer"],
+	"additionalProperties": false,
+	"links": [
+		{
+			"rel": "describedby",
+			"href": "/demos/q-a/questions/{question}.json#/answerSchema"
+		}
+	]
+}

@@ -457,6 +457,33 @@
 		}
 	});
 
+	// Edit enums
+	Jsonary.render.register({
+		render: function (element, data, context) {
+			var enumValues = data.schemas().enumValues();
+			var select = document.createElement("select");
+			for (var i = 0; i < enumValues.length; i++) {
+				var option = document.createElement("option");
+				option.setAttribute("value", i);
+				if (data.equals(Jsonary.create(enumValues[i]))) {
+					option.selected = true;
+				}
+				option.appendChild(document.createTextNode(enumValues[i]));
+				select.appendChild(option);
+			}
+			select.onchange = function () {
+				var index = this.value;
+				console.log(index);
+				data.setValue(enumValues[index]);
+			}
+			element.appendChild(select);
+			element = select = option = null;
+		},
+		filter: function (data) {
+			return !data.readOnly() && data.schemas().enumValues() != null;
+		}
+	});
+
 	// Cover the screen with an overlay
 	function linkPrompt(link, event) {
 		if ((link.method == "GET" || link.method == "DELETE") && link.submissionSchemas.length == 0) {

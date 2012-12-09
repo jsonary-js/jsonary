@@ -1,0 +1,10 @@
+{
+	"id": 1,
+	"question": "What is your favourite container format?",
+	"options": ["XML", "JSON"],
+	"answerSchema": {
+		"properties": {
+			"answer": {"enum": ["XML", "JSON"]}
+		}
+	}
+}

@@ -1,0 +1,9 @@
+{
+	"id": 3,
+	"question": "What is your favourite food?",
+	"answerSchema": {
+		"properties": {
+			"answer": {"minLength": 1, "maxLength": 100}
+		}
+	}
+}
