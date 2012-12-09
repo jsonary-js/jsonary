@@ -18,3 +18,20 @@ body {
 	background-color: #468;
 	color: #FFF;
 }
+
+.facebook-array-next {
+	text-align: center;
+	margin: 0.3em;
+	padding: 0.3em;
+	border: 1px solid #008;
+	background-color: #DEF;
+	border-radius: 10px;
+	color: #008;
+}
+
+.facebook-array-next:hover {
+	border: 1px solid #048;
+	background-color: #F0F8FF;
+	color: #06C;
+}
+

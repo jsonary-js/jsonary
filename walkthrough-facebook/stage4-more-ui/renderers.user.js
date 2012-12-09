@@ -107,7 +107,7 @@ Jsonary.render.register({
 	renderHtml: function (data, context) {
 		var uiState = context.uiState;
 		if (uiState.tab == undefined) {
-			uiState.tab = this.tabOrder[0];
+			uiState.tab = "feed";
 		}
 	
 		// Render header

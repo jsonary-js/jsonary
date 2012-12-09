@@ -265,6 +265,153 @@ var queryFunctions = {
 
 publicApi.Uri = Uri;
 
+var uriTemplateGlobalModifiers = {
+	"+": true,
+	"#": true,
+	".": true,
+	"/": true,
+	";": true,
+	"?": true,
+	"&": true
+};
+var uriTemplateSuffices = {
+	"*": true
+};
+
+function uriTemplateSubstitution(spec) {
+	var modifier = "";
+	if (uriTemplateGlobalModifiers[spec.charAt(0)]) {
+		modifier = spec.charAt(0);
+		spec = spec.substring(1);
+	}
+	var separator = ",";
+	var prefix = "";
+	var shouldEscape = true;
+	var showVariables = false;
+	if (modifier == '+') {
+		shouldEscape = false;
+	} else if (modifier == ".") {
+		prefix = ".";
+		separator = ".";
+	} else if (modifier == "/") {
+		prefix = "/";
+		separator = "/";
+	} else if (modifier == '#') {
+		prefix = "#";
+		shouldEscape = false;
+	} else if (modifier == ';') {
+		prefix = ";";
+		separator = ";",
+		showVariables = true;
+	} else if (modifier == '?') {
+		prefix = "?";
+		separator = "&",
+		showVariables = true;
+	} else if (modifier == '&') {
+		prefix = "&";
+		separator = "&",
+		showVariables = true;
+	}
+
+	var varNames = [];
+	var varList = spec.split(",");
+	var varSpecs = [];
+	for (var i = 0; i < varList.length; i++) {
+		var varSpec = varList[i];
+		var truncate = null;
+		if (varSpec.indexOf(":") != -1) {
+			var parts = varSpec.split(":");
+			varSpec = parts[0];
+			truncate = parseInt(parts[1]);
+		}
+		var suffices = {};
+		while (uriTemplateSuffices[varSpec.charAt(varSpec.length - 1)]) {
+			suffices[varSpec.charAt(varSpec.length - 1)] = true;
+			varSpec = varSpec.substring(0, varSpec.length - 1);
+		}
+		varSpecs.push({
+			truncate: truncate,
+			name: varSpec,
+			suffices: suffices
+		});
+		varNames.push(varSpec);
+	}
+	var resultFunction = function (valueFunction) {
+		var result = prefix;
+		for (var i = 0; i < varSpecs.length; i++) {
+			var varSpec = varSpecs[i];
+			if (i > 0) {
+				result += separator;
+			}
+			var value = valueFunction(varSpec.name);
+			if (Array.isArray(value)) {
+				if (showVariables) {
+					result += varSpec.name + "=";
+				}
+				for (var j = 0; j < value.length; j++) {
+					if (j > 0) {
+						result += varSpec.suffices['*'] ? separator : ",";
+						if (varSpec.suffices['*'] && showVariables) {
+							result += varSpec.name + "=";
+						}
+					}
+					result += shouldEscape ? encodeURIComponent(value[j]).replace("!", "%21"): encodeURI(value[j]).replace("%25", "%");
+				}
+			} else if (typeof value == "object") {
+				if (showVariables && !varSpec.suffices['*']) {
+					result += varSpec.name + "=";
+				}
+				var first = true;
+				for (var key in value) {
+					if (!first) {
+						result += varSpec.suffices['*'] ? separator : ",";
+					}
+					first = false;
+					result += shouldEscape ? encodeURIComponent(key).replace("!", "%21"): encodeURI(key).replace("%25", "%");
+					result += varSpec.suffices['*'] ? '=' : ",";
+					result += shouldEscape ? encodeURIComponent(value[key]).replace("!", "%21"): encodeURI(value[key]).replace("%25", "%");
+				}
+			} else {
+				if (showVariables) {
+					result += varSpec.name + "=";
+				}
+				if (varSpec.truncate != null) {
+					value = value.substring(0, varSpec.truncate);
+				}
+				result += shouldEscape ? encodeURIComponent(value).replace("!", "%21"): encodeURI(value).replace("%25", "%");
+			}
+		}
+		return result;
+	};
+	resultFunction.varNames = varNames;
+	return resultFunction;
+}
+
+function UriTemplate(template) {
+	var parts = template.split("{");
+	var textParts = [parts.shift()];
+	var substitutions = [];
+	var varNames = [];
+	while (parts.length > 0) {
+		var part = parts.shift();
+		var spec = part.split("}")[0];
+		var remainder = part.substring(spec.length + 1);
+		var substitution = uriTemplateSubstitution(spec);
+		substitutions.push(substitution);
+		textParts.push(remainder);
+		varNames = varNames.concat(substitution.varNames);
+	}
+	this.fill = function (valueFunction) {
+		var result = textParts[0];
+		for (var i = 0; i < substitutions.length; i++) {
+			var substitution = substitutions[i];
+			result += substitution(valueFunction);
+			result += textParts[i + 1];
+		}
+		return result;
+	};
+	this.varNames = varNames;
+}
 var Utils = {
 	guessBasicType: function (data, prevType) {
 		if (data === null) {
@@ -2444,25 +2591,67 @@ publicApi.extendSchema = function (obj) {
 	}
 };
 
-function PotentialLink(linkData) {
-	var i, part, index, partConstant, partName;
-	var parts = linkData.propertyValue("href").split("{");
-	this.constantParts = [];
-	this.dataParts = [];
-	this.data = linkData;
-
-	this.constantParts[0] = parts[0];
-	for (i = 1; i < parts.length; i++) {
-		part = parts[i];
-		index = part.indexOf("}");
-		partName = part.substring(0, index);
-		partConstant = part.substring(index + 1);
-		if (partName == "@") {
-			this.dataParts[i - 1] = null;
+var extraEscaping = {
+	"!": "%21",
+	"'": "%27",
+	"(": "%28",
+	")": "%29",
+	"*": "%2A"
+};
+function preProcessUriTemplate(template) {
+	var newTemplate = [];
+	var curlyBrackets = false;
+	var roundBrackets = false;
+	for (var i = 0; i < template.length; i++) {
+		var tChar = template.charAt(i);
+		if (!curlyBrackets) {
+			if (tChar == "{") {
+				curlyBrackets = true;
+			}
+			newTemplate.push(tChar);
+		} else if (!roundBrackets) {
+			if (tChar == "$") {
+				newTemplate.push("%73elf");
+				continue;
+			} else if (tChar == "(") {
+				if (template.charAt(i + 1) == ")") {
+					newTemplate.push("%65mpty");
+					i++;
+				} else {
+					roundBrackets = true;
+				}
+				continue;
+			} else if (tChar == "}") {
+				curlyBrackets = false;
+			}
+			newTemplate.push(tChar);
 		} else {
-			this.dataParts[i - 1] = partName;
+			if (tChar == ")") {
+				if (template.charAt(i + 1) == ")") {
+					newTemplate.push(extraEscaping[")"]);
+					i++;
+				} else {
+					roundBrackets = false;
+				}
+				continue;
+			}
+			if (extraEscaping[tChar] != undefined) {
+				newTemplate.push(extraEscaping[tChar])
+			} else {
+				newTemplate.push(encodeURIComponent(tChar));
+			}
 		}
-		this.constantParts[i] = partConstant;
+	}
+	return newTemplate.join("");
+}
+
+function PotentialLink(linkData) {
+	this.data = linkData;
+	
+	this.uriTemplate = new UriTemplate(preProcessUriTemplate(linkData.propertyValue("href")));
+	this.dataParts = [];
+	for (var i = 0; i < this.uriTemplate.varNames.length; i++) {
+		this.dataParts.push(translateUriTemplateName(this.uriTemplate.varNames[i]));
 	}
 	
 	var schemaData = linkData.property("schema");
@@ -2479,6 +2668,14 @@ function PotentialLink(linkData) {
 	
 	this.handlers = [];
 	this.preHandlers = [];
+}
+function translateUriTemplateName(varName) {
+	if (varName == "%65mpty") {
+		return "";
+	} else if (varName == "%73elf") {
+		return null;
+	}
+	return decodeURIComponent(varName);
 }
 PotentialLink.prototype = {
 	addHandler: function(handler) {
@@ -2511,21 +2708,18 @@ PotentialLink.prototype = {
 		return true;
 	},
 	linkForData: function (publicData) {
-		var href = this.constantParts[0];
-		var i, key, subData;
-		for (i = 0; i < this.dataParts.length; i++) {
-			key = this.dataParts[i];
-			if (key === null) {
-				subData = publicData;
-			} else if (publicData.basicType() == "object") {
-				subData = publicData.property(key);
-			} else {
-				subData = publicData.index(key);
-			}
-			href += subData.value();
-			href += this.constantParts[i + 1];
-		}
 		var rawLink = this.data.value();
+		var href = this.uriTemplate.fill(function (varName) {
+			varName = translateUriTemplateName(varName);
+			if (varName == null) {
+				return publicData.value();
+			}
+			if (publicData.basicType() == "array") {
+				return publicData.itemValue(varName);
+			} else {
+				return publicData.propertyValue(varName);
+			}
+		});
 		rawLink.href = publicData.resolveUrl(href);
 		return new ActiveLink(rawLink, this, publicData);
 	},
@@ -4215,6 +4409,8 @@ var configData = publicApi.create({
 	intelligentPut: true
 });
 publicApi.config = configData;
+publicApi.UriTemplate = UriTemplate;
+
 })(this); // Global wrapper
 
 (function (global) {

@@ -4,6 +4,7 @@
 		<link rel="stylesheet" href="../../renderers/plain.jsonary.css">
 		<link rel="stylesheet" href="renderers.general.css">
 		<link rel="stylesheet" href="renderers.user.css">
+		<link rel="stylesheet" href="renderers.post.css">
 		<meta name="viewport" content="width=960">
 	</head>
 	<body>
@@ -13,12 +14,13 @@
 		<script src="../../renderers/plain.jsonary.js"></script>
 		<script src="renderers.general.js"></script>
 		<script src="renderers.user.js"></script>
+		<script src="renderers.post.js"></script>
 		<script>
 			// Facebook auth
 			function forwardToFacebook() {
 				var facebookAppId = 219375971524697;
 				var facebookRedirectUri = window.location;
-				var facebookPermissions = ["user_about_me", "friends_about_me", "user_groups", "user_likes", "friends_groups", "friends_likes", "user_relationships", "friends_relationships", "user_status", "friends_status", "user_website", "friends_website", "read_stream", "publish_stream", "manage_notifications"];
+				var facebookPermissions = ["user_about_me", "friends_about_me", "user_groups", "user_likes", "friends_groups", "friends_likes", "user_relationships", "friends_relationships", "user_relationship_details", "friends_relationship_details", "user_status", "friends_status", "user_website", "friends_website", "read_stream", "publish_stream", "manage_notifications", "user_events", "friends_events", "user_photos", "friends_photos"];
 				var facebookAuthUrl = "https://www.facebook.com/dialog/oauth?client_id=" + facebookAppId + "&redirect_uri=" + encodeURIComponent(facebookRedirectUri) + "&response_type=token&scope=" + facebookPermissions.join(",");
 				window.location.replace(facebookAuthUrl);
 			}

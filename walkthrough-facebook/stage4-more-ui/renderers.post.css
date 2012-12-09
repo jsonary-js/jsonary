@@ -1,0 +1,73 @@
+.facebook-post {
+	border: 1px solid black;
+	border-radius: 10px;
+	background-color: #DDD;
+	margin-top: 1em;
+	margin-bottom: 1em;
+	padding-bottom: 0.5em;
+}
+
+.facebook-post-created {
+	color: #888;
+	padding-left: 1.25em;
+	font-size: 0.8em;
+}
+
+.facebook-post-message, .facebook-post-link, .facebook-post-comment-count, .facebook-comment, .facebook-post-actions {
+	margin-left: 1em;
+	margin-right: 1em;
+}
+
+.facebook-post-link {
+	border: 1px solid black;
+	border-radius: 10px;
+	background-color: #F8F8F8;
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+	height: 90px;
+}
+
+.facebook-post-link-title {
+	display: block;
+	font-weight: bold;
+	text-decoration: none;
+	margin: 0.5em;
+	margin-bottom: 0px;
+}
+.facebook-post-link-caption {
+	color: #888;
+	padding-left: 2em;
+}
+
+.facebook-post-link-picture {
+	float: left;
+	border-top-left-radius: 8px;
+	border-bottom-left-radius: 8px;
+	border-right: 1px solid black;
+	margin-right: 0.6em;
+}
+
+.facebook-post-comment-count, .facebook-comment, .facebook-post-actions {
+	border: 1px solid #FFF;
+	border-radius: 10px;
+	background-color: #EEE;
+	padding: 0.5em;
+	margin-top: 0.5em;
+}
+
+.facebook-post-actions {
+	border: 1px solid #8CF;
+	border-radius: 10px;
+	background-color: #DEF;
+	padding: 0.5em;
+}
+
+.facebook-post-action {
+	font-size: 0.8em;
+	color: #048;
+	margin-right: 1em;
+}
+
+.facebook-post-action:hover {
+	color: #08F;
+}
