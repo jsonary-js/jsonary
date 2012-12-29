@@ -3,5 +3,9 @@
 	"description": "limits the values an instance can take",
 	"content": [
 		"The value of this property must be an array.  Instances must be exactly equal to one of the values in the array."
-	]
+	],
+	"exampleSchema": {
+		"enum": [null, "JSON", "XML"],
+		"default": "JSON"
+	}
 }
