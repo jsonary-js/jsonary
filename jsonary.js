@@ -4509,6 +4509,7 @@ publicApi.UriTemplate = UriTemplate;
 		});
 		this.rootContext = this;
 		this.subContexts = {};
+		this.oldSubContexts = {};
 	}
 	RenderContext.prototype = {
 		usedComponents: [],
@@ -4516,6 +4517,9 @@ publicApi.UriTemplate = UriTemplate;
 		baseContext: null,
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			var labelKey = data.uniqueId + ":" + label;
+			if (this.oldSubContexts[labelKey] != undefined) {
+				this.subContexts[labelKey] = this.oldSubContexts[labelKey];
+			}
 			if (this.subContexts[labelKey] == undefined) {
 				var usedComponents = [];
 				if (this.data == data) {
@@ -4535,6 +4539,7 @@ publicApi.UriTemplate = UriTemplate;
 					this.uiState = uiState;
 					this.usedComponents = usedComponents;
 					this.subContexts = {};
+					this.oldSubContexts = {};
 				}
 				Context.prototype = this.rootContext;
 				this.subContexts[labelKey] = new Context(this.rootContext, this, label, data, uiStartingState, usedComponents);
@@ -4542,6 +4547,10 @@ publicApi.UriTemplate = UriTemplate;
 			var subContext = this.subContexts[labelKey];
 			subContext.elementId = elementId;
 			return subContext;
+		},
+		clearOldSubContexts: function () {
+			this.oldSubContexts = this.subContexts;
+			this.subContexts = {};
 		},
 		render: function (element, data, label, uiStartingState) {
 			if (label == undefined) {
@@ -4595,6 +4604,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (renderer != undefined) {
 				subContext.renderer = renderer;
 				renderer.render(element, data, subContext);
+				subContext.clearOldSubContexts();
 			} else {
 				element.innerHTML = "NO RENDERER FOUND";
 			}
@@ -4634,6 +4644,7 @@ publicApi.UriTemplate = UriTemplate;
 			subContext.renderer = renderer;
 			
 			var innerHtml = renderer.renderHtml(data, subContext);
+			subContext.clearOldSubContexts();
 			var uniqueId = data.uniqueId;
 			if (this.elementLookup[uniqueId] == undefined) {
 				this.elementLookup[uniqueId] = [];
