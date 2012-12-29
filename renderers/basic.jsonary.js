@@ -131,6 +131,9 @@
 			listLinks(container, links);
 			element.insertBefore(container, element.childNodes[0]);
 		},
+		update: function (element, data, context, operation) {
+			return false;
+		},
 		renderHtml: function (data, context) {
 			if (context.uiState.subState == undefined) {
 				context.uiState.subState = {};
@@ -199,8 +202,7 @@
 			}
 		},
 		update: function (element, data, context, operation) {
-			var pointerPath = data.pointerPath();
-			return operation.subjectEquals(pointerPath) || operation.targetEquals(pointerPath);
+			return false;
 		},
 		filter: function (data) {
 			return !data.readOnly();
@@ -343,6 +345,24 @@
 
 	// Edit string
 	Jsonary.render.register({
+		renderHtml: function (data, context) {
+			var maxLength = data.schemas().maxLength();
+			var inputName = context.inputNameForAction('new-value');
+			var valueHtml = escapeHtml(data.value()).replace('"', '&quot;');
+			var style = "";
+			if (maxLength != null && maxLength <= 100) {
+				style += "maxWidth: " + (maxLength + 1) + "ex;";
+				style += "height: 1.5em;";
+			}
+			return '<textarea class="json-string" name="' + inputName + '" style="' + style + '">'
+				+ valueHtml
+				+ '</textarea>';
+		},
+		action: function (context, actionName, arg1) {
+			if (actionName == 'new-value') {
+				context.data.setValue(arg1);
+			}
+		},
 		render: function (element, data, context) {
 			var minLength = data.schemas().minLength();
 			var maxLength = data.schemas().maxLength();
@@ -359,13 +379,15 @@
 					noticeBox.innerHTML = "";
 				}
 			}
-			var textarea = document.createElement("textarea");
-			textarea.style.fontFamily = "sans-serif";
-			if (maxLength != null) {
-				textarea.style.maxWidth = (maxLength + 1) + "ex";
-				textarea.style.height = "1.5em";
+			
+			var textarea = null;
+			for (var i = 0; i < element.childNodes.length; i++) {
+				if (element.childNodes[i].nodeType == 1) {
+					textarea = element.childNodes[i];
+					break;
+				}
 			}
-			textarea.setAttribute("class", "json-string");
+			
 			textarea.value = data.value()
 			textarea.onkeyup = function () {
 				updateNoticeBox(this.value);
@@ -377,10 +399,24 @@
 				data.setValue(this.value);
 				noticeBox.innerHTML = "";
 			};
-			element.appendChild(textarea);
 			element.appendChild(noticeBox);
 			textarea = null;
 			element = null;
+		},
+		update: function (element, data, context, operation) {
+			if (operation.action() == "replace") {
+				var textarea = null;
+				for (var i = 0; i < element.childNodes.length; i++) {
+					if (element.childNodes[i].nodeType == 1) {
+						textarea = element.childNodes[i];
+						break;
+					}
+				}				
+				textarea.value = data.value()
+				return false;
+			} else {
+				return true;
+			}
 		},
 		filter: function (data) {
 			return data.basicType() == "string" && !data.readOnly();

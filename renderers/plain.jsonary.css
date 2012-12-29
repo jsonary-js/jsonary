@@ -142,6 +142,11 @@ textarea.json-string {
 	background-color: rgba(255, 255, 255, 0.5);
 }
 
+.json-string-notice {
+	color: #666;
+	margin-left: 0.5em;
+}
+
 /**** Number ****/
 
 .json-number {
