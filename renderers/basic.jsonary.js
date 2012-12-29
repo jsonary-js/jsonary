@@ -452,13 +452,31 @@
 	
 	// Edit number
 	Jsonary.render.register({
-		render: function (element, data) {
-			var valueSpan = document.createElement("a");
-			valueSpan.setAttribute("href", "#");
-			valueSpan.setAttribute("class", "json-number");
-			valueSpan.appendChild(document.createTextNode(data.value()));
+		renderHtml: function (data, context) {
+			var result = context.actionHtml('<span class="json-number">' + data.value() + '</span>', "input");
+			
 			var interval = data.schemas().numberInterval();
-			valueSpan.onclick = function () {
+			if (interval != undefined) {
+				var minimum = data.schemas().minimum();
+				if (minimum == null || data.value() > minimum + interval || data.value() == (minimum + interval) && !data.schemas().exclusiveMinimum()) {
+					result = context.actionHtml('<span class="json-number-decrement">-</span>', 'decrement') + result;
+				}
+				
+				var maximum = data.schemas().maximum();
+				if (maximum == null || data.value() < maximum - interval || data.value() == (maximum - interval) && !data.schemas().exclusiveMaximum()) {
+					result += context.actionHtml('<span class="json-number-increment">+</span>', 'increment');
+				}
+			}
+			return result;
+		},
+		action: function (context, actionName) {
+			var data = context.data;
+			var interval = data.schemas().numberInterval();
+			if (actionName == "increment") {
+				data.setValue(data.value() + interval);
+			} else if (actionName == "decrement") {
+				data.setValue(data.value() - interval);
+			} else if (actionName == "input") {
 				var newValueString = prompt("Enter number: ", data.value());
 				var value = parseFloat(newValueString);
 				if (!isNaN(value)) {
@@ -483,33 +501,7 @@
 					}
 					data.setValue(value);
 				}
-				return false;
-			};
-			element.appendChild(valueSpan);
-			if (interval != undefined) {
-				var increment = document.createElement("a");
-				increment.appendChild(document.createTextNode("+"));
-				increment.setAttribute("class", "json-number-increment");
-				increment.setAttribute("href", "#");
-				increment.onclick = function () {
-					data.setValue(data.value() + interval);
-					return false;
-				};
-				element.appendChild(increment);
-				
-				var decrement = document.createElement("a");
-				decrement.appendChild(document.createTextNode("-"));
-				decrement.setAttribute("class", "json-number-decrement");
-				decrement.setAttribute("href", "#");
-				decrement.onclick = function () {
-					data.setValue(data.value() - interval);
-					return false;
-				};
-				element.insertBefore(decrement, valueSpan);
-				decrement = null;
 			}
-			valueSpan = null;
-			element = null;
 		},
 		filter: function (data) {
 			return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
