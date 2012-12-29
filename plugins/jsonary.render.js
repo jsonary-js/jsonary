@@ -135,6 +135,12 @@
 			this.oldSubContexts = this.subContexts;
 			this.subContexts = {};
 		},
+		rerender: function () {
+			var element = document.getElementById(this.elementId);
+			if (element != null) {
+				this.renderer.render(element, this.data, this);
+			}
+		},
 		render: function (element, data, label, uiStartingState) {
 			if (label == undefined) {
 				label = "";
@@ -361,17 +367,18 @@
 		}
 	};
 	var pageContext = new RenderContext();
-	pageContext.clearOldSubContexts = function () {
-		this.oldSubContexts = {};
-		this.subContexts = {};
-	};
 
 	function render(element, data, uiStartingState) {
 		pageContext.render(element, data, null, uiStartingState);
+		pageContext.oldSubContexts = {};
+		pageContext.subContexts = {};
 		return this;
 	}
 	function renderHtml(data, uiStartingState) {
-		return pageContext.renderHtml(data, null, uiStartingState);
+		var result = pageContext.renderHtml(data, null, uiStartingState);
+		pageContext.oldSubContexts = {};
+		pageContext.subContexts = {};
+		return result;
 	}
 
 	if (global.jQuery != undefined) {
