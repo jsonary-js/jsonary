@@ -484,6 +484,22 @@
 	Jsonary.render.register({
 		render: function (element, data, context) {
 			var enumValues = data.schemas().enumValues();
+			if (enumValues.length == 0) {
+				element.innerHTML = '<span class="json-enum-invalid">invalid</span>';
+				return;
+			} else if (enumValues.length == 1) {
+				if (typeof enumValues[0] == "string") {
+					element.innerHTML = '<span class="json-string">' + escapeHtml(enumValues[0]) + '</span>';
+				} else if (typeof enumValues[0] == "number") {
+					element.innerHTML = '<span class="json-number">' + enumValues[0] + '</span>';
+				} else if (typeof enumValues[0] == "boolean") {
+					var text = (enumValues[0] ? "true" : "false");
+					element.innerHTML = '<span class="json-boolean-' + text + '">' + text + '</span>';
+				} else {
+					element.innerHTML = '<span class="json-raw">' + escapeHtml(JSON.stringify(enumValues[0])) + '</span>';
+				}
+				return;
+			}
 			var select = document.createElement("select");
 			for (var i = 0; i < enumValues.length; i++) {
 				var option = document.createElement("option");
@@ -496,7 +512,6 @@
 			}
 			select.onchange = function () {
 				var index = this.value;
-				console.log(index);
 				data.setValue(enumValues[index]);
 			}
 			element.appendChild(select);
