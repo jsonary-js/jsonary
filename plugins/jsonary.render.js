@@ -98,6 +98,12 @@
 		usedComponents: [],
 		rootContext: null,
 		baseContext: null,
+		subContext: function (label, uiState) {
+			if (uiState == undefined) {
+				uiState = {};
+			}
+			return this.getSubContext(this.elementId, this.data, label, uiState);
+		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			var labelKey = data.uniqueId + ":" + label;
 			if (this.oldSubContexts[labelKey] != undefined) {
