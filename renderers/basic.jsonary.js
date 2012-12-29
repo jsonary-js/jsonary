@@ -175,6 +175,22 @@
 			result += context.renderHtml(data);
 			return result;
 		},
+		render: function (element, data, context) {
+			var thisRenderer = this;
+			if (context.uiState.dialogOpen) {
+				if (context.timeout == undefined) {
+					context.timeout = window.setTimeout(function () {
+						context.uiState.dialogOpen = false;
+						context.rerender();
+					}, 8000);
+				}
+			} else {
+				if (context.timeout != undefined) {
+					window.clearTimeout(context.timeout);
+					delete context.timeout;
+				}
+			}
+		},
 		action: function (context, actionName, basicType) {
 			if (actionName == "closeDialog") {
 				context.uiState.dialogOpen = false;
@@ -193,6 +209,11 @@
 			}
 		},
 		update: function (element, data, context, operation) {
+			return false;
+			if (context.uiState.dialogOpen) {
+				context.uiState.dialogOpen = false;
+				return true;
+			}
 			return false;
 		},
 		filter: function (data) {
