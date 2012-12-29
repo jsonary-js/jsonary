@@ -86,39 +86,51 @@
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.render(element, data, prevContext);
 				} else {
-					prevContext.baseContext.render(element, data, prevUiState);
+					prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
 				}
 			}
 		});
 		this.rootContext = this;
+		this.subContexts = {};
 	}
 	RenderContext.prototype = {
 		usedComponents: [],
 		rootContext: null,
 		baseContext: null,
-		subContext: function (elementId, data, uiStartingState) {
-			var usedComponents = [];
-			if (this.data == data) {
-				usedComponents = this.usedComponents.slice(0);
-				if (this.renderer != undefined) {
-					usedComponents = usedComponents.concat(this.renderer.component);
+		getSubContext: function (elementId, data, label, uiStartingState) {
+			var labelKey = data.uniqueId + ":" + label;
+			if (this.subContexts[labelKey] == undefined) {
+				var usedComponents = [];
+				if (this.data == data) {
+					usedComponents = this.usedComponents.slice(0);
+					if (this.renderer != undefined) {
+						usedComponents = usedComponents.concat(this.renderer.component);
+					}
 				}
+				if (typeof elementId == "object") {
+					elementId = elementId.id;
+				}
+				function Context(rootContext, baseContext, label, data, uiState, usedComponents) {
+					this.rootContext = rootContext;
+					this.baseContext = baseContext;
+					this.label = label;
+					this.data = data;
+					this.uiState = uiState;
+					this.usedComponents = usedComponents;
+					this.subContexts = {};
+				}
+				Context.prototype = this.rootContext;
+				this.subContexts[labelKey] = new Context(this.rootContext, this, label, data, uiStartingState, usedComponents);
 			}
-			if (typeof elementId == "object") {
-				elementId = elementId.id;
-			}
-			function Context(rootContext, baseContext, elementId, data, uiState, usedComponents) {
-				this.rootContext = rootContext;
-				this.baseContext = baseContext;
-				this.elementId = elementId;
-				this.data = data;
-				this.uiState = uiState;
-				this.usedComponents = usedComponents;
-			}
-			Context.prototype = this.rootContext;
-			return new Context(this.rootContext, this, elementId, data, uiStartingState, usedComponents);
+			var subContext = this.subContexts[labelKey];
+			subContext.elementId = elementId;
+			return subContext;
 		},
-		render: function (element, data, uiStartingState) {
+		render: function (element, data, label, uiStartingState) {
+			if (label == undefined) {
+				label = data.parentKey();
+				label = (label == null) ? "" : label;
+			}
 			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -126,7 +138,7 @@
 			if (data.getData != undefined) {
 				var thisContext = this;
 				data.getData(function (actualData) {
-					thisContext.render(element, actualData, uiStartingState);
+					thisContext.render(element, actualData, label, uiStartingState);
 				});
 				return;
 			}
@@ -139,7 +151,7 @@
 			}
 
 			var previousContext = element.jsonaryContext;
-			var subContext = this.subContext(element, data, uiStartingState);
+			var subContext = this.getSubContext(element.id, data, label, uiStartingState);
 			var encodedState = encodeUiState(uiStartingState);
 			if (encodedState != null) {
 				element.setAttribute("data-jsonary", encodedState);
@@ -171,7 +183,11 @@
 				element.innerHTML = "NO RENDERER FOUND";
 			}
 		},
-		renderHtml: function (data, uiStartingState) {
+		renderHtml: function (data, label, uiStartingState) {
+			if (label == undefined) {
+				label = data.parentKey();
+				label = (label == null) ? "" : label;
+			}
 			var elementId = this.getElementId();
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -184,7 +200,7 @@
 						rendered = true;
 						data = actualData;
 					} else {
-						thisContext.render(document.getElementById(elementId), actualData, uiStartingState);
+						thisContext.render(document.getElementById(elementId), actualData, label, uiStartingState);
 					}
 				});
 				if (!rendered) {
@@ -196,7 +212,7 @@
 			if (typeof uiStartingState != "object") {
 				uiStartingState = {};
 			}
-			var subContext = this.subContext(elementId, data, uiStartingState);
+			var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 
 			var startingStateString = encodeUiState(uiStartingState);
 			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
@@ -241,7 +257,7 @@
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
-					prevContext.baseContext.render(element, data, prevUiState);
+					prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
 				}
 			}
 		},
@@ -338,11 +354,11 @@
 	var pageContext = new RenderContext();
 
 	function render(element, data, uiStartingState) {
-		pageContext.render(element, data, uiStartingState);
+		pageContext.render(element, data, null, uiStartingState);
 		return this;
 	}
 	function renderHtml(data, uiStartingState) {
-		return pageContext.renderHtml(data, uiStartingState);
+		return pageContext.renderHtml(data, null, uiStartingState);
 	}
 
 	if (global.jQuery != undefined) {

@@ -14,9 +14,6 @@
 				return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
 			}
 			delete context.uiState.undefined;
-			if (context.uiState.subState == undefined) {
-				context.uiState.subState = {};
-			}
 			var showDelete = false;
 			if (data.parent() != null) {
 				var parent = data.parent();
@@ -37,7 +34,7 @@
 			if (showDelete) {
 				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
 			}
-			result += context.renderHtml(data, context.uiState.subState);
+			result += context.renderHtml(data);
 			return result;
 		},
 		action: function (context, actionName) {
@@ -135,10 +132,7 @@
 			return false;
 		},
 		renderHtml: function (data, context) {
-			if (context.uiState.subState == undefined) {
-				context.uiState.subState = {};
-			}
-			return context.renderHtml(data, context.uiState.subState);
+			return context.renderHtml(data);
 		},
 		filter: function () {
 			return true;
@@ -148,9 +142,6 @@
 	Jsonary.render.register({
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
-			if (context.uiState.subState == undefined) {
-				context.uiState.subState = {};
-			}
 			var result = "";
 			var decisionSchemas = data.schemas().decisionSchemas();
 			var basicTypes = data.schemas().basicTypes();
@@ -181,7 +172,7 @@
 			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
-			result += context.renderHtml(data, context.uiState.subState);
+			result += context.renderHtml(data);
 			return result;
 		},
 		action: function (context, actionName, basicType) {
