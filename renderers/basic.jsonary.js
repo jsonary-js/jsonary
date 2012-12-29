@@ -147,7 +147,7 @@
 			var basicTypes = data.schemas().basicTypes();
 			var enums = data.schemas().enumValues();
 			if (context.uiState.dialogOpen) {
-				result += '<span class="json-select-type-dialog">';
+				result += '<span class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
 				result += context.actionHtml('close', "closeDialog");
 				decisionSchemas.each(function (index, schema) {
 				});
@@ -165,7 +165,8 @@
 					}
 					result += '</ul>';
 				}
-				result += '</span>';
+				result += '</span></span>';
+				result += context.actionHtml('<div class="json-select-type-background"></div>', 'closeDialog');
 			}
 			//if (decisionSchemas.length > 0 || basicTypes.length > 1) {
 			// Only select basic types for now
@@ -204,6 +205,7 @@
 				schemas.createValue(function (newValue) {
 					context.data.setValue(newValue);
 				});
+				return true;
 			} else {
 				alert("Unkown action: " + actionName);
 			}

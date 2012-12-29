@@ -79,21 +79,47 @@ textarea {
 	font-style: italic;
 }
 
+.json-select-type-dialog-outer {
+	position: relative;
+}
+
 .json-select-type-dialog {
 	position: absolute;
+	top: -0.65em;
+	left: -0.5em;
+	width: 8em;
 	border: 2px solid black;
 	border-radius: 10px;
 	background-color: white;
+	padding: 0.5em;
+	z-index: 1;
+}
+
+.json-select-type-background {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background-image: URL('images/background-stripe.png');
 }
 
 .json-select-type {
 	font-family: monospace;
 	border: 1px solid #666;
+	border-radius: 3px;
 	color: #666;
 	font-weight: bold;
 	padding-left: 0.3em;
 	padding-right: 0.3em;
 	background-color: #DDD;
+	background-image: URL('images/background-fade.png');
+	background-repeat: repeat-x;
+	background-position: top;
+}
+
+.json-select-type:hover {
+	background-image: URL('images/background-fade-bold.png');
 }
 
 /**** JSON Array ****/
@@ -132,6 +158,7 @@ textarea {
 
 .json-string {
 	white-space: pre-wrap;
+	border-radius: 3px;
 }
 
 textarea.json-string {
@@ -158,7 +185,7 @@ textarea.json-string {
 
 .json-number-increment, .json-number-decrement {
 	font-family: monospace;
-	color: #808;
+	color: #666;
 	font-weight: bold;
 	text-decoration: none;
 	margin-left: 0.5em;
@@ -166,7 +193,15 @@ textarea.json-string {
 	padding-left: 0.5em;
 	padding-right: 0.5em;
 	border: 1px solid #888;
+	border-radius: 3px;
 	background-color: #DDD;
+	background-image: URL('images/background-fade.png');
+	background-repeat: repeat-x;
+	background-position: top;
+}
+
+.json-number-increment:hover, .json-number-decrement:hover {
+	background-image: URL('images/background-fade-bold.png');
 }
 
 /**** Boolean ****/
