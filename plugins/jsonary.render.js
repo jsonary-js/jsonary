@@ -361,6 +361,10 @@
 		}
 	};
 	var pageContext = new RenderContext();
+	pageContext.clearOldSubContexts = function () {
+		this.oldSubContexts = {};
+		this.subContexts = {};
+	};
 
 	function render(element, data, uiStartingState) {
 		pageContext.render(element, data, null, uiStartingState);
