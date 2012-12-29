@@ -4465,19 +4465,11 @@ publicApi.UriTemplate = UriTemplate;
 		this.getElementId = function () {
 			return elementIdPrefix + (elementIdCounter++);
 		};
-		this.getInputName = this.getElementId;
-		this.getInputValue = function (inputName) {
-			var inputs = document.getElementsByName(inputName);
-			if (inputs.length == 0) {
-				return null;
-			}
-			var input = inputs[0];
-			return input.value;
-		};
 
 		var renderDepth = 0;
 		this.enhancementContexts = {};
 		this.enhancementActions = {};
+		this.enhancementInputs = {};
 
 		Jsonary.registerChangeListener(function (patch, document) {
 			patch.each(function (index, operation) {
@@ -4507,7 +4499,7 @@ publicApi.UriTemplate = UriTemplate;
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
 				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
-				var renderer = selectRenderer(data, prevUiState, prevContext.baseContext.usedComponents);
+				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.render(element, data, prevContext);
 				} else {
@@ -4662,7 +4654,7 @@ publicApi.UriTemplate = UriTemplate;
 				var element = elements[i];
 				var prevContext = element.jsonaryContext;
 				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
-				var renderer = selectRenderer(data, prevUiState, prevContext.baseContext.usedComponents);
+				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
@@ -4678,6 +4670,15 @@ publicApi.UriTemplate = UriTemplate;
 			var elementId = this.getElementId();
 			this.addEnhancementAction(elementId, actionName, this, params);
 			return '<a href="javascript:void(0)" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
+		},
+		inputNameForAction: function (actionName) {
+			var name = this.getElementId();
+			this.enhancementInputs[name] = {
+				inputName: name,
+				actionName: actionName,
+				context: this
+			};
+			return name;
 		},
 		addEnhancement: function(elementId, context) {
 			this.enhancementContexts[elementId] = context;
@@ -4734,6 +4735,15 @@ publicApi.UriTemplate = UriTemplate;
 						actionContext.renderer.render(element, actionContext.data, actionContext);
 					}
 					return false;
+				};
+			}
+			var inputAction = this.enhancementInputs[element.name];
+			if (inputAction != undefined) {
+				delete this.enhancementInputs[element.name];
+				element.onchange = function () {
+					var value = this.value;
+					var inputContext = inputAction.context;
+					inputContext.renderer.action(inputContext, inputAction.actionName, value);
 				};
 			}
 			element = null;
