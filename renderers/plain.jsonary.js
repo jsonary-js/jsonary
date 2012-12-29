@@ -78,52 +78,6 @@
 		}
 	});
 	
-	function listLinks(element, links) {
-		var linkElement = null;
-		for (var i = 0; i < links.length; i++) {
-			(function (index, link) {
-				linkElement = document.createElement("a");
-				linkElement.setAttribute("href", link.href);
-				linkElement.setAttribute("class", "json-link");
-				linkElement.appendChild(document.createTextNode(link.rel));
-				element.appendChild(linkElement);
-				linkElement.onclick = function (event) {
-					linkPrompt(link, event);
-					return false;
-				};
-			})(i, links[i]);
-		}
-		element = null;
-		linkElement = null;
-	}
-	
-	Jsonary.render.Components.add("LIST_LINKS");
-	Jsonary.render.register({
-		component: Jsonary.render.Components.LIST_LINKS,
-		render: function (element, data, context) {
-			var links = data.links();
-			var schemas = data.schemas();
-			if (links.length == 0 && schemas.length == 0) {
-				return;
-			}
-			var container = document.createElement("span");
-			listLinks(container, links);
-			element.insertBefore(container, element.childNodes[0]);
-		},
-		update: function (element, data, context, operation) {
-			return false;
-		},
-		renderHtml: function (data, context) {
-			if (context.uiState.subState == undefined) {
-				context.uiState.subState = {};
-			}
-			return context.renderHtml(data, context.uiState.subState);
-		},
-		filter: function () {
-			return true;
-		}
-	});
-
 	Jsonary.render.register({
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
