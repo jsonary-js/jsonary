@@ -2,10 +2,10 @@
 	"title": "additionalProperties",
 	"description": "describes properties not accounted for by the \"properties\" or \"patternProperties\" keywords",
 	"content": [
-		"The value of this property must be either a schemas, or a boolean.",
+		"The value of this property must be either a schema or a boolean.",
 		"If this value is boolean <code>false</code>, then properties other than those listed in \"properties\" or \"patternProperties\" are not allowed.",
 		"If this value is a schema, then any properties that are not described by the \"properties\" or \"patternProperties\" keywords are described by that schema.",
-		"If this value is not specified, then additional properties can contain anything (same as boolean <code>true</code>)."
+		"If this value is not specified (or is boolean <code>true</code>, then additional properties can contain anything."
 	],
 	"exampleSchema": {
 		"type": "object",
