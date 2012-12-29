@@ -4545,8 +4545,7 @@ publicApi.UriTemplate = UriTemplate;
 		},
 		render: function (element, data, label, uiStartingState) {
 			if (label == undefined) {
-				label = data.parentKey();
-				label = (label == null) ? "" : label;
+				label = "";
 			}
 			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
@@ -4602,8 +4601,7 @@ publicApi.UriTemplate = UriTemplate;
 		},
 		renderHtml: function (data, label, uiStartingState) {
 			if (label == undefined) {
-				label = data.parentKey();
-				label = (label == null) ? "" : label;
+				label = "";
 			}
 			var elementId = this.getElementId();
 			if (typeof data == "string") {
