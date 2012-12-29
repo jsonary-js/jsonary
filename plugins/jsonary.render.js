@@ -325,6 +325,9 @@
 				delete this.enhancementInputs[element.name];
 				element.onchange = function () {
 					var value = this.value;
+					if (this.getAttribute("type") == "checkbox") {
+						value = this.checked;
+					}
 					var inputContext = inputAction.context;
 					inputContext.renderer.action(inputContext, inputAction.actionName, value);
 				};
