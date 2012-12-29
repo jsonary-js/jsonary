@@ -102,12 +102,16 @@
 		component: Jsonary.render.Components.LIST_LINKS,
 		render: function (element, data, context) {
 			var links = data.links();
-			if (links.length == 0) {
+			var schemas = data.schemas();
+			if (links.length == 0 && schemas.length == 0) {
 				return;
 			}
 			var container = document.createElement("span");
 			listLinks(container, links);
 			element.insertBefore(container, element.childNodes[0]);
+		},
+		update: function (element, data, context, operation) {
+			return false;
 		},
 		renderHtml: function (data, context) {
 			if (context.uiState.subState == undefined) {
@@ -115,8 +119,8 @@
 			}
 			return context.renderHtml(data, context.uiState.subState);
 		},
-		filter: function (data) {
-			return data.links().length > 0;
+		filter: function () {
+			return true;
 		}
 	});
 
@@ -129,6 +133,7 @@
 			var result = "";
 			var decisionSchemas = data.schemas().decisionSchemas();
 			var basicTypes = data.schemas().basicTypes();
+			var enums = data.schemas().enumValues();
 			if (context.uiState.dialogOpen) {
 				result += '<span class="json-select-type-dialog">';
 				result += context.actionHtml('close', "closeDialog");
@@ -152,7 +157,7 @@
 			}
 			//if (decisionSchemas.length > 0 || basicTypes.length > 1) {
 			// Only select basic types for now
-			if (basicTypes.length > 1) {
+			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
 			result += context.renderHtml(data, context.uiState.subState);
@@ -176,8 +181,7 @@
 			}
 		},
 		update: function (element, data, context, operation) {
-			var pointerPath = data.pointerPath();
-			return operation.subjectEquals(pointerPath) || operation.targetEquals(pointerPath);
+			return false;
 		},
 		filter: function (data) {
 			return !data.readOnly();
@@ -196,7 +200,7 @@
 			return true;
 		}
 	});
-	
+		
 	function updateTextAreaSize(textarea) {
 		var lines = textarea.value.split("\n");
 		var maxWidth = 4;
@@ -267,7 +271,6 @@
 	// Display/edit arrays
 	Jsonary.render.register({
 		renderHtml: function (data, context) {
-			var result = "";
 			var tupleTypingLength = data.schemas().tupleTypingLength();
 			var maxItems = data.schemas().maxItems();
 			data.indices(function (index, subData) {
@@ -281,7 +284,6 @@
 					result += context.actionHtml(addHtml, "add");
 				}
 			}
-			return result + "";
 		},
 		action: function (context, actionName) {
 			var data = context.data;
@@ -320,6 +322,24 @@
 
 	// Edit string
 	Jsonary.render.register({
+		renderHtml: function (data, context) {
+			var maxLength = data.schemas().maxLength();
+			var inputName = context.inputNameForAction('new-value');
+			var valueHtml = escapeHtml(data.value()).replace('"', '&quot;');
+			var style = "";
+			if (maxLength != null && maxLength <= 100) {
+				style += "maxWidth: " + (maxLength + 1) + "ex;";
+				style += "height: 1.5em;";
+			}
+			return '<textarea class="json-string" name="' + inputName + '" style="' + style + '">'
+				+ valueHtml
+				+ '</textarea>';
+		},
+		action: function (context, actionName, arg1) {
+			if (actionName == 'new-value') {
+				context.data.setValue(arg1);
+			}
+		},
 		render: function (element, data, context) {
 			var minLength = data.schemas().minLength();
 			var maxLength = data.schemas().maxLength();
@@ -336,13 +356,15 @@
 					noticeBox.innerHTML = "";
 				}
 			}
-			var textarea = document.createElement("textarea");
-			textarea.style.fontFamily = "sans-serif";
-			if (maxLength != null) {
-				textarea.style.maxWidth = (maxLength + 1) + "ex";
-				textarea.style.height = "1.5em";
+			
+			var textarea = null;
+			for (var i = 0; i < element.childNodes.length; i++) {
+				if (element.childNodes[i].nodeType == 1) {
+					textarea = element.childNodes[i];
+					break;
+				}
 			}
-			textarea.setAttribute("class", "json-string");
+			
 			textarea.value = data.value()
 			textarea.onkeyup = function () {
 				updateNoticeBox(this.value);
@@ -354,10 +376,24 @@
 				data.setValue(this.value);
 				noticeBox.innerHTML = "";
 			};
-			element.appendChild(textarea);
 			element.appendChild(noticeBox);
 			textarea = null;
 			element = null;
+		},
+		update: function (element, data, context, operation) {
+			if (operation.action() == "replace") {
+				var textarea = null;
+				for (var i = 0; i < element.childNodes.length; i++) {
+					if (element.childNodes[i].nodeType == 1) {
+						textarea = element.childNodes[i];
+						break;
+					}
+				}				
+				textarea.value = data.value()
+				return false;
+			} else {
+				return true;
+			}
 		},
 		filter: function (data) {
 			return data.basicType() == "string" && !data.readOnly();
@@ -393,13 +429,31 @@
 	
 	// Edit number
 	Jsonary.render.register({
-		render: function (element, data) {
-			var valueSpan = document.createElement("a");
-			valueSpan.setAttribute("href", "#");
-			valueSpan.setAttribute("class", "json-number");
-			valueSpan.appendChild(document.createTextNode(data.value()));
+		renderHtml: function (data, context) {
+			var result = context.actionHtml('<span class="json-number">' + data.value() + '</span>', "input");
+			
 			var interval = data.schemas().numberInterval();
-			valueSpan.onclick = function () {
+			if (interval != undefined) {
+				var minimum = data.schemas().minimum();
+				if (minimum == null || data.value() > minimum + interval || data.value() == (minimum + interval) && !data.schemas().exclusiveMinimum()) {
+					result = context.actionHtml('<span class="json-number-decrement">-</span>', 'decrement') + result;
+				}
+				
+				var maximum = data.schemas().maximum();
+				if (maximum == null || data.value() < maximum - interval || data.value() == (maximum - interval) && !data.schemas().exclusiveMaximum()) {
+					result += context.actionHtml('<span class="json-number-increment">+</span>', 'increment');
+				}
+			}
+			return result;
+		},
+		action: function (context, actionName) {
+			var data = context.data;
+			var interval = data.schemas().numberInterval();
+			if (actionName == "increment") {
+				data.setValue(data.value() + interval);
+			} else if (actionName == "decrement") {
+				data.setValue(data.value() - interval);
+			} else if (actionName == "input") {
 				var newValueString = prompt("Enter number: ", data.value());
 				var value = parseFloat(newValueString);
 				if (!isNaN(value)) {
@@ -424,33 +478,7 @@
 					}
 					data.setValue(value);
 				}
-				return false;
-			};
-			element.appendChild(valueSpan);
-			if (interval != undefined) {
-				var increment = document.createElement("a");
-				increment.appendChild(document.createTextNode("+"));
-				increment.setAttribute("class", "json-number-increment");
-				increment.setAttribute("href", "#");
-				increment.onclick = function () {
-					data.setValue(data.value() + interval);
-					return false;
-				};
-				element.appendChild(increment);
-				
-				var decrement = document.createElement("a");
-				decrement.appendChild(document.createTextNode("-"));
-				decrement.setAttribute("class", "json-number-decrement");
-				decrement.setAttribute("href", "#");
-				decrement.onclick = function () {
-					data.setValue(data.value() - interval);
-					return false;
-				};
-				element.insertBefore(decrement, valueSpan);
-				decrement = null;
 			}
-			valueSpan = null;
-			element = null;
 		},
 		filter: function (data) {
 			return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
