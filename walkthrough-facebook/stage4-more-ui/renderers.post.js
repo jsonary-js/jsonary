@@ -23,8 +23,7 @@ Jsonary.render.register({
 	},
 //	component: [Jsonary.render.Components.RENDERER, Jsonary.render.Components.LIST_LINKS],
 	renderHtml: function (data, context) {
-		var result = JSON.stringify(data.keys());
-		result += '<br>' + data.json();
+		var result = "";
 		result += '<div class="facebook-post">';
 		result += '<div class="facebook-post-toFrom>';
 		result += context.renderHtml(data.property("from"));
