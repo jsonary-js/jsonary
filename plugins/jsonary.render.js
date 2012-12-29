@@ -521,6 +521,9 @@
 	});
 	Jsonary.extendData({
 		renderTo: function (element, uiState) {
+			if (typeof element == "string") {
+				element = document.getElementById(element);
+			}
 			render(element, this, uiState);
 		}
 	});

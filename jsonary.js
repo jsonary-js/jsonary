@@ -4742,6 +4742,9 @@ publicApi.UriTemplate = UriTemplate;
 				delete this.enhancementInputs[element.name];
 				element.onchange = function () {
 					var value = this.value;
+					if (this.getAttribute("type") == "checkbox") {
+						value = this.checked;
+					}
 					var inputContext = inputAction.context;
 					inputContext.renderer.action(inputContext, inputAction.actionName, value);
 				};
@@ -4935,6 +4938,9 @@ publicApi.UriTemplate = UriTemplate;
 	});
 	Jsonary.extendData({
 		renderTo: function (element, uiState) {
+			if (typeof element == "string") {
+				element = document.getElementById(element);
+			}
 			render(element, this, uiState);
 		}
 	});
