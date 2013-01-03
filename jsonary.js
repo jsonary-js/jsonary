@@ -3981,6 +3981,7 @@ function SchemaSet(dataObj) {
 	this.matches = {};
 	this.xorSelectors = {};
 	this.orSelectors = {};
+	this.dependencySelectors = {};
 	this.schemaFlux = 0;
 	this.schemasStable = true;
 
@@ -3994,6 +3995,7 @@ var counter = 0;
 SchemaSet.prototype = {
 	update: function (key) {
 		this.updateLinksWithKey(key);
+		this.updateDependenciesWithKey(key);
 		this.updateMatchesWithKey(key);
 	},
 	updateLinksWithKey: function (key) {
@@ -4029,6 +4031,21 @@ SchemaSet.prototype = {
 			var matchList = this.matches[schemaKeys[j]];
 			for (var i = 0; i < matchList.length; i++) {
 				matchList[i].dataUpdated(key);
+			}
+		}
+	},
+	updateDependenciesWithKey: function (key) {
+		// TODO: maintain a list of sorted keys, instead of sorting them each time
+		var schemaKeys = [];		
+		for (schemaKey in this.dependencySelectors) {
+			schemaKeys.push(schemaKey);
+		}
+		schemaKeys.sort();
+		schemaKeys.reverse();
+		for (var j = 0; j < schemaKeys.length; j++) {
+			var dependencyList = this.dependencySelectors[schemaKeys[j]];
+			for (var i = 0; i < dependencyList.length; i++) {
+				dependencyList[i].dataUpdated(key);
 			}
 		}
 	},
@@ -4101,6 +4118,7 @@ SchemaSet.prototype = {
 			thisSchemaSet.addLinks(schema.links(), schemaKey, schemaKeyHistory);
 			thisSchemaSet.addXorSelectors(schema, schemaKey, schemaKeyHistory);
 			thisSchemaSet.addOrSelectors(schema, schemaKey, schemaKeyHistory);
+			thisSchemaSet.addDependencySelector(schema, schemaKey, schemaKeyHistory);
 
 			thisSchemaSet.schemaFlux--;
 			thisSchemaSet.invalidateSchemaState();
@@ -4143,6 +4161,15 @@ SchemaSet.prototype = {
 			this.orSelectors[schemaKey] = selectors;
 		} else {
 			this.orSelectors[schemaKey] = this.orSelectors[schemaKey].concat(selectors);
+		}
+	},
+	addDependencySelector: function (schema, schemaKey, schemaKeyHistory) {
+		var selector = new DependencyApplier(schema, Utils.getKeyVariant(schemaKey, "dep"), schemaKeyHistory, this);
+		var selectors = [selector];
+		if (this.dependencySelectors[schemaKey] == undefined) {
+			this.dependencySelectors[schemaKey] = selectors;
+		} else {
+			this.dependencySelectors[schemaKey] = this.dependencySelectors[schemaKey].concat(selectors);
 		}
 	},
 	addLink: function (rawLink) {
@@ -4410,6 +4437,45 @@ function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 		}
 	});
 }
+
+function DependencyApplier(schema, schemaKey, schemaKeyHistory, schemaSet) {
+	this.inferredSchemaKeys = {};
+	this.applied = {};
+	this.schema = schema;
+	this.schemaKeyHistory = schemaKeyHistory;
+	this.schemaSet = schemaSet;
+
+	var keys = this.schema.data.property("dependencies").keys();
+	for (var i = 0; i < keys.length; i++) {
+		var key = keys[i];
+		this.inferredSchemaKeys[key] = Utils.getKeyVariant(schemaKey, "$" + i);
+		this.dataUpdated(key);
+	}
+	return;
+}
+DependencyApplier.prototype = {
+	dataUpdated: function (key) {
+		if (key == null) {
+			var keys = this.schema.data.property("dependencies").keys();
+			for (var i = 0; i < keys.length; i++) {
+				var key = keys[i];
+				this.dataUpdated(key);
+			}
+			return;
+		}
+		if (this.schemaSet.dataObj.property(key).defined()) {
+			var depList = this.schema.propertyDependencies(key);
+			for (var i = 0; i < depList.length; i++) {
+				var dep = depList[i];
+				if (typeof dep != "string") {
+					this.schemaSet.addSchema(dep, this.inferredSchemaKeys[key], this.schemaKeyHistory, false);
+				}
+			}
+		} else {
+			this.schemaSet.removeSchema(this.inferredSchemaKeys[key]);
+		}
+	}
+};
 
 //Tidying
 // TODO: check all " == undefined", in case they should be " === undefined" instead (null-safety)

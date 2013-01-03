@@ -344,3 +344,93 @@ tests.add("allOf inference", function () {
 
 	return true;
 });
+
+tests.add("dependency inference", function () {
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		"dependencies": {
+			"key1": {"title": "Schema 1"},
+			"key2": {"title": "Schema 2"},
+			"0": {"title": "Dummy schema"}
+		}
+	});
+	var data = Jsonary.create({key1: true});
+	data.addSchema(schema);
+	
+	this.assert(searchForTitleInSchemaList("Schema 1", data.schemas()), "1: Should contain Schema 1");
+	this.assert(!searchForTitleInSchemaList("Schema 2", data.schemas()), "1: Should not contain Schema 2");
+	
+	data.property("key2").setValue("test");
+	this.assert(searchForTitleInSchemaList("Schema 1", data.schemas()), "2: Should contain Schema 1");
+	this.assert(searchForTitleInSchemaList("Schema 2", data.schemas()), "2: Should contain Schema 2");
+	
+	data.property("key1").remove();
+	this.assert(!searchForTitleInSchemaList("Schema 1", data.schemas()), "3: Should not contain Schema 1");
+	this.assert(searchForTitleInSchemaList("Schema 2", data.schemas()), "3: Should contain Schema 2");
+	
+	data.property("key2").remove();
+	this.assert(!searchForTitleInSchemaList("Schema 1", data.schemas()), "4: Should not contain Schema 1");
+	this.assert(!searchForTitleInSchemaList("Schema 2", data.schemas()), "4: Should not contain Schema 2");
+	
+	data.setValue({key1: true});
+	this.assert(searchForTitleInSchemaList("Schema 1", data.schemas()), "5: Should contain Schema 1");
+	this.assert(!searchForTitleInSchemaList("Schema 2", data.schemas()), "5: Should not contain Schema 2");
+
+	data.setValue([0]);
+	this.assert(!searchForTitleInSchemaList("Schema 1", data.schemas()), "6: Should not contain Schema 1");
+	this.assert(!searchForTitleInSchemaList("Schema 2", data.schemas()), "6: Should not contain Schema 2");
+	this.assert(!searchForTitleInSchemaList("Dummy schema", data.schemas()), "6: Should not contain Dummy schema");
+	
+	return true;
+});
+
+
+tests.add("dependency validation", function () {
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		"dependencies": {
+			"key1": {
+				"title": "Schema 1",
+				"required": ["key2"]
+			},
+			"keyA": ["keyB", "keyC"]
+		}
+	});
+	var data = Jsonary.create({key1: true});
+
+	var monitorKey = Jsonary.getMonitorKey();
+	var failReasons = [];
+	var lastMatch = null;
+	data.addSchemaMatchMonitor(monitorKey, schema, function (match, failReason) {
+		lastMatch = match;
+		failReasons.push(failReason);
+	});
+	
+	this.assert(lastMatch === false, "1: should not match");
+	this.assert(failReasons.length == 1, "1: should have 1 callback");
+
+	data.property("key1").remove();
+	this.assert(lastMatch === true, "2: should match");
+	this.assert(failReasons.length == 2, "should have 2 callbacks");
+	
+	data.setValue({key1: true, key2: true});
+	this.assert(lastMatch === true, "3: should match");
+	this.assert(failReasons.length == 2, "should have 2 callbacks");
+	
+	data.property("keyA").setValue("test");
+	this.assert(lastMatch === false, "4: should not match");
+	this.assert(failReasons.length == 3, "4: should have 3 callbacks");
+	
+	data.property("keyB").setValue("test");
+	if (failReasons.length == 3) {
+		failReasons.push("Placeholder");
+	}
+	this.assert(lastMatch === false, "5: should not match");
+	this.assert(failReasons.length == 4, "5: should have 4 callbacks");
+	
+	data.property("keyC").setValue("test");
+	this.assert(lastMatch === true, "6: should match");
+	this.assert(failReasons.length == 5, "6: should have 5 callbacks");
+	
+	return true;
+});
