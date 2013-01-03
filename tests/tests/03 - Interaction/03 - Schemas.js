@@ -116,3 +116,24 @@ tests.add("fixedSchemas() with item", function () {
 	return true;
 });
 
+
+tests.add("fixedSchemas() with dependency", function () {
+	var schema = Jsonary.createSchema({
+		dependencies: {
+			"testKey": {
+				"title": "Subschema"
+			}
+		}
+	});
+	var data = Jsonary.create({
+		testKey: "test"
+	});
+	data.addSchema(schema);
+	
+	var schemaList = data.schemas();
+	
+	this.assert(schemaList.length == 2, "schemaList.length should be 2, was " + schemaList.length);
+	this.assert(schemaList.fixed().length == 1, "schemaList.fixed().length should be 1, was " + schemaList.fixed().length);
+	
+	return true;
+});
