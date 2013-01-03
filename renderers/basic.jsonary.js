@@ -143,14 +143,11 @@
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
 			var result = "";
-			var decisionSchemas = data.schemas().decisionSchemas();
 			var basicTypes = data.schemas().basicTypes();
 			var enums = data.schemas().enumValues();
 			if (context.uiState.dialogOpen) {
 				result += '<span class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
 				result += context.actionHtml('close', "closeDialog");
-				decisionSchemas.each(function (index, schema) {
-				});
 				if (basicTypes.length > 1) {
 					result += '<br>Select basic type:<ul>';
 					for (var i = 0; i < basicTypes.length; i++) {
@@ -168,8 +165,6 @@
 				result += '</span></span>';
 				result += context.actionHtml('<div class="json-select-type-background"></div>', 'closeDialog');
 			}
-			//if (decisionSchemas.length > 0 || basicTypes.length > 1) {
-			// Only select basic types for now
 			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}

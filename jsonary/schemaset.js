@@ -31,11 +31,21 @@ LinkList.prototype = {
 };
 
 // TODO: see how many calls to dataObj can be changed to just use this object
-function SchemaList(schemaList) {
+function SchemaList(schemaList, fixedList) {
 	if (schemaList == undefined) {
 		this.length = 0;
 		return;
 	}
+	if (fixedList == undefined) {
+		fixedList = schemaList;
+	}
+	this.fixed = function () {
+		var fixedSchemaList = (fixedList.length < schemaList.length) ? new SchemaList(fixedList) : this;
+		this.fixed = function () {
+			return fixedSchemaList;
+		};
+		return fixedSchemaList;
+	};
 	var i;
 	for (i = 0; i < schemaList.length; i++) {
 		this[i] = schemaList[i];
@@ -98,16 +108,6 @@ SchemaList.prototype = {
 			newList.push(other[i]);
 		}
 		return new SchemaList(newList);
-	},
-	decisionSchemas: function () {
-		var result = [];
-		for (var i = 0; i < this.length; i++) {
-			var schema = this[i];
-			if (schema.xorSchemas().length > 0 || schema.orSchemas().length > 0) {
-				result.push(schema);
-			}
-		}
-		return new SchemaList(result);
 	},
 	definedProperties: function () {
 		var additionalProperties = true;
@@ -227,6 +227,9 @@ SchemaList.prototype = {
 				}
 			}
 		}
+		cacheResult(this, {
+			numberInterval: candidate
+		});
 		return candidate;
 	},
 	minimum: function () {
@@ -249,7 +252,7 @@ SchemaList.prototype = {
 	},
 	exclusiveMinimum: function () {
 		this.minimum();
-		return this.exclusiveMinimum;
+		return this.exclusiveMinimum();
 	},
 	maximum: function () {
 		var maximum = undefined;
@@ -271,7 +274,7 @@ SchemaList.prototype = {
 	},
 	exclusiveMaximum: function () {
 		this.minimum();
-		return this.exclusiveMinimum;
+		return this.exclusiveMinimum();
 	},
 	minLength: function () {
 		var minLength = 0;
@@ -281,6 +284,9 @@ SchemaList.prototype = {
 				minLength = otherMinLength;
 			}
 		}
+		cacheResult(this, {
+			minLength: minLength
+		});
 		return minLength;
 	},
 	maxLength: function () {
@@ -291,6 +297,9 @@ SchemaList.prototype = {
 				maxLength = otherMaxLength;
 			}
 		}
+		cacheResult(this, {
+			maxLength: maxLength
+		});
 		return maxLength;
 	},
 	minItems: function () {
@@ -301,6 +310,9 @@ SchemaList.prototype = {
 				minItems = otherMinItems;
 			}
 		}
+		cacheResult(this, {
+			minItems: minItems
+		});
 		return minItems;
 	},
 	maxItems: function () {
@@ -311,6 +323,9 @@ SchemaList.prototype = {
 				maxItems = otherMaxItems;
 			}
 		}
+		cacheResult(this, {
+			maxItems: maxItems
+		});
 		return maxItems;
 	},
 	tupleTypingLength: function () {
@@ -531,6 +546,7 @@ SchemaList.prototype = {
 		}
 		var pending = 0;
 		var result = [];
+		var fixedList = this.fixed();
 		function addAll(list) {
 			pending += list.length;
 			for (var i = 0; i < list.length; i++) {
@@ -539,7 +555,7 @@ SchemaList.prototype = {
 						if (schema.equals(result[i])) {
 							pending--;
 							if (pending == 0) {
-								var fullList = new SchemaList(result);
+								var fullList = new SchemaList(result, fixedList);
 								callback.call(fullList, fullList);
 							}
 							return;
@@ -550,7 +566,7 @@ SchemaList.prototype = {
 					addAll(extendSchemas);
 					pending--;
 					if (pending == 0) {
-						var fullList = new SchemaList(result);
+						var fullList = new SchemaList(result, fixedList);
 						callback.call(fullList, fullList);
 					}
 				});
@@ -585,6 +601,7 @@ function SchemaSet(dataObj) {
 	this.dataObj = dataObj;
 
 	this.schemas = {};
+	this.schemasFixed = {};
 	this.links = {};
 	this.matches = {};
 	this.xorSelectors = {};
@@ -603,15 +620,6 @@ SchemaSet.prototype = {
 	update: function (key) {
 		this.updateLinksWithKey(key);
 		this.updateMatchesWithKey(key);
-	},
-	baseSchemas: function () {
-		var result = [];
-		for (var key in this.schemas) {
-			if (Utils.keyIsRoot(key)) {
-				result = result.concat(this.schemas[key]);
-			}
-		}
-		return result;
 	},
 	updateLinksWithKey: function (key) {
 		var schemaKey, i, linkList, linkInstance;
@@ -664,11 +672,14 @@ SchemaSet.prototype = {
 		}
 		return false;
 	},
-	addSchema: function (schema, schemaKey, schemaKeyHistory) {
+	addSchema: function (schema, schemaKey, schemaKeyHistory, fixed) {
 		var thisSchemaSet = this;
 		if (schemaKey == undefined) {
 			schemaKey = Utils.getUniqueKey();
 			counter = 0;
+		}
+		if (fixed == undefined) {
+			fixed = true;
 		}
 		if (schemaKeyHistory == undefined) {
 			schemaKeyHistory = [schemaKey];
@@ -689,7 +700,8 @@ SchemaSet.prototype = {
 				return;
 			}
 
-			thisSchemaSet.schemas[schemaKey][thisSchemaSet.schemas[schemaKey].length] = schema;
+			thisSchemaSet.schemas[schemaKey].push(schema);
+			thisSchemaSet.schemasFixed[schemaKey] = thisSchemaSet.schemasFixed[schemaKey] || fixed;
 
 			// TODO: this actually forces us to walk the entire data tree, as far as it is defined by the schemas
 			//       Do we really want to do this?  I mean, it's necessary if we ever want to catch the "self" links, but if not then it's not that helpful.
@@ -708,7 +720,7 @@ SchemaSet.prototype = {
 
 			var ext = schema.extendSchemas();
 			for (var i = 0; i < ext.length; i++) {
-				thisSchemaSet.addSchema(ext[i], schemaKey, schemaKeyHistory);
+				thisSchemaSet.addSchema(ext[i], schemaKey, schemaKeyHistory, fixed);
 			}
 
 			thisSchemaSet.addLinks(schema.links(), schemaKey, schemaKeyHistory);
@@ -776,7 +788,7 @@ SchemaSet.prototype = {
 					var schema = publicApi.createSchema({
 						"$ref": rawLink.href
 					});
-					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory);
+					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, false);
 				}
 			});
 		}
@@ -839,12 +851,17 @@ SchemaSet.prototype = {
 			return this.cachedSchemaList;
 		}
 		var schemaResult = [];
+		var fixedSchemas = {};
 
 		var i, j, key, schemaList, schema, alreadyExists;
 		for (key in this.schemas) {
 			schemaList = this.schemas[key];
+			var fixed = this.schemasFixed[key];
 			for (i = 0; i < schemaList.length; i++) {
 				schema = schemaList[i];
+				if (fixed) {
+					fixedSchemas[schema.data.uniqueId] = schema;
+				}
 				alreadyExists = false;
 				for (j = 0; j < schemaResult.length; j++) {
 					if (schema.equals(schemaResult[j])) {
@@ -857,7 +874,11 @@ SchemaSet.prototype = {
 				}
 			}
 		}
-		this.cachedSchemaList = new SchemaList(schemaResult);
+		var schemaFixedResult = [];
+		for (var key in fixedSchemas) {
+			schemaFixedResult.push(fixedSchemas[key]);
+		}
+		this.cachedSchemaList = new SchemaList(schemaResult, schemaFixedResult);
 		return this.cachedSchemaList;
 	},
 	getLinks: function(rel) {
@@ -983,7 +1004,7 @@ function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 	this.xorSelector.onMatchChange(function (selectedOption) {
 		schemaSet.removeSchema(inferredSchemaKey);
 		if (selectedOption != null) {
-			schemaSet.addSchema(selectedOption, inferredSchemaKey, schemaKeyHistory);
+			schemaSet.addSchema(selectedOption, inferredSchemaKey, schemaKeyHistory, false);
 		}
 	});
 }
@@ -1006,7 +1027,7 @@ function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 				}
 			}
 			if (found && !optionsApplied[i]) {
-				schemaSet.addSchema(options[i], inferredSchemaKeys[i], schemaKeyHistory);
+				schemaSet.addSchema(options[i], inferredSchemaKeys[i], schemaKeyHistory, false);
 			} else if (!found && optionsApplied[i]) {
 				schemaSet.removeSchema(inferredSchemaKeys[i]);
 			}

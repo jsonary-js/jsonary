@@ -124,5 +124,4 @@ function includeDir($directory) {
     </tr>
     </table>
   </body>
-  <script src="../js/page-effects.js"></script>
 </html>
