@@ -62,6 +62,16 @@ var ALL_TYPES_DICT = {
 	"object": true
 };
 SchemaList.prototype = {
+	indexOf: function (schema) {
+		var i = this.length - 1;
+		while (i >= 0) {
+			if (schema.equals(this[i])) {
+				return i;
+			}
+			i--;
+		}
+		return i;
+	},
 	containsUrl: function(url) {
 		if (url instanceof RegExp) {
 			for (var i = 0; i < this.length; i++) {
@@ -384,11 +394,84 @@ SchemaList.prototype = {
 			return values;
 		}
 	},
-	createValue: function(callback) {
+	allCombinations: function () {
+		var xorSchemas = this.xorSchemas();
+		for (var i = 0; i < xorSchemas.length; i++) {
+			var found = false;
+			for (var optionNum = 0; optionNum < xorSchemas[i].length; optionNum++) {
+				var option = xorSchemas[i][optionNum];
+				if (this.indexOf(option) >= 0) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				var result = [];
+				for (var optionNum = 0; optionNum < xorSchemas[i].length; optionNum++) {
+					var option = xorSchemas[i][optionNum];
+					var subCombos = this.concat([option]).allCombinations();
+					result = result.concat(subCombos);
+				}
+				return result;
+			}
+		}
+		
+		var orSchemas = this.orSchemas();
+		var totalCombos = [[]]
+		for (var i = 0; i < orSchemas.length; i++) {
+			var remaining = [];
+			var found = false;
+			for (var optionNum = 0; optionNum < orSchemas[i].length; optionNum++) {
+				var option = orSchemas[i][optionNum];
+				if (this.indexOf(option) == -1) {
+					remaining.push(option);
+				} else {
+					found = true;
+				}
+			}
+			if (remaining.length > 0) {
+				var combos = [[]];
+				for (var remNum = 0; remNum < remaining.length; remNum++) {
+					var newCombos = [];
+					for (var combNum = 0; combNum < combos.length; combNum++) {
+						newCombos.push(combos[combNum]);
+						newCombos.push(combos[combNum].concat([remaining[remNum]]));
+					}
+					combos = newCombos;
+				} 
+				if (!found) {
+					combos.shift();
+				}
+				var newTotalCombos = [];
+				for (var combA = 0; combA < totalCombos.length; combA++) {
+					for (var combB = 0; combB < combos.length; combB++) {
+						newTotalCombos.push(totalCombos[combA].concat(combos[combB]));
+					}
+				}
+				totalCombos = newTotalCombos;
+			}
+		}
+		for (var i = 0; i < totalCombos.length; i++) {
+			totalCombos[i] = this.concat(totalCombos[i]);
+		}
+		
+		return totalCombos;
+	},
+	createValue: function(callback, ignoreChoices) {
 		if (callback != null) {
 			this.getFull(function (schemas) {
 				callback.call(this, schemas.createValue());
 			});
+			return;
+		}
+		if (!ignoreChoices) {
+			var allCombinations = this.allCombinations();
+			for (var i = 0; i < allCombinations.length; i++) {
+				var value = allCombinations[i].createValue(null, true);
+				if (value !== undefined) {
+					return value;
+				}
+			}
 			return;
 		}
 		var candidates = [];
@@ -441,7 +524,7 @@ SchemaList.prototype = {
 			}
 			return candidate;
 		}
-		return null;
+		return;
 	},
 	createValueNumber: function () {
 		var exclusiveMinimum = this.exclusiveMinimum();
@@ -582,6 +665,20 @@ SchemaList.prototype = {
 			if (format != null) {
 				result.push(format);
 			}
+		}
+		return result;
+	},
+	xorSchemas: function () {
+		var result = [];
+		for (var i = 0; i < this.length; i++) {
+			result = result.concat(this[i].xorSchemas());
+		}
+		return result;
+	},
+	orSchemas: function () {
+		var result = [];
+		for (var i = 0; i < this.length; i++) {
+			result = result.concat(this[i].orSchemas());
 		}
 		return result;
 	}
