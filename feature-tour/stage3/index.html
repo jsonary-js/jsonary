@@ -140,7 +140,7 @@ Jsonary.getSchema("schema-list.json#/items", function (schema) {
 					<div class="example" id="example-link-response"></div>
 					<script>
 var element = document.getElementById('example-link');
-var data = Jsonary.create("Some test data").addSchema("schema-link.json");
+var data = Jsonary.create("Some test data").readOnlyCopy().addSchema("schema-link.json");
 Jsonary.render(element, data);
 
 Jsonary.getSchema("schema-link.json", function (schema) {
@@ -190,7 +190,7 @@ Jsonary.getSchema("schema-link.json", function (schema) {
 					<div class="example" id="example-link-json-response"></div>
 					<script>
 var element = document.getElementById('example-link-json');
-var data = Jsonary.create("Some more data").addSchema("schema-link-json.json");
+var data = Jsonary.create("Some more data").readOnlyCopy().addSchema("schema-link-json.json");
 Jsonary.render(element, data);
 
 Jsonary.getSchema("schema-link-json.json", function (schema) {
