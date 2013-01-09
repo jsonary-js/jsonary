@@ -42,6 +42,8 @@ var title = data.property("title");
 alert(title.schemas().minLength()); // 1
 ```
 
+More complicated behaviour (such as selecting schemas from `"anyOF"`, `"oneOf"`, `"dependencies"`, etc) is also handled automatically.  Just change the data, and the schemas change with it.
+
 ## Using hyper-schemas
 
 Hyper-schemas can define links on the data, with the URLs parametrised from the data itself:
