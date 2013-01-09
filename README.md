@@ -2,7 +2,7 @@
 
 Jsonary is a wrapper for JSON data, that deals with [JSON Schema](http://json-schema.org/).  Its goal is to help quickly assemble clients for JSON APIs.
 
-It is written in Javascript.  Currently, it is being developed and tested for in-browser use.  However, Node.js support is planned, with the goal of being able to write a single client that can be used either in-browser using AJAX, or as an HTML-only interface for non-JS browsers.
+It is written in JavaScript.  Currently, it is being developed and tested for in-browser use.  However, Node.js support is planned, with the goal of being able to write a single client that can be used either in-browser using AJAX, or as an HTML-only interface for non-JS browsers.
 
 The primary goal of this library is not validation of data, but rather to simplify the fetching, handling and rendering of data.  Its focus is correctly assigning JSON Schema to data, which can then be used to select and inform user-interfaces.
 
@@ -46,7 +46,7 @@ More complicated behaviour (such as selecting schemas from `"anyOF"`, `"oneOf"`,
 
 ## Using hyper-schemas
 
-Hyper-schemas can define links on the data, with the URLs parametrised from the data itself:
+Hyper-schemas can define links on the data, with the URLs parameterised from the data itself:
 ```javascript
 var data = Jsonary.create({
     "id": 125,
