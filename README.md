@@ -41,3 +41,53 @@ alert(data.schemas().requiredProperties()); // ["title"]
 var title = data.property("title");
 alert(title.schemas().minLength()); // 1
 ```
+
+## Using hyper-schemas
+
+Hyper-schemas can define links on the data, with the URLs parametrised from the data itself:
+```javascript
+var data = Jsonary.create({
+    "id": 125,
+    "authorId": 25,
+    "title": "Example data"
+});
+var schema = Jsonary.createSchema({
+    "title": "Example hyper-schema",
+    "links": [
+        {
+            "rel": "self":,
+            "href": "http://example.com/items/{id}"
+        }
+        {
+            "rel": "author",
+            "href": "http://example.com/users/{authorId}"
+        }
+    ]
+});
+data.addSchema(schema);
+```
+
+Jsonary handles these, and the links can be inspected:
+```javascript
+alert(data.links().length); // 2
+
+var authorLink = data.links('author')[0];
+alert(authorLink.href); // http://example.com/users/25
+```
+
+Many more properties of links can be inspected
+
+## Rendering clients
+
+Jsonary comes bundled with a rendering system that bases its interface on the schemas that a data object has applied to it.
+```javascript
+data.renderTo(document.getElementById('render-container'));
+```
+
+## Main site
+
+More information can be found at: [jsonary.com](http://jsonary.com/).
+
+There is a [quick feature tour](http://jsonary.com/feature-tour/), walkthroughs for [creating a generic browser](http://jsonary.com/walkthrough-basic/) or [creating a Facebook client](http://jsonary.com/walkthrough-facebook/) (incomplete).
+
+There is also a demo of how the default editable interface deals with various JSON Schema validation keywords [here](http://jsonary.com/documentation/json-schema/).
