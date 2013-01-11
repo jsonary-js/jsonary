@@ -6,6 +6,7 @@
   define("TARGET_FILE", "jsonary.js");
   
   $files = array(
+    '_compatability.js',
     '_header.js',
     'uri.js',
     'uri-template.js',
