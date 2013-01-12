@@ -1,203 +1,71 @@
-.schema, .schema-reference {
+.json-schema-obj {
+	background-color: #F0F0E8;
 	border: 1px solid black;
-	border-radius: 5px;
-	margin: 0.2em;
-	font-family: sans-serif;
+	font-size: 12px;
+	padding: 0;
+	font-family: Trebuchet MS, sans;
+	border-radius: 3px;
+}
+
+.json-schema-obj .expand {
+	float: right;
+	font-weight: bold;
+	margin-right: 1em;
+}
+
+.json-schema-obj > h1 {
+	font-size: 1.1em;
+	font-weight: bold;
+	margin: 0;
+	padding: 0.3em;
+	background-color: #E0E0E8;
+	border-bottom: 1px solid #BBB;
+	border-radius: 3px;
+}
+
+.json-schema-obj > .content > h2, .json-schema-tab-content > h2 {
+	font-size: 1.1em;
+	font-weight: bold;
+	margin: 0;
+	padding-left: 0.3em;
+}
+
+.json-schema-obj > .content > .section {
+	padding-left: 2em;
+	margin-bottom: 1.2em;
+}
+
+.json-schema-tab-bar {
+	display: block;
+	position: relative;
+	padding-left: 0.5em;
+	border-bottom: 1px solid black;
+}
+
+.json-schema-tab-button {
+	position: relative;
+	top: 1px;
+	display: block;
+	float: left;
+	border: 1px solid black;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	background-color: #F2F2ED;
+	padding: 0.3em;
+	padding-left: 1em;
+	padding-right: 1em;
+	margin-right: -1px;
+}
+
+.json-schema-tab-button.current {
+	top: 2px;
+	border-bottom: none;
 	background-color: #FFF;
 }
 
-.schema-switch {
-	font-family: monospace;
-	font-weight: bold;
-	color: #048;
-	cursor: pointer;
-}
-
-.schema-reference-edit {
-	margin-left: 1em;
-	color: #008;
-	font-size: 0.9em;
-	cursor: pointer;
-}
-
-.schema-reference-url {
-	margin-left: 1em;
-	font-size: 0.8em;
-}
-
-.schema-title {
-	font-weight: bold;
-	border-bottom: 1px solid black;
-	background-color: #DDD;
-	padding: 0.2em;
-	border-radius: 5px;
-}
-
-.schema-description {
-	font-style: italic;
-	padding-left: 2em;
-}
-
-.schema-section-title {
-	margin-top: 0.8em;
-}
-
-div.schema-section {
-	margin-left: 2em;
-}
-
-span.schema-section {
-	margin-left: 2em;
-}
-
-.schema-types {
+.json-schema-tab-content {
 	clear: left;
-	margin: 0;
-	margin-left: 2em;
-	font-family: monospace;
-	font-weight: bold;
-}
-
-.schema-type-delete {
-	color: #800;
-	cursor: pointer;
-	margin-right: 0.2em;
-	white-space: pre;
-}
-
-.schema-properties {
-	clear: left;
-	margin-left: 2em;
-}
-
-.schema-properties td {
-	border-bottom: 1px solid #CCC;
-	vertical-align: top;
-}
-
-.schema-property-key, .schema-property-additional {
-	font-weight: bold;
-	font-family: monospace;
-	font-size: 1.1em;
-	color: #048;
-	padding-right: 0.5em;
-	padding-left: 5px;
-	border-right: 1px solid black;
-	text-align: right;
-	white-space: pre;
-}
-
-.schema-property-additional {
-	color: #000;
-	font-style: italic;
-}
-
-.schema-property-required {
-	padding-left: 0.5em;
-	width: 12ex;
-	border-left: 1px solid black;
-}
-
-.schema-property-summary {
-	padding-left: 0.5em;
-	padding-right: 0.5em;
-}
-
-.schema-property-view-full {
-	float: left;
-	font-size: 0.8em;
-	color: #048;
-	margin-right: 1em;
-	cursor: pointer;
-}
-
-.schema-property-full {
-	clear: both;
-}
-
-.schema-property-description {
-	color: #666;
-	font-style: italic;
-	margin-left: 1em;
-	white-space: collapse;
-}
-
-.schema-property-description * {
-	white-space: collapse;
-}
-
-.schema-property-delete {
-	color: #800;
-	font-size: 0.8em;
-	float: left;
-	margin-right: 1em;
-	cursor: pointer;
-	white-space: pre;
-}
-
-.schema-property-add {
-	color: #008;
-	font-size: 0.8em;
-	cursor: pointer;
-	padding-left: 1em;
-	padding-right: 1em;
-}
-
-.schema-detail-tabs {
-	margin-top: 0.5em;
-	position: relative;
-	top: 1px;
-}
-.schema-detail-tab {
-	border: 1px solid black;
-	background-color: #DDD;
-	padding: 0.2em;
-	padding-left: 0.5em;
-	padding-right: 0.5em;
-	cursor: pointer;
-}
-.schema-detail-tab.tab-selected {
-	background-color: #EEF;
-	border-bottom: #FFF;
-}
-.schema-detail {
-	clear: left;
-	border: 1px solid black;
-	background-color: #EEF;
-	padding: 0.5em;
-}
-
-.schema-regex {
-	font-family: monospace;
-	color: #080;
-	font-size: 1.2em;
-}
-
-.schema-expand-bar {
-	text-align: right;
-	position: relative;
-	height: 1px;
-	overflow: show;
-}
-
-.schema-expand {
-	margin-top: 0.2em;
-	font-family: sans-serif;
-	position: absolute;
-	top: 0;
-	right: 1em;
-	color: #048;
-	cursor: pointer;
-	white-space: pre;
-}
-.schema-expand:hover {
-	color: #08F;
-	text-decoration: underline;
-}
-
-.schema-replace {
-	font-size: 0.9em;
-	float: right;
-	cursor: pointer;
-	color: #048;
+	padding: 0.3em;
+	background-color: #FFF;
+	border-radius: 3px;
 }

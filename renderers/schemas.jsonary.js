@@ -1,517 +1,274 @@
-(function ($) {
-	function renderObjectDetails(container, data, schema) {
-		var basicTypes = schema.basicTypes();
-		if (basicTypes.indexOf("object") >= 0) {
-			$('<div class="schema-section-title">Properties:</div>').appendTo(container);
-			var propertyList = schema.definedProperties();
-			var requiredList = schema.requiredProperties();
-			var propertiesTable = $('<table class="schema-properties" cellpadding=0 cellspacing=0 />');
-			var tableBody = $('<tbody></tbody>').appendTo(propertiesTable);
-			$.each(propertyList, function (index, key) {
-				var propertySchema = data.property("properties").property(key);
-				var tableRow = $('<tr class="schema-property" />').appendTo(tableBody);
-				if (!data.readOnly()) {
-					$('<td class="schema-property-delete">[X Delete]</td>').appendTo(tableRow).click(function () {
-						var index = requiredList.indexOf(key);
-						if (index > -1) {
-							data.property("required").removeIndex(index);
+(function (Jsonary) {
+	Jsonary.render.register({
+		tabs: {
+			all: {
+				title: "Univeral constraints",
+				renderHtml: function (data, context) {
+					var result = "";
+					if (!data.readOnly() || data.property("enum").defined()) {
+						result += '<h2>Enum values:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("enum")) + '</div>';
+					}
+					if (!data.readOnly() || data.property("default").defined()) {
+						result += '<h2>Default value:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("default")) + '</div>';
+					}
+					if (!data.readOnly() || data.property("allOf").defined()) {
+						result += '<h2>All of:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("allOf")) + '</div>';
+					}
+					if (!data.readOnly() || data.property("anyOf").defined()) {
+						result += '<h2>At least one of:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("anyOf")) + '</div>';
+					}
+					if (!data.readOnly() || data.property("oneOf").defined()) {
+						result += '<h2>Exactly one of:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("oneOf")) + '</div>';
+					}
+					if (!data.readOnly() || data.property("not").defined()) {
+						result += '<h2>Must not be:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("not")) + '</div>';
+					}
+					return result;
+				}
+			},
+			definitions: {
+				title: "Definitions",
+				renderHtml: function (data, context) {
+					return context.renderHtml(data.property("definitions"));
+				}
+			},
+			number: {
+				title: "Number",
+				renderHtml: function (data, context) {
+					var result = "";
+					if (!data.readOnly() || data.property("multipleOf").defined()) {
+						result += '<h2>Multiple of:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("multipleOf")) + '</div>';
+						result += '</div>';
+					}
+					if (!data.readOnly() || data.property("maximum").defined()) {
+						result += '<h2>Maximum:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("maximum")) + '</div>';
+						result += '</div>';
+						if (data.property("maximum").defined()) {
+							result += '<h2>Exlusive maximum:</h2><div class="section">';
+							result += '<div class="section">' + context.renderHtml(data.property("exclusiveMaximum")) + '</div>';
+							result += '</div>';
 						}
-						data.property("properties").property(key).remove();
-					});
-				}
-				var keyCell = $('<td class="schema-property-key"></td>').text(key).appendTo(tableRow);
-				if (!data.readOnly()) {
-					keyCell.click(function () {
-						var input = $('<input type="text" />').val(key).appendTo(keyCell.empty());
-						input.blur(function () {
-							var newKey = input.val();
-							if (newKey == key) {
-								keyCell.text(key);
-								return;
-							}
-							var properties = data.property("properties");
-							while (properties.property(newKey).defined()) {
-								newKey = "_" + newKey;
-							}
-							properties.property(key).moveTo(properties.property(newKey));
-						}).focus().select();
-					});
-				}
-				var summaryCell = $('<td class="schema-property-summary"></td>').appendTo(tableRow);
-				var displayed = false;
-				var viewFullSchema = $('<div class="schema-property-view-full">view schema</div>').appendTo(summaryCell).click(function () {
-					if (!displayed) {
-						schemaContainer.renderJson(propertySchema);
 					}
-					schemaContainer.slideToggle();
-					titleContainer.toggle();
-				});
-				var titleContainer = $('<span class="schema-property-title" />').renderJson(propertySchema.property("title")).appendTo(summaryCell);
-				var schemaContainer = $('<div class="schema-property-full" />').hide().appendTo(summaryCell);
-				var required = requiredList.indexOf(key) > -1;
-				var requiredBlock = $('<td class="schema-property-required"></td>').appendTo(tableRow);
-				requiredBlock.html((required ? '<span class="json-boolean-true">required</span>' : '<span class="json-boolean-false">not required</span>'));
-				if (!data.readOnly()) {
-					requiredBlock.click(function () {
-						if (required) {
-							var index = requiredList.indexOf(key);
-							data.property("required").removeIndex(index);
-						} else {
-							if (data.property("required").basicType() == "array") {
-								data.property("required").push(key);
-							} else {
-								data.property("required").setValue([key]);
-							}
+					if (!data.readOnly() || data.property("minimum").defined()) {
+						result += '<h2>Minimum:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("minimum")) + '</div>';
+						result += '</div>';
+						if (data.property("minimum").defined()) {
+							result += '<h2>Exlusive minimum:</h2><div class="section">';
+							result += '<div class="section">' + context.renderHtml(data.property("exclusiveMinimum")) + '</div>';
+							result += '</div>';
 						}
-					});
+					}
+					return result;
 				}
-			});
-			if (!data.readOnly()) {
-				$('<tr><td colspan=4 class="schema-property-add">[+ Add]</td></span>').appendTo(tableBody).click(function () {
-					var key = window.prompt("Property name:");
-					if (key == null) {
-						return;
+			},
+			string: {
+				title: "String",
+				renderHtml: function (data, context) {
+					var result = "";
+					if (!data.readOnly() || data.property("minLength").defined()) {
+						result += '<h2>Minimum length:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("minLength")) + '</div>';
+						result += '</div>';
 					}
-					if (!data.property("properties").defined()) {
-						data.property("properties").setValue({});
+					if (!data.readOnly() || data.property("maxLength").defined()) {
+						result += '<h2>Maximum length:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("maxLength")) + '</div>';
+						result += '</div>';
 					}
-					if (!data.property("properties").property(key).defined()) {
-						data.property("properties").property(key).setValue({"title": key.charAt(0).toUpperCase() + key.substring(1)});
+					if (!data.readOnly() || data.property("pattern").defined()) {
+						result += '<h2>Regular expression pattern:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("pattern")) + '</div>';
+						result += '</div>';
 					}
-				});
-			}
-			propertiesTable.appendTo(container);
-		
-			var additionalProperties = data.property("additionalProperties");
-			var tableRow = $('<tr class="schema-additional-properties" />').appendTo(tableBody);
-			if (!data.readOnly()) {
-				$('<td></td>').prependTo(tableRow);
-			}
-			$('<td class="schema-property-additional">other properties</td>').appendTo(tableRow);
-			var summaryCell = $('<td class="schema-property-summary"></td>').appendTo(tableRow);
-			var allowedBlock = $('<td class="schema-property-required"></td>').appendTo(tableRow);
-			if (additionalProperties.value() == false) {
-				allowedBlock.html('<span class="json-boolean-false">not allowed</span>');
-				if (!data.readOnly()) {
-					allowedBlock.click(function () {
-						additionalProperties.setValue({});
-					});
+					return result;
 				}
+			},
+			object: {
+				title: "Object",
+				renderHtml: function (data, context) {
+					var result = "";
+					if (!data.readOnly() || data.property("required").defined()) {
+						result += '<h2>Required properties:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("required")) + '</div>';
+						result += '</div>';
+					}
+					if (!data.readOnly() || data.property("properties").defined()) {
+						result += '<h2>Properties:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("properties")) + '</div>';
+						result += '</div>';
+					}
+					if (!data.readOnly() || data.property("patternProperties").defined()) {
+						result += '<h2>Pattern properties:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("patternProperties")) + '</div>';
+						result += '</div>';
+					}
+					if (!data.readOnly() || data.property("additionalProperties").defined()) {
+						result += '<h2>All other properties:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("additionalProperties")) + '</div>';
+						result += '</div>';
+					}
+					if (!data.readOnly() || data.property("minProperties").defined()) {
+						result += '<h2>Minimum number of properties:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("minProperties")) + '</div>';
+						result += '</div>';
+					}
+					if (!data.readOnly() || data.property("maxProperties").defined()) {
+						result += '<h2>Maximum number of properties:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("maxProperties")) + '</div>';
+						result += '</div>';
+					}
+					if (!data.readOnly() || data.property("dependencies").defined()) {
+						result += '<h2>Property dependencies:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("dependencies")) + '</div>';
+						result += '</div>';
+					}
+					return result;
+				}
+			},
+			array: {
+				title: "Array",
+				renderHtml: function (data, context) {
+					var result = "";
+					result += '<h2>Items:</h2><div class="section">';
+					result += '<div class="section">' + context.renderHtml(data.property("items")) + '</div>';
+					result += '</div>';
+					if (data.property("items").basicType() == "array") {
+						result += '<h2>Additional items:</h2><div class="section">';
+						result += '<div class="section">' + context.renderHtml(data.property("additionalItems")) + '</div>';
+						result += '</div>';
+					}
+					result += '<h2>Maximum length:</h2><div class="section">';
+					result += '<div class="section">' + context.renderHtml(data.property("maxItems")) + '</div>';
+					result += '</div>';
+					result += '<h2>Minimum length:</h2><div class="section">';
+					result += '<div class="section">' + context.renderHtml(data.property("minItems")) + '</div>';
+					result += '</div>';
+					result += '<h2>Unique:</h2><div class="section">';
+					result += '<div class="section">' + context.renderHtml(data.property("uniqueItems")) + '</div>';
+					result += '</div>';
+					return result;
+				}
+			}
+		},
+		tabOrder: ["all", "number", "string", "object", "array", "definitions"],
+		renderHtml: function (data, context) {			
+			var result = '<div class="json-schema-obj">';
+			if (!context.uiState.expanded) {
+				result += context.actionHtml('<span class="expand">show</span>', 'expand');
 			} else {
-				var displayed = false;
-				var viewFullSchema = $('<div class="schema-property-view-full">view schema</div>').appendTo(summaryCell).click(function () {
-					if (!displayed) {
-						schemaContainer.renderJson(additionalProperties);
-					}
-					schemaContainer.slideToggle();
-					titleContainer.toggle();
-					descriptionContainer.toggle();
-				});
-				var titleContainer = $('<span class="schema-property-title" />').renderJson(additionalProperties.property("title")).appendTo(summaryCell);
-				var descriptionContainer = $('<span class="schema-property-description" />').renderJson(additionalProperties.property("description")).appendTo(summaryCell);
-				var schemaContainer = $('<div class="schema-property-full" />').hide().appendTo(summaryCell);
-				allowedBlock.html('<span class="json-boolean-true">allowed</span>');
-				if (!data.readOnly()) {
-					allowedBlock.click(function () {
-						additionalProperties.setValue(false);
-					});
-				}
+				result += context.actionHtml('<span class="expand">hide</span>', 'collapse');
 			}
-
-			$('<div class="schema-section-title">Dependencies:</div>').appendTo(container);
-			var dependencyTable = $('<table class="schema-properties" cellpadding=0 cellspacing=0 />');
-			var tableBody = $('<tbody></tbody>').appendTo(dependencyTable);
-			data.property("dependencies").properties(function (key, subData) {
-				var tableRow = $('<tr class="schema-property" />').appendTo(tableBody);
-				if (!data.readOnly()) {
-					$('<td class="schema-property-delete">[X Delete]</td>').appendTo(tableRow).click(function () {
-						subData.remove();
-					});
-				}
-				var keyCell = $('<td class="schema-property-key"></td>').text(key).appendTo(tableRow);
-				if (!data.readOnly()) {
-					keyCell.click(function () {
-						var input = $('<input type="text" />').val(key).appendTo(keyCell.empty());
-						input.blur(function () {
-							var newKey = input.val();
-							if (newKey == key) {
-								keyCell.text(key);
-								return;
-							}
-							var properties = data.property("properties");
-							while (properties.property(newKey).defined()) {
-								newKey = "_" + newKey;
-							}
-							properties.property(key).moveTo(properties.property(newKey));
-						}).focus().select();
-					});
-				}
-				var summaryCell = $('<td class="schema-property-summary"></td>').appendTo(tableRow);
-				var displayed = false;
-				var viewFullSchema = $('<div class="schema-property-view-full">view schema</div>').appendTo(summaryCell).click(function () {
-					if (!displayed) {
-						schemaContainer.renderJson(subData);
-					}
-					schemaContainer.slideToggle();
-					titleContainer.toggle();
-				});
-				var titleContainer = $('<span class="schema-property-title" />').renderJson(subData.property("title")).appendTo(summaryCell);
-				var schemaContainer = $('<div class="schema-property-full" />').hide().appendTo(summaryCell);
-			});
-			if (!data.readOnly()) {
-				$('<tr><td colspan=4 class="schema-property-add">[+ Add]</td></span>').appendTo(tableBody).click(function () {
-					var key = window.prompt("Property name:");
-					if (key == null) {
-						return;
-					}
-					if (!data.property("dependencies").defined()) {
-						data.property("dependencies").setValue({});
-					}
-					if (!data.property("dependencies").property(key).defined()) {
-						data.property("dependencies").property(key).setValue({"title": "Dependency for \"" + key + "\""});
-					}
-				});
+			result += '<h1>';
+			if (data.readOnly() && !data.property("title").defined()) {
+				result += 'Schema';
+			} else {
+				result += context.renderHtml(data.property("title"));
 			}
-			dependencyTable.appendTo(container);
-		}
-	}
-
-	function renderArrayDetails(container, data, schema) {
-		var basicTypes = schema.basicTypes();
-		if (basicTypes.indexOf("array") >= 0) {
-			if (data.property("items").basicType() == "object") {
-				$('<div class="schema-section-title">Items in the array must be:</div>').appendTo(container);
-				$('<div class="schema-section" />').renderJson(data.property("items")).appendTo(container);
-			} else if (data.property("items").basicType() == "array") {
-				$('<div class="schema-section-title">Array must contain items in this order:</div>').appendTo(container);
-				$('<div class="schema-section" />').renderJson(data.property("items")).appendTo(container);
-				$('<div class="schema-section-title">Additional items:</div>').appendTo(container);
-				$('<div class="schema-section" />').renderJson(data.property("additionalItems")).appendTo(container);
-			} else if (!data.readOnly()) {
-				$('<div class="schema-section">(define)</div>').appendTo(container).click(function () {
-					data.property("items").setValue({});
-				});
-			}
-			if (data.property("minItems").defined() || !data.readOnly()) {
-				$('<div class="schema-section-title">Minimum length:</div>').appendTo(container);
-			}
-			$('<div class="schema-section" />').renderJson(data.property("minItems")).appendTo(container);
-			if (data.property("maxItems").defined() || !data.readOnly()) {
-				$('<div class="schema-section-title">Maximum length:</div>').appendTo(container);
-			}
-			$('<div class="schema-section" />').renderJson(data.property("maxItems")).appendTo(container);
-			if (data.property("uniqueItems").defined() || !data.readOnly()) {
-				$('<div class="schema-section-title">Items must be unique:</div>').appendTo(container);
-			}
-			$('<div class="schema-section" />').renderJson(data.property("uniqueItems")).appendTo(container);
-		}
-	}
-	
-	function renderNumberDetails(container, data, schema) {
-		if (data.property("minimum").defined() || !data.readOnly()) {
-			var conditions = $('<div class="schema-section-title">Value must be </div>').appendTo(container);
-			var exclusiveSpan = $('<span></span>').appendTo(conditions).text(data.get("/exclusiveMinimum") ? "greater than" : "greater than or equal to");
-			if (!data.readOnly()) {
-				exclusiveSpan.addClass("schema-switch").click(function () {
-					data.set("/exclusiveMinimum", !data.get("/exclusiveMinimum"));
-				});
-			}
-			conditions.append(":");
-		}
-		$('<div class="schema-section" />').renderJson(data.property("minimum")).appendTo(container);
-
-		if (data.property("maximum").defined() || !data.readOnly()) {
-			var conditions = $('<div class="schema-section-title">Value must be </div>').appendTo(container);
-			var exclusiveSpan = $('<span></span>').appendTo(conditions).text(data.get("/exclusiveMaximum") ? "less than" : "less than or equal to");
-			if (!data.readOnly()) {
-				exclusiveSpan.addClass("schema-switch").click(function () {
-					data.set("/exclusiveMaximum", !data.get("/exclusiveMaximum"));
-				});
-			}
-			conditions.append(":");
-		}
-		$('<div class="schema-section" />').renderJson(data.property("maximum")).appendTo(container);
-
-		if (data.property("divisibleBy").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Value must be a multiple of:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("divisibleBy")).appendTo(container);
-	}
-
-	function renderStringDetails(container, data, schema) {
-		if (data.property("pattern").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Regular expression:</div>').appendTo(container);
-		}
-		$('<div class="schema-section schema-regex" />').renderJson(data.property("pattern")).appendTo(container);
-
-		if (data.property("minLength").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Minimum length:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("minLength")).appendTo(container);
-
-		if (data.property("maxLength").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Maximum length:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("maxLength")).appendTo(container);
-	}
-
-	function renderOneOfDetails(container, data, schema) {
-		if (data.property("oneOf").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Must be exactly one of:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("oneOf"), {size: "small"}).appendTo(container);
-	}
-
-	function renderAnyOfDetails(container, data, schema) {
-		if (data.property("anyOf").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Must be at least one of:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("anyOf"), {size: "small"}).appendTo(container);
-	}
-
-	function renderAllDetails(container, data, schema) {
-		if (data.property("allOf").defined() || data.property("extends").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Must also match all of:</div>').appendTo(container);
-		}
-		if (data.property("extends").defined()) {
-			$('<div class="schema-section" />').renderJson(data.property("extends")).appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("allOf"), {size: "small"}).appendTo(container);
-	}
-
-	function renderEnumDetails(container, data, schema) {
-		if (data.property("enum").defined() || !data.readOnly()) {
-			$('<div class="schema-section-title">Must be exactly equal to one of:</div>').appendTo(container);
-		}
-		$('<div class="schema-section" />').renderJson(data.property("enum")).appendTo(container);
-	}
-
-	function renderUnknownDetails(container, data, schema) {
-		var knownProperties = {
-			title: true,
-			description: true,
-			properties: true
-		};
-		var allProperties = data.keys();
-		if (!data.readOnly()) {
-			allProperties = allProperties.concat(schema.definedProperties);
-		}
-		allProperties.sort();
-		for (var i = 0; i < allProperties.length; i++) {
-			var key = allProperties[i];
-			if (knownProperties[key]) {
-				continue;
-			}
-			knownProperties[key] = true;
-			$('<div class="schema-section-title"><div>').text(key + ":").appendTo(container);
-			$('<div class="schema-section" />').renderJson(data.property(key)).appendTo(container);
-		}
-	}
-
-	$.renderJson.register({
-		render: function (query, data) {
-			var schema = data.asSchema();
-			var container = $('<div class="schema" />').appendTo(query);		
-			$('<div class="schema-title" />').renderJson(data.property("title")).appendTo(container);
-			if (!data.readOnly()) {
-				$('<div class="schema-replace">replace with reference</div>').appendTo(container).click(function () {
-					data.setValue({"$ref": "#"});
-				});
-			}
-			$('<div class="schema-description" />').renderJson(data.property("description")).appendTo(container);
+			result += '<div style="clear: both"></div></h1>';
 			
-			$('<div class="schema-section-title">Basic types:</div>').appendTo(container);
-			var basicTypes = schema.basicTypes();
-			var typeList = $('<ul class="schema-types" />').appendTo(container);
-			$.each(basicTypes, function (index, type) {
-				var typeItem = $('<li />').text(type).appendTo(typeList);
-				if (!data.readOnly()) {
-					$('<span class="schema-type-delete">[X]<span>').prependTo(typeItem).click(function () {
-						var index = basicTypes.indexOf(type);
-						basicTypes.splice(index, 1);
-						if (basicTypes.length > 0) {
-							data.property("type").setValue(basicTypes);
+			if (context.uiState.expanded) {
+				result += '<div class="content">';
+				
+				result += '<div class="section">';
+				result += context.renderHtml(data.property("description"));
+				result += '</div>';
+
+				if (!data.readOnly() || data.property("format").defined()) {
+					result += '<h2>Format:</h2>';
+					result += '<div class="section">' + context.renderHtml(data.property("format")) + '</div>';
+				}
+				
+				result += '<h2>Type:</h2><div class="section">';
+				if (data.readOnly() && !data.property('type').defined()) {
+					result += 'Any ';
+				}
+				result += context.renderHtml(data.property("type"))
+				result += '</div>';
+				var types = data.property("type").value();
+				if (typeof types == "string") {
+					types = [types];
+				} else if (types == null) {
+					types = ["null", "boolean", "number", "string", "object", "array"];
+				}
+				
+				var tabs = {
+					all: true,
+					definitions: !data.readOnly() || data.property("definitions").defined()
+				};
+				
+				if (types.indexOf('object') != -1) {
+					tabs.object = true;
+				}
+				if (types.indexOf('array') != -1) {
+					tabs.array = true;
+				}
+				if (types.indexOf('number') != -1 || types.indexOf('integer') != -1) {
+					tabs.number = true;
+				}
+				if (types.indexOf('string') != -1) {
+					tabs.string = true;
+				}
+				
+				// Tab bar
+				result += '<div class="json-schema-tab-bar">';
+				var currentTab = null;
+				if (context.uiState.currentTab == undefined) {
+					context.uiState.currentTab = "all";
+				}
+				for (var i = 0; i < this.tabOrder.length; i++) {
+					var tabKey = this.tabOrder[i];
+					var tab = this.tabs[tabKey];
+					var subContext = context.subContext();
+					if (tabs[tabKey]) {
+						if (context.uiState.currentTab == tabKey) {
+							result += context.actionHtml('<span class="json-schema-tab-button current">' + tab.title + '</span>', 'select-tab', tabKey);
+							currentTab = tab;
 						} else {
-							data.removeProperty("type");
+							result += context.actionHtml('<span class="json-schema-tab-button">' + tab.title + '</span>', 'select-tab', tabKey);
 						}
-					});
+					}
 				}
-			});
+				if (currentTab == null) {
+					currentTab = this.tabs.all;
+				}
+				result += '<div style="clear: both"></div></div><div class="json-schema-tab-content">';
+				
+				result += currentTab.renderHtml(data, context);
+				
+				result += '</div></div>';
+			}
 			
-			var tabControls = $('<div class="schema-detail-tabs"></div>').appendTo(container);
-			var tabContent = $('<div class="schema-detail" />').appendTo(container);
-			function selectOption(tabName) {
-				tabContent.empty();
-				switch (tabName) {
-					case "all types":
-						renderEnumDetails($('<div />').appendTo(tabContent), data, schema);
-						renderAllDetails($('<div />').appendTo(tabContent), data, schema);
-						renderOneOfDetails($('<div />').appendTo(tabContent), data, schema);
-						renderAnyOfDetails($('<div />').appendTo(tabContent), data, schema);
-						renderUnknownDetails($('<div />').appendTo(tabContent), data, schema);
-						break;
-					case "object":
-						renderObjectDetails(tabContent, data, schema);
-						break;
-					case "array":
-						renderArrayDetails(tabContent, data, schema);
-						break;
-					case "string":
-						renderStringDetails(tabContent, data, schema);
-						break;
-					case "number":
-					case "integer":
-						renderNumberDetails(tabContent, data, schema);
-						break;
-					default:
-						tabContent.text("There are no " + tabName + " constraints");
-						break;
-				}
+			return result + "</div>";
+			console.log(arguments);
+		},
+		action: function (context, actionName, tabKey) {
+			if (actionName == "select-tab") {
+				context.uiState.currentTab = tabKey;
+			} else if (actionName == "expand") {
+				context.uiState.expanded = true;
+			} else {
+				context.uiState.expanded = false;
 			}
-			var tabItems = [];
-			$.each(["all types"].concat(basicTypes), function (index, type) {
-				index = tabItems.length;
-				tabItems[index] = $('<a class="schema-detail-tab"></a>').text(type).appendTo(tabControls).click(function () {
-					selectOption(type);
-					for (var i = 0; i < tabItems.length; i++) {
-						tabItems[i].removeClass("tab-selected");
-					}
-					tabItems[index].addClass("tab-selected");
-				});
-			});
-			tabItems[0].addClass("tab-selected");
-			selectOption("all types");
+			return true;
 		},
 		filter: function (data, schemas) {
-			return schemas.containsUrl("http://json-schema.org/schema") && !data.property("$ref").defined();
+			return schemas.containsUrl('http://json-schema.org/hyper-schema');
 		},
-		update: function (query, data, operation) {
-			var path = data.pointerPath();
-			var depth = operation.depthFrom(path)
-			if (depth <= 1) {
-				if (data.readOnly()
-					|| operation.hasPrefix(path + "/exclusiveMinimum")
-					|| operation.hasPrefix(path + "/exclusiveMaximum")) {
-					return this.render(query, data);
-				}
-				return this.render(query, data);
-			} else if (depth <= 2) {
-				if (operation.hasPrefix(path + "/properties")
-					|| operation.hasPrefix(path + "/required")
-					|| operation.hasPrefix(path + "/dependencies")
-					|| operation.hasPrefix(path + "/type")) {
-					return this.render(query, data);
-				}
+		update: function (element, data, context, operation) {
+			window.operation = operation;
+			if (operation.hasPrefix(data.property("type").pointerPath())) {
+				return true;
 			}
-			this.defaultUpdate(query, data, operation);
-		}
-	});
-
-	$.renderJson.register({
-		render: function (query, data) {
-			var expandBar = $('<div class="schema-expand-bar" />').appendTo(query);
-			var container = $('<div class="schema" />').appendTo(query);
-			$('<div class="schema-title" />').renderJson(data.property("title")).appendTo(container);
-			if (!data.readOnly()) {
-				$('<div class="schema-replace">replace with reference</div>').appendTo(container).click(function () {
-					data.setValue({"$ref": "#"});
-				});
-			}
-			$('<div class="schema-description" />').renderJson(data.property("description")).appendTo(container);
-			var basicTypeContainer = $('<div class="schema-section"></div>').appendTo(container);
-			function updateBasicTypes() {
-				var basicTypes = data.asSchema().basicTypes();
-				if (basicTypes.length == 7) {
-					basicTypeContainer.text("Type: any type");
-				} else {
-					basicTypeContainer.text("Types: " + basicTypes.join(", "));
-				}
-			}
-			query.data('updateBasicTypes', updateBasicTypes);
-			updateBasicTypes();
-			var renderedFull = false;
-			var displayingFull = false;
-			var switchLink = $('<a class="schema-expand">show full schema</a>').appendTo(expandBar).click(function () {
-				if (!renderedFull) {
-					fullContainer.renderJson(data);
-					renderedFull = true;
-				}
-				if (displayingFull) {
-					updateBasicTypes();
-					fullContainer.slideUp(function () {
-						switchLink.text("show full schema");
-						container.slideDown(100);
-					});
-				} else {
-					container.slideUp(100, function () {
-						switchLink.text("hide full schema");
-						fullContainer.slideDown();
-					});
-				}
-				displayingFull = !displayingFull;
-			});
-			var fullContainer = $('<div class="schema-expand-full"></div>').hide().appendTo(query);
-		},
-		filter: function (data, schemas, uiState) {
-			return uiState.size == "small" && schemas.containsUrl("http://json-schema.org/schema") && !data.property("$ref").defined();
-		},
-		update: function (query, data, operation) {
-			var path = data.pointerPath();
-			var depth = operation.depthFrom(path)
-			if (depth <= 1) {
-				if (data.readOnly()
-					|| operation.hasPrefix(path + "/title")
-					|| operation.hasPrefix(path + "/description")) {
-					return this.render(query, data);
-				}
-			}
-		}
-	});
-
-	$.renderJson.register({
-		render: function (query, data) {
-			var refUrl = data.propertyValue("$ref");
-			var container = $('<div class="schema-reference"></div>').appendTo(query);
-			var schemaTitle = $('<div class="schema-title" />').appendTo(container)
-			if (!data.readOnly()) {
-				$('<div class="schema-replace">replace with schema</div>').appendTo(container).click(function () {
-					data.setValue({});
-				});
-			}
-			$('<span>Reference:<span>').appendTo(container);
-			var linkQuery = $('<a class="schema-reference-url" />').attr("href", refUrl).text(refUrl).appendTo(container).click(function () {
-				data.getLink("full").follow();
-				return false;
-			});
-			data.getLink("full").follow(function (link, submissionData, request) {
-				request.getData(function (fullData) {
-					if (fullData.property("title").defined()) {
-						schemaTitle.text(fullData.propertyValue("title"));
-					}
-				});
-				return false;
-			});
-			if (!data.readOnly()) {
-				var editUrl = $('<span class="schema-reference-edit">edit URL</span>').appendTo(container).click(function () {
-					var input = $('<input type="text"></input>').appendTo(editUrl.empty()).val(refUrl);
-					input.focus().select();
-					function confirmChange() {
-						data.property("$ref").setValue(input.val());
-					}
-					input.blur(confirmChange).keydown(function (event) {
-						if (event.which == 13) {
-							confirmChange();
-						}
-					});
-				});
-			}
-			return;
-		},
-		update: function (query, data, operation) {
-			this.render(query, data);
-		},
-		filter: function (data, schemas) {
-			return schemas.containsUrl("http://json-schema.org/schema") && data.property("$ref").defined();
+			return this.defaultUpdate(element, data, context, operation);
 		}
 	});
 	
@@ -519,6 +276,23 @@
 		"title": "JSON Schema",
 		"type": "object",
 		"properties": {
+			"type": {
+				"title": "Types",
+				"oneOf": [
+					{
+						"type": "array",
+						"items": {
+							"type": "string",
+							"enum": ["null", "boolean", "integer", "number", "string", "object", "array"],
+						},
+						"uniqueItems": true
+					},
+					{
+						"type": "string",
+						"enum": ["null", "boolean", "integer", "number", "string", "object", "array"]
+					}
+				]
+			},
 			"title": {
 				"title": "Schema title",
 				"type": "string"
@@ -674,5 +448,5 @@
 		"allOf": [
 			{"$ref": "http://json-schema.org/schema"}
 		]
-	}, "http://json-schema.org/hyper-schema");	
-})(jQuery);
+	}, "http://json-schema.org/hyper-schema");
+})(Jsonary);

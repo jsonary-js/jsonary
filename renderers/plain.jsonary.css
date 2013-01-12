@@ -38,24 +38,54 @@ textarea {
 /**** JSON Object ****/
 
 .json-object {
+	width: 100%;
 }
 
 .json-object-pair {
-	display: block;
-	padding-left: 2em;
+	margin-bottom: 0.3em;
 }
 
 .json-object-key {
+	padding: 0;
+	vertical-align: top;
+	width: 8em;
+}
+
+.json-object-key-text {
+	text-align: right;
 	font-style: italic;
+	padding-right: 0.5em;
+	border-right: 1px solid #000;
+	white-space: pre;
+}
+
+.json-object-value {
+	padding-left: 0.5em;
+	vertical-align: top;
+}
+
+.json-object-delete-container {
+	padding-left: 1.2em;
+}
+
+.json-object-delete-wrapper {
+	position: relative;
+	left: -1.2em;
 }
 
 .json-object-delete {
+	position: absolute;
+	left: 0;
+	top: 0;
 	font-family: monospace;
 	font-style: normal;
 	font-weight: bold;
 	color: #F00;
 	text-decoration: none;
 	margin-right: 1em;
+}
+
+.json-object-delete-value {
 }
 
 .json-object-add {
@@ -87,7 +117,7 @@ textarea {
 	position: absolute;
 	top: -0.65em;
 	left: -0.5em;
-	width: 8em;
+	width: 12em;
 	border: 2px solid black;
 	border-radius: 10px;
 	background-color: white;
@@ -166,6 +196,7 @@ textarea.json-string {
 	background-color: #FFF;
 	border: 1px solid #000;
 	background-color: rgba(255, 255, 255, 0.5);
+	width: 98%;
 }
 
 .json-string-notice {

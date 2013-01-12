@@ -35,9 +35,13 @@
 			}
 			var result = "";
 			if (showDelete) {
-				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
+				result += "<div class='json-object-delete-container'>";
+				result += context.actionHtml("<span class='json-object-delete-wrapper'><span class='json-object-delete'>X</span></span>", "remove") + " ";
+				result += context.renderHtml(data, context.uiState.subState);
+				result += '<div style="clear: both"></div></div>';
+			} else {
+				result += context.renderHtml(data, context.uiState.subState);
 			}
-			result += context.renderHtml(data, context.uiState.subState);
 			return result;
 		},
 		action: function (context, actionName) {
@@ -88,7 +92,7 @@
 			var basicTypes = data.schemas().basicTypes();
 			var enums = data.schemas().enumValues();
 			if (context.uiState.dialogOpen) {
-				result += '<span class="json-select-type-dialog">';
+				result += '<div class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
 				result += context.actionHtml('close', "closeDialog");
 				if (basicTypes.length > 1) {
 					result += '<br>Select basic type:<ul>';
@@ -104,7 +108,7 @@
 					}
 					result += '</ul>';
 				}
-				result += '</span>';
+				result += '</span></div>';
 			}
 			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
@@ -166,13 +170,14 @@
 	Jsonary.render.register({	
 		renderHtml: function (data, context) {
 			var uiState = context.uiState;
-			var result = "{";
+			var result = '<table class="json-object"><tbody>';
 			data.properties(function (key, subData) {
-				result += '<div class="json-object-pair">';
-				result +=	'<span class="json-object-key">' + escapeHtml(key) + '</span>: ';
-				result += '<span class="json-object-value">' + context.renderHtml(subData) + '</span>';
-				result += '</div>';
+				result += '<tr class="json-object-pair">';
+				result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + '</div></td>';
+				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
+				result += '</tr>';
 			});
+			result += '</table></table>';
 			if (!data.readOnly()) {
 				var addLinkHtml = "";
 				var schemas = data.schemas();
@@ -194,7 +199,7 @@
 					result += '<span class="json-object-add">add: ' + addLinkHtml + '</span>';
 				}
 			}
-			return result + "}";
+			return result;
 		},
 		action: function (context, actionName, arg1) {
 			var data = context.data;
