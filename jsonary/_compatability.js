@@ -6,8 +6,8 @@ if (!Array.isArray) {
 	};
 }
 if (!Array.prototype.indexOf) {
-	Array.prototype.indexOf = function (value) {
-		for (var i = 0; i < this.length; i++) {
+	Array.prototype.indexOf = function (value, start) {
+		for (var i = start || 0; i < this.length; i++) {
 			if (this[i] === value) {
 				return i;
 			}
