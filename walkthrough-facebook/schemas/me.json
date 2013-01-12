@@ -7,12 +7,12 @@
 		{
 			"rel": "home",
 			"href": "/me/home",
-			"targetSchema": {"$ref": "arrays/posts.json"}
+			"targetSchema": {"$ref": "array.php?type=post"}
 		},
 		{
 			"rel": "notifications",
 			"href": "/me/notifications",
-			"targetSchema": {"$ref": "arrays/object.json"}
+			"targetSchema": {"$ref": "array.php?type=object"}
 		}
 	],
 	"allOf": [{"$ref": "user.json"}]

@@ -78,7 +78,7 @@
 		{
 			"rel": "statuses",
 			"href": "/{id}/statuses",
-			"targetSchema": {"$ref": "array.php?type=status"}
+			"targetSchema": {"$ref": "array.php?type=post"}
 		},
 		{
 			"rel": "tagged",
