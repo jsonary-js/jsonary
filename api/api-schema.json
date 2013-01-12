@@ -11,15 +11,49 @@
 			"title": {"title": "Title", "type": "string"},
 			"description": {"title": "Description", "type": "string"},
 			"properties": {
-				"title": "Object properties",
-				"type": "object",
 				"additionalProperties": {"$ref": "#/objectDefinition"}
 			},
-			"methods": {
-				"title": "Object methods",
-				"type": "object",
-				"additionalProperties": {"$ref": "#/functionDefinition"}
+			"patternProperties": {
+				"additionalProperties": {"$ref": "#/objectDefinition"}
 			},
+			"additionalProperties": {
+				"additionalProperties": {"$ref": "#/objectDefinition"}
+			},
+			"definitions": {
+				"additionalProperties": {"$ref": "#/objectDefinition"}
+			},
+			"dependencies": {
+				"additionalProperties": {
+					"oneOf": [
+						{"type": "string"},
+						{"type": "array"},
+						{"$ref": "#/objectDefinition"}
+					]
+				}
+			},
+			"items": {
+				"oneOf": [
+					{"$ref": "#/objectDefinition"},
+					{
+						"type": "array",
+						"items": {"$ref": "#/objectDefinition"}
+					}
+				]
+			},
+			"additionalItems": {"$ref": "#/objectDefinition"},
+			"allOf": {
+				"type": "array",
+				"items": {"$ref": "#/objectDefinition"}
+			},
+			"anyOf": {
+				"type": "array",
+				"items": {"$ref": "#/objectDefinition"}
+			},
+			"oneOf": {
+				"type": "array",
+				"items": {"$ref": "#/objectDefinition"}
+			},
+			"not": {"$ref": "#/objectDefinition"},
 			"$ref": {"title": "Reference URI", "type": "string"}
 		},
 		"links": [
@@ -42,6 +76,7 @@
 			},
 			"return": {"$ref": "http://json-schema.org/hyper-schema"}
 		},
-		"required": ["arguments"]
+		"required": ["arguments"],
+		"additionalProperties": false
 	}
 }

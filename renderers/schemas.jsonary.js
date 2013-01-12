@@ -43,28 +43,23 @@
 				renderHtml: function (data, context) {
 					var result = "";
 					if (!data.readOnly() || data.property("multipleOf").defined()) {
-						result += '<h2>Multiple of:</h2><div class="section">';
+						result += '<h2>Multiple of:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("multipleOf")) + '</div>';
-						result += '</div>';
 					}
 					if (!data.readOnly() || data.property("maximum").defined()) {
-						result += '<h2>Maximum:</h2><div class="section">';
+						result += '<h2>Maximum:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("maximum")) + '</div>';
-						result += '</div>';
 						if (data.property("maximum").defined()) {
-							result += '<h2>Exlusive maximum:</h2><div class="section">';
+							result += '<h2>Exlusive maximum:</h2>';
 							result += '<div class="section">' + context.renderHtml(data.property("exclusiveMaximum")) + '</div>';
-							result += '</div>';
 						}
 					}
 					if (!data.readOnly() || data.property("minimum").defined()) {
-						result += '<h2>Minimum:</h2><div class="section">';
+						result += '<h2>Minimum:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("minimum")) + '</div>';
-						result += '</div>';
 						if (data.property("minimum").defined()) {
-							result += '<h2>Exlusive minimum:</h2><div class="section">';
+							result += '<h2>Exlusive minimum:</h2>';
 							result += '<div class="section">' + context.renderHtml(data.property("exclusiveMinimum")) + '</div>';
-							result += '</div>';
 						}
 					}
 					return result;
@@ -75,19 +70,16 @@
 				renderHtml: function (data, context) {
 					var result = "";
 					if (!data.readOnly() || data.property("minLength").defined()) {
-						result += '<h2>Minimum length:</h2><div class="section">';
+						result += '<h2>Minimum length:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("minLength")) + '</div>';
-						result += '</div>';
 					}
 					if (!data.readOnly() || data.property("maxLength").defined()) {
-						result += '<h2>Maximum length:</h2><div class="section">';
+						result += '<h2>Maximum length:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("maxLength")) + '</div>';
-						result += '</div>';
 					}
 					if (!data.readOnly() || data.property("pattern").defined()) {
-						result += '<h2>Regular expression pattern:</h2><div class="section">';
+						result += '<h2>Regular expression pattern:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("pattern")) + '</div>';
-						result += '</div>';
 					}
 					return result;
 				}
@@ -97,39 +89,30 @@
 				renderHtml: function (data, context) {
 					var result = "";
 					if (!data.readOnly() || data.property("required").defined()) {
-						result += '<h2>Required properties:</h2><div class="section">';
+						result += '<h2>Required properties:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("required")) + '</div>';
-						result += '</div>';
 					}
-					if (!data.readOnly() || data.property("properties").defined()) {
-						result += '<h2>Properties:</h2><div class="section">';
-						result += '<div class="section">' + context.renderHtml(data.property("properties")) + '</div>';
-						result += '</div>';
-					}
+					result += '<h2>Properties:</h2>';
+					result += '<div class="section">' + context.renderHtml(data.property("properties")) + '</div>';
 					if (!data.readOnly() || data.property("patternProperties").defined()) {
-						result += '<h2>Pattern properties:</h2><div class="section">';
+						result += '<h2>Pattern properties:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("patternProperties")) + '</div>';
-						result += '</div>';
 					}
 					if (!data.readOnly() || data.property("additionalProperties").defined()) {
-						result += '<h2>All other properties:</h2><div class="section">';
+						result += '<h2>All other properties:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("additionalProperties")) + '</div>';
-						result += '</div>';
 					}
 					if (!data.readOnly() || data.property("minProperties").defined()) {
-						result += '<h2>Minimum number of properties:</h2><div class="section">';
+						result += '<h2>Minimum number of properties:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("minProperties")) + '</div>';
-						result += '</div>';
 					}
 					if (!data.readOnly() || data.property("maxProperties").defined()) {
-						result += '<h2>Maximum number of properties:</h2><div class="section">';
+						result += '<h2>Maximum number of properties:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("maxProperties")) + '</div>';
-						result += '</div>';
 					}
 					if (!data.readOnly() || data.property("dependencies").defined()) {
-						result += '<h2>Property dependencies:</h2><div class="section">';
+						result += '<h2>Property dependencies:</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("dependencies")) + '</div>';
-						result += '</div>';
 					}
 					return result;
 				}
@@ -138,23 +121,26 @@
 				title: "Array",
 				renderHtml: function (data, context) {
 					var result = "";
-					result += '<h2>Items:</h2><div class="section">';
+					result += '<h2>Items:</h2>';
 					result += '<div class="section">' + context.renderHtml(data.property("items")) + '</div>';
-					result += '</div>';
 					if (data.property("items").basicType() == "array") {
-						result += '<h2>Additional items:</h2><div class="section">';
-						result += '<div class="section">' + context.renderHtml(data.property("additionalItems")) + '</div>';
-						result += '</div>';
+						if (!data.readOnly() || data.property("additionalItems").defined()) {
+							result += '<h2>Additional items:</h2>';
+							result += '<div class="section">' + context.renderHtml(data.property("additionalItems")) + '</div>';
+						}
 					}
-					result += '<h2>Maximum length:</h2><div class="section">';
-					result += '<div class="section">' + context.renderHtml(data.property("maxItems")) + '</div>';
-					result += '</div>';
-					result += '<h2>Minimum length:</h2><div class="section">';
-					result += '<div class="section">' + context.renderHtml(data.property("minItems")) + '</div>';
-					result += '</div>';
-					result += '<h2>Unique:</h2><div class="section">';
-					result += '<div class="section">' + context.renderHtml(data.property("uniqueItems")) + '</div>';
-					result += '</div>';
+					if (!data.readOnly() || data.property("maxItems").defined()) {
+						result += '<h2>Maximum length:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("maxItems")) + '</div>';
+					}
+					if (!data.readOnly() || data.property("minItems").defined()) {
+						result += '<h2>Minimum length:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("minItems")) + '</div>';
+					}
+					if (!data.readOnly() || data.property("uniqueItems").defined()) {
+						result += '<h2>Unique:</h2>';
+						result += '<div class="section">' + context.renderHtml(data.property("uniqueItems")) + '</div>';
+					}
 					return result;
 				}
 			}
@@ -248,7 +234,6 @@
 			}
 			
 			return result + "</div>";
-			console.log(arguments);
 		},
 		action: function (context, actionName, tabKey) {
 			if (actionName == "select-tab") {
