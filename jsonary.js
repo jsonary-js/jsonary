@@ -5182,18 +5182,12 @@ publicApi.UriTemplate = UriTemplate;
 			if (elementIds == undefined || elementIds.length == 0) {
 				return;
 			}
-			var elements = [];
+			var elementIds = elementIds.slice(0);
 			for (var i = 0; i < elementIds.length; i++) {
 				var element = document.getElementById(elementIds[i]);
 				if (element == undefined) {
-					elementIds.splice(i, 1);
-					i--;
 					continue;
 				}
-				elements[i] = element;
-			}
-			for (var i = 0; i < elements.length; i++) {
-				var element = elements[i];
 				var prevContext = element.jsonaryContext;
 				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
 				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
@@ -5323,6 +5317,9 @@ publicApi.UriTemplate = UriTemplate;
 				label = "";
 			}
 			var elementId = this.getElementId();
+			if (elementId == "Jsonary.0.348") {
+				console.log("debug");
+			}
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
 			}
@@ -5374,18 +5371,12 @@ publicApi.UriTemplate = UriTemplate;
 			if (elementIds == undefined || elementIds.length == 0) {
 				return;
 			}
-			var elements = [];
+			var elementIds = elementIds.slice(0);
 			for (var i = 0; i < elementIds.length; i++) {
 				var element = document.getElementById(elementIds[i]);
 				if (element == undefined) {
-					elementIds.splice(i, 1);
-					i--;
 					continue;
 				}
-				elements[i] = element;
-			}
-			for (var i = 0; i < elements.length; i++) {
-				var element = elements[i];
 				var prevContext = element.jsonaryContext;
 				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
 				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
@@ -5461,11 +5452,12 @@ publicApi.UriTemplate = UriTemplate;
 			if (action != undefined) {
 				delete this.enhancementActions[element.id];
 				element.onclick = function () {
+					var redrawElementId = action.context.elementId;
 					var actionContext = action.context;
 					var args = [actionContext, action.actionName].concat(action.params);
 					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
 						// Action returned positive - we should force a re-render
-						var element = document.getElementById(actionContext.elementId);
+						var element = document.getElementById(redrawElementId);
 						actionContext.renderer.render(element, actionContext.data, actionContext);
 					}
 					return false;
