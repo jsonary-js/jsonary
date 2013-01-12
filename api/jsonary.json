@@ -1,6 +1,7 @@
 {
    "title":"Jsonary main object",
    "description":"The main Jsonary object",
+   "type": "object",
    "properties":{
       "config":{
          "$ref":"data.json"
@@ -30,6 +31,7 @@
          }
       },
       "createSchema":{
+         "title":"createSchema",
          "arguments":[
             {
                "title":"jsonData"
@@ -40,8 +42,7 @@
          ],
          "return":{
             "$ref":"schema.json"
-         },
-         "title":"createSchema"
+         }
       },
       "addLinkHandler":{
          "arguments":[
