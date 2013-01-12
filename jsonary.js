@@ -5317,9 +5317,6 @@ publicApi.UriTemplate = UriTemplate;
 				label = "";
 			}
 			var elementId = this.getElementId();
-			if (elementId == "Jsonary.0.348") {
-				console.log("debug");
-			}
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
 			}
