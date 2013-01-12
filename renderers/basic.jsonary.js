@@ -83,7 +83,7 @@
 			}
 			linkElement = document.createElement("a");
 			linkElement.setAttribute("href", schema.referenceUrl());
-			linkElement.setAttribute("class", "json-schema");
+			linkElement.className = "json-schema";
 			linkElement.appendChild(document.createTextNode(schema.title()));
 			element.appendChild(linkElement);
 			linkElement.onclick = function () {
@@ -101,7 +101,7 @@
 			(function (index, link) {
 				linkElement = document.createElement("a");
 				linkElement.setAttribute("href", link.href);
-				linkElement.setAttribute("class", "json-link");
+				linkElement.className = "json-link";
 				linkElement.appendChild(document.createTextNode(link.rel));
 				element.appendChild(linkElement);
 				linkElement.onclick = function (event) {
@@ -437,10 +437,10 @@
 		render: function (element, data) {
 			var valueSpan = document.createElement("a");
 			if (data.value()) {
-				valueSpan.setAttribute("class", "json-boolean-true");
+				valueSpan.className = ( "json-boolean-true");
 				valueSpan.innerHTML = "true";
 			} else {
-				valueSpan.setAttribute("class", "json-boolean-false");
+				valueSpan.className = ( "json-boolean-false");
 				valueSpan.innerHTML = "false";
 			}
 			element.appendChild(valueSpan);
@@ -565,11 +565,11 @@
 			link.follow();
 		} else {
 			var overlay = document.createElement("div");
-			overlay.setAttribute("class", "prompt-overlay");
+			overlay.className = 'prompt-overlay';
 			document.body.appendChild(overlay);
 			
 			var buttonBox = document.createElement("div");
-			buttonBox.setAttribute("class", "prompt-buttons");
+			buttonBox.className = 'prompt-buttons';
 			overlay.appendChild(buttonBox);
 			
 			var submitButton = document.createElement("input");
@@ -589,11 +589,11 @@
 			};
 
 			var renderBox = document.createElement("div");
-			renderBox.setAttribute("class", "prompt-data loading");
+			renderBox.className = 'prompt-data loading';
 			overlay.appendChild(renderBox);
 
 			link.createSubmissionData(function(submissionData) {
-				renderBox.setAttribute("class", "prompt-data");
+				renderBox.className = 'prompt-data';
 				Jsonary.render(renderBox, submissionData);
 				submitButton.removeAttribute("disabled");
 				submitButton.onclick = function() {

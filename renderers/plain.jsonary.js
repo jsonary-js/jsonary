@@ -222,6 +222,7 @@
 		renderHtml: function (data, context) {
 			var tupleTypingLength = data.schemas().tupleTypingLength();
 			var maxItems = data.schemas().maxItems();
+			var result = "";
 			data.indices(function (index, subData) {
 				result += '<div class="json-array-item">';
 				result += '<span class="json-array-value">' + context.renderHtml(subData) + '</span>';
@@ -233,6 +234,7 @@
 					result += context.actionHtml(addHtml, "add");
 				}
 			}
+			return result;
 		},
 		action: function (context, actionName) {
 			var data = context.data;
