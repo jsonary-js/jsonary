@@ -279,7 +279,7 @@
 			return true;
 		},
 		filter: function (data, schemas) {
-			return schemas.containsUrl('http://json-schema.org/hyper-schema');
+			return schemas.containsUrl('http://json-schema.org/schema');
 		},
 		update: function (element, data, context, operation) {
 			if (operation.hasPrefix(data.property("type").pointerPath())) {
