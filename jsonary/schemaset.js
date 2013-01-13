@@ -820,12 +820,14 @@ SchemaSet.prototype = {
 			// TODO: this actually forces us to walk the entire data tree, as far as it is defined by the schemas
 			//       Do we really want to do this?  I mean, it's necessary if we ever want to catch the "self" links, but if not then it's not that helpful.
 			thisSchemaSet.dataObj.properties(function (key, child) {
+				var subSchemaKey = Utils.getKeyVariant(schemaKey, "prop");
 				var subSchemas = schema.propertySchemas(key);
 				for (var i = 0; i < subSchemas.length; i++) {
-					child.addSchema(subSchemas[i], schemaKey, schemaKeyHistory);
+					child.addSchema(subSchemas[i], subSchemaKey, schemaKeyHistory);
 				}
 			});
 			thisSchemaSet.dataObj.indices(function (i, child) {
+				var subSchemaKey = Utils.getKeyVariant(schemaKey, "idx");
 				var subSchemas = schema.indexSchemas(i);
 				for (var i = 0; i < subSchemas.length; i++) {
 					child.addSchema(subSchemas[i], schemaKey, schemaKeyHistory);
@@ -1075,12 +1077,13 @@ SchemaSet.prototype = {
 		}
 	},
 	addSchemasForIndex: function (index, subData) {
+		var subSchemaKey = Utils.getKeyVariant(key, "idx");
 		for (var schemaKey in this.schemas) {
 			for (var i = 0; i < this.schemas[schemaKey].length; i++) {
 				var schema = this.schemas[schemaKey][i];
 				var subSchemas = schema.indexSchemas(index);
 				for (var j = 0; j < subSchemas.length; j++) {
-					subData.addSchema(subSchemas[j], schemaKey);
+					subData.addSchema(subSchemas[j], subSchemaKey);
 				}
 			}
 		}
