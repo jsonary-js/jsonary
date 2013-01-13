@@ -1065,8 +1065,8 @@ SchemaSet.prototype = {
 		return true;
 	},
 	addSchemasForProperty: function (key, subData) {
-		var subSchemaKey = Utils.getKeyVariant(key, "prop");
 		for (var schemaKey in this.schemas) {
+			var subSchemaKey = Utils.getKeyVariant(schemaKey, "prop");
 			for (var i = 0; i < this.schemas[schemaKey].length; i++) {
 				var schema = this.schemas[schemaKey][i];
 				var subSchemas = schema.propertySchemas(key);
@@ -1077,8 +1077,8 @@ SchemaSet.prototype = {
 		}
 	},
 	addSchemasForIndex: function (index, subData) {
-		var subSchemaKey = Utils.getKeyVariant(key, "idx");
 		for (var schemaKey in this.schemas) {
+			var subSchemaKey = Utils.getKeyVariant(schemaKey, "idx");
 			for (var i = 0; i < this.schemas[schemaKey].length; i++) {
 				var schema = this.schemas[schemaKey][i];
 				var subSchemas = schema.indexSchemas(index);
