@@ -186,6 +186,12 @@
 				result += context.renderHtml(data.property("description"));
 				result += '</div>';
 
+				if (!data.readOnly()) {
+					result += '<div class="section">';
+					result += context.actionHtml("Replace with reference", "add-ref");
+					result += '</div>';
+				}
+
 				if (!data.readOnly() || data.property("format").defined()) {
 					result += '<h2>Format:</h2>';
 					result += '<div class="section">' + context.renderHtml(data.property("format")) + '</div>';
@@ -262,6 +268,9 @@
 		action: function (context, actionName, tabKey) {
 			if (actionName == "select-tab") {
 				context.uiState.currentTab = tabKey;
+			} else if (actionName == "add-ref") {
+				context.data.property("$ref").setValue("#");
+				return false;
 			} else if (actionName == "expand") {
 				context.uiState.expanded = true;
 			} else {
