@@ -17,9 +17,7 @@
 			"patternProperties": {
 				"additionalProperties": {"$ref": "#/objectDefinition"}
 			},
-			"additionalProperties": {
-				"additionalProperties": {"$ref": "#/objectDefinition"}
-			},
+			"additionalProperties": {"$ref": "#/objectDefinition"},
 			"definitions": {
 				"additionalProperties": {"$ref": "#/objectDefinition"}
 			},

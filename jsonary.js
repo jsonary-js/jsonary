@@ -3132,6 +3132,9 @@ var extraEscaping = {
 	"*": "%2A"
 };
 function preProcessUriTemplate(template) {
+	if (template == "{@}") {
+		return "{+%73elf}";
+	}
 	var newTemplate = [];
 	var curlyBrackets = false;
 	var roundBrackets = false;

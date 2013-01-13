@@ -8,7 +8,13 @@
 				result += context.actionHtml('<span class="expand">hide</span>', 'collapse');
 			}
 			result += '<div class="function-definition-signature">';
-			result += '<span class="function-keyword">function</span> (';
+			result += '<span class="function-keyword">function</span> ';
+			var title = "";
+			if (data.parent() != null && data.parent().basicType() == "object") {
+				title = data.parentKey();
+			}
+			result += '<span class="function-name">' + title + '</span>';
+			result += '(';
 			data.property("arguments").items(function (index, subData) {	
 				if (index > 0) {
 					result += ', ';

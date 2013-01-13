@@ -28,6 +28,10 @@
 	color: #840;
 }
 
+.function-name {
+	font-style: italic;
+}
+
 .function-argument-name {
 	font-family: monospace;
 	font-weight: bold;
