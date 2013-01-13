@@ -287,7 +287,14 @@
 			var fullLink = data.links("full")[0];
 			fullLink.follow(function (link, submissionData, request) {
 				request.getData(function (data) {
-					context.render(previewElement, data);					
+					var result = '<div class="json-schema-obj">';
+					if (!data.property("title").defined()) {
+						result += '<h1>Schema</h1>';
+					} else {
+						result += '<h1>' + data.propertyValue("title") + '</h1>';
+					}
+					result += '<div style="clear: both"></div></h1>';
+					previewElement.innerHTML = result;
 				});
 				return false;
 			});
