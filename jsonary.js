@@ -2801,7 +2801,14 @@ Schema.prototype = {
 			return;
 		}
 		refUrl = this.data.resolveUrl(refUrl);
-		getSchema(refUrl, callback);
+		if (refUrl.charAt(0) == "#" && (refUrl.length == 1 || refUrl.charAt(1) == "/")) {
+			var documentRoot = this.data.document.root;
+			var pointerPath = decodeURIComponent(refUrl.substring(1));
+			var schema = documentRoot.subPath(pointerPath).asSchema();
+			callback.call(schema, schema, null);
+		} else {
+			getSchema(refUrl, callback);
+		}
 		return this;
 	},
 	title: function () {
@@ -4951,12 +4958,13 @@ SchemaSet.prototype = {
 		return true;
 	},
 	addSchemasForProperty: function (key, subData) {
+		var subSchemaKey = Utils.getKeyVariant(key, "prop");
 		for (var schemaKey in this.schemas) {
 			for (var i = 0; i < this.schemas[schemaKey].length; i++) {
 				var schema = this.schemas[schemaKey][i];
 				var subSchemas = schema.propertySchemas(key);
 				for (var j = 0; j < subSchemas.length; j++) {
-					subData.addSchema(subSchemas[j], schemaKey);
+					subData.addSchema(subSchemas[j], subSchemaKey);
 				}
 			}
 		}
