@@ -1,4 +1,6 @@
 (function (Jsonary) {
+	var knownSchemaKeys = ["title", "description", "type", "enum", "default", "allOf", "anyOf", "oneOf", "not", "multipleOf", "maximum", "exclusiveMaximum", "minimum", "exclusiveMinimum", "maxLength", "minLength", "pattern", "required", "properties", "patternProperties", "additionalProperties", "minProperties", "maxProperties", "dependencies", "items", "additionalItems", "maxItems", "minItems", "uniqueItems"];
+	
 	Jsonary.render.register({
 		tabs: {
 			all: {
@@ -30,12 +32,6 @@
 						result += '<div class="section">' + context.renderHtml(data.property("not")) + '</div>';
 					}
 					return result;
-				}
-			},
-			definitions: {
-				title: "Definitions",
-				renderHtml: function (data, context) {
-					return context.renderHtml(data.property("definitions"));
 				}
 			},
 			number: {
@@ -143,11 +139,33 @@
 					}
 					return result;
 				}
+			},
+			definitions: {
+				title: "Definitions",
+				renderHtml: function (data, context) {
+					return context.renderHtml(data.property("definitions"));
+				}
+			},
+			other: {
+				title: "Other",
+				renderHtml: function (data, context) {
+					var result = "";
+					data.properties(function (key, subData) {
+						if (knownSchemaKeys.indexOf(key) == -1) {
+							result += '<h2>' + key + ':</h2>';
+							result += '<div class="section">' + context.renderHtml(subData) + '</div>';
+						}
+					});
+					return result;
+				}
 			}
 		},
-		tabOrder: ["all", "number", "string", "object", "array", "definitions"],
+		tabOrder: ["all", "number", "string", "object", "array", "definitions", "other"],
 		renderHtml: function (data, context) {			
 			var result = '<div class="json-schema-obj">';
+			if (context.uiState.expanded == undefined) {
+				context.uiState.expanded = true;
+			}
 			if (!context.uiState.expanded) {
 				result += context.actionHtml('<span class="expand">show</span>', 'expand');
 			} else {
@@ -210,6 +228,12 @@
 				if (context.uiState.currentTab == undefined) {
 					context.uiState.currentTab = "all";
 				}
+				data.properties(function (key, subData) {
+					if (knownSchemaKeys.indexOf(key) == -1) {
+						console.log(key);
+						tabs.other = true;
+					}
+				});
 				for (var i = 0; i < this.tabOrder.length; i++) {
 					var tabKey = this.tabOrder[i];
 					var tab = this.tabs[tabKey];
@@ -253,6 +277,38 @@
 				return true;
 			}
 			return this.defaultUpdate(element, data, context, operation);
+		}
+	});
+
+	Jsonary.render.register({
+		enhance: function (element, data, context) {
+			var previewElement = document.createElement("div");
+			element.appendChild(previewElement);
+			var fullLink = data.links("full")[0];
+			fullLink.follow(function (link, submissionData, request) {
+				request.getData(function (data) {
+					context.render(previewElement, data);					
+				});
+				return false;
+			});
+			element = null;
+		},
+		renderHtml: function (data, context) {			
+			window.data = data;
+			var result = '<div class="json-schema-ref">';
+			result += context.actionHtml("Reference", "follow");
+			result += ": " + context.renderHtml(data.property("$ref"));
+			return result + "</div>";
+		},
+		action: function (context, actionName) {
+			var data = context.data;
+			if (actionName == "follow") {
+				var fullLink = data.links('full')[0];
+				fullLink.follow();
+			}
+		},
+		filter: function (data, schemas) {
+			return schemas.containsUrl('http://json-schema.org/hyper-schema') && data.property("$ref").defined();
 		}
 	});
 	
@@ -422,7 +478,7 @@
 		"additionalProperties": {},
 		"links": [
 			{
-				"href": "{$ref}",
+				"href": "{+($ref)}",
 				"rel": "full"
 			}
 		]
