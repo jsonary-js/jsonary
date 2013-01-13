@@ -5,7 +5,7 @@ tests.add("Recursive dependency check", function () {
 				dependencyKey: true
 			}
 		}
-	});
+	}, null, true);
 	var schema = Jsonary.createSchema({
 		properties: {
 			"properties": {

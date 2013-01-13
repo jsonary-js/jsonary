@@ -249,7 +249,6 @@
 			return schemas.containsUrl('http://json-schema.org/hyper-schema');
 		},
 		update: function (element, data, context, operation) {
-			window.operation = operation;
 			if (operation.hasPrefix(data.property("type").pointerPath())) {
 				return true;
 			}

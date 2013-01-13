@@ -107,6 +107,7 @@
          "description":"start collating changes to data, so they are processed as a single change."
       },
       "batchDone":{
+         "arguments": [],
          "return":{
             "$ref":"#"
          },

@@ -2,15 +2,16 @@
 	"title": "API documentation",
 	"allOf": [{"$ref": "#/objectDefinition"}],
 	"objectDefinition": {
+		"title": "API definition",
 		"type": "object",
-		"anyOf": [
-			{"$ref": "http://json-schema.org/hyper-schema"},
-			{"$ref": "#/functionDefinition"}
+		"allOf": [
+			{"$ref": "http://json-schema.org/hyper-schema"}
 		],
 		"properties": {
 			"title": {"title": "Title", "type": "string"},
 			"description": {"title": "Description", "type": "string"},
 			"properties": {
+				"title": "Object properties",
 				"additionalProperties": {"$ref": "#/objectDefinition"}
 			},
 			"patternProperties": {
@@ -58,13 +59,18 @@
 		},
 		"links": [
 			{
-				"href": "{$ref}",
+				"href": "{+$ref}",
 				"rel": "full",
 				"targetSchema": {"$ref": "#"}
 			}
-		]
+		],
+		"dependencies": {
+			"arguments": {"$ref": "#/functionDefinition"},
+			"return": {"$ref": "#/functionDefinition"}
+		}
 	},
 	"functionDefinition": {
+		"title": "Function definition",
 		"type": "object",
 		"properties": {
 			"title": {"title": "Title", "type": "string"},
@@ -72,11 +78,9 @@
 			"arguments": {
 				"title": "Function arguments",
 				"type": "array",
-				"items": {"$ref": "http://json-schema.org/hyper-schema"}
+				"items": {"$ref": "#/objectDefinition"}
 			},
 			"return": {"$ref": "http://json-schema.org/hyper-schema"}
-		},
-		"required": ["arguments"],
-		"additionalProperties": false
+		}
 	}
 }

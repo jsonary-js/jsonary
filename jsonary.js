@@ -1890,6 +1890,9 @@ PatchOperation.prototype = {
 		}
 	},
 	depthFrom: function (path) {
+		if (typeof path == "object") {
+			path = path.pointerPath();
+		}
 		path += "/";
 		var minDepth = NaN;
 		if (this._subject.substring(0, path.length) == path) {
@@ -1982,6 +1985,9 @@ PatchOperation.prototype = {
 		return false;
 	},
 	hasPrefix: function (prefix) {
+		if (typeof prefix == "object") {
+			prefix = prefix.pointerPath();
+		}
 		if (this.matches(prefix)) {
 			return true;
 		}
