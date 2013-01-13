@@ -275,6 +275,24 @@
 			return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;
 		}
 	});
+	
+	function copyTextStyle(source, target) {
+		var style = getComputedStyle(source, null);
+		console.log(style);
+		for (var key in style) {
+			if (key.substring(0, 4) == "font" || key.substring(0, 4) == "text") {
+				console.log(key);
+				target.style[key] = style[key];
+			}
+		}
+	}
+	function updateTextareaSize(textarea, sizeMatchBox, suffix) {
+		sizeMatchBox.innerHTML = "";
+		sizeMatchBox.appendChild(document.createTextNode(textarea.value + suffix));
+		var style = getComputedStyle(sizeMatchBox, null);
+		textarea.style.width = parseInt(style.width.substring(0, style.width.length - 2)) + 4 + "px";
+		textarea.style.height = parseInt(style.height.substring(0, style.height.length - 2)) + 4 + "px";
+	}
 
 	// Edit string
 	Jsonary.render.register({
@@ -297,6 +315,7 @@
 			}
 		},
 		render: function (element, data, context) {
+			// min/max length
 			var minLength = data.schemas().minLength();
 			var maxLength = data.schemas().maxLength();
 			var noticeBox = document.createElement("span");
@@ -313,6 +332,9 @@
 				}
 			}
 			
+			// size match
+			var sizeMatchBox = document.createElement("div");
+			
 			var textarea = null;
 			for (var i = 0; i < element.childNodes.length; i++) {
 				if (element.childNodes[i].nodeType == 1) {
@@ -320,6 +342,18 @@
 					break;
 				}
 			}
+			element.insertBefore(sizeMatchBox, textarea);
+			copyTextStyle(textarea, sizeMatchBox);
+			sizeMatchBox.style.display = "inline";
+			sizeMatchBox.style.position = "absolute";
+			sizeMatchBox.style.width = "auto";
+			sizeMatchBox.style.height = "auto";
+			sizeMatchBox.style.left = "-100000px";
+			sizeMatchBox.style.top = "0px";
+			sizeMatchBox.style.whiteSpace = "pre";
+			sizeMatchBox.style.zIndex = -10000;
+			var suffix = "MMM";
+			updateTextareaSize(textarea, sizeMatchBox, suffix);		
 			
 			textarea.value = data.value()
 			textarea.onkeyup = function () {
@@ -327,10 +361,17 @@
 			};
 			textarea.onfocus = function () {
 				updateNoticeBox(data.value());
+				suffix = "MMM\nMMM";
+				updateTextareaSize(this, sizeMatchBox, suffix);
 			};
 			textarea.onblur = function () {
 				data.setValue(this.value);
 				noticeBox.innerHTML = "";
+				suffix = "MMM";
+				updateTextareaSize(this, sizeMatchBox, suffix);
+			};
+			textarea.onkeyup = function () {
+				updateTextareaSize(this, sizeMatchBox, suffix);
 			};
 			element.appendChild(noticeBox);
 			textarea = null;

@@ -16,7 +16,7 @@
 						result += '<div class="section">' + context.renderHtml(data.property("default")) + '</div>';
 					}
 					if (!data.readOnly() || data.property("allOf").defined()) {
-						result += '<h2>All of:</h2>';
+						result += '<h2>All of (extends):</h2>';
 						result += '<div class="section">' + context.renderHtml(data.property("allOf")) + '</div>';
 					}
 					if (!data.readOnly() || data.property("anyOf").defined()) {

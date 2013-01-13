@@ -65,6 +65,7 @@ textarea {
 }
 
 .json-object-delete-container {
+	vertical-align: top;
 	padding-left: 1.2em;
 }
 
@@ -196,7 +197,7 @@ textarea.json-string {
 	background-color: #FFF;
 	border: 1px solid #000;
 	background-color: rgba(255, 255, 255, 0.5);
-	width: 98%;
+	width: 30%;
 }
 
 .json-string-notice {
