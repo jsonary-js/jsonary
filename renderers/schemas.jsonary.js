@@ -324,7 +324,7 @@
 			}
 		},
 		filter: function (data, schemas) {
-			return schemas.containsUrl('http://json-schema.org/hyper-schema') && data.property("$ref").defined();
+			return schemas.containsUrl('http://json-schema.org/schema') && data.property("$ref").defined();
 		}
 	});
 	
