@@ -984,8 +984,13 @@ var Utils = {
 	},
 	log: function (level, message) {
 		try {
+			if (level >= Utils.logLevel.ERROR) {
+				window.alert("ERROR: " + message);
+				console.log("ERROR: " + message);
+				console.trace();
+			}
 			if (level >= Utils.logLevel.WARNING) {
-				console.log("Log level " + level + ": " + message);
+				console.log("WARNING: " + message);
 			}
 		} catch (e) {}
 	},
@@ -1666,7 +1671,7 @@ Request.prototype = {
 		var thisRequest = this;
 		thisRequest.successful = false;
 		thisRequest.errorMessage = message;
-		Utils.log(Utils.logLevel.ERROR, "Error fetching: " + this.url + " (" + message + ")");
+		Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + message + ")");
 		thisRequest.document.setRaw(undefined);
 		thisRequest.document.raw.whenSchemasStable(function () {
 			thisRequest.checkForFullResponse();
@@ -5541,6 +5546,10 @@ publicApi.UriTemplate = UriTemplate;
 	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
+			if (element == null) {
+				Jsonary.log(Jsonary.logLevel.ERROR, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);
+				return this;
+			}
 			if (element[0] != undefined) {
 				element = element[0];
 			}

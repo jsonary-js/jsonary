@@ -57,8 +57,13 @@ var Utils = {
 	},
 	log: function (level, message) {
 		try {
+			if (level >= Utils.logLevel.ERROR) {
+				window.alert("ERROR: " + message);
+				console.log("ERROR: " + message);
+				console.trace();
+			}
 			if (level >= Utils.logLevel.WARNING) {
-				console.log("Log level " + level + ": " + message);
+				console.log("WARNING: " + message);
 			}
 		} catch (e) {}
 	},

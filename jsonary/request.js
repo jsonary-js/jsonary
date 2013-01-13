@@ -298,7 +298,7 @@ Request.prototype = {
 		var thisRequest = this;
 		thisRequest.successful = false;
 		thisRequest.errorMessage = message;
-		Utils.log(Utils.logLevel.ERROR, "Error fetching: " + this.url + " (" + message + ")");
+		Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + message + ")");
 		thisRequest.document.setRaw(undefined);
 		thisRequest.document.raw.whenSchemasStable(function () {
 			thisRequest.checkForFullResponse();
