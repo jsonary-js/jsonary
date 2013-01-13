@@ -30,7 +30,7 @@
 	padding-left: 0.3em;
 }
 
-.json-schema-obj > .content > .section {
+.json-schema-obj > .content > .section, .json-schema-tab-content > .section {
 	padding-left: 2em;
 }
 
