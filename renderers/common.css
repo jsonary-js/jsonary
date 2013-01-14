@@ -44,7 +44,6 @@
 	padding: 1em;
 	padding-bottom: 1.5em;
 	padding-top: 0.5em;
-	z-index: 1;
 }
 
 .prompt-box h1 {
@@ -75,7 +74,6 @@
 	border-bottom-right-radius: 10px;
 	padding-top: 0.3em;
 	padding-bottom: 0.3em;
-	z-index: 2;
 }
 
 /************ Buttons *************/

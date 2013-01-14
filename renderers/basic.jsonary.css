@@ -41,12 +41,14 @@ textarea {
 }
 
 .json-object-pair {
-	display: block;
-	padding-left: 2em;
 }
 
 .json-object-key {
+	text-align: right;
+	vertical-align: top;
 	font-style: italic;
+	color: #840;
+	padding-left: 2em;
 }
 
 .json-object-delete {

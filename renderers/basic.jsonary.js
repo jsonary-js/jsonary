@@ -14,6 +14,9 @@
 				return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
 			}
 			delete context.uiState.undefined;
+			if (context.uiState.subState == undefined) {
+				context.uiState.subState = {};
+			}
 			var showDelete = false;
 			if (data.parent() != null) {
 				var parent = data.parent();
@@ -32,9 +35,13 @@
 			}
 			var result = "";
 			if (showDelete) {
+				result += "<div class='json-object-delete-container'>";
 				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
+				result += context.renderHtml(data, context.uiState.subState);
+				result += '<div style="clear: both"></div></div>';
+			} else {
+				result += context.renderHtml(data, context.uiState.subState);
 			}
-			result += context.renderHtml(data);
 			return result;
 		},
 		action: function (context, actionName) {
@@ -75,53 +82,17 @@
 		}
 	});
 	
-	function listSchemas(element, schemaList) {
-		var linkElement = null;
-		schemaList.each(function (index, schema) {
-			if (schema.title() == null) {
-				return;
-			}
-			linkElement = document.createElement("a");
-			linkElement.setAttribute("href", schema.referenceUrl());
-			linkElement.className = "json-schema";
-			linkElement.appendChild(document.createTextNode(schema.title()));
-			element.appendChild(linkElement);
-			linkElement.onclick = function () {
-				alert(schema.referenceUrl() + "\n" + JSON.stringify(schema.data.value(), null, 4));
-				return false;
-			};
-		});
-		element = null;
-		linkElement = null;
-	}
-
-	function listLinks(element, links) {
-		var linkElement = null;
-		for (var i = 0; i < links.length; i++) {
-			(function (index, link) {
-				linkElement = document.createElement("a");
-				linkElement.setAttribute("href", link.href);
-				linkElement.className = "json-link";
-				linkElement.appendChild(document.createTextNode(link.rel));
-				element.appendChild(linkElement);
-				linkElement.onclick = function (event) {
-					linkPrompt(link, event);
-					return false;
-				};
-			})(i, links[i]);
-		}
-		element = null;
-		linkElement = null;
-	}
-	
 	Jsonary.render.register({
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
+			if (context.uiState.subState == undefined) {
+				context.uiState.subState = {};
+			}
 			var result = "";
 			var basicTypes = data.schemas().basicTypes();
 			var enums = data.schemas().enumValues();
 			if (context.uiState.dialogOpen) {
-				result += '<span class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
+				result += '<div class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
 				result += context.actionHtml('close', "closeDialog");
 				if (basicTypes.length > 1) {
 					result += '<br>Select basic type:<ul>';
@@ -137,30 +108,13 @@
 					}
 					result += '</ul>';
 				}
-				result += '</span></span>';
-				result += context.actionHtml('<div class="json-select-type-background"></div>', 'closeDialog');
+				result += '</span></div>';
 			}
 			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
-			result += context.renderHtml(data);
+			result += context.renderHtml(data, context.uiState.subState);
 			return result;
-		},
-		render: function (element, data, context) {
-			var thisRenderer = this;
-			if (context.uiState.dialogOpen) {
-				if (context.timeout == undefined) {
-					context.timeout = window.setTimeout(function () {
-						context.uiState.dialogOpen = false;
-						context.rerender();
-					}, 8000);
-				}
-			} else {
-				if (context.timeout != undefined) {
-					window.clearTimeout(context.timeout);
-					delete context.timeout;
-				}
-			}
 		},
 		action: function (context, actionName, basicType) {
 			if (actionName == "closeDialog") {
@@ -181,11 +135,6 @@
 			}
 		},
 		update: function (element, data, context, operation) {
-			return false;
-			if (context.uiState.dialogOpen) {
-				context.uiState.dialogOpen = false;
-				return true;
-			}
 			return false;
 		},
 		filter: function (data) {
@@ -222,13 +171,14 @@
 	Jsonary.render.register({	
 		renderHtml: function (data, context) {
 			var uiState = context.uiState;
-			var result = "{";
+			var result = '{<table class="json-object"><tbody>';
 			data.properties(function (key, subData) {
-				result += '<div class="json-object-pair">';
-				result +=	'<span class="json-object-key">' + escapeHtml(key) + '</span>: ';
-				result += '<span class="json-object-value">' + context.renderHtml(subData) + '</span>';
-				result += '</div>';
+				result += '<tr class="json-object-pair">';
+				result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + ':</div></td>';
+				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
+				result += '</tr>';
 			});
+			result += '</tbody></table>';
 			if (!data.readOnly()) {
 				var addLinkHtml = "";
 				var schemas = data.schemas();
@@ -276,9 +226,9 @@
 	// Display/edit arrays
 	Jsonary.render.register({
 		renderHtml: function (data, context) {
-			var result = "[";
 			var tupleTypingLength = data.schemas().tupleTypingLength();
 			var maxItems = data.schemas().maxItems();
+			var result = "";
 			data.indices(function (index, subData) {
 				result += '<div class="json-array-item">';
 				result += '<span class="json-array-value">' + context.renderHtml(subData) + '</span>';
@@ -290,7 +240,7 @@
 					result += context.actionHtml(addHtml, "add");
 				}
 			}
-			return result + "]";
+			return result;
 		},
 		action: function (context, actionName) {
 			var data = context.data;
@@ -326,6 +276,22 @@
 			return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;
 		}
 	});
+	
+	function copyTextStyle(source, target) {
+		var style = getComputedStyle(source, null);
+		for (var key in style) {
+			if (key.substring(0, 4) == "font" || key.substring(0, 4) == "text") {
+				target.style[key] = style[key];
+			}
+		}
+	}
+	function updateTextareaSize(textarea, sizeMatchBox, suffix) {
+		sizeMatchBox.innerHTML = "";
+		sizeMatchBox.appendChild(document.createTextNode(textarea.value + suffix));
+		var style = getComputedStyle(sizeMatchBox, null);
+		textarea.style.width = parseInt(style.width.substring(0, style.width.length - 2)) + 4 + "px";
+		textarea.style.height = parseInt(style.height.substring(0, style.height.length - 2)) + 4 + "px";
+	}
 
 	// Edit string
 	Jsonary.render.register({
@@ -348,6 +314,7 @@
 			}
 		},
 		render: function (element, data, context) {
+			// min/max length
 			var minLength = data.schemas().minLength();
 			var maxLength = data.schemas().maxLength();
 			var noticeBox = document.createElement("span");
@@ -364,6 +331,9 @@
 				}
 			}
 			
+			// size match
+			var sizeMatchBox = document.createElement("div");
+			
 			var textarea = null;
 			for (var i = 0; i < element.childNodes.length; i++) {
 				if (element.childNodes[i].nodeType == 1) {
@@ -371,18 +341,34 @@
 					break;
 				}
 			}
+			element.insertBefore(sizeMatchBox, textarea);
+			copyTextStyle(textarea, sizeMatchBox);
+			sizeMatchBox.style.display = "inline";
+			sizeMatchBox.style.position = "absolute";
+			sizeMatchBox.style.width = "auto";
+			sizeMatchBox.style.height = "auto";
+			sizeMatchBox.style.left = "-100000px";
+			sizeMatchBox.style.top = "0px";
+			sizeMatchBox.style.whiteSpace = "pre";
+			sizeMatchBox.style.zIndex = -10000;
+			var suffix = "MMMMM";
+			updateTextareaSize(textarea, sizeMatchBox, suffix);		
 			
-			textarea.innerHTML = "";
-			textarea.appendChild(document.createTextNode(data.value()));
+			textarea.value = data.value();
 			textarea.onkeyup = function () {
 				updateNoticeBox(this.value);
+				updateTextareaSize(this, sizeMatchBox, suffix);
 			};
 			textarea.onfocus = function () {
 				updateNoticeBox(data.value());
+				suffix = "MMMMM\nMMM";
+				updateTextareaSize(this, sizeMatchBox, suffix);
 			};
 			textarea.onblur = function () {
 				data.setValue(this.value);
 				noticeBox.innerHTML = "";
+				suffix = "MMMMM";
+				updateTextareaSize(this, sizeMatchBox, suffix);
 			};
 			element.appendChild(noticeBox);
 			textarea = null;
@@ -392,13 +378,13 @@
 			if (operation.action() == "replace") {
 				var textarea = null;
 				for (var i = 0; i < element.childNodes.length; i++) {
-					if (element.childNodes[i].nodeType == 1) {
+					if (element.childNodes[i].tagName.toLowerCase() == "textarea") {
 						textarea = element.childNodes[i];
 						break;
 					}
 				}				
-				textarea.innerHTML = "";
-				textarea.appendChild(document.createTextNode(data.value()));
+				textarea.value = data.value();
+				textarea.onkeyup();
 				return false;
 			} else {
 				return true;
@@ -414,10 +400,10 @@
 		render: function (element, data) {
 			var valueSpan = document.createElement("a");
 			if (data.value()) {
-				valueSpan.className = ( "json-boolean-true");
+				valueSpan.setAttribute("class", "json-boolean-true");
 				valueSpan.innerHTML = "true";
 			} else {
-				valueSpan.className = ( "json-boolean-false");
+				valueSpan.setAttribute("class", "json-boolean-false");
 				valueSpan.innerHTML = "false";
 			}
 			element.appendChild(valueSpan);
@@ -445,12 +431,12 @@
 			if (interval != undefined) {
 				var minimum = data.schemas().minimum();
 				if (minimum == null || data.value() > minimum + interval || data.value() == (minimum + interval) && !data.schemas().exclusiveMinimum()) {
-					result = context.actionHtml('<span class="json-number-decrement">-</span>', 'decrement') + result;
+					result = context.actionHtml('<span class="json-number-decrement button">-</span>', 'decrement') + result;
 				}
 				
 				var maximum = data.schemas().maximum();
 				if (maximum == null || data.value() < maximum - interval || data.value() == (maximum - interval) && !data.schemas().exclusiveMaximum()) {
-					result += context.actionHtml('<span class="json-number-increment">+</span>', 'increment');
+					result += context.actionHtml('<span class="json-number-increment button">+</span>', 'increment');
 				}
 			}
 			return result;
@@ -506,8 +492,6 @@
 					element.innerHTML = '<span class="json-string">' + escapeHtml(enumValues[0]) + '</span>';
 				} else if (typeof enumValues[0] == "number") {
 					element.innerHTML = '<span class="json-number">' + enumValues[0] + '</span>';
-				} else if (enumValues[0] == null) {
-					element.innerHTML = '<span class="json-null">null</span>';
 				} else if (typeof enumValues[0] == "boolean") {
 					var text = (enumValues[0] ? "true" : "false");
 					element.innerHTML = '<span class="json-boolean-' + text + '">' + text + '</span>';
@@ -523,11 +507,7 @@
 				if (data.equals(Jsonary.create(enumValues[i]))) {
 					option.selected = true;
 				}
-				if (typeof enumValues[i] == "string") {
-					option.appendChild(document.createTextNode(enumValues[i]));
-				} else {
-					option.appendChild(document.createTextNode(JSON.stringify(enumValues[i])));
-				}
+				option.appendChild(document.createTextNode(enumValues[i]));
 				select.appendChild(option);
 			}
 			select.onchange = function () {
