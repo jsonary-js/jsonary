@@ -24,7 +24,7 @@ h2 {
 	padding-left: 2.5em;
 }
 
-h3 {
+.box-heading {
 	font-size: 1em;
 	padding: 0;
 	margin: 0;
@@ -134,6 +134,12 @@ code, .code {
 	background-color: #EEE;
 	border: 2px solid #444;
 	line-height: 1.2em;
+	padding: 0px;
+}
+
+.example.code .highlight-json, .example.code .highlight-json-schema {
+	border: none;
+	margin: 0;
 }
 
 .filename {

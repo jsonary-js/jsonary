@@ -1,6 +1,6 @@
 (function () {
 	var REGEX = {
-		whitespace: /^([ \r\n\t]|&nbsp;)*/,
+		whitespace: /^([ \n\t]|&nbsp;)*/,
 		number: /^-?[0-9]+(\.[0-9]+)?([eE][+\-]?[0-9]+)?/
 	};
 	
@@ -20,7 +20,7 @@
 			if (this.remaining.length == 0) {
 				throw new Error("Unexpected end of input");
 			}
-			if (this.remaining[0] == "&") {
+			if (this.remaining.charAt(0) == "&") {
 				var endIndex = this.remaining.indexOf(";") + 1;
 				if (endIndex == -1) {
 					endIndex = 1;
@@ -29,7 +29,7 @@
 				this.remaining = this.remaining.substring(endIndex);
 				return result;
 			}
-			var result = this.remaining[0];
+			var result = this.remaining.charAt(0);
 			this.remaining = this.remaining.substring(1);
 			return result;
 		},
@@ -52,17 +52,17 @@
 				this.highlightString();
 			} else if ((next + this.remaining).match(REGEX.number)) {
 				var numberString = (next + this.remaining).match(REGEX.number)[0];
-				this.html += '<span class="json-number">' + numberString + '</span>';
+				this.html += '<span class="highlight-json-number">' + numberString + '</span>';
 				this.remaining = this.remaining.substring(numberString.length - 1);
 			} else if (next == "n" && this.remaining.substring(0, 3) == "ull") {
 				this.remaining = this.remaining.substring(3);
-				this.html += '<span class="json-null">null</span>';
+				this.html += '<span class="highlight-json-null">null</span>';
 			} else if (next == "t" && this.remaining.substring(0, 3) == "rue") {
 				this.remaining = this.remaining.substring(3);
-				this.html += '<span class="json-true">true</span>';
+				this.html += '<span class="highlight-json-true">true</span>';
 			} else if (next == "f" && this.remaining.substring(0, 4) == "alse") {
 				this.remaining = this.remaining.substring(4);
-				this.html += '<span class="json-false">false</span>';
+				this.html += '<span class="highlight-json-false">false</span>';
 			} else {
 				this.html += next;
 				this.highlightJson(keywords);
@@ -72,7 +72,7 @@
 			}
 		},
 		highlightObject: function (keywords) {
-			this.html += '<span class="json-punctuation">{</span>';
+			this.html += '<span class="highlight-json-punctuation">{</span>';
 			var next = this.next();
 			while (next != "}") {
 				if (next == '"' || next == "&quot;") {
@@ -87,11 +87,11 @@
 						next = this.next();
 					}
 					if (keywords != undefined && keywords.isKeyword(keyHtml)) {
-						this.html += '<span class="json-keyword">&quot;'
+						this.html += '<span class="highlight-json-keyword">&quot;'
 							+ keyHtml
 							+ '&quot;</span>';
 					} else {
-						this.html += '<span class="json-object-key">&quot;'
+						this.html += '<span class="highlight-json-object-key">&quot;'
 							+ keyHtml
 							+ '&quot;</span>';
 					}
@@ -100,7 +100,7 @@
 						this.html += next;
 						next = this.next();
 					}
-					this.html += '<span class="json-punctuation">:</span>';
+					this.html += '<span class="highlight-json-punctuation">:</span>';
 					var nextKeywords = null;
 					if (keywords != undefined) {
 						nextKeywords = keywords.forKey(keyHtml);
@@ -108,7 +108,7 @@
 					this.highlightJson(nextKeywords);
 					next = this.next();
 					if (next == ",") {
-						this.html += '<span class="json-punctuation">,</span>';
+						this.html += '<span class="highlight-json-punctuation">,</span>';
 						next = this.next();
 						continue;
 					} else while (next != "}") {
@@ -120,10 +120,10 @@
 					next = this.next();
 				}
 			}
-			this.html += '<span class="json-punctuation">}</span>';
+			this.html += '<span class="highlight-json-punctuation">}</span>';
 		},
 		highlightArray: function (keywords) {
-			this.html += '<span class="json-punctuation">[</span>';
+			this.html += '<span class="highlight-json-punctuation">[</span>';
 			var next = this.next();
 			var i = 0;
 			while (next != "]") {
@@ -131,7 +131,7 @@
 				this.highlightJson(keywords != undefined ? keywords.forItem(i) : null);
 				next = this.next();
 				if (next == ",") {
-					this.html += '<span class="json-punctuation">,</span>';
+					this.html += '<span class="highlight-json-punctuation">,</span>';
 					next = this.next();
 					i++;
 					continue;
@@ -140,10 +140,10 @@
 					next = this.next();
 				}
 			}
-			this.html += '<span class="json-punctuation">]</span>';
+			this.html += '<span class="highlight-json-punctuation">]</span>';
 		},
 		highlightString: function () {
-			this.html += '<span class="json-punctuation">&quot;</span><span class="json-string">';
+			this.html += '<span class="highlight-json-punctuation">&quot;</span><span class="highlight-json-string">';
 			next = this.next();
 			while (next != '"' && next != '&quot') {
 				if (next == "\\") {
@@ -153,7 +153,7 @@
 				this.html += next;
 				next = this.next();
 			}
-			this.html += '</span><span class="json-punctuation">&quot;</span>';
+			this.html += '</span><span class="highlight-json-punctuation">&quot;</span>';
 		}
 	};
 
@@ -229,7 +229,7 @@
 		binaryEncoding: null,
 		type: null
 	};
-	mapToSchemas.wrapper = ['<span class="json-schema-map">', '</span>'];
+	mapToSchemas.wrapper = ['<span class="highlight-json-schema-map">', '</span>'];
 	mapToSchemas.forKey = function () {
 		return schema;
 	};
@@ -247,13 +247,13 @@
 	};
 
 	function highlightElement(element, keywords) {
-		var highlighter = new Highlighter(element.innerHTML);
+		var highlighter = new Highlighter(element.json || element.innerHTML);
 		try {
 			highlighter.highlightJson(keywords);
 		} catch (e) {
 			throw e;
 		}
-		element.innerHTML = highlighter.html + highlighter.remaining;
+		element.innerHTML = highlighter.html.replace(/\n/g, "<br>").replace(/  /g, "&nbsp; ") + highlighter.remaining;
 	}
 	
 	if (document.getElementsByClassName == undefined) {
@@ -275,11 +275,11 @@
 	}
 	
 	function highlightJson() {
-		var jsonNodes = document.getElementsByClassName('json');
+		var jsonNodes = document.getElementsByClassName('highlight-json');
 		for (var i = 0; i < jsonNodes.length; i++) {
 			highlightElement(jsonNodes[i]);
 		}
-		var jsonSchemaNodes = document.getElementsByClassName('json-schema');
+		var jsonSchemaNodes = document.getElementsByClassName('highlight-json-schema');
 		for (var i = 0; i < jsonSchemaNodes.length; i++) {
 			highlightElement(jsonSchemaNodes[i], schema);
 		}

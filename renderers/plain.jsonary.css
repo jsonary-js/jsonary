@@ -48,7 +48,7 @@ textarea {
 .json-object-key {
 	padding: 0;
 	vertical-align: top;
-	width: 8em;
+	width: 4em;
 }
 
 .json-object-key-text {
@@ -65,13 +65,9 @@ textarea {
 }
 
 .json-object-delete-container {
+	position: relative;
 	vertical-align: top;
 	padding-left: 1.2em;
-}
-
-.json-object-delete-wrapper {
-	position: relative;
-	left: -1.2em;
 }
 
 .json-object-delete {
@@ -216,23 +212,6 @@ textarea.json-string {
 
 .json-number-increment, .json-number-decrement {
 	font-family: monospace;
-	color: #666;
-	font-weight: bold;
-	text-decoration: none;
-	margin-left: 0.5em;
-	margin-right: 0.5em;
-	padding-left: 0.5em;
-	padding-right: 0.5em;
-	border: 1px solid #888;
-	border-radius: 3px;
-	background-color: #DDD;
-	background-image: URL('images/background-fade.png');
-	background-repeat: repeat-x;
-	background-position: top;
-}
-
-.json-number-increment:hover, .json-number-decrement:hover {
-	background-image: URL('images/background-fade-bold.png');
 }
 
 /**** Boolean ****/

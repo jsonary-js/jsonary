@@ -236,7 +236,6 @@
 				}
 				data.properties(function (key, subData) {
 					if (knownSchemaKeys.indexOf(key) == -1) {
-						console.log(key);
 						tabs.other = true;
 					}
 				});

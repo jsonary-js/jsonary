@@ -36,7 +36,7 @@
 			var result = "";
 			if (showDelete) {
 				result += "<div class='json-object-delete-container'>";
-				result += context.actionHtml("<span class='json-object-delete-wrapper'><span class='json-object-delete'>X</span></span>", "remove") + " ";
+				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
 				result += context.renderHtml(data, context.uiState.subState);
 				result += '<div style="clear: both"></div></div>';
 			} else {
@@ -177,7 +177,7 @@
 				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
 				result += '</tr>';
 			});
-			result += '</table></table>';
+			result += '</tbody></table>';
 			if (!data.readOnly()) {
 				var addLinkHtml = "";
 				var schemas = data.schemas();
@@ -278,10 +278,8 @@
 	
 	function copyTextStyle(source, target) {
 		var style = getComputedStyle(source, null);
-		console.log(style);
 		for (var key in style) {
 			if (key.substring(0, 4) == "font" || key.substring(0, 4) == "text") {
-				console.log(key);
 				target.style[key] = style[key];
 			}
 		}
@@ -352,25 +350,23 @@
 			sizeMatchBox.style.top = "0px";
 			sizeMatchBox.style.whiteSpace = "pre";
 			sizeMatchBox.style.zIndex = -10000;
-			var suffix = "MMM";
+			var suffix = "MMMMM";
 			updateTextareaSize(textarea, sizeMatchBox, suffix);		
 			
-			textarea.value = data.value()
+			textarea.value = data.value();
 			textarea.onkeyup = function () {
 				updateNoticeBox(this.value);
+				updateTextareaSize(this, sizeMatchBox, suffix);
 			};
 			textarea.onfocus = function () {
 				updateNoticeBox(data.value());
-				suffix = "MMM\nMMM";
+				suffix = "MMMMM\nMMM";
 				updateTextareaSize(this, sizeMatchBox, suffix);
 			};
 			textarea.onblur = function () {
 				data.setValue(this.value);
 				noticeBox.innerHTML = "";
-				suffix = "MMM";
-				updateTextareaSize(this, sizeMatchBox, suffix);
-			};
-			textarea.onkeyup = function () {
+				suffix = "MMMMM";
 				updateTextareaSize(this, sizeMatchBox, suffix);
 			};
 			element.appendChild(noticeBox);
@@ -381,12 +377,13 @@
 			if (operation.action() == "replace") {
 				var textarea = null;
 				for (var i = 0; i < element.childNodes.length; i++) {
-					if (element.childNodes[i].nodeType == 1) {
+					if (element.childNodes[i].tagName.toLowerCase() == "textarea") {
 						textarea = element.childNodes[i];
 						break;
 					}
 				}				
-				textarea.value = data.value()
+				textarea.value = data.value();
+				textarea.onkeyup();
 				return false;
 			} else {
 				return true;
@@ -433,12 +430,12 @@
 			if (interval != undefined) {
 				var minimum = data.schemas().minimum();
 				if (minimum == null || data.value() > minimum + interval || data.value() == (minimum + interval) && !data.schemas().exclusiveMinimum()) {
-					result = context.actionHtml('<span class="json-number-decrement">-</span>', 'decrement') + result;
+					result = context.actionHtml('<span class="json-number-decrement button">-</span>', 'decrement') + result;
 				}
 				
 				var maximum = data.schemas().maximum();
 				if (maximum == null || data.value() < maximum - interval || data.value() == (maximum - interval) && !data.schemas().exclusiveMaximum()) {
-					result += context.actionHtml('<span class="json-number-increment">+</span>', 'increment');
+					result += context.actionHtml('<span class="json-number-increment button">+</span>', 'increment');
 				}
 			}
 			return result;
@@ -523,58 +520,5 @@
 			return !data.readOnly() && data.schemas().enumValues() != null;
 		}
 	});
-
-	// Cover the screen with an overlay
-	function linkPrompt(link, event) {
-		if ((link.method == "GET" || link.method == "DELETE") && link.submissionSchemas.length == 0) {
-			link.follow();
-		} else {
-			var overlay = document.createElement("div");
-			overlay.setAttribute("class", "prompt-overlay");
-			document.body.appendChild(overlay);
-			
-			var buttonBox = document.createElement("div");
-			buttonBox.setAttribute("class", "prompt-buttons");
-			overlay.appendChild(buttonBox);
-			
-			var submitButton = document.createElement("input");
-			submitButton.setAttribute("type", "button");
-			submitButton.setAttribute("value", "Submit");
-			submitButton.setAttribute("disabled", "disabled");
-			buttonBox.appendChild(submitButton);
-			
-			var cancelButton = document.createElement("input");
-			cancelButton.setAttribute("type", "button");
-			cancelButton.setAttribute("value", "cancel");
-			buttonBox.appendChild(cancelButton);
-			cancelButton.onclick = function () {
-				var overlay = this.parentNode.parentNode;
-				overlay.parentNode.removeChild(overlay);
-				return false;
-			};
-
-			var renderBox = document.createElement("div");
-			renderBox.setAttribute("class", "prompt-data loading");
-			overlay.appendChild(renderBox);
-
-			link.createSubmissionData(function(submissionData) {
-				renderBox.setAttribute("class", "prompt-data");
-				Jsonary.render(renderBox, submissionData);
-				submitButton.removeAttribute("disabled");
-				submitButton.onclick = function() {
-					var overlay = this.parentNode.parentNode;
-					overlay.parentNode.removeChild(overlay);
-					link.follow(submissionData);
-					return false;
-				};
-				overlay = null;
-				buttonBox = null;
-				submitButton = null;
-				cancelButton = null;
-				renderBox = null;
-			});
-		}
-	};
-	Jsonary.render.linkPrompt = linkPrompt;
 
 })();

@@ -1,6 +1,8 @@
 body {
   background-color: #F8F8F0;
   padding-bottom: 160px;
+  font-family: Trebuchet MS, sans-serif;
+  font-size: 0.9em;
 }
 
 #url-bar {

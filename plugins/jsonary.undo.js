@@ -4,7 +4,7 @@
 	var otherKeys = {};
 
 	// Register key down/up listeners to catch undo/redo key combos
-	window.onkeydown = function (e) {
+	document.onkeydown = function (e) {
 		var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
 		if (keyCode == 17) {
 			modKeyDown = true;
@@ -35,7 +35,7 @@
 			}
 		}
 	};
-	window.onkeyup = function (e) {
+	document.onkeyup = function (e) {
 		var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
 		if (keyCode == 17) {
 			modKeyDown = false;

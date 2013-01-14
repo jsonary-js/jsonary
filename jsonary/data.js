@@ -486,7 +486,14 @@ function Data(document, secrets, parent, parentKey) {
 		return this;
 	};
 	this.addSchema = function (schema, schemaKey) {
-		secrets.schemas.addSchema(schema, schemaKey);
+		var thisData = this;
+		if (schema instanceof SchemaList) {
+			schema.each(function (index, schema) {
+				thisData.addSchema(schema, schemaKey);
+			});
+		} else {
+			secrets.schemas.addSchema(schema, schemaKey);
+		}
 		return this;
 	};
 	this.removeSchema = function ( schemaKey) {

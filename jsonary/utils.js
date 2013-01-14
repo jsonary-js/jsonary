@@ -261,6 +261,9 @@ var Utils = {
 		}
 		return result;
 	},
+	escapeHtml: function(text) {
+		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+	},
 	encodePointerComponent: function (component) {
 		return component.toString().replace("~", "~0").replace("/", "~1");
 	},
@@ -317,6 +320,7 @@ publicApi.encodePointerComponent = Utils.encodePointerComponent;
 publicApi.decodePointerComponent = Utils.decodePointerComponent;
 publicApi.splitPointer = Utils.splitPointer;
 publicApi.joinPointer = Utils.joinPointer;
+publicApi.escapeHtml = Utils.escapeHtml;
 
 publicApi.extend = function (obj) {
 	for (var key in obj) {

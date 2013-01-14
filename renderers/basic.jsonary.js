@@ -114,31 +114,6 @@
 		linkElement = null;
 	}
 	
-	Jsonary.render.Components.add("LIST_LINKS");
-	Jsonary.render.register({
-		component: Jsonary.render.Components.LIST_LINKS,
-		render: function (element, data, context) {
-			var links = data.links();
-			var schemas = data.schemas();
-			if (links.length == 0 && schemas.length == 0) {
-				return;
-			}
-			var container = document.createElement("span");
-			listSchemas(container, schemas);
-			listLinks(container, links);
-			element.insertBefore(container, element.childNodes[0]);
-		},
-		update: function (element, data, context, operation) {
-			return false;
-		},
-		renderHtml: function (data, context) {
-			return context.renderHtml(data);
-		},
-		filter: function () {
-			return true;
-		}
-	});
-
 	Jsonary.render.register({
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
@@ -397,7 +372,8 @@
 				}
 			}
 			
-			textarea.value = data.value()
+			textarea.innerHTML = "";
+			textarea.appendChild(document.createTextNode(data.value()));
 			textarea.onkeyup = function () {
 				updateNoticeBox(this.value);
 			};
@@ -421,7 +397,8 @@
 						break;
 					}
 				}				
-				textarea.value = data.value()
+				textarea.innerHTML = "";
+				textarea.appendChild(document.createTextNode(data.value()));
 				return false;
 			} else {
 				return true;
@@ -529,6 +506,8 @@
 					element.innerHTML = '<span class="json-string">' + escapeHtml(enumValues[0]) + '</span>';
 				} else if (typeof enumValues[0] == "number") {
 					element.innerHTML = '<span class="json-number">' + enumValues[0] + '</span>';
+				} else if (enumValues[0] == null) {
+					element.innerHTML = '<span class="json-null">null</span>';
 				} else if (typeof enumValues[0] == "boolean") {
 					var text = (enumValues[0] ? "true" : "false");
 					element.innerHTML = '<span class="json-boolean-' + text + '">' + text + '</span>';
@@ -544,7 +523,11 @@
 				if (data.equals(Jsonary.create(enumValues[i]))) {
 					option.selected = true;
 				}
-				option.appendChild(document.createTextNode(enumValues[i]));
+				if (typeof enumValues[i] == "string") {
+					option.appendChild(document.createTextNode(enumValues[i]));
+				} else {
+					option.appendChild(document.createTextNode(JSON.stringify(enumValues[i])));
+				}
 				select.appendChild(option);
 			}
 			select.onchange = function () {
@@ -558,58 +541,5 @@
 			return !data.readOnly() && data.schemas().enumValues() != null;
 		}
 	});
-
-	// Cover the screen with an overlay
-	function linkPrompt(link, event) {
-		if ((link.method == "GET" || link.method == "DELETE") && link.submissionSchemas.length == 0) {
-			link.follow();
-		} else {
-			var overlay = document.createElement("div");
-			overlay.className = 'prompt-overlay';
-			document.body.appendChild(overlay);
-			
-			var buttonBox = document.createElement("div");
-			buttonBox.className = 'prompt-buttons';
-			overlay.appendChild(buttonBox);
-			
-			var submitButton = document.createElement("input");
-			submitButton.setAttribute("type", "button");
-			submitButton.setAttribute("value", "Submit");
-			submitButton.setAttribute("disabled", "disabled");
-			buttonBox.appendChild(submitButton);
-			
-			var cancelButton = document.createElement("input");
-			cancelButton.setAttribute("type", "button");
-			cancelButton.setAttribute("value", "cancel");
-			buttonBox.appendChild(cancelButton);
-			cancelButton.onclick = function () {
-				var overlay = this.parentNode.parentNode;
-				overlay.parentNode.removeChild(overlay);
-				return false;
-			};
-
-			var renderBox = document.createElement("div");
-			renderBox.className = 'prompt-data loading';
-			overlay.appendChild(renderBox);
-
-			link.createSubmissionData(function(submissionData) {
-				renderBox.className = 'prompt-data';
-				Jsonary.render(renderBox, submissionData);
-				submitButton.removeAttribute("disabled");
-				submitButton.onclick = function() {
-					var overlay = this.parentNode.parentNode;
-					overlay.parentNode.removeChild(overlay);
-					link.follow(submissionData);
-					return false;
-				};
-				overlay = null;
-				buttonBox = null;
-				submitButton = null;
-				cancelButton = null;
-				renderBox = null;
-			});
-		}
-	};
-	Jsonary.render.linkPrompt = linkPrompt;
 
 })();

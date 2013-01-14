@@ -33,7 +33,7 @@
 			$filename = substr($filename, 0, strlen($filename) - 5);
 			$navHtml .= '<li><a href="#'.$filename.'">'.$jsonObj->title.'</a>';
 			
-			$mainHtml .= "<a name=\"$filename\"></a><div class=\"box\"><h3>{$jsonObj->title}</h3>";
+			$mainHtml .= "<a name=\"$filename\"></a><div class=\"box\"><h3 class=\"box-heading\">{$jsonObj->title}</h3>";
 			$mainHtml .= "<div class=\"section\"><div class=\"description\">{$jsonObj->description}</div>";
 			foreach ($jsonObj->content as $paragraph) {
 				if (is_array($paragraph)) {
@@ -49,7 +49,7 @@
 			if (isset($jsonObj->exampleSchema)) {
 				$exampleNumber = $exampleCounter++;
 				
-				$mainHtml .= "<pre class=\"example code\" id=\"example-schema{$exampleNumber}\"></pre>";
+				$mainHtml .= "<pre class=\"example code\"><div class=\"highlight-json-schema\" id=\"example-schema{$exampleNumber}\"></div></pre>";
 				$mainHtml .= "<div class=\"example\" id=\"example{$exampleNumber}\"></div>";
 				$mainHtml .= "<script>\n";
 				$mainHtml .= "var schema = Jsonary.createSchema(".json_encode($jsonObj->exampleSchema).");\n";
@@ -59,7 +59,9 @@
 					$mainHtml .= "var data = Jsonary.create(schema.asList().createValue());\n";
 				}
 				$mainHtml .= "data.addSchema(schema).renderTo(document.getElementById('example{$exampleNumber}'));\n";
-				$mainHtml .= "document.getElementById('example-schema{$exampleNumber}').appendChild(document.createTextNode(JSON.stringify(".json_encode($jsonObj->exampleSchema).", null, 4)));\n";
+				$mainHtml .= "var innerText = JSON.stringify(".json_encode($jsonObj->exampleSchema).", null, 4);\n";
+				$mainHtml .= "document.getElementById('example-schema{$exampleNumber}').json = innerText;\n";
+				$mainHtml .= "document.getElementById('example-schema{$exampleNumber}').appendChild(document.createTextNode(innerText));\n";
 				$mainHtml .= "</script>";
 			}
 			$mainHtml .= "</div></div>";
@@ -82,12 +84,15 @@
 		<title>JSON Schema</title>
 		<link rel="stylesheet" href="../../css/main.css">
 		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
+		<link rel="stylesheet" href="../../renderers/common.css">
+		<link rel="stylesheet" href="../../css/json-highlight.css">
 		<meta name="viewport" content="width=960">
 	</head>
 	<body>
-		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
 		<script src="../../jsonary.js"></script>
 		<script src="../../renderers/basic.jsonary.js"></script>
+		<script src="../../renderers/list-schemas.js"></script>
+		<script src="../../renderers/list-links.js"></script>
 		<script src="../../plugins/jsonary.undo.js"></script>
 		<div align="center">
 			<div id="content">
@@ -116,5 +121,6 @@
 				<?php echo $mainHtml; ?>
 			</div>
 		</div>
+		<script src="../../js/json-highlight.js"></script>
 	</body>
 </html>

@@ -4,7 +4,6 @@
 ?>
 
 {
-	"title": "Some data or other",
 	"default": <?php
 		if (file_exists("data.json")) {
 			readfile("data.json");

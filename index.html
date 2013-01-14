@@ -3,6 +3,7 @@
 	<head>
 		<title>Jsonary</title>
 		<link rel="stylesheet" href="css/main.css">
+		<link rel="stylesheet" href="css/json-highlight.css">
 		<meta name="viewport" content="width=960">
 	</head>
 	<body>
@@ -12,7 +13,7 @@
 				<div class="tagline">The JSON client library</div>
 
 				<div class="box">
-					<h3>Download</h3>
+					<h3 class="box-heading">Download</h3>
 					<div class="section">
 						<p>The current version is <a href="releases/jsonary-1.0.4.zip">v1.0.4</a>.
 					</div>
@@ -20,17 +21,38 @@
 
 				<h2>What is Jsonary?</h2>
 				<div class="section">
-					<p>Jsonary is a library for quickly building JSON-based AJAX clients, particularly for APIs that are described by <a href="http://json-schema.org/">JSON Schema</a>.
-					<p>Schemas not only places constraints on the data, but can also define hyperlinks.  An API correctly described with JSON Schema can be navigated using these hyperlinks.  Jsonary uses the hyperlinks (along with any meta-data in the schema) to provide a "universal client" framework, allowing customisation for extra requirements such as OAuth tokens.
-					<p>Each JSON Schema also has a URI, so it is possible to add renderers for particular parts of the API, so that the "universal client" can be easily adapted to provide a custom user-interface.
+					<p>Jsonary is a library for dealing with JSON data, particularly data described by JSON Schema.  It provides a wrapper for JSON data, taking into account the schemas describing the data.  The data can then be queried about its hyper-links or structural constraints (e.g. allowed data types, maximum/minimum lengths).
+					<p>Jsonary also provides an interface for rendering the data, including an intelligent set of default renderers, which can be used to quickly create a fully-functional client for an API, if the API is correctly described using JSON Schema.
+					<p>Custom renderers can be added, so the client's appearance can then be modified.
 					<p>Development is happening on the <a href="https://github.com/geraintluff/jsonary">GitHub repository</a>.
 				</div>
 				
 				<h2>What is JSON Schema?</h2>
 				<div class="section">
-					<p>JSON Schema is a format for describing JSON data.  It can restrict the form that the data can take (for instance, requiring/banning properties, minimum/maximum numeric values, etc.) as well as providing useful extra information, such as hyperlinks, or documentation.  The main site is <a href="http://json-schema.org/">json-schema.org</a>.
-					<p>Schemas can reference/link to other schemas, and specify complex behaviours - for example, conditional schemas that only apply if a particular property is present, or lists of sub-schemas of which only one may apply.
-					<p>If you want to understand more about JSON Schema, <a href="documentation/json-schema/">this page</a> provides documentation for the format, along with interactive examples for various keywords.
+					<p>JSON Schema documents describe the nature and shape of JSON data.  They can also specify how to infer hyperlinks, turning JSON data into hyper-media documents.  The main site is <a href="http://json-schema.org/">json-schema.org</a>.
+					
+<pre class="highlight-json-schema">
+{
+	"title": "Example schema",
+	"type": "object",
+	"properties": {
+		"id": {"type": "integer"},
+		"authorId": {"type": "integer"},
+		"message": {"type": "string"}
+	},
+	"links": [
+		{"rel": "self", "href": "/posts/{id}"},
+		{"rel": "author", "href": "/users/{authorId}"}
+	]
+}
+</pre>
+					
+					<p><a href="documentation/json-schema/">This page</a> provides some documentation for the format, along with interactive examples for various keywords.
+
+					<h3 class="subheading">Why do we use it?</h3>
+					
+					<p>JSON Schemas can provide constraints on the data (e.g. data types, required properties, minimum lengths), which Jsonary can use to provide a default editing interface.  Hyper-schemas also enable us to treat JSON data as hyper-media, giving us links and HTML-form-style functionality.
+					<p>Schemas can reference/link to other schemas, and specify complex behaviours - for example, conditional schemas that only apply if a particular property is present, or lists of sub-schemas of which only one may apply.  However, each schema has a unique URI, so the are perfect for selecting custom renderers.
 				</div>
 
 				<h2>Documentation and walkthroughs</h2>
@@ -54,6 +76,13 @@
 					</ul>
 				</div>
 
+				<h2>What's next?</h2>
+				<div class="section">
+					<h3>Node.js support</h3>
+					<p>Currently, Jsonary works client-side, running JavaScript on the user's machine.
+					<p>However, support for Node.js is planned, and Jsonary's rendering API has been designed with this in mind.  The goal is to allow programmers to write and maintain one set of code for their client.  This would be used server-side to produce HTML, and client-side to provide a dynamic interface using AJAX.
+				</div>
+
 				<h2>Tests</h2>
 				<div class="section">
 					<p>There are some <a href="tests/?all">tests</a> for Jsonary.
@@ -65,5 +94,6 @@
 				</div>
 			</div>
 		</div>
+		<script src="js/json-highlight.js"></script>
 	</body>
 </html>

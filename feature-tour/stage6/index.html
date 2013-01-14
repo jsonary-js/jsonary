@@ -3,13 +3,10 @@
   <head>
 		<title>Link Handlers in Jsonary</title>
 		<link rel="stylesheet" href="../../css/main.css">
-		<link rel="stylesheet" href="../../renderers/basic.jsonary.css">
 		<meta name="viewport" content="width=960">
 	</head>
 	<body>
-		<script src="http://ajax.cdnjs.com/ajax/libs/json2/20110223/json2.js"></script>
 		<script src="../../jsonary.js"></script>
-		<script src="../../renderers/basic.jsonary.js"></script>
 		<div align="center">
 			<div id="content">
 				<h1>Link Handlers in Jsonary</h1>
@@ -21,15 +18,6 @@
 					<a class="nav-link" href="../">feature tour</a>
 				</div>
 				
-				<div class="resource-list">
-					The demos on this page use the following files:
-					<ul>
-						<li><span class="filename">jsonary.js</span> - the core Jsonary library
-						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
-						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
-					</ul>
-				</div>
-	
 				<h2>Registering handlers</h2>
 				<div class="section">
 					<p>Link handlers are called when the user has selected a link and entered any required information.  The "link pre-handlers" are called before the link is followed, and provide means to alter the data being submitted along with the request.  Plain "link handlers" are called after request has been made to the remote server.

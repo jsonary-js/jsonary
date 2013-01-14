@@ -20,9 +20,9 @@
 	var prefixCounter = 0;
 
 	var componentNames = {
-		ADD_REMOVE: "add/remove",
-		TYPE_SELECTOR: "type-selector",
-		RENDERER: "data renderer",
+		ADD_REMOVE: "ADD_REMOVE",
+		TYPE_SELECTOR: "TYPE_SELECTOR",
+		RENDERER: "DATA_RENDERER",
 		add: function (newName, beforeName) {
 			if (this[newName] != undefined) {
 				return;
@@ -31,7 +31,7 @@
 			if (componentList.indexOf(beforeName) != -1) {
 				componentList.splice(componentList.indexOf(beforeName), 0, this[newName]);
 			} else {
-				componentList.unshift(this[newName]);
+				componentList.splice(componentList.length - 1, 0, this[newName]);
 			}
 		}
 	};	

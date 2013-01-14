@@ -1,48 +1,49 @@
-.json, .json-schema {
+.highlight-json, .highlight-json-schema {
 	background-color: #F4F4E8;
 	border: 1px solid #888;
 	border-radius: 5px;
 	padding: 0.5em;
 	font-family: Consolas, "Liberation Mono", Courier, monospace;
 	font-size: 13px;
+	margin-left: 8%;
+	margin-right: 8%;
 }
 
-.json-punctuation {
+.highlight-json-punctuation {
 	font-weight: bold;
 }
 
-.json-null, .json-true, .json-false {
+.highlight-json-null, .highlight-json-true, .highlight-json-false {
 	font-weight: bold;
 }
 
-.json-true {
+.highlight-json-true {
 	color: #080;
 }
 
-.json-false {
+.highlight-json-false {
 	color: #800;
 }
 
-.json-object-key {
+.highlight-json-object-key {
 	color: #246;
 }
 
-.json-keyword {
+.highlight-json-keyword {
 	font-weight: bold;
 	color: #036;
 }
 
-.json-number {
+.highlight-json-number {
 	font-weight: bold;
 	color: #660;
 }
 
-.json-string {
+.highlight-json-string {
 	color: #800;
 }
 
-.json-schema-map > .json-object-key {
+.highlight-json-schema-map .highlight-json-object-key {
 	color: #080;
 	font-style: italic;
 }
-

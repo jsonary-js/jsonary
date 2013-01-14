@@ -1188,6 +1188,9 @@ var Utils = {
 		}
 		return result;
 	},
+	escapeHtml: function(text) {
+		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+	},
 	encodePointerComponent: function (component) {
 		return component.toString().replace("~", "~0").replace("/", "~1");
 	},
@@ -1244,6 +1247,7 @@ publicApi.encodePointerComponent = Utils.encodePointerComponent;
 publicApi.decodePointerComponent = Utils.decodePointerComponent;
 publicApi.splitPointer = Utils.splitPointer;
 publicApi.joinPointer = Utils.joinPointer;
+publicApi.escapeHtml = Utils.escapeHtml;
 
 publicApi.extend = function (obj) {
 	for (var key in obj) {
@@ -2496,7 +2500,14 @@ function Data(document, secrets, parent, parentKey) {
 		return this;
 	};
 	this.addSchema = function (schema, schemaKey) {
-		secrets.schemas.addSchema(schema, schemaKey);
+		var thisData = this;
+		if (schema instanceof SchemaList) {
+			schema.each(function (index, schema) {
+				thisData.addSchema(schema, schemaKey);
+			});
+		} else {
+			secrets.schemas.addSchema(schema, schemaKey);
+		}
 		return this;
 	};
 	this.removeSchema = function ( schemaKey) {
@@ -5159,9 +5170,9 @@ publicApi.UriTemplate = UriTemplate;
 	var prefixCounter = 0;
 
 	var componentNames = {
-		ADD_REMOVE: "add/remove",
-		TYPE_SELECTOR: "type-selector",
-		RENDERER: "data renderer",
+		ADD_REMOVE: "ADD_REMOVE",
+		TYPE_SELECTOR: "TYPE_SELECTOR",
+		RENDERER: "DATA_RENDERER",
 		add: function (newName, beforeName) {
 			if (this[newName] != undefined) {
 				return;
@@ -5170,7 +5181,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (componentList.indexOf(beforeName) != -1) {
 				componentList.splice(componentList.indexOf(beforeName), 0, this[newName]);
 			} else {
-				componentList.unshift(this[newName]);
+				componentList.splice(componentList.length - 1, 0, this[newName]);
 			}
 		}
 	};	
