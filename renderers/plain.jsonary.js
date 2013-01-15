@@ -129,7 +129,6 @@
 				schemas.createValue(function (newValue) {
 					context.data.setValue(newValue);
 				});
-				return true;
 			} else {
 				alert("Unkown action: " + actionName);
 			}
