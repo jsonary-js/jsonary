@@ -42,7 +42,7 @@
 			ignoreUpdate = false;
 			return;
 		}
-		lastHash = Jsonary.encodeData(hashJsonaryData.value(), "application/x-www-form-urlencoded").replace(/%2F/g, "/");
+		lastHash = Jsonary.encodeData(hashJsonaryData.value(), "application/x-www-form-urlencoded").replace("%2F", "/");
 		if (addHistoryPoint) {
 			window.location.href = "#" + lastHash;
 		} else {
