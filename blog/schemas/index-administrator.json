@@ -1,0 +1,12 @@
+{
+	"title": "Administrator",
+	"allOf": [{"$ref": "index.json"}],
+	"links": [
+		{
+			"rel": "create",
+			"href": "?",
+			"method": "POST",
+			"schema": {"$ref": "post.json#/definitions/submitPost"}
+		}
+	]
+}

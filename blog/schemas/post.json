@@ -1,0 +1,77 @@
+{
+	"title": "Blog post",
+	"type": "object",
+	"properties": {
+		"title": {
+			"type": "string"
+		},
+		"author": {
+			"type": "string"
+		},
+		"date": {
+			"title": "Posted on",
+			"type": "string",
+			"format": "date-time"
+		},
+		"content": {
+			"type": "array",
+			"items": {"$ref": "#/definitions/contentEntry"}
+		},
+		"comments": {
+			"type": "array",
+			"items": {"$ref": "#/definitions/comment"}
+		}
+	},
+	"definitions": {
+		"reference": {
+			"links": [
+				{"rel": "full", "href": "post.php{?postId*}"}
+			]
+		},
+		"submitPost": {
+			"allOf": [{"$ref": "#"}],
+			"properties": {
+				"author": {},
+				"title": {},
+				"content": {}
+			},
+			"required": ["author", "title", "content"],
+			"additionalProperties": false
+		},
+		"comment": {
+			"title": "Comment",
+			"type": "object",
+			"properties": {
+				"author": {"type": "string"},
+				"message": {"type": "string"},
+				"date": {"type": "string", "format": "date-time"}
+			}
+		},
+		"submitComment": {
+			"title": "Comment",
+			"type": "object",
+			"properties": {
+				"author": {"type": "string", "maxLength": 25},
+				"message": {"type": "string", "maxLength": 200}
+			},
+			"required": ["author", "message"],
+			"additionalProperties": false
+		},
+		"contentEntry": {
+			"oneOf": [
+				{
+					"title": "Paragraph",
+					"type": "string"
+				}
+			]
+		}
+	},
+	"links": [
+		{
+			"rel": "comment",
+			"href": "{?postId*}",
+			"method": "POST",
+			"schema": {"$ref": "#/definitions/submitComment"}
+		}
+	]
+}
