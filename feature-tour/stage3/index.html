@@ -97,8 +97,9 @@ function exampleList() {
 // SHHH!  We haven't learned about these yet!
 Jsonary.getSchema("schema-list.json#/items", function (schema) {
 	var linkDefinition = schema.links()[0];
-	linkDefinition.addHandler(function (link, submissionData, request) {
+	linkDefinition.addPreHandler(function (link, submissionData, request) {
 		alert(link.href);
+		return false;
 	});
 });
 					</script>
