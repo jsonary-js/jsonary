@@ -1,0 +1,340 @@
+{
+	"title": "Jsonary data wrapper",
+	"type": "object",
+	"properties": {
+		"addLink": {
+			"description": "Adds a link to the data.",
+			"arguments": [
+				{"title": "linkDescriptionObject", "$ref": "raw-link.json"}
+			],
+			"return": {"$ref": "#"}
+		},
+		"addSchema": {
+			"description": "Adds/applies a schema to the data.",
+			"arguments": [
+				{
+					"title": "schema",
+					"oneOf": [
+						{"title": "Schema URL", "type": "string"},
+						{"$ref": "jsonary-schema.json"},
+						{"$ref": "jsonary-schema-list.json"}
+					]
+				}
+			],
+			"return": {"$ref": "#"}
+		},
+		"asLink": {
+			"description": "Interprets the data as a Link Description Object.\n\nThe \"targetData\" parameter is used for filling out the URI template, if needed.",
+			"arguments": [
+				{"title": "[targetData]", "$ref": "jsonary-data.json"}
+			],
+			"return": {"$ref": "jsonary-link.json"}
+		},
+		"asSchema": {
+			"description": "Interprets the data as a JSON Schema.",
+			"arguments": [],
+			"return": {"$ref": "jsonary-schema.json"}
+		},
+		"basicType": {
+			"description": "The current basic type of the data (or undefined).",
+			"arguments": [],
+			"return": {
+				"title": "Basic type",
+				"type": "string",
+				"enum": ["null", "boolean", "integer", "number", "string", "object", "array"]
+			}
+		},
+		"defined": {
+			"description": "Whether the data has a defined value or not.",
+			"arguments": [],
+			"return": {
+				"type": "boolean"
+			}
+		},
+		"document": {"$ref": "jsonary-document.json"},
+		"editableCopy": {
+			"description": "Returns an editable copy of the data",
+			"arguments": [],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"equals": {
+			"description": "Recursive comparison",
+			"arguments": [
+				{"title": "other", "$ref": "jsonary-data.json"}
+			],
+			"return": {"type": "boolean"}
+		},
+		"get": {
+			"description": "Gets a value from the data, addressed as a JSON Pointer path.\n\nEquivalent to: data.subPath(pointerPath).value()",
+			"arguments": [
+				{"title": "pointerPath", "type": "string"}
+			],
+			"return": {}
+		},
+		"getLink": {
+			"description": "Gets the first link with a given relationship",
+			"arguments": [
+				{"title": "rel", "type": "string"}
+			],
+			"return": {"$ref": "jsonary-link.json"}
+		},
+		"insertItem": {
+			"description": "Inserts an item into the array.  The return value is the original array, NOT the new item.",
+			"arguments": [
+				{
+					"title": "index",
+					"type": "integer",
+					"minimum": 0
+				},
+				{
+					"title": "jsonData"
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"item": {
+			"description": "Gets the array item for a given index",
+			"arguments": [
+				{
+					"title": "index",
+					"type": "integer",
+					"minimum": 0
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"itemValue": {
+			"description": "Gets the value of array item for a given index.\n\nEquivalent to: data.item(index).value()",
+			"arguments": [
+				{
+					"title": "index",
+					"type": "integer",
+					"minimum": 0
+				}
+			],
+			"return": {"title": "JSON data"}
+		},
+		"items": {
+			"description": "Iterates over all items in the array.\n\nIf the data is not an array, then no error is thrown - the callback is simply never called.",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{
+							"title": "index",
+							"type": "integer"
+						},
+						{"title": "subData", "$ref": "jsonary-data.json"}
+					]
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"json": {
+			"description": "Returns the data's value as a JSON string.\n\nEquivalent to: JSON.stringify(data.value())",
+			"arguments": [],
+			"return": {"title": "JSON string", "type": "string"}
+		},
+		"keys": {
+			"description": "Returns a list of the data's defined keys.  If the data's value is not an object, an empty array is returned.",
+			"arguments": [],
+			"return": {
+				"title": "Array of keys",
+				"type": "array",
+				"items": {"type": "string"}
+			}
+		},
+		"length": {
+			"description": "Returns a list of the data's array length.  If the data's value is not an array, zero is returned.",
+			"arguments": [],
+			"return": {"title": "Array length", "type": "integer"}
+		},
+		"links": {
+			"description": "Returns the links for the data, optionally filtered by relationship type",
+			"arguments": [
+				{"title": "[rel]", "type": "string"}
+			],
+			"return": {
+				"title": "Array of links",
+				"type": "array",
+				"items": {"$ref": "jsonary-link.json"}
+			}
+		},
+		"moveTo": {
+			"description": "Moves the value of the data from its current position to a new position.\n\nThe return value is the data at the NEW position, not the old one, to allow for more intuitive chaining.",
+			"arguments": [
+				{
+					"title": "target",
+					"oneOf": [
+						{"title": "JSON Pointer path", "type":"string"},
+						{"$ref": "jsonary-data.json"}
+					]
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"parent": {
+			"description": "Returns the Jsonary wrapper for the parent node in the JSON data tree.\n\nIf this data has no parent (it is the root) then it returns null.",
+			"arguments": [],
+			"return": {
+				"oneOf": [
+					{"$ref": "jsonary-data.json"},
+					{"title": "null","type": "null"}
+				]
+			}
+		},
+		"parentKey": {
+			"description": "If the parent data is an object, this returns the key at which this data is stored.  If the parent data is an array, this returns the index.",
+			"arguments": [],
+			"return": {
+				"type": ["string", "integer"]
+			}
+		},
+		"pointerPath": {
+			"description": "The JSON Pointer path of this data relative to the document root.",
+			"arguments": [],
+			"return": {"title": "JSON Pointer path", "type": "string"}
+		},
+		"properties": {
+			"description": "Iterates over all properties of the data's value.\n\nIf the data is not an object, then no error is thrown - the callback is simply never called.",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{
+							"title": "key",
+							"type": "string"
+						},
+						{"title": "subData", "$ref": "jsonary-data.json"}
+					]
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"property": {
+			"description": "Gets the object property for a given key",
+			"arguments": [
+				{
+					"title": "key",
+					"type": "string"
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"propertyValue": {
+			"description": "Gets the value of the object property for a given key.\n\nEquivalent to: data.property(key).value()",
+			"arguments": [
+				{
+					"title": "key",
+					"type": "string"
+				}
+			],
+			"return": {"title": "JSON data"}
+		},
+		"push": {
+			"description": "Pushes a new value onto the data's array value.  Returns the original array data (for chaining), NOT the new item.",
+			"arguments": [
+				{"title": "jsonData"}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"readOnly": {
+			"description": "Whether the data item is readOnly or not.",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"readOnlyCopy": {
+			"description": "Returns a read-only copy of the data wrapper.\n\nIf the original data was already read-only, then this just returns the original data.",
+			"arguments": [],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"referenceUrl": {
+			"description": "If this data was fetched from the web, this method returns a URI (with a JSON Pointer fragment) that could be used to locate it again.",
+			"arguments": [],
+			"return": {"title": "URI", "type": "string", "format": "uri"}
+		},
+		"remove": {
+			"description": "Removes the value for the current data.\n\nIf the parent data is an array, then another value may be shunted in to replace it, so subsequent calls to defined() may return true.",
+			"arguments": [],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"removeItem": {
+			"description": "Removes the given index from the array value.  This method returns the array parent, NOT the removed child.",
+			"arguments": [
+				{
+					"title": "index",
+					"type": "integer",
+					"minimum": 0
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"removeProperty": {
+			"description": "Removes the given key from the object.  This method returns the object parent, NOT the removed child.",
+			"arguments": [
+				{
+					"title": "key",
+					"type": "string"
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"resolveUrl": {
+			"description": "Resolves a relative URI against the URI resolution scope of this data.",
+			"arguments": [
+				{"title": "relativeUri", "type":"string"}
+			],
+			"return": {"type": "string"}
+		},
+		"schemas": {
+			"description": "Returns a schema list containing all the schemas currently describing the data.",
+			"arguments": [],
+			"return": {"$ref": "jsonary-schema-list.json"}
+		},
+		"set": {
+			"description": "Sets a value in the data, addressed as a JSON Pointer path.\n\nEquivalent to: data.subPath(pointerPath).setValue(value)\n\nThe return value is the original object, NOT the data that has just been modified.",
+			"arguments": [
+				{"title": "pointerPath", "type": "string"},
+				{"title": "value"}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"setValue": {
+			"description": "Sets the value for the data.  Throws an exception if the data is read-only.",
+			"arguments": [
+				{"title": "jsonData"}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"subPath": {
+			"description": "Addresses (sub-)data for the supplied JSON Pointer path",
+			"arguments": [
+				{"title": "pointerPath", "type": "string"}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"uniqueId": {
+			"title": "Unique identifier",
+			"description": "A unique identifier for this data wrapper.  It's just an incrementing integer.\n\nIt is NOT reset when values are changed.",
+			"type": "integer"
+		},
+		"value": {
+			"description": "Returns the value that this wrapper holds.",
+			"arguments": [],
+			"return": {"title": "JSON data"}
+		},
+		"whenSchemasStable": {
+			"description": "Because schemas can reference each other, sometimes schemas have to be fetched from elsewhere.  This method allows a callback to be called when there are no outstanding schemas being fetched.\n\nNote that this does NOT mean that all the data's children have fetched all their schemas, or that the schemas will not change in future.",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{"title": "data", "$ref": "jsonary-data.json"},
+						{"title": "schemas", "$ref": "jsonary-schema-list.json"}
+					]
+				}
+			],
+			"return": {"$ref": "jsonary-data.json"}
+		}
+	}
+}

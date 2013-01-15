@@ -1,62 +1,26 @@
 {
 	"title": "Jsonary main object",
-	"description": "The main Jsonary object",
+	"description": "The main Jsonary object.  This is the starting-point for all interactions with Jsonary.",
 	"type": "object",
 	"properties": {
 		"config": {
-			"$ref": "data.json"
-		},
-		"create": {
-			"arguments": [
-				{
-					"title": "jsonData"
-				},
-				{
-					"title": "baseUrl",
-					"type": [
-						"\"null\"",
-						"string"
-					],
-					"description": "The URL to use for resolving any links/URIs in the data"
-				},
-				{
-					"title": "readOnly",
-					"type": [
-						"boolean"
-					]
-				}
-			],
-			"return": {
-				"$ref": "data.json"
-			}
-		},
-		"createSchema": {
-			"title": "createSchema",
-			"arguments": [
-				{
-					"title": "jsonData"
-				},
-				{
-					"title": "baseUrl"
-				}
-			],
-			"return": {
-				"$ref": "schema.json"
-			}
+			"$ref": "jsonary-data.json"
 		},
 		"addLinkHandler": {
+			"description": "Link handlers deal with the requests made by following links.\n\nThey are called in reverse order (most recently-registered first), and returning \"false\" means no further link handlers will be called.",
 			"arguments": [
 				{
 					"title": "handler",
 					"arguments": [
-						{"title": "link", "type": "object"},
+						{"title": "link", "$ref": "jsonary-link.json"},
 						{"title": "submittedData", "$ref": "data.json"},
 						{"title": "request", "$ref": "request.json"}
 					],
 					"return": {
 						"title": "handled",
 						"description": "\"false\" means the link was handled, and no further handlers will be called.  Default is \"true\"",
-						"type": "boolean"
+						"type": "boolean",
+						"default": true
 					}
 				}
 			],
@@ -70,13 +34,14 @@
 				{
 					"title": "preHandler",
 					"arguments": [
-						{"title": "link", "type": "object"},
+						{"title": "link", "$ref": "jsonary-link.json"},
 						{"title": "submissionData", "$ref": "data.json"}
 					],
 					"return": {
 						"title": "handled",
 						"description": "\"false\" cancels the link - no request is made, and no further (pre-)handlers will be called.  Default is \"true\".",
-						"type": "boolean"
+						"type": "boolean",
+						"default": true
 					}
 				}
 			],
@@ -110,7 +75,7 @@
 			}
 		},
 		"batch": {
-			"description": "Collates changes to data, so they are processed as a single change event.\n\n If a function is supplied, then it is called immediately, and batchDone() does not need to be called.",
+			"description": "Collates changes to data, so they are processed as a single change event.\n\nIf no function is supplied, then any modifications until the next call to batchDone() are lumped together as a single patch, and change listeners are not called until the end of the batched changes.\n\nIf a function is supplied, then it is called immediately, and batchDone() does not need to be called.",
 			"arguments": [
 				{
 					"title": "[optionalFunction]",
@@ -123,11 +88,53 @@
 			}
 		},
 		"batchDone": {
+			"description": "Executes all changes since the last call to batch() as a single patch/change",
 			"arguments": [],
 			"return": {
 				"$ref": "#"
 			},
 			"description": "Stop collating changes to data, and process any collated changes.\n\nThis does not need to be called when a function is passed to batch()."
+		},
+		"create": {
+			"description": "Create a Jsonary data wrapper.",
+			"arguments": [
+				{
+					"title": "jsonData"
+				},
+				{
+					"title": "[baseUrl]",
+					"type": [
+						"\"null\"",
+						"string"
+					],
+					"description": "The URL to use for resolving any links/URIs in the data"
+				},
+				{
+					"title": "[readOnly]",
+					"type": [
+						"boolean"
+					],
+					"default": false
+				}
+			],
+			"return": {
+				"$ref": "data.json"
+			}
+		},
+		"createSchema": {
+			"description": "Create a Jsonary schema wrapper",
+			"arguments": [
+				{
+					"title": "jsonData"
+				},
+				{
+					"title": "[baseUrl]",
+					"type": "string"
+				}
+			],
+			"return": {
+				"$ref": "schema.json"
+			}
 		},
 		"createSchemaList": {
 			"arguments": [
@@ -138,16 +145,16 @@
 						"array"
 					],
 					"items": {
-						"$ref": "schema.json"
+						"$ref": "jsonary-schema.json"
 					}
 				}
 			],
 			"return": {
-				"$ref": "schemalist.json"
+				"$ref": "jsonary-schema-list.json"
 			}
 		},
 		"decodeData": {
-			"description": "encode/decode JSON or form-encoded strings",
+			"description": "Decode JSON or form-encoded strings",
 			"arguments": [
 				{
 					"title": "dataString",
@@ -156,11 +163,12 @@
 					]
 				},
 				{
-					"title": "[encodingMediaType]",
+					"title": "[encType]",
 					"description": "defaults to application/x-www-form-urlencoded, the default HTML form encoding.",
 					"type": [
 						"string"
-					]
+					],
+					"default": "application/x-www-form-urlencoded"
 				}
 			],
 			"return": {
@@ -169,33 +177,33 @@
 			}
 		},
 		"decodePointerComponent": {
-			"description": "performs the un-escaping for JSON Pointer path components.\n\ne.g.  \"test~0\" -> \"test~\"",
+			"description": "performs the un-escaping for JSON Pointer path components.\n\ne.g.  \"test~0~1value\" -> \"test~/value\"",
+			"arguments": [
+				{
+					"title": "escaped",
+					"type": "string"
+				}
+			],
 			"return": {
 				"title": "unescaped",
 				"type": [
 					"string"
 				]
-			},
-			"arguments": [
-				{
-					"title": "escaped",
-					"type": [
-						"string"
-					]
-				}
-			]
+			}
 		},
 		"encodeData": {
+			"description": "Encode JSON or form-encoded strings.",
 			"arguments": [
 				{
 					"title": "jsonData"
 				},
 				{
-					"title": "[encodingMediaType]",
+					"title": "[encType]",
 					"description": "defaults to \"application/x-www-form-urlencoded\"",
 					"type": [
 						"string"
-					]
+					],
+					"default": "application/x-www-form-urlencoded"
 				}
 			],
 			"return": {
@@ -205,8 +213,38 @@
 				]
 			}
 		},
+		"encodePointerComponent": {
+			"description": "performs the escaping for JSON Pointer path components.\n\ne.g.  \"test~/value\" -> \"test~0~1value\"",
+			"arguments": [
+				{
+					"title": "unescaped",
+					"type": "string"
+				}
+			],
+			"return": {
+				"title": "escaped",
+				"type": [
+					"string"
+				]
+			}
+		},
+		"escapeHtml": {
+			"description": "Replaces the HTML markup characters with entities.",
+			"arguments": [
+				{
+					"title": "text",
+					"type": "string"
+				}
+			],
+			"return": {
+				"title": "html",
+				"type": [
+					"string"
+				]
+			}
+		},
 		"extend": {
-			"description": "Add data/functions to the Jsonary main object",
+			"description": "Add properties/functions to the Jsonary main object.",
 			"arguments": [
 				{
 					"title": "obj",
@@ -221,31 +259,37 @@
 			]
 		},
 		"extendData": {
-			"description": "Add data/functions to Jsonary Data objects",
+			"description": "Add data/functions to all Jsonary data wrappers",
 			"arguments": [
 				{
 					"title": "obj",
 					"description": "Object containing properties to add",
 					"type": [
 						"object"
-					]
+					],
+					"additionalProperties": {
+						"title": "Anything"
+					}
 				}
 			]
 		},
 		"extendSchema": {
-			"description": "Add data/functions to Jsonary Schema objects",
+			"description": "Add data/functions to all Jsonary schema wrappers",
 			"arguments": [
 				{
 					"title": "obj",
 					"description": "Object containing properties to add",
 					"type": [
 						"object"
-					]
+					],
+					"additionalProperties": {
+						"title": "Anything"
+					}
 				}
 			]
 		},
 		"getData": {
-			"description": "Fetch data using AJAX",
+			"description": "Fetch data using AJAX (or from the cache)",
 			"arguments": [
 				{
 					"type": [
@@ -286,14 +330,29 @@
 				},
 				{
 					"title": "callback",
-					"description": "callback(data)"
+					"oneOf": [
+						{
+							"arguments": [
+								{"title": "fetchedData", "$ref": "jsonary-data.json"},
+								{
+									"title": "request",
+									"oneOf": [
+										{"$ref": "jsonary-request.json"},
+										{"title": "null", "type": "null"}
+									]
+								}
+							]
+						},
+						{
+							"title": "null",
+							"type": "null"
+						}
+					],
+					"default": null
 				},
 				{
-					"title": "hintSchema",
-					"type": [
-						"string",
-						"object"
-					],
+					"title": "[hintSchema]",
+					"description": "If no schema is supplied in the HTTP response headers, this is used.",
 					"oneOf": [
 						{
 							"title": "Schema URL",
@@ -302,10 +361,9 @@
 							]
 						},
 						{
-							"$ref": "schema.json"
+							"$ref": "jsonary-schema.json"
 						}
-					],
-					"description": "If no schema is supplied in the HTTP response headers, this is used."
+					]
 				}
 			],
 			"return": {
@@ -323,19 +381,27 @@
 				},
 				{
 					"title": "callback",
-					"description": "callback(schema)"
+						"arguments": [
+							{"title": "fetchedSchema", "$ref": "jsonary-schema.json"},
+							{
+								"title": "request",
+								"oneOf": [
+									{"$ref": "jsonary-request.json"},
+									{"title": "null", "type": "null"}
+								]
+							}
+						]
 				}
-			]
+			],
+			"return": {
+				"$ref": "request.json"
+			}
 		},
 		"invalidate": {
 			"description": "Invalidates data in the cache",
 			"arguments": [
 				{
 					"title": "stringOrRegex",
-					"type": [
-						"string",
-						"object"
-					],
 					"oneOf": [
 						{
 							"title": "Search string",
@@ -379,20 +445,26 @@
 			}
 		},
 		"registerChangeListener": {
-			"description": "Registers a callback to be called whenever any data change is made",
+			"description": "Registers a global change listener.\n\nChange listeners are called when changes are made to data.",
 			"arguments": [
 				{
 					"title": "callback",
-					"description": "callback(patch, document)"
+					"arguments": [
+						{"title": "patch", "$ref": "jsonary-patch.json"},
+						{"title": "document", "$ref": "jsonary-document.json"}
+					]
 				}
 			]
 		},
 		"registerSchemaChangeListener": {
-			"description": "Registers a callback to be called whenever data has schemas added or removed",
+			"description": "Registers a callback to be called whenever data has schemas added or removed.",
 			"arguments": [
 				{
 					"title": "callback",
-					"description": "callback(data, schemas)"
+					"arguments": [
+						{"title": "data", "$ref": "jsonary-data.json"},
+						{"title": "schemas", "$ref": "jsonary-schema-list.json"}
+					]
 				}
 			]
 		},
