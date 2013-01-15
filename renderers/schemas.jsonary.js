@@ -173,7 +173,7 @@
 			}
 			result += '<h1>';
 			if (data.readOnly() && !data.property("title").defined()) {
-				result += 'Schema';
+				result += '(untitled schema)';
 			} else {
 				result += context.renderHtml(data.property("title"));
 			}
@@ -190,6 +190,11 @@
 					result += '<div class="section">';
 					result += context.actionHtml("Replace with reference", "add-ref");
 					result += '</div>';
+					if (data.schemas().basicTypes().indexOf("boolean") != -1 || data.parentKey() == "additionalProperties" || data.parentKey() == "additionalItems") {
+						result += '<div class="section">';
+						result += context.actionHtml("Disallow", "replace-false");
+						result += '</div>';
+					}
 				}
 
 				if (!data.readOnly() || data.property("format").defined()) {
@@ -270,6 +275,9 @@
 			} else if (actionName == "add-ref") {
 				context.data.property("$ref").setValue("#");
 				return false;
+			} else if (actionName == "replace-false") {
+				context.data.setValue(false);
+				return false;
 			} else if (actionName == "expand") {
 				context.uiState.expanded = true;
 			} else {
@@ -278,13 +286,37 @@
 			return true;
 		},
 		filter: function (data, schemas) {
-			return schemas.containsUrl('http://json-schema.org/schema');
+			return schemas.containsUrl('http://json-schema.org/schema') && data.basicType() == "object";
 		},
 		update: function (element, data, context, operation) {
 			if (operation.hasPrefix(data.property("type").pointerPath())) {
 				return true;
 			}
 			return this.defaultUpdate(element, data, context, operation);
+		}
+	});
+
+	Jsonary.render.register({
+		renderHtml: function (data, context) {			
+			var result = '<div class="json-schema-boolean">';
+			if (data.value()) {
+				result += 'Anything';
+			} else {
+				result += 'Not allowed';
+			}
+			if (!data.readOnly()) {
+				result += " (" + context.actionHtml("replace with schema", "replace-schema") + ")";
+			}
+			return result + '</div>';
+		},
+		action: function (context, actionName) {
+			var data = context.data;
+			if (actionName == "replace-schema") {
+				data.setValue({});
+			}
+		},
+		filter: function (data, schemas) {
+			return schemas.containsUrl('http://json-schema.org/schema') && data.basicType() == "boolean";
 		}
 	});
 
@@ -297,7 +329,7 @@
 				request.getData(function (data) {
 					var result = '<div class="json-schema-obj">';
 					if (!data.property("title").defined()) {
-						result += '<h1>Schema</h1>';
+						result += '<h1>(untitled schema)</h1>';
 					} else {
 						result += '<h1>' + data.propertyValue("title") + '</h1>';
 					}
@@ -309,7 +341,6 @@
 			element = null;
 		},
 		renderHtml: function (data, context) {			
-			window.data = data;
 			var result = '<div class="json-schema-ref">';
 			result += context.actionHtml("Reference", "follow");
 			result += ": " + context.renderHtml(data.property("$ref"));
@@ -409,7 +440,12 @@
 				"type": "object",
 				"additionalProperties": {"$ref": "#"}
 			},
-			"additionalProperties": {"$ref": "#"},
+			"additionalProperties": {
+				"oneOf": [
+					{"$ref": "#"},
+					{"type": "boolean"}
+				]
+			},
 			"items": {
 				"title": "Array items",
 				"oneOf": [
