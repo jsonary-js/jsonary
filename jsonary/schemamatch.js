@@ -66,13 +66,15 @@ SchemaMatch.prototype = {
 		var thisSchemaMatch = this;
 		this.notMatches = [];
 		var notSchemas = this.schema.notSchemas();
-		notSchemas.each(function (index, subSchema) {
-			var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "not" + index);
-			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
-				thisSchemaMatch.update();
-			}, false);
-			thisSchemaMatch.notMatches.push(subMatch);
-		});
+		for (var i = 0; i < notSchemas.length; i++) {
+			(function (index, subSchema) {
+				var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "not" + index);
+				var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
+					thisSchemaMatch.update();
+				}, false);
+				thisSchemaMatch.notMatches.push(subMatch);
+			})(i, notSchemas[i]);
+		}
 	},
 	addMonitor: function (monitor, executeImmediately) {
 		// TODO: make a monitor set that doesn't require keys.  The keyed one could use it!

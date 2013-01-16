@@ -176,7 +176,7 @@ Schema.prototype = {
 		if (this.data.property("not").defined()) {
 			result.push(this.data.property("not").asSchema());
 		}
-		return new SchemaList(result);
+		return result;
 	},
 	types: function () {
 		var typeData = this.data.property("type");
