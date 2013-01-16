@@ -64,7 +64,7 @@ tests.add("definedProperties()", function () {
 			"key1": {},
 			"key2": {}
 		},
-		"requiredProperties": ["anotherKey"],
+		"required": ["anotherKey"],
 		additionalProperties: false
 	});
 	var schema2 = Jsonary.createSchema({
@@ -88,5 +88,42 @@ tests.add("definedProperties()", function () {
 	this.assert(defined1.length == 2, "defined1.length == 2, was " + defined1.length);
 	var defined2 = schemaList2.definedProperties();
 	this.assert(defined2.length == 1, "defined2.length == 1, was " + defined2.length);
+	return true;
+});
+
+tests.add("knownProperties()", function () {
+	var schema1 = Jsonary.createSchema({
+		"properties": {
+			"key1": {},
+			"key2": {}
+		},
+		"required": ["anotherKey"]
+	});
+	var schema2 = Jsonary.createSchema({
+		"properties": {
+			"key2": {},
+			"key3": {}
+		},
+		"required": ["key1", "key2"]
+	});
+	var schema3 = Jsonary.createSchema({
+		"properties": {
+			"key1": {},
+			"key3": {}
+		},
+		"additionalProperties": false
+	});
+	
+	var known1 = schema1.knownProperties();
+	this.assert(known1.length == 3, "known1.length == 3, was " + known1.length);
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2]);
+	var known2 = schemaList.knownProperties();
+	this.assert(known2.length == 4, "known2.length == 4, was " + known2.length);
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2, schema3]);
+	var known3 = schemaList.knownProperties();
+	this.assert(known3.length == 2, "known3.length == 4, was " + known3.length);
+	
 	return true;
 });

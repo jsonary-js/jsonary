@@ -324,9 +324,10 @@ Schema.prototype = {
 		this.data.property("properties").properties(function (key, subData) {
 			result[key] = true;
 		});
-		this.data.property("required").items(function (index, subData) {
-                       result[subData.value()] = true;
-        });
+		var required = this.requiredProperties();
+		for (var i = 0; i < required.length; i++) {
+			result[required[i]] = true;
+		}
         return Object.keys(result);
 	},
 	requiredProperties: function () {

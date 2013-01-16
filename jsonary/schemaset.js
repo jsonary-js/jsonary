@@ -146,15 +146,26 @@ SchemaList.prototype = {
 				}
 			}
 		});
-		var result = [];
-		for (var key in definedKeys) {
-			result.push(key);
-		}
+		var result = Object.keys(definedKeys);
 		cacheResult(this, {
 			definedProperties: result,
 			allowedAdditionalProperties: additionalProperties
 		});
 		return result;
+	},
+	knownProperties: function () {
+		if (this.allowedAdditionalProperties()) {
+			var result = this.definedProperties().slice(0);
+			var requiredProperties = this.requiredProperties();
+			for (var i = 0; i < requiredProperties.length; i++) {
+				if (result.indexOf(requiredProperties[i]) == -1) {
+					result.push(requiredProperties[i]);
+				}
+			}
+			return result;
+		} else {
+			return this.definedProperties();
+		}
 	},
 	allowedAdditionalProperties: function () {
 		var additionalProperties = true;
