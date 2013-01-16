@@ -317,14 +317,17 @@ Schema.prototype = {
 		this.data.property("properties").properties(function (key, subData) {
 			result[key] = true;
 		});
-		this.data.property("required").items(function (index, subData) {
-			result[subData.value()] = true;
+        return Object.keys(result);
+	},
+	knownProperties: function() {
+		var result = {};
+		this.data.property("properties").properties(function (key, subData) {
+			result[key] = true;
 		});
-		var resultArray = [];
-		for (var key in result) {
-			resultArray.push(key);
-		}
-		return resultArray;
+		this.data.property("required").items(function (index, subData) {
+                       result[subData.value()] = true;
+        });
+        return Object.keys(result);
 	},
 	requiredProperties: function () {
 		var requiredKeys = this.data.propertyValue("required");

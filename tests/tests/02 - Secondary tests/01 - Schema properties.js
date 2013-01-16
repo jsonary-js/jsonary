@@ -57,3 +57,36 @@ tests.add("basicTypes()", function () {
 
 	return true;
 });
+
+tests.add("definedProperties()", function () {
+	var schema1 = Jsonary.createSchema({
+		"properties": {
+			"key1": {},
+			"key2": {}
+		},
+		"requiredProperties": ["anotherKey"],
+		additionalProperties: false
+	});
+	var schema2 = Jsonary.createSchema({
+		"properties": {
+			"key2": {},
+			"key3": {}
+		},
+	});
+	var schema3 = Jsonary.createSchema({
+		"properties": {
+			"key2": {},
+			"key4": {}
+		},
+		additionalProperties: false
+	});
+	var schemaList1 = Jsonary.createSchemaList([schema1, schema2]);
+	var schemaList2 = Jsonary.createSchemaList([schema1, schema2, schema3]);
+	this.assert(schema1.definedProperties().length == 2, "schema1");
+	this.assert(schema2.definedProperties().length == 2, "schema2");
+	var defined1 = schemaList1.definedProperties();
+	this.assert(defined1.length == 2, "defined1.length == 2, was " + defined1.length);
+	var defined2 = schemaList2.definedProperties();
+	this.assert(defined2.length == 1, "defined2.length == 1, was " + defined2.length);
+	return true;
+});
