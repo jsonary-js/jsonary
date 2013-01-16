@@ -1,1 +1,12 @@
-{}
+{
+	"title": "Jsonary JSON (Hyper-)Schema wrapper",
+	"description": "A Jsonary wrapper for JSON Schemas (including hyper-schemas).\n\nThe wrapper provides methods for accessing various constraints.  It intelligently deals with both v3 and v4 schemas (for example, inspecting the \"required\" property to see if it's a boolean), so a standard interface can be used for all schemas, regardless of version.",
+	"type": "object",
+	"properties": {
+		"allowedAdditionalProperties": {
+			"description": "Whether the schema allows object properties other than those returned from definedProperties().",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		}
+	}
+}
