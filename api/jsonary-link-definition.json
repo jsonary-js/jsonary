@@ -1,0 +1,74 @@
+{
+	"title": "Jsonary link definition",
+	"type": "object",
+	"properties": {
+		"addHandler": {
+			"description": "Adds a link handler specific to links derived from this definition.\n\nLink handlers registered to particular link definitions like this are called before the global link handlers.",
+			"arguments": [
+				{
+					"title": "handler",
+					"arguments": [
+						{"title": "link", "$ref": "jsonary-link.json"},
+						{"title": "submittedData", "$ref": "data.json"},
+						{"title": "request", "$ref": "request.json"}
+					],
+					"return": {
+						"title": "handled",
+						"description": "\"false\" means the link was handled, and no further handlers will be called.  Default is \"true\"",
+						"type": "boolean",
+						"default": true
+					}
+				}
+			],
+			"return": {
+				"$ref": "#"
+			}
+		},
+		"addPreHandler": {
+			"description": "Adds a link pre-handlers specific to links derived from this definition.\n\nLink pre-handlers registered here are called after the global link handlers.",
+			"arguments": [
+				{
+					"title": "preHandler",
+					"arguments": [
+						{"title": "link", "$ref": "jsonary-link.json"},
+						{"title": "submissionData", "$ref": "data.json"}
+					],
+					"return": {
+						"title": "handled",
+						"description": "\"false\" cancels the link - no request is made, and no further (pre-)handlers will be called.  Default is \"true\".",
+						"type": "boolean",
+						"default": true
+					}
+				}
+			],
+			"return": {
+				"$ref": "#"
+			}
+		},
+		"canApplyTo": {
+			"description": "Returns whether the specified data has the required properties defined to be able to fill out the URI template in \"href\"",
+			"arguments": [
+				{"title": "candidateData", "$ref": "jsonary-data.json"}
+			],
+			"return": {
+				"type": "boolean"
+			}
+		},
+		"linkForData": {
+			"description": "Returns the link, as applied to the supplied data",
+			"arguments": [
+				{"title": "subjectData", "$ref": "jsonary-data.json"}
+			],
+			"return": {"$ref": "jsonary-link.json"}
+		},
+		"rel": {"title": "Link relation", "type": "string"},
+		"submissionSchemas": {"$ref": "jsonary-schema-list.json"},
+		"linkForData": {
+			"description": "Whether the URI template for this link definition uses a given property key from the subject data",
+			"arguments": [
+				{"title": "key", "type": "string"}
+			],
+			"return": {"type": "boolean"}
+		}
+	}
+}

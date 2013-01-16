@@ -1,1 +1,57 @@
-{}
+{
+	"title": "Jsonary Link object",
+	"type": "object",
+	"properties": {
+		"createSubmissionData": {
+			"description": "Construct data appropriate for submitting along with the link (asynchronous).\n\nThe callback is called with the new data, with all appropriate schemas already applied.",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{"title": "data", "$ref": "jsonary-data.json"}
+					]
+				}
+			]
+		},
+		"definition": {"$ref": "jsonary-link-definition.json"},
+		"encType": {
+			"title": "Encoding type",
+			"type": "string"
+		},
+		"follow": {
+			"description": "Follow the link (with optional submission data)",
+			"arguments": [
+				{"title": "[submissionData]"},
+				{
+					"title": "handler",
+					"description": "This is called first, before any other link handlers",
+					"arguments": [
+						{"title": "link", "$ref": "jsonary-link.json"},
+						{"title": "submittedData", "$ref": "data.json"},
+						{"title": "request", "$ref": "request.json"}
+					],
+					"return": {
+						"title": "handled",
+						"description": "\"false\" means the link was handled, and no further handlers will be called.  Default is \"true\"",
+						"type": "boolean",
+						"default": true
+					}
+				}
+			]
+		},
+		"href": {"title": "Hypertext Reference URL", "type": "string", "format": "uri"},
+		"hrefBase": {"title": "\"href\" without the fragment part", "type": "string", "format": "uri"},
+		"hrefFragment": {"title": "The fragment part of \"href\" (does not include the \"#\")", "type": "string"},
+		"href": {"title": "Hypertext method", "description": "e.g. \"GET\", \"POST\", \"DELETE\"", "type": "string"},
+		"rawLink": {"$ref": "raw-link.json"},
+		"rel": {"title": "Link relation", "type": "string"},
+		"submissionSchemas": {"$ref": "jsonary-schema-list.json"},
+		"targetSchema": {
+			"title": "Target schema (or undefined)",
+			"oneOf": [
+				{"$ref": "jsonary-schema.json"},
+				{"title": "undefined", "type": "null"}
+			]
+		}
+	}
+}

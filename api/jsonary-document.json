@@ -1,1 +1,34 @@
-{}
+{
+	"title": "Jsonary document",
+	"description": "All the Jsonary data wrappers belong to a document.\n\nHowever, you should rarely have to deal with this object.  Most of your interactions should be with Jsonary data wrappers, or requests.",
+	"type": "object",
+	"properties": {
+		"getRoot": {
+			"description": "Registers a callback to call when the root of the document is available.",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{"title": "data", "$ref": "jsonary-data.json"}
+					]
+				}
+			]
+		},
+		"raw": {
+			"description": "The data for this document.\n\nIf a link is present with relation \"root\", then this is NOT the same as the root of the document.  If you need the root of the document, use getRoot().",
+			"allOf": [{"$ref": "jsonary-data.json"}]
+		},
+		"root": {
+			"description": "The root data of this document, if it is known.",
+			"oneOf": [
+				{"$ref": "jsonary-data.json"},
+				{"title": "null", "type": "null"}
+			]
+		},
+		"url": {
+			"title": "URL",
+			"description": "The URL that this document represents",
+			"type": "string"
+		}
+	}
+}
