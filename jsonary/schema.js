@@ -317,7 +317,7 @@ Schema.prototype = {
 		this.data.property("properties").properties(function (key, subData) {
 			result[key] = true;
 		});
-        return Object.keys(result);
+		return Object.keys(result);
 	},
 	knownProperties: function() {
 		var result = {};
@@ -328,7 +328,7 @@ Schema.prototype = {
 		for (var i = 0; i < required.length; i++) {
 			result[required[i]] = true;
 		}
-        return Object.keys(result);
+		return Object.keys(result);
 	},
 	requiredProperties: function () {
 		var requiredKeys = this.data.propertyValue("required");
