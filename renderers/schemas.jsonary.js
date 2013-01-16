@@ -1,5 +1,5 @@
 (function (Jsonary) {
-	var knownSchemaKeys = ["title", "description", "type", "enum", "default", "allOf", "anyOf", "oneOf", "not", "multipleOf", "maximum", "exclusiveMaximum", "minimum", "exclusiveMinimum", "maxLength", "minLength", "pattern", "required", "properties", "patternProperties", "additionalProperties", "minProperties", "maxProperties", "dependencies", "items", "additionalItems", "maxItems", "minItems", "uniqueItems"];
+	var knownSchemaKeys = ["title", "description", "type", "enum", "default", "allOf", "anyOf", "oneOf", "not", "multipleOf", "maximum", "exclusiveMaximum", "minimum", "exclusiveMinimum", "maxLength", "minLength", "pattern", "required", "properties", "patternProperties", "additionalProperties", "minProperties", "maxProperties", "dependencies", "items", "additionalItems", "maxItems", "minItems", "uniqueItems", "definitions"];
 	
 	Jsonary.render.register({
 		tabs: {
