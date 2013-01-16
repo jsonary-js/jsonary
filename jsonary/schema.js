@@ -469,16 +469,16 @@ PotentialLink.prototype = {
 		this.preHandlers.push(handler);
 		return this;
 	},
-	canApplyTo: function (privateData) {
+	canApplyTo: function (candidateData) {
 		var i, key, subData = null, basicType;
 		for (i = 0; i < this.dataParts.length; i++) {
 			key = this.dataParts[i];
 			if (key === null) {
-				subData = privateData;
-			} else if (privateData.basicType() == "object") {
-				subData = privateData.property(key);
-			} else if (privateData.basicType() == "array" && isIndex(key)) {
-				subData = privateData.index(key);
+				subData = candidateData;
+			} else if (candidateData.basicType() == "object") {
+				subData = candidateData.property(key);
+			} else if (candidateData.basicType() == "array" && isIndex(key)) {
+				subData = candidateData.index(key);
 			}
 			if (subData == undefined) {
 				return false;
