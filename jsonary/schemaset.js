@@ -197,7 +197,7 @@ SchemaList.prototype = {
 		}
 		return maxProperties;
 	},
-	basicTypes: function () {
+	types: function () {
 		var basicTypes = ALL_TYPES_DICT;
 		for (var i = 0; i < this.length; i++) {
 			var otherBasicTypes = this[i].basicTypes();
@@ -210,11 +210,7 @@ SchemaList.prototype = {
 			}
 			basicTypes = newBasicTypes;
 		}
-		var basicTypesList = [];
-		for (var basicType in basicTypes) {
-			basicTypesList.push(basicType);
-		}
-		return basicTypesList;
+		return Object.keys(basicTypes);
 	},
 	numberInterval: function() {
 		var candidate = undefined;
@@ -694,6 +690,7 @@ SchemaList.prototype = {
 		return result;
 	}
 };
+SchemaList.prototype.basicTypes = SchemaList.prototype.types;
 
 publicApi.createSchemaList = function (schemas) {
 	if (!Array.isArray(schemas)) {

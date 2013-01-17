@@ -1,1 +1,12 @@
-{}
+{
+	"title": "Jsonary Schema List",
+	"description": "Wraps a whole bunch of schemas, so that their constraints can be inspected as a whole.\n\nSchema lists have many of the same methods as schemas themselves - in many places, they can be used as \"composite schemas\".",
+	"type": "object",
+	"properties": {
+		"allowedAdditionalProperties": {
+			"description": "Whether the schemas (as a whole) allow object properties other than those returned from definedProperties().",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+	}
+}

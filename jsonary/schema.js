@@ -112,11 +112,11 @@ Schema.prototype = {
 				} else if (dependency.basicType() == "array") {
 					return dependency.value();
 				} else {
-					return new SchemaList([dependency.asSchema()]);
+					return [dependency.asSchema()];
 				}
 			}
 		}
-		return new SchemaList();
+		return [];
 	},
 	indexSchemas: function (i) {
 		var items = this.data.property("items");
