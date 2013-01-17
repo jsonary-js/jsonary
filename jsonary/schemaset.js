@@ -94,7 +94,7 @@ SchemaList.prototype = {
 		}
 		return false;
 	},
-	potentialLinks: function () {
+	links: function () {
 		var result = [];
 		var i, schema;
 		for (i = 0; i < this.length; i++) {
@@ -629,6 +629,24 @@ SchemaList.prototype = {
 		}
 		return result;
 	},
+	propertyDependencies: function(key) {
+		var result = [];
+		var stringDeps = {};
+		for (var i = 0; i < this.length; i++) {
+			var deps = this[i].propertyDependencies(key);
+			for (var j = 0; j < deps.length; j++) {
+				if (typeof deps[j] == "string") {
+					if (!stringDeps[deps[j]]) {
+						stringDeps[deps[j]] = true;
+						result.push(deps[j]);
+					}
+				} else {
+					result.push(deps[j]);
+				}
+			}
+		}
+		return result;
+	},
 	getFull: function(callback) {
 		if (this.length == 0) {
 			callback.call(this, this);
@@ -691,6 +709,7 @@ SchemaList.prototype = {
 	}
 };
 SchemaList.prototype.basicTypes = SchemaList.prototype.types;
+SchemaList.prototype.potentialLinks = SchemaList.prototype.links;
 
 publicApi.createSchemaList = function (schemas) {
 	if (!Array.isArray(schemas)) {

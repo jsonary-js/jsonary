@@ -123,7 +123,55 @@ tests.add("knownProperties()", function () {
 	
 	var schemaList = Jsonary.createSchemaList([schema1, schema2, schema3]);
 	var known3 = schemaList.knownProperties();
-	this.assert(known3.length == 2, "known3.length == 4, was " + known3.length);
+	this.assert(known3.length == 2, "known3.length == 2, was " + known3.length);
+	
+	return true;
+});
+
+tests.add("schemaList.propertyDependencies()", function () {
+	var schema1 = Jsonary.createSchema({
+		"dependencies": {
+			"testKey": {}
+		}
+	});
+	var schema2 = Jsonary.createSchema({
+		"dependencies": {
+			"testKey": ["key1", "key2"]
+		}
+	});
+	var schema3 = Jsonary.createSchema({
+		"dependencies": {
+			"testKey": "key3",
+		}
+	});
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2, schema3]);
+	var dependencies = schemaList.propertyDependencies("testKey");
+	this.assert(dependencies.length == 4, "dependencies.length == 4, was " + dependencies.length);
+	
+	return true;
+});
+
+tests.add("schemaList.propertyDependencies()", function () {
+	var schema1 = Jsonary.createSchema({
+		"dependencies": {
+			"testKey": {}
+		}
+	});
+	var schema2 = Jsonary.createSchema({
+		"dependencies": {
+			"testKey": ["key1", "key2"]
+		}
+	});
+	var schema3 = Jsonary.createSchema({
+		"dependencies": {
+			"testKey": "key2",
+		}
+	});
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2, schema3]);
+	var dependencies = schemaList.propertyDependencies("testKey");
+	this.assert(dependencies.length == 3, "dependencies.length == 3, was " + dependencies.length);
 	
 	return true;
 });
