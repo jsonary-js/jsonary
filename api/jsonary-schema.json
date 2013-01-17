@@ -67,7 +67,7 @@
 		"format": {
 			"description": "The specified format of scalar data, if defined",
 			"arguments": [],
-			"return": {"type": "String (or undefined)", "type": ["boolean", "null"]}
+			"return": {"type": "String (or undefined)", "type": ["string", "null"]}
 		},
 		"getFull": {
 			"description": "Fetch the full version of this schema, and call back.\n\nIf this schema is not a reference (no \"ref\" property), then the callback is called immediately.",
