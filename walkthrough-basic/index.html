@@ -23,7 +23,8 @@
 						<li><span class="filename">jquery.js</span> - the jQuery library, to help assemble our interface faster
 						<li><span class="filename">jsonary.js</span> - the core Jsonary library
 						<li><span class="filename">basic.jsonary.js</span> - a default set of renderers, that look similar to plain JSON
-						<li><span class="filename">basic.jsonary.css</span> - the stylesheet used by the above renderers
+						<li><span class="filename">list-schemas.js</span> - annotates the data with the schema titles
+						<li><span class="filename">list-links.js</span> - lists the links, and provides a pop-up interface for inputting data
 					</ul>
 				</div>
 	
@@ -62,7 +63,7 @@
 				<p>We also include some Javascript files.  The first three are standard (jQuery, Jsonary and the standard set of basic renderers) and the fourth is where we're going to put the code for this page.
 				</div>
 
-				<h2>Fetching the URL from the URL bar</h2>
+				<h2>Fetching the URL from the URL input</h2>
 				<div class="section">
 					<p>When the "Go" button is clicked, we take the URL from the URL bar, and use it to fill the div.  Here's the Javascript:
 <pre class="example code">
@@ -108,7 +109,7 @@ $('#go').click();
 
 				<h2>Handling links</h2>
 				<div class="section">
-					<p>The default renderer also includes a list of clickable links.  We would like to catch those links and use them to display a new page:
+					<p>We have also included the "list-links.js" renderer, which provides us with a clickable links for each item.  We would like to catch those links and use them to display a new page:
 <pre class="example code">
 Jsonary.addLinkHandler(function(link, data, request) {
 	navigateTo(link.href);
