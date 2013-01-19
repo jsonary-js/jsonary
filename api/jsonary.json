@@ -13,8 +13,8 @@
 					"title": "handler",
 					"arguments": [
 						{"title": "link", "$ref": "jsonary-link.json"},
-						{"title": "submittedData", "$ref": "data.json"},
-						{"title": "request", "$ref": "request.json"}
+						{"title": "submittedData", "$ref": "jsonary-data.json"},
+						{"title": "request", "$ref": "jsonary-request.json"}
 					],
 					"return": {
 						"title": "handled",
@@ -35,7 +35,7 @@
 					"title": "preHandler",
 					"arguments": [
 						{"title": "link", "$ref": "jsonary-link.json"},
-						{"title": "submissionData", "$ref": "data.json"}
+						{"title": "submissionData", "$ref": "jsonary-data.json"}
 					],
 					"return": {
 						"title": "handled",
@@ -118,7 +118,7 @@
 				}
 			],
 			"return": {
-				"$ref": "data.json"
+				"$ref": "jsonary-data.json"
 			}
 		},
 		"createSchema": {
@@ -133,7 +133,7 @@
 				}
 			],
 			"return": {
-				"$ref": "schema.json"
+				"$ref": "jsonary-schema.json"
 			}
 		},
 		"createSchemaList": {
@@ -367,7 +367,7 @@
 				}
 			],
 			"return": {
-				"$ref": "request.json"
+				"$ref": "jsonary-request.json"
 			}
 		},
 		"getSchema": {
@@ -381,20 +381,20 @@
 				},
 				{
 					"title": "callback",
-						"arguments": [
-							{"title": "fetchedSchema", "$ref": "jsonary-schema.json"},
-							{
-								"title": "request",
-								"oneOf": [
-									{"$ref": "jsonary-request.json"},
-									{"title": "null", "type": "null"}
-								]
-							}
-						]
+					"arguments": [
+						{"title": "fetchedSchema", "$ref": "jsonary-schema.json"},
+						{
+							"title": "requestOrNull",
+							"oneOf": [
+								{"$ref": "jsonary-request.json"},
+								{"title": "null", "type": "null"}
+							]
+						}
+					]
 				}
 			],
 			"return": {
-				"$ref": "request.json"
+				"$ref": "jsonary-request.json"
 			}
 		},
 		"invalidate": {

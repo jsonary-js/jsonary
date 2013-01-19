@@ -1,1 +1,292 @@
-{}
+{
+	"title": "Jsonary Schema List",
+	"description": "Wraps a whole bunch of schemas, so that their constraints can be inspected as a whole.\n\nSchema lists have many of the same methods as schemas themselves - in many places, they can be used as \"composite schemas\".\n\nThey are also superficially similar to arrays (you can use schemaList[0], schemaList.length), but they are not really arrays.",
+	"type": "object",
+	"properties": {
+		"allowedAdditionalProperties": {
+			"description": "Whether the schemas (as a whole) allow object properties other than those returned from definedProperties().",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"concat": {
+			"description": "Returns the concatenation of this schema list with another schema list",
+			"arguments": [
+				{
+					"title": "other",
+					"type": ["object", "array"],
+					"oneOf": [
+						{"$ref": "#"},
+						{"title": "Array of schemas", "type": "array", "items": {"$ref": "jsonary-schema.json"}}
+					]
+				}
+			],
+			"return": {"$ref": "#"}
+		},
+		"containsUrl": {
+			"description": "Whether the list contains a schema with the specified URL.\n\nIf a string is supplied, the schema's URL must END with this string.  If a RegExp object is supplied, then it is used to test the schemas URLs.",
+			"arguments": [
+				{
+					"title": "stringOrRegex",
+					"oneOf": [
+						{"title": "Suffix", "type": "string"},
+						{"title": "RegExp object", "type": "object"}
+					]
+				}
+			],
+			"return": {"type": "boolean"}
+		},
+		"createValue": {
+			"description": "Creates a value suitable for the given set of schemas.\n\nIf no callback is supplied, a value is returned immediately.  If a callback is supplied, then all necessary schemas are fetched before creating a value and calling back.\n\nIf no suitable value can be found, undefined is returned.\n\nIf one of the schemas defines a default value, it may be used.",
+			"arguments": [
+				{
+					"title": "[callback]",
+					"arguments": [
+						{"title": "newValue"}
+					]
+				}
+			],
+			"return": {
+				"title": "value (or undefined)"
+			}
+		},
+		"createValueForIndex": {
+			"description": "Similar to createValue(), but assembles a value suitable for a given array index.\n\nEquivalent to: schemaList.indexSchemas(index).createValue(callback)",
+			"arguments": [
+				{"title": "index", "type": "integer"},
+				{
+					"title": "[callback]",
+					"arguments": [
+						{"title": "newValue"}
+					]
+				}
+			],
+			"return": {
+				"title": "value (or undefined)"
+			}
+		},
+		"createValueForProperty": {
+			"description": "Similar to createValue(), but assembles a value suitable for a given object property.\n\nEquivalent to: schemaList.propertySchemas(key).createValue(callback)",
+			"arguments": [
+				{"title": "key", "type": "string"},
+				{
+					"title": "[callback]",
+					"arguments": [
+						{"title": "newValue"}
+					]
+				}
+			],
+			"return": {
+				"title": "value (or undefined)"
+			}
+		},
+		"definedProperties": {
+			"description": "Returns the list of properties defined using the \"properties\" keyword.\n\nThis is for the set of schemas taken as a whole - if any of the schemas specifies that additional properties are not allowed, then this method will not return any properties outside the list defined by that schema.",
+			"arguments": [],
+			"return": {
+				"title": "Array of keys",
+				"type": "array",
+				"items": {"type": "string"}
+			}
+		},
+		"each": {
+			"description": "Iterates over the schemas",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{"title": "index", "type": "integer"},
+						{"title": "schema", "$ref": "jsonary-schema.json"}
+					]
+				}
+			]
+		},
+		"enumValues": {
+			"description": "The raw enum values, as a list.  (This will be the intersection of all defined enum values.)",
+			"arguments": [],
+			"return": {
+				"type": "array",
+				"items": {"title": "Enum value"}
+			}
+		},
+		"exclusiveMaximum": {
+			"description": "Whether the maximum from maximum() is exclusive or not",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"exclusiveMinimum": {
+			"description": "Whether the minimum from minimum() is exclusive or not",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"fixed": {
+			"description": "Which schemas in the list are \"fixed\", and have not been inferred from \"oneOf\", \"dependencies\", etc.",
+			"arguments": [],
+			"return": {"$ref": "#"}
+		},
+		"formats": {
+			"description": "A list of formats for scalar data data",
+			"arguments": [],
+			"return": {"type": "array", "items": {"type": "string"}}
+		},
+		"getFull": {
+			"description": "Fetch the full version of this schema list (all references resolved, all entries from andSchemas() included), and call back.",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{"title": "fullSchemaList", "$ref": "#"}
+					]
+				}
+			]
+		},
+		"indexOf": {
+			"description": "Search for a given schema in the list.  Returns -1 if not found.",
+			"arguments": [
+				{"title": "schema", "$ref": "jsonary-schema.json"}
+			],
+			"return": {"type": "integer"}
+		},
+		"indexSchemas": {
+			"description": "The list of schemas that would apply to an array child at the specified index",
+			"arguments": [
+				{"title": "index", "type": "integer"}
+			],
+			"return": {"$ref": "jsonary-schema-list.json"}
+		},
+		"knownProperties": {
+			"description": "The list of properties that an instance *might* have defined.  Not validation-related - probably just useful for UI hints.\n\nSimilar to definedProperties(), but it might also include the values from requiredProperties().",
+			"arguments": [],
+			"return": {
+				"title": "Array of keys",
+				"type": "array",
+				"items": {"type": "string"}
+			}
+		},
+		"maxItems": {
+			"description": "The maximum number of items an array instance can have",
+			"arguments": [],
+			"return": {"type": ["integer", "null"]}
+		},
+		"maxLength": {
+			"description": "The maximum allowed length of a string instance",
+			"arguments": [],
+			"return": {"type": ["integer", "null"]}
+		},
+		"maxProperties": {
+			"description": "The maximum number of properties an object instance can have",
+			"arguments": [],
+			"return": {"type": ["integer", "null"]}
+		},
+		"maximum": {
+			"description": "The maximum allowed numerical value of a number/integer instance.\n\nCheck exclusiveMaximum() for whether this limit is exclusive or not.",
+			"arguments": [],
+			"return": {"type": ["number", "null"]}
+		},
+		"minItems": {
+			"description": "The minimum number of items an array instance can have",
+			"arguments": [],
+			"return": {"type": "integer"}
+		},
+		"minLength": {
+			"description": "The minimum allowed length of a string instance",
+			"arguments": [],
+			"return": {"type": "integer"}
+		},
+		"minProperties": {
+			"description": "The minimum number of properties an object instance can have",
+			"arguments": [],
+			"return": {"type": "integer"}
+		},
+		"minimum": {
+			"description": "The minimum allowed numerical value of a number/integer instance.\n\nCheck exclusiveMinimum() for whether this limit is exclusive or not.",
+			"arguments": [],
+			"return": {"type": "number"}
+		},
+		"numberInterval": {
+			"description": "If defined, all numerical instances must be multiples of this number",
+			"arguments": [],
+			"return": {
+				"title": "Number (or undefined)",
+				"type": ["number", "null"]
+			}
+		},
+		"orSchemas": {
+			"description": "An array of arrays of schemas.  Instances must follow at least one schema from each group.",
+			"arguments": [],
+			"return": {
+				"title": "Array of arrays of schemas",
+				"type": "array",
+				"items": {
+					"title": "Array of schemas",
+					"description": "Instances must follow at least one of these schemas",
+					"type": "array",
+					"items": {"$ref": "jsonary-schema.json"}
+				}
+			}
+		},
+		"propertyDependencies": {
+			"description": "Returns the dependencies for a given object key.\n\nIf the given key is present, then all schemas in the result must be followed, and the data must also have defined values for all the strings in the result.",
+			"arguments": [
+				{"title": "key", "type": "string"}
+			],
+			"return": {
+				"title": "Array of schemas/strings",
+				"type": "array",
+				"items": {
+					"title": "Schema or string",
+					"oneOf": [
+						{"$ref": "jsonary-schema.json"},
+						{"title": "Property key", "type": "string"}
+					]
+				}
+			}
+		},
+		"propertySchemas": {
+			"description": "The list of schemas that would apply to an object child for the specified property key",
+			"arguments": [
+				{"title": "key", "type": "string"}
+			],
+			"return": {"$ref": "jsonary-schema-list.json"}
+		},
+		"requiredProperties": {
+			"description": "Returns the list of property keys that must be defined on object instances",
+			"arguments": [],
+			"return": {
+				"title": "Array of keys",
+				"type": "array",
+				"items": {"type": "string"}
+			}
+		},
+		"tupleTypingLength": {
+			"description": "If tuple-typing is being used, this returns the number of items that have position-specific schemas defined.\n\nOtherwise, it returns 0.",
+			"arguments": [],
+			"return": {"type": "integer"}
+		},
+		"types": {
+			"description": "Returns the list of types allowed by this schema.\n\nThis relates to the immediate constraints only - schemas listed in \"allOf\"/\"oneOf\"/etc. are not included.",
+			"arguments": [],
+			"return": {
+				"title": "List of types",
+				"type": "array",
+				"items": {
+					"type": "string",
+					"enum": ["null", "boolean", "integer", "number", "string", "array", "object"]
+				}
+			}
+		},
+		"xorSchemas": {
+			"description": "An array of arrays of schemas.  Instances must follow EXACTLY one schema from each group.",
+			"arguments": [],
+			"return": {
+				"title": "Array of arrays of schemas",
+				"type": "array",
+				"items": {
+					"title": "Array of schemas",
+					"description": "Instances must follow exactly one of these schemas",
+					"type": "array",
+					"items": {"$ref": "jsonary-schema.json"}
+				}
+			}
+		}
+	}
+}

@@ -1,1 +1,281 @@
-{}
+{
+	"title": "Jsonary JSON (Hyper-)Schema wrapper",
+	"description": "A Jsonary wrapper for JSON Schemas (including hyper-schemas).\n\nThe wrapper provides methods for accessing various constraints.  It intelligently deals with both v3 and v4 schemas (for example, inspecting the \"required\" property to see if it's a boolean), so a standard interface can be used for all schemas, regardless of version.",
+	"type": "object",
+	"properties": {
+		"allowedAdditionalProperties": {
+			"description": "Whether the schema allows object properties other than those returned from definedProperties().",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"andSchemas": {
+			"description": "Returns a list of schemas that must also be satisfied in order to satisfy this schema.\n\nThis is taken from the \"allOf\" keyword (v4) or the \"extends\" keyword (v3)",
+			"arguments": [],
+			"return": {
+				"title": "Array of schemas",
+				"type": "array",
+				"items": {"$ref": "jsonary-schema.json"}
+			}
+		},
+		"asList": {
+			"description": "Returns a schema list containing just this schema",
+			"arguments": [],
+			"return": {"$ref": "jsonary-schema-list.json"}
+		},
+		"data": {"$ref": "jsonary-data.json"},
+		"defaultValue": {
+			"description": "Returns the default value, or undefined",
+			"arguments": [],
+			"return": {"title": "Value (or undefined)"}
+		},
+		"definedProperties": {
+			"description": "Returns the list of properties defined using the \"properties\" keyword.",
+			"arguments": [],
+			"return": {
+				"title": "Array of keys",
+				"type": "array",
+				"items": {"type": "string"}
+			}
+		},
+		"enumData": {
+			"description": "The Jsonary data wrapper that defines the enum values",
+			"arguments": [],
+			"return": {"$ref": "jsonary-data.json"}
+		},
+		"enumValues": {
+			"description": "The raw enum values, as a list",
+			"arguments": [],
+			"return": {
+				"type": "array",
+				"items": {"title": "Enum value"}
+			}
+		},
+		"equals": {
+			"arguments": [{"title": "otherSchema", "$ref": "#"}],
+			"return": {"type": "boolean"}
+		},
+		"exclusiveMaximum": {
+			"description": "Whether the maximum from maximum() is exclusive or not",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"exclusiveMinimum": {
+			"description": "Whether the minimum from minimum() is exclusive or not",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"format": {
+			"description": "The specified format of scalar data, if defined",
+			"arguments": [],
+			"return": {"type": "String (or undefined)", "type": ["string", "null"]}
+		},
+		"getFull": {
+			"description": "Fetch the full version of this schema, and call back.\n\nIf this schema is not a reference (no \"ref\" property), then the callback is called immediately.",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{"title": "fullSchema", "$ref": "jsonary-schema.json"},
+						{
+							"title": "requestOrNull",
+							"oneOf": [
+								{"$ref": "jsonary-request.json"},
+								{"title": "null", "type": "null"}
+							]
+						}
+					]
+				}
+			]
+		},
+		"getLink": {
+			"description": "Gets the first link definition with a given relationship value",
+			"arguments": [
+				{"title": "rel", "type": "string"}
+			],
+			"return": {"$ref": "jsonary-link-definition.json"}
+		},
+		"hasDefault": {
+			"description": "Whether the schema has a default value defined",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"indexSchemas": {
+			"description": "The list of schemas that would apply to an array child at the specified index",
+			"arguments": [
+				{"title": "index", "type": "integer"}
+			],
+			"return": {"$ref": "jsonary-schema-list.json"}
+		},
+		"isComplete": {
+			"description": "Whether the given schema is a full representation of the schema, instead of a reference.",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"knownProperties": {
+			"description": "The list of properties that an instance *might* have defined.  Not validation-related - probably just useful for UI hints.\n\nSimilar to definedProperties(), but it might also include the values from requiredProperties().",
+			"arguments": [],
+			"return": {
+				"title": "Array of keys",
+				"type": "array",
+				"items": {"type": "string"}
+			}
+		},
+		"links": {
+			"description": "All the link definitions for this schema",
+			"arguments": [],
+			"return": {
+				"title": "Array of link definitions",
+				"type": "array",
+				"items": {"$ref": "jsonary-link-definition.json"}
+			}
+		},
+		"maxItems": {
+			"description": "The maximum number of items an array instance can have",
+			"arguments": [],
+			"return": {"type": ["integer", "null"]}
+		},
+		"maxLength": {
+			"description": "The maximum allowed length of a string instance",
+			"arguments": [],
+			"return": {"type": ["integer", "null"]}
+		},
+		"maxProperties": {
+			"description": "The maximum number of properties an object instance can have",
+			"arguments": [],
+			"return": {"type": ["integer", "null"]}
+		},
+		"maximum": {
+			"description": "The maximum allowed numerical value of a number/integer instance.\n\nCheck exclusiveMaximum() for whether this limit is exclusive or not.",
+			"arguments": [],
+			"return": {"type": ["number", "null"]}
+		},
+		"minItems": {
+			"description": "The minimum number of items an array instance can have",
+			"arguments": [],
+			"return": {"type": "integer"}
+		},
+		"minLength": {
+			"description": "The minimum allowed length of a string instance",
+			"arguments": [],
+			"return": {"type": "integer"}
+		},
+		"minProperties": {
+			"description": "The minimum number of properties an object instance can have",
+			"arguments": [],
+			"return": {"type": "integer"}
+		},
+		"minimum": {
+			"description": "The minimum allowed numerical value of a number/integer instance.\n\nCheck exclusiveMinimum() for whether this limit is exclusive or not.",
+			"arguments": [],
+			"return": {"type": "number"}
+		},
+		"notSchemas": {
+			"description": "A list of schemas which must NOT be satisfied in order to satisfy this schema",
+			"arguments": [],
+			"return": {
+				"title": "Array of schemas",
+				"type": "array",
+				"items": {"$ref": "jsonary-schema.json"}
+			}
+		},
+		"numberInterval": {
+			"description": "If defined, all numerical instances must be multiples of this number",
+			"arguments": [],
+			"return": {
+				"title": "Number (or undefined)",
+				"type": ["number", "null"]
+			}
+		},
+		"orSchemas": {
+			"description": "An array of arrays of schemas.  Instances must follow at least one schema from each group.",
+			"arguments": [],
+			"return": {
+				"title": "Array of arrays of schemas",
+				"type": "array",
+				"items": {
+					"title": "Array of schemas",
+					"description": "Instances must follow at least one of these schemas",
+					"type": "array",
+					"items": {"$ref": "jsonary-schema.json"}
+				}
+			}
+		},
+		"propertyDependencies": {
+			"description": "Returns the dependencies for a given object key.\n\nIf the given key is present, then all schemas in the result must be followed, and the data must also have defined values for all the strings in the result.",
+			"arguments": [
+				{"title": "key", "type": "string"}
+			],
+			"return": {
+				"title": "Array of schemas/strings",
+				"type": "array",
+				"items": {
+					"title": "Schema or string",
+					"oneOf": [
+						{"$ref": "jsonary-schema.json"},
+						{"title": "Property key", "type": "string"}
+					]
+				}
+			}
+		},
+		"propertySchemas": {
+			"description": "The list of schemas that would apply to an object child for the specified property key",
+			"arguments": [
+				{"title": "key", "type": "string"}
+			],
+			"return": {"$ref": "jsonary-schema-list.json"}
+		},
+		"referenceUrl": {
+			"description": "If this schema was fetched from the web, this method returns a URI (with a JSON Pointer fragment) that could be used to locate it again.",
+			"arguments": [],
+			"return": {"title": "URI", "type": "string", "format": "uri"}
+		},
+		"requiredProperties": {
+			"description": "Returns the list of property keys that must be defined on object instances",
+			"arguments": [],
+			"return": {
+				"title": "Array of keys",
+				"type": "array",
+				"items": {"type": "string"}
+			}
+		},
+		"title": {
+			"description": "Title of the schema, if defined",
+			"arguments": [],
+			"return": {
+				"title": "Title (or null)",
+				"type": ["string", "null"]
+			}
+		},
+		"tupleTypingLength": {
+			"description": "If tuple-typing is being used, this returns the number of items that have position-specific schemas defined.\n\nOtherwise, it returns 0.",
+			"arguments": [],
+			"return": {"type": "integer"}
+		},
+		"types": {
+			"description": "Returns the list of types allowed by this schema.\n\nThis relates to the immediate constraints only - schemas listed in \"allOf\"/\"oneOf\"/etc. are not included.",
+			"arguments": [],
+			"return": {
+				"title": "List of types",
+				"type": "array",
+				"items": {
+					"type": "string",
+					"enum": ["null", "boolean", "integer", "number", "string", "array", "object"]
+				}
+			}
+		},
+		"xorSchemas": {
+			"description": "An array of arrays of schemas.  Instances must follow EXACTLY one schema from each group.",
+			"arguments": [],
+			"return": {
+				"title": "Array of arrays of schemas",
+				"type": "array",
+				"items": {
+					"title": "Array of schemas",
+					"description": "Instances must follow exactly one of these schemas",
+					"type": "array",
+					"items": {"$ref": "jsonary-schema.json"}
+				}
+			}
+		}
+	}
+}

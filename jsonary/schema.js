@@ -112,11 +112,11 @@ Schema.prototype = {
 				} else if (dependency.basicType() == "array") {
 					return dependency.value();
 				} else {
-					return new SchemaList([dependency.asSchema()]);
+					return [dependency.asSchema()];
 				}
 			}
 		}
-		return new SchemaList();
+		return [];
 	},
 	indexSchemas: function (i) {
 		var items = this.data.property("items");
@@ -176,7 +176,7 @@ Schema.prototype = {
 		if (this.data.property("not").defined()) {
 			result.push(this.data.property("not").asSchema());
 		}
-		return new SchemaList(result);
+		return result;
 	},
 	types: function () {
 		var typeData = this.data.property("type");
@@ -317,14 +317,18 @@ Schema.prototype = {
 		this.data.property("properties").properties(function (key, subData) {
 			result[key] = true;
 		});
-		this.data.property("required").items(function (index, subData) {
-			result[subData.value()] = true;
+		return Object.keys(result);
+	},
+	knownProperties: function() {
+		var result = {};
+		this.data.property("properties").properties(function (key, subData) {
+			result[key] = true;
 		});
-		var resultArray = [];
-		for (var key in result) {
-			resultArray.push(key);
+		var required = this.requiredProperties();
+		for (var i = 0; i < required.length; i++) {
+			result[required[i]] = true;
 		}
-		return resultArray;
+		return Object.keys(result);
 	},
 	requiredProperties: function () {
 		var requiredKeys = this.data.propertyValue("required");

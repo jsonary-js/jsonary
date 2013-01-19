@@ -1,5 +1,238 @@
 {
 	"title": "JSON Patch wrapper (Jsonary)",
-	"description": "DOCUMENTATION INCOMPLETE",
-	"type": "object"
+	"description": "Jsonary wrapper for a JSON Patch document.  A JSON Patch represents a sequence of changes to a JSON document.\n\nThe Jsonary wrapper has a \"prefix\" property - all operations in the patch are guaranteed to only affect paths starting with that prefix.",
+	"type": "object",
+	"properties": {
+		"add": {
+			"description": "Adds an \"add\" operation to the patch",
+			"arguments": [
+				{"title": "path", "description": "JSON Pointer path", "type": "string"},
+				{"title": "value"}
+			],
+			"return": {"$ref": "jsonary-patch.json"}
+		},
+		"each": {
+			"description": "Iterate over the operations in the patch",
+			"arguments": [
+				{
+					"title": "callback",
+					"arguments": [
+						{"title": "index", "type": "integer"},
+						{"title": "operation", "$ref": "#/definitions/operation"}
+					]
+				}
+			],
+			"return": {"$ref": "#"}
+		},
+		"filter": {
+			"description": "Filters a patch to find operations that start with a given prefix, relative to the patch's \"prefix\" property.\n\nThe new patch will have the supplied prefix added to its own \"prefix\" property.",
+			"arguments": [
+				{"title": "prefix", "type": "string"}
+			],
+			"return": {"$ref": "#"}
+		},
+		"filterImmediate": {
+			"description": "Filters a patch to find operations that are immediate children (relative to the patch's \"prefix\" property)",
+			"arguments": [],
+			"return": {"$ref": "#"}
+		},
+		"filterRemainder": {
+			"description": "Filters a patch to find operations that do not start with a given prefix",
+			"arguments": [
+				{"title": "prefix", "type": "string"}
+			],
+			"return": {"$ref": "#"}
+		},
+		"inverse": {
+			"description": "Returns the inverse of the patch.\n\nSome operations (remove/replace) can only be inverted once they have already been applied to data (they store the removed value), so taking the inverse of a patch might not work unless it has already been applied.",
+			"arguments": [],
+			"return": {"$ref": "#"}
+		},
+		"isEmpty": {
+			"description": "Whether the patch has no operations",
+			"arguments": [],
+			"return": {"type": "boolean"}
+		},
+		"move": {
+			"description": "Adds a \"move\" operation to the patch",
+			"arguments": [
+				{"title": "path", "description": "JSON Pointer path", "type": "string"},
+				{"title": "target", "description": "JSON Pointer path", "type": "string"}
+			],
+			"return": {"$ref": "#"}
+		},
+		"operations": {
+			"title": "List of operations",
+			"type": "array",
+			"items": {"$ref": "#/definitions/operation"}
+		},
+		"plain": {
+			"description": "Returns the patch as a plain JSON Patch document (no Jsonary wrappers)",
+			"arguments": [],
+			"return": {"$ref": "#/definitions/plain"}
+		},
+		"prefix": {
+			"description": "The \"prefix\" for this patch: all operations are guaranteed to affect this path, or sub-paths of this path.",
+			"type": "string"
+		},
+		"remove": {
+			"description": "Adds a \"remove\" operation to the patch",
+			"arguments": [
+				{"title": "path", "description": "JSON Pointer path", "type": "string"}
+			],
+			"return": {"$ref": "jsonary-patch.json"}
+		},
+		"replace": {
+			"description": "Adds a \"replace\" operation to the patch",
+			"arguments": [
+				{"title": "path", "description": "JSON Pointer path", "type": "string"},
+				{"title": "value"}
+			],
+			"return": {"$ref": "jsonary-patch.json"}
+		}
+	},
+	"definitions": {
+		"plain": {
+			"title": "JSON Patch (pure JSON)",
+			"type": "array",
+			"items": {
+				"title": "JSON Patch operation (pure JSON)",
+				"type": "object"
+			}
+		},
+		"operation": {
+			"title": "JSON Patch operation (Jsonary wrapper)",
+			"description": "Jsonary wrapper for a single operation in a JSON Patch document",
+			"type": "object",
+			"properties": {
+				"action": {
+					"description": "Returns the action of the operation (add/remove/move/replace)",
+					"arguments": [],
+					"return": {
+						"title": "Operation type",
+						"enum": ["add", "remove", "move", "replace"]
+					}
+				},
+				"depthFrom": {
+					"description": "Finds the minimum depth of this patches subject/target, relative to the supplied path/data, or NaN if it does not affect this path/data at all.",
+					"arguments": [
+						{
+							"title": "pathOrData",
+							"oneOf": [
+								{"title": "JSON Pointer path", "type": "string"},
+								{"$ref": "jsonary-data.json"}
+							]
+						}
+					],
+					"return": {
+						"title": "Depth (or NaN)",
+						"type": "integer"
+					}
+				},
+				"hasPrefix": {
+					"description": "Returns whether either the subject or the target (\"move\" operations have both) are sub-paths (or equal to) the supplied path/data.",
+					"arguments": [
+						{
+							"title": "pathOrData",
+							"oneOf": [
+								{"title": "JSON Pointer path", "type": "string"},
+								{"$ref": "jsonary-data.json"}
+							]
+						}
+					],
+					"return": {"type": "boolean"}
+				},
+				"inverse": {
+					"description": "Returns the inverse of the operations.\n\nSome operations (remove/replace) can only be inverted once they have already been applied to data, or have otherwise had a value set using setSubjectValue().",
+					"arguments": [],
+					"return": {"$ref": "#/definitions/operation"}
+				},
+				"matches": {
+					"description": "Returns whether either the subject or the target (\"move\" operations have both) are an exact match for the supplied path/data.",
+					"arguments": [
+						{
+							"title": "pathOrData",
+							"oneOf": [
+								{"title": "JSON Pointer path", "type": "string"},
+								{"$ref": "jsonary-data.json"}
+							]
+						}
+					],
+					"return": {"type": "boolean"}
+				},
+				"plain": {
+					"description": "Returns the operation as a plain JSON Patch operation (no Jsonary wrappers)",
+					"arguments": [],
+					"return": {"$ref": "#/definitions/plain/items"}
+				},
+				"setSubjectValue": {
+					"description": "The \"remove\" and \"replace\" operations cannot be inverted unless it knows the value of what it is/was removing.  This method is used to set that value, allowing the operation to be correctly inverted.",
+					"arguments": [
+						{"title": "value"}
+					],
+					"return": {"$ref": "#/definitions/operation"}
+				},
+				"subject": {
+					"description": "Returns the subject of the operation.  For \"move\" operations, this is the original/source path.",
+					"arguments": [],
+					"return": {"title": "JSON Pointer path", "type": "string"}
+				},
+				"subjectChild": {
+					"description": "If the subject of the operation is a direct child of the supplied path, this returns the (decoded) key/index of the child.  Otherwise, returns boolean false.",
+					"arguments": [
+						{"title": "path", "description": "JSON Pointer path", "type": "string"}
+					],
+					"return": {
+						"title": "Object key (or false)",
+						"types": ["string", "boolean"]
+					}
+				},
+				"subjectRelative": {
+					"description": "If the subject of the operation is a direct child of the supplied path, this returns the remaining JSON Pointer path components.  Otherwise, returns boolean false.",
+					"arguments": [
+						{"title": "path", "description": "JSON Pointer path", "type": "string"}
+					],
+					"return": {
+						"title": "JSON Pointer path (or false)",
+						"types": ["string", "boolean"]
+					}
+				},
+				"subjectValue": {
+					"description": "Returns the subject value stored using setSubjectValue()",
+					"arguments": [],
+					"return": {"title": "value"}
+				},
+				"target": {
+					"description": "Returns the target of the operation.  For \"move\" operations, this is the new path.  For other operations, it is undefined.",
+					"arguments": [],
+					"return": {"title": "JSON Pointer path", "type": "string"}
+				},
+				"targetChild": {
+					"description": "If the target of the operation is a direct child of the supplied path, this returns the (decoded) key/index of the child.  Otherwise, returns boolean false.",
+					"arguments": [
+						{"title": "path", "description": "JSON Pointer path", "type": "string"}
+					],
+					"return": {
+						"title": "Object key (or false)",
+						"types": ["string", "boolean"]
+					}
+				},
+				"targetRelative": {
+					"description": "If the target of the operation is a direct child of the supplied path, this returns the remaining JSON Pointer path components.  Otherwise, returns boolean false.",
+					"arguments": [
+						{"title": "path", "description": "JSON Pointer path", "type": "string"}
+					],
+					"return": {
+						"title": "JSON Pointer path (or false)",
+						"types": ["string", "boolean"]
+					}
+				},
+				"value": {
+					"description": "The replacement/new value for \"replace\" and \"add\" operations.",
+					"arguments": [],
+					"return": {"title": "value"}
+				}
+			}
+		}
+	}
 }

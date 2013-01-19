@@ -94,7 +94,7 @@ SchemaList.prototype = {
 		}
 		return false;
 	},
-	potentialLinks: function () {
+	links: function () {
 		var result = [];
 		var i, schema;
 		for (i = 0; i < this.length; i++) {
@@ -146,15 +146,26 @@ SchemaList.prototype = {
 				}
 			}
 		});
-		var result = [];
-		for (var key in definedKeys) {
-			result.push(key);
-		}
+		var result = Object.keys(definedKeys);
 		cacheResult(this, {
 			definedProperties: result,
 			allowedAdditionalProperties: additionalProperties
 		});
 		return result;
+	},
+	knownProperties: function () {
+		if (this.allowedAdditionalProperties()) {
+			var result = this.definedProperties().slice(0);
+			var requiredProperties = this.requiredProperties();
+			for (var i = 0; i < requiredProperties.length; i++) {
+				if (result.indexOf(requiredProperties[i]) == -1) {
+					result.push(requiredProperties[i]);
+				}
+			}
+			return result;
+		} else {
+			return this.definedProperties();
+		}
 	},
 	allowedAdditionalProperties: function () {
 		var additionalProperties = true;
@@ -186,7 +197,7 @@ SchemaList.prototype = {
 		}
 		return maxProperties;
 	},
-	basicTypes: function () {
+	types: function () {
 		var basicTypes = ALL_TYPES_DICT;
 		for (var i = 0; i < this.length; i++) {
 			var otherBasicTypes = this[i].basicTypes();
@@ -199,11 +210,7 @@ SchemaList.prototype = {
 			}
 			basicTypes = newBasicTypes;
 		}
-		var basicTypesList = [];
-		for (var basicType in basicTypes) {
-			basicTypesList.push(basicType);
-		}
-		return basicTypesList;
+		return Object.keys(basicTypes);
 	},
 	numberInterval: function() {
 		var candidate = undefined;
@@ -622,6 +629,24 @@ SchemaList.prototype = {
 		}
 		return result;
 	},
+	propertyDependencies: function(key) {
+		var result = [];
+		var stringDeps = {};
+		for (var i = 0; i < this.length; i++) {
+			var deps = this[i].propertyDependencies(key);
+			for (var j = 0; j < deps.length; j++) {
+				if (typeof deps[j] == "string") {
+					if (!stringDeps[deps[j]]) {
+						stringDeps[deps[j]] = true;
+						result.push(deps[j]);
+					}
+				} else {
+					result.push(deps[j]);
+				}
+			}
+		}
+		return result;
+	},
 	getFull: function(callback) {
 		if (this.length == 0) {
 			callback.call(this, this);
@@ -683,6 +708,8 @@ SchemaList.prototype = {
 		return result;
 	}
 };
+SchemaList.prototype.basicTypes = SchemaList.prototype.types;
+SchemaList.prototype.potentialLinks = SchemaList.prototype.links;
 
 publicApi.createSchemaList = function (schemas) {
 	if (!Array.isArray(schemas)) {
