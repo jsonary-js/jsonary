@@ -31,7 +31,7 @@
 		?>
 			{
 				"Title": "The main page",
-				"Explanation": "A basic test of the Render.Jsonary library."
+				"Explanation": "A basic test of Jsonary's ability to adapt to data/hyper-schemas supplied by the server.\n\nWhen you click the \"update\" link, you are prompted to enter data (according to a schema supplied by the server), which is then POSTed back and stored."
 			}
 		<?php
 	}

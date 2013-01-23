@@ -4,6 +4,7 @@
 		<title>JSON browser</title>
 		<link rel="stylesheet" href="css/page.index.css" />
 		<link rel="stylesheet" href="../renderers/basic.jsonary.css" />
+		<link rel="stylesheet" href="../renderers/common.css" />
 		<link rel="stylesheet" href="../renderers/schemas.jsonary.css" />
 		<style>
 			.valid {
@@ -31,7 +32,8 @@
 					JSON data:<br>
 					<textarea cols=50 rows=15 style="float: right" id="json-data-source" class="valid">
 {
-    "title": "JSON data"
+    "title": "JSON data",
+    "description": "Some example JSON data"
 }
 </textarea>
 				</td>
@@ -39,11 +41,19 @@
 					JSON Schema:<br>
 					<textarea cols=50 rows=15 style="float: left" id="json-schema-source" class="valid">
 {
+    "type": "object",
     "properties": {
         "title": {
             "title": "Item title",
             "type": "string"
+        },
+        "description": {
+            "title": "Description",
+            "type": "string"
         }
+    },
+    "additionalProperties": {
+        "type": "boolean"
     }
 }
 </textarea>
@@ -59,6 +69,8 @@
 		<script src="js/jquery.js"></script>
 		<script src="../jsonary.js"></script>
 		<script src="../renderers/basic.jsonary.js"></script>
+		<script src="../renderers/list-links.js"></script>
+		<script src="../renderers/list-schemas.js"></script>
 		<script src="../renderers/schemas.jsonary.js"></script>
 		<script>
 			$('#json-data-source, #json-schema-source').keyup(function () {
