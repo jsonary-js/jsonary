@@ -14,9 +14,6 @@
 				return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
 			}
 			delete context.uiState.undefined;
-			if (context.uiState.subState == undefined) {
-				context.uiState.subState = {};
-			}
 			var showDelete = false;
 			if (data.parent() != null) {
 				var parent = data.parent();
@@ -37,10 +34,10 @@
 			if (showDelete) {
 				result += "<div class='json-object-delete-container'>";
 				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
-				result += context.renderHtml(data, context.uiState.subState);
+				result += context.renderHtml(data);
 				result += '<div style="clear: both"></div></div>';
 			} else {
-				result += context.renderHtml(data, context.uiState.subState);
+				result += context.renderHtml(data);
 			}
 			return result;
 		},
@@ -85,9 +82,6 @@
 	Jsonary.render.register({
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
-			if (context.uiState.subState == undefined) {
-				context.uiState.subState = {};
-			}
 			var result = "";
 			var basicTypes = data.schemas().basicTypes();
 			var enums = data.schemas().enumValues();
@@ -113,7 +107,7 @@
 			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
-			result += context.renderHtml(data, context.uiState.subState);
+			result += context.renderHtml(data);
 			return result;
 		},
 		action: function (context, actionName, basicType) {
@@ -129,6 +123,110 @@
 				schemas.createValue(function (newValue) {
 					context.data.setValue(newValue);
 				});
+				return true;
+			} else {
+				alert("Unkown action: " + actionName);
+			}
+		},
+		update: function (element, data, context, operation) {
+			return false;
+		},
+		filter: function (data) {
+			return !data.readOnly();
+		}
+	});
+
+	// Display schema switcher
+	Jsonary.render.Components.add("SCHEMA_SWITCHER");
+	Jsonary.render.register({
+		component: Jsonary.render.Components.SCHEMA_SWITCHER,
+		renderHtml: function (data, context) {
+			var result = "";
+			var fixedSchemas = data.schemas().fixed();
+			
+			context.uiState.xorSelected = [];
+			context.uiState.orSelected = [];
+			if (context.uiState.dialogOpen) {
+				result += '<div class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
+				result += context.actionHtml('close', "closeDialog");
+				var xorSchemas = fixedSchemas.xorSchemas();
+				for (var i = 0; i < xorSchemas.length; i++) {
+					var options = xorSchemas[i];
+					var inputName = context.inputNameForAction('selectXorSchema', i);
+					result += '<br><select name="' + inputName + '">';
+					for (var j = 0; j < options.length; j++) {
+						var schema = options[j];
+						var selected = "";
+						if (data.schemas().indexOf(schema) != -1) {
+							context.uiState.xorSelected[i] = j;
+							selected = " selected";
+						}
+						result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+					}
+					result += '</select>';
+				}
+				var orSchemas = fixedSchemas.orSchemas();
+				for (var i = 0; i < orSchemas.length; i++) {
+					var options = orSchemas[i];
+					var inputName = context.inputNameForAction('selectOrSchema', i);
+					result += '<br><select name="' + inputName + '" multiple size="' + options.length + '">';
+					context.uiState.orSelected[i] = [];
+					for (var j = 0; j < options.length; j++) {
+						var schema = options[j];
+						var selected = "";
+						if (data.schemas().indexOf(schema) != -1) {
+							context.uiState.orSelected[i][j] = true;
+							selected = " selected";
+						} else {
+							context.uiState.orSelected[i][j] = false;
+						}
+						result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+					}
+					result += '</select>';
+				}
+				result += '</span></div>';
+			}
+			if (fixedSchemas.length < data.schemas().length) {
+				result += context.actionHtml("<span class=\"json-select-type\">S</span>", "openDialog") + " ";
+			}
+			result += context.renderHtml(data);
+			return result;
+		},
+		createValue: function (context) {
+			var data = context.data;
+			var newSchemas = context.data.schemas().fixed();
+			var xorSchemas = context.data.schemas().fixed().xorSchemas();
+			for (var i = 0; i < xorSchemas.length; i++) {
+				newSchemas = newSchemas.concat([xorSchemas[i][context.uiState.xorSelected[i]]]);
+			}
+			var orSchemas = context.data.schemas().fixed().orSchemas();
+			for (var i = 0; i < orSchemas.length; i++) {
+				var options = orSchemas[i];
+				for (var j = 0; j < options.length; j++) {
+					if (context.uiState.orSelected[i][j]) {
+						newSchemas = newSchemas.concat([options[j]]);
+					}
+				}
+			}
+			data.setValue(newSchemas.createValue());
+		},
+		action: function (context, actionName, value, arg1) {
+			if (actionName == "closeDialog") {
+				context.uiState.dialogOpen = false;
+				return true;
+			} else if (actionName == "openDialog") {
+				context.uiState.dialogOpen = true;
+				return true;
+			} else if (actionName == "selectXorSchema") {
+				context.uiState.xorSelected[arg1] = value;
+				this.createValue(context);
+				return true;
+			} else if (actionName == "selectOrSchema") {
+				context.uiState.orSelected[arg1] = [];
+				for (var i = 0; i < value.length; i++) {
+					context.uiState.orSelected[arg1][value[i]] = true;
+				}
+				this.createValue(context);
 				return true;
 			} else {
 				alert("Unkown action: " + actionName);
