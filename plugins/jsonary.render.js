@@ -280,11 +280,16 @@
 			return '<a href="javascript:void(0)" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
 		},
 		inputNameForAction: function (actionName) {
+			var params = [];
+			for (var i = 1; i < arguments.length; i++) {
+				params.push(arguments[i]);
+			}
 			var name = this.getElementId();
 			this.enhancementInputs[name] = {
 				inputName: name,
 				actionName: actionName,
-				context: this
+				context: this,
+				params: params
 			};
 			return name;
 		},
@@ -354,8 +359,18 @@
 					if (this.getAttribute("type") == "checkbox") {
 						value = this.checked;
 					}
+					if (this.tagName.toLowerCase() == "select" && this.getAttribute("multiple") != null) {
+						value = [];
+						for (var i = 0; i < this.options.length; i++) {
+							var option = this.options[i];
+							if (option.selected) {
+								value.push(option.value);
+							}
+						}						
+					}
 					var inputContext = inputAction.context;
-					inputContext.renderer.action(inputContext, inputAction.actionName, value);
+					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
+					inputContext.renderer.action.apply(inputContext.renderer, args);
 				};
 			}
 			element = null;
