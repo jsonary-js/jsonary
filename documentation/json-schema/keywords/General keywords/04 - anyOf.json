@@ -4,33 +4,25 @@
 	"content": [
 		"Any schema in the list that matches the current instance also describes that instance.  If this property is defined in the schema, the instance is only considered valid with regards to the containing schema if it is valid with regards to at least one of the schemas in the list.",
 		"Jsonary makes this list of schemas available using the <code>orSchemas()</code> method of schemas / schema lists.",
-		"The example below uses \"allOf\" to switch between two schemas depending on the value of the \"conditionalProperty\" property in the instance."
+		"The example below uses \"anyOf\" to specify that at least one of \"A\" and \"B\" must be specified."
 	],
 	"exampleSchema": {
 		"type": "object",
 		"properties": {
-			"conditionalProperty": {"type": "boolean"}
+			"A": {"type": "boolean"},
+			"B": {"type": "boolean"}
 		},
-		"required": ["conditionalProperty"],
 		"additionalProperties": false,
 		"anyOf": [
 			{
-				"title": "Condition ON",
-				"properties": {
-					"conditionalProperty": {
-						"enum": [true]
-					}
-				}
+				"title": "A required",
+				"required": ["A"]
 			},
 			{
-				"title": "Condition OFF",
-				"properties": {
-					"conditionalProperty": {
-						"enum": [false]
-					}
-				}
+				"title": "B required",
+				"required": ["B"]
 			}
 		]
 	},
-	"exampleData": {"conditionalProperty": true}
+	"exampleData": {"A": true}
 }

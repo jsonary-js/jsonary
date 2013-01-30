@@ -9,30 +9,28 @@
 	"exampleSchema": {
 		"type": "object",
 		"properties": {
-			"numberProperty": {"type": "integer"}
+			"conditionalProperty": {"type": "boolean"}
 		},
-		"required": ["numberProperty"],
+		"required": ["conditionalProperty"],
 		"additionalProperties": false,
 		"oneOf": [
 			{
-				"title": "Less than 5",
+				"title": "Condition ON",
 				"properties": {
-					"numberProperty": {
-						"maximum": 5,
-						"exclusiveMaximum": true
+					"conditionalProperty": {
+						"enum": [true]
 					}
 				}
 			},
 			{
-				"title": "More than 0",
+				"title": "Condition OFF",
 				"properties": {
-					"numberProperty": {
-						"minimum": 0,
-						"exclusiveMinimum": true
+					"conditionalProperty": {
+						"enum": [false]
 					}
 				}
 			}
 		]
 	},
-	"exampleData": {"numberProperty": 10}
+	"exampleData": {"conditionalProperty": true}
 }
