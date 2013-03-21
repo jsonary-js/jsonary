@@ -317,7 +317,7 @@
 				var key = orderKeys[i].key;
 				var subData = data.property(key);
 				result += '<tr class="json-object-pair">';
-				result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + ':</div></td>';
+				result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + '</div></td>';
 				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
 				result += '</tr>';
 			}
