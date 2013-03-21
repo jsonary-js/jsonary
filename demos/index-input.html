@@ -32,8 +32,8 @@
 					JSON data:<br>
 					<textarea cols=50 rows=15 style="float: right" id="json-data-source" class="valid">
 {
-    "title": "JSON data",
-    "description": "Some example JSON data"
+    "description": "Some example JSON data",
+    "title": "JSON data"
 }
 </textarea>
 				</td>
@@ -45,11 +45,13 @@
     "properties": {
         "title": {
             "title": "Item title",
-            "type": "string"
+            "type": "string",
+            "displayOrder": 0
         },
         "description": {
             "title": "Description",
-            "type": "string"
+            "type": "string",
+            "displayOrder": 1
         }
     },
     "additionalProperties": {

@@ -264,18 +264,57 @@
 		textarea.setAttribute("cols", maxWidth + 1);
 		textarea.setAttribute("rows", lines.length);
 	}
+	
+	// Display-order extension
+	Jsonary.extendSchema({
+		displayOrder: function () {
+			return this.data.propertyValue("displayOrder");
+		}
+	});
+	Jsonary.extendSchemaList({
+		displayOrder: function () {
+			var displayOrder = null;
+			this.each(function (index, schema) {
+				var value = schema.displayOrder();
+				if (value != null && (displayOrder == null || value < displayOrder)) {
+					displayOrder = value;
+				}
+			});
+			return displayOrder;
+		}
+	});
 
 	// Display/edit objects
 	Jsonary.render.register({	
 		renderHtml: function (data, context) {
 			var uiState = context.uiState;
 			var result = '{<table class="json-object"><tbody>';
+			var orderKeys = [];
 			data.properties(function (key, subData) {
+				orderKeys.push({
+					key: key,
+					displayOrder: subData.schemas().displayOrder()
+				});
+			});
+			orderKeys.sort(function (a, b) {
+				if (a.displayOrder == null) {
+					if (b.displayOrder == null) {
+						return 0;
+					}
+					return 1;
+				} else if (b.displayOrder == null) {
+					return -1;
+				}
+				return a.displayOrder - b.displayOrder;
+			});
+			for (var i = 0; i < orderKeys.length; i++) {
+				var key = orderKeys[i].key;
+				var subData = data.property(key);
 				result += '<tr class="json-object-pair">';
 				result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + ':</div></td>';
 				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
 				result += '</tr>';
-			});
+			}
 			result += '</tbody></table>';
 			if (!data.readOnly()) {
 				var addLinkHtml = "";
