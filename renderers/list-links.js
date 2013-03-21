@@ -9,6 +9,9 @@
 			return false;
 		},
 		renderHtml: function (data, context) {
+			if (data.readOnly()) {
+				return context.renderHtml(data);
+			}
 			var result = "";
 			
 			var links = data.links();
