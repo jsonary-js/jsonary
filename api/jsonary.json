@@ -288,6 +288,21 @@
 				}
 			]
 		},
+		"extendSchemaList": {
+			"description": "Add data/functions to all Jsonary schema lists",
+			"arguments": [
+				{
+					"title": "obj",
+					"description": "Object containing properties to add",
+					"type": [
+						"object"
+					],
+					"additionalProperties": {
+						"title": "Anything"
+					}
+				}
+			]
+		},
 		"getData": {
 			"description": "Fetch data using AJAX (or from the cache)",
 			"arguments": [
