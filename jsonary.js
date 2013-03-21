@@ -4637,6 +4637,14 @@ SchemaList.prototype = {
 SchemaList.prototype.basicTypes = SchemaList.prototype.types;
 SchemaList.prototype.potentialLinks = SchemaList.prototype.links;
 
+publicApi.extendSchemaList = function (obj) {
+	for (var key in obj) {
+		if (SchemaList.prototype[key] == undefined) {
+			SchemaList.prototype[key] = obj[key];
+		}
+	}
+};
+
 publicApi.createSchemaList = function (schemas) {
 	if (!Array.isArray(schemas)) {
 		schemas = [schemas];

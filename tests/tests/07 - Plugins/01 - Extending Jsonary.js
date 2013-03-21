@@ -29,3 +29,24 @@ tests.add("Adding function to schema objects", function () {
 	});
 	return schema.annotatedTitle() == "Test Schema (schema)";
 });
+
+
+tests.add("Adding function to schema-set objects", function () {
+	var schemas = Jsonary.createSchemaList([
+		Jsonary.createSchema({"title": "Title 1"}),
+		Jsonary.createSchema({"title": "Title 2"})
+	]);
+	Jsonary.extendSchemaList({
+		combinedTitle: function() {
+			var titles = [];
+			this.each(function (index, schema) {
+				if (schema.title()) {
+					titles.push(schema.title());
+				}
+			});
+			return titles.join(",");
+		}
+	});
+	this.assert(schemas.combinedTitle() == "Title 1,Title 2", "value not correct: " + schemas.combinedTitle());
+	return true;
+});
