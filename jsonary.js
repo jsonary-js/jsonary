@@ -5559,9 +5559,14 @@ publicApi.UriTemplate = UriTemplate;
 							}
 						}						
 					}
+					var redrawElementId = inputAction.context.elementId;
 					var inputContext = inputAction.context;
 					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
-					inputContext.renderer.action.apply(inputContext.renderer, args);
+					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
+						// Action returned positive - we should force a re-render
+						var element = document.getElementById(redrawElementId);
+						inputContext.renderer.render(element, inputContext.data, inputContext);
+					}
 				};
 			}
 			element = null;
