@@ -9,7 +9,7 @@
 			return false;
 		},
 		renderHtml: function (data, context) {
-			if (data.readOnly()) {
+			if (!data.readOnly()) {
 				return context.renderHtml(data);
 			}
 			var result = "";
