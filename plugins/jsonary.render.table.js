@@ -14,7 +14,7 @@
 		
 	};
 	TableRenderer.prototype = {
-		getRowOrder: function (context) {
+		getRowOrder: function (data, context) {
 			if (context.uiState.rowOrder != undefined && context.uiState.rowOrder.length == context.data.length()) {
 				return context.uiState.rowOrder;
 			}
@@ -71,7 +71,7 @@
 				html += '</tr></thead>';
 			}
 			html += '<tbody>';
-			var order = this.getRowOrder(context);
+			var order = this.getRowOrder(data, context);
 			var renderFunc = function (index, subData) {
 				html += '<tr>';
 				if (!data.readOnly()) {
