@@ -661,8 +661,9 @@ Data.prototype = {
 	},
 	editableCopy: function () {
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", false);
-		this.schemas().each(function (index, schema) {
-			copy.addSchema(schema);
+		var schemaKey = Utils.getUniqueKey();
+		this.schemas().fixed().each(function (index, schema) {
+			copy.addSchema(schema, schemaKey);
 		});
 		return copy;
 	},
