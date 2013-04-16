@@ -704,6 +704,14 @@ Data.prototype = {
 		return this;
 	},
 	resolveUrl: function (url) {
+		var data = this;
+		while (data) {
+			var selfLink = data.getLink("self");
+			if (selfLink) {
+				return Uri.resolve(selfLink.href, url);
+			}
+			data = data.parent();
+		}
 		return this.document.resolveUrl(url);
 	},
 	get: function (path) {
