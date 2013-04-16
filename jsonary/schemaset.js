@@ -768,9 +768,26 @@ SchemaSet.prototype = {
 			}
 		}
 		if (linksToUpdate.length > 0) {
+			var updatedSelfLink = null;
 			for (i = 0; i < linksToUpdate.length; i++) {
 				linkInstance = linksToUpdate[i];
 				linkInstance.update();
+				if (linkInstance.active && linkInstance.rawLink.rawLink.rel == "self") {
+					updatedSelfLink = linkInstance;
+					break;
+				}
+			}
+			if (updatedSelfLink != null) {
+				this.cachedLinkList = null;
+				for (schemaKey in this.links) {
+					linkList = this.links[schemaKey];
+					for (i = 0; i < linkList.length; i++) {
+						var linkInstance = linkList[i];
+						if (linkInstance != updatedSelfLink) {
+							linkInstance.update();
+						}
+					}
+				}
 			}
 			// TODO: have separate "link" listeners?
 			this.invalidateSchemaState();
@@ -888,11 +905,28 @@ SchemaSet.prototype = {
 		if (this.links[schemaKey] == undefined) {
 			this.links[schemaKey] = [];
 		}
+		var selfLink = null;
 		for (i = 0; i < potentialLinks.length; i++) {
 			linkInstance = new LinkInstance(this.dataObj, potentialLinks[i]);
 			this.links[schemaKey].push(linkInstance);
 			this.addMonitorForLink(linkInstance, schemaKey, schemaKeyHistory);
 			linkInstance.update();
+			if (linkInstance.active && linkInstance.rawLink.rawLink.rel == "self") {
+				selfLink = linkInstance;
+			}
+		}
+		if (selfLink != null) {
+			// Delete the cache so that the "self" link shows up
+			this.cachedLinkList = null;
+			for (schemaKey in this.links) {
+				linkList = this.links[schemaKey];
+				for (i = 0; i < linkList.length; i++) {
+					var linkInstance = linkList[i];
+					if (linkInstance != selfLink) {
+						linkInstance.update();
+					}
+				}
+			}
 		}
 		this.invalidateSchemaState();
 	},
@@ -1144,10 +1178,13 @@ function LinkInstance(dataObj, potentialLink) {
 }
 LinkInstance.prototype = {
 	update: function (key) {
-		this.active = this.potentialLink.canApplyTo(this.dataObj);
-		if (this.active) {
+		var active = this.potentialLink.canApplyTo(this.dataObj);
+		if (active) {
 			this.rawLink = this.potentialLink.linkForData(this.dataObj);
+		} else {
+			this.rawLink = null;
 		}
+		this.active = active;
 		this.updateMonitors.notify(this.active);
 	},
 	rel: function () {
