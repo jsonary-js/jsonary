@@ -5738,6 +5738,18 @@ publicApi.UriTemplate = UriTemplate;
 		rendererLookup[renderer.uniqueId] = renderer;
 		rendererList.push(renderer);
 	}
+	function deregister(rendererId) {
+		if (typeof rendererId == "object") {
+			rendererId = rendererId.uniquId;
+		}
+		delete rendererLookup[rendererId];
+		for (var i = 0; i < rendererList.length; i++) {
+			if (rendererList[i].uniqueId == rendererId) {
+				rendererList.splice(i, 1);
+				i--;
+			}
+		}
+	}
 	render.register = register;
 	
 	function lookupRenderer(rendererId) {
