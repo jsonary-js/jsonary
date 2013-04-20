@@ -368,9 +368,14 @@
 							}
 						}						
 					}
+					var redrawElementId = inputAction.context.elementId;
 					var inputContext = inputAction.context;
 					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
-					inputContext.renderer.action.apply(inputContext.renderer, args);
+					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
+						// Action returned positive - we should force a re-render
+						var element = document.getElementById(redrawElementId);
+						inputContext.renderer.render(element, inputContext.data, inputContext);
+					}
 				};
 			}
 			element = null;
@@ -495,6 +500,18 @@
 		var renderer = new Renderer(obj);
 		rendererLookup[renderer.uniqueId] = renderer;
 		rendererList.push(renderer);
+	}
+	function deregister(rendererId) {
+		if (typeof rendererId == "object") {
+			rendererId = rendererId.uniquId;
+		}
+		delete rendererLookup[rendererId];
+		for (var i = 0; i < rendererList.length; i++) {
+			if (rendererList[i].uniqueId == rendererId) {
+				rendererList.splice(i, 1);
+				i--;
+			}
+		}
 	}
 	render.register = register;
 	

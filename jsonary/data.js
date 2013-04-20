@@ -661,8 +661,9 @@ Data.prototype = {
 	},
 	editableCopy: function () {
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", false);
-		this.schemas().each(function (index, schema) {
-			copy.addSchema(schema);
+		var schemaKey = Utils.getUniqueKey();
+		this.schemas().fixed().each(function (index, schema) {
+			copy.addSchema(schema, schemaKey);
 		});
 		return copy;
 	},
@@ -703,6 +704,14 @@ Data.prototype = {
 		return this;
 	},
 	resolveUrl: function (url) {
+		var data = this;
+		while (data) {
+			var selfLink = data.getLink("self");
+			if (selfLink) {
+				return Uri.resolve(selfLink.href, url);
+			}
+			data = data.parent();
+		}
 		return this.document.resolveUrl(url);
 	},
 	get: function (path) {

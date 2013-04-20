@@ -9,6 +9,9 @@
 			return false;
 		},
 		renderHtml: function (data, context) {
+			if (!data.readOnly()) {
+				return context.renderHtml(data);
+			}
 			var result = "";
 			
 			var links = data.links();
@@ -44,7 +47,14 @@
 					return false;
 				}
 				context.uiState.submitLink = arg1;
-				context.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
+				if (link.method == "PUT" && link.submissionSchemas.length == 0) {
+					context.submissionData = context.data.editableCopy();
+				} else {
+					context.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
+					link.submissionSchemas.createValue(function (submissionValue) {
+						context.submissionData.setValue(submissionValue);
+					});
+				}
 				link.submissionSchemas.createValue(function (submissionValue) {
 					context.submissionData.setValue(submissionValue);
 				});
