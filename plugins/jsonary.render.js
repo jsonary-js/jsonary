@@ -500,10 +500,11 @@
 		var renderer = new Renderer(obj);
 		rendererLookup[renderer.uniqueId] = renderer;
 		rendererList.push(renderer);
+		return renderer;
 	}
 	function deregister(rendererId) {
 		if (typeof rendererId == "object") {
-			rendererId = rendererId.uniquId;
+			rendererId = rendererId.uniqueId;
 		}
 		delete rendererLookup[rendererId];
 		for (var i = 0; i < rendererList.length; i++) {
