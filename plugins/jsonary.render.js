@@ -514,6 +514,7 @@
 		}
 	}
 	render.register = register;
+	render.deregister = deregister;
 	
 	function lookupRenderer(rendererId) {
 		return rendererLookup[rendererId];
