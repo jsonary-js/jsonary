@@ -500,8 +500,22 @@
 		var renderer = new Renderer(obj);
 		rendererLookup[renderer.uniqueId] = renderer;
 		rendererList.push(renderer);
+		return renderer;
+	}
+	function deregister(rendererId) {
+		if (typeof rendererId == "object") {
+			rendererId = rendererId.uniqueId;
+		}
+		delete rendererLookup[rendererId];
+		for (var i = 0; i < rendererList.length; i++) {
+			if (rendererList[i].uniqueId == rendererId) {
+				rendererList.splice(i, 1);
+				i--;
+			}
+		}
 	}
 	render.register = register;
+	render.deregister = deregister;
 	
 	function lookupRenderer(rendererId) {
 		return rendererLookup[rendererId];

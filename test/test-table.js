@@ -9,4 +9,6 @@ testRenderer.filter = function (data, schemas) {
 testRenderer.config.addClass = "test-table-add";
 testRenderer.config.addHtml = "+ add row";
 
-Jsonary.render.register(testRenderer);
+var renderer = Jsonary.render.register(testRenderer);
+
+Jsonary.render.deregister(renderer);
