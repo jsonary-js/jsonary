@@ -36,12 +36,12 @@ body {
 	}
 }
 
-a[href] {
+a {
 	color: #8F4040;
 	text-decoration: none;
 }
 
-a[href]:hover {
+a:hover {
 	color: #6C1313;
 	text-decoration: underline;
 }
@@ -210,7 +210,7 @@ p + p {
 }
 
 .example {
-	margin: 0.3em;
+	margin: 1em;
 	border: 1px solid #888;
 	border-radius: 3px;
 	background-color: #F0EFED;
