@@ -1,98 +1,73 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 	<head>
 		<title>Jsonary</title>
-		<link rel="stylesheet" href="css/main.css">
-		<link rel="stylesheet" href="css/json-highlight.css">
-		<meta name="viewport" content="width=960">
+		<link rel="stylesheet" href="css/main/main.css" />
+		<meta name="viewport" content="width=480">
+		<script src="js/respond.min.js"></script>
 	</head>
 	<body>
-		<div align="center">
+		<div id="top-fade"></div>
+		<div id="page">
+			<div id="header">
+				<a href="?"><h1 id="jsonary-title">Jsonary</h1></a>
+				<div id="get-started-block">
+					download the <a href="get-started-bundle.zip">get-started bundle</a> and <a href="get-started-guide">read the guide</a>
+				</div>
+			</div>
+		
+			<div id="info">
+				<ul class="navigation">
+					<li class="current">What is Jsonary?</li>
+					<li><a href="?page=schema-guide">Guide to JSON Schema</a></li>
+				</ul>
+				
+				<div class="info-block">
+					<h3>Info</h3>
+					<table class="key-value">
+						<tr>
+							<td class="key">Licence</td>
+							<td class="value"><a href="LICENSE.txt">MIT</a></td>
+						</tr>
+						<tr>
+							<td class="key">Source</td>
+							<td class="value"><a href="https://github.com/geraintluff/jsonary">view on GitHub</a></td>
+						</tr>
+					</table>
+				</div>
+			</div>
+		
 			<div id="content">
-				<h1>Jsonary</h1>
-				<div class="tagline">The JSON client library</div>
-
-				<div class="box">
-					<h3 class="box-heading">Download</h3>
-					<div class="section">
-					    <p>Download the <a href="get-started-bundle.zip">quick-start bundle</a>.
-					</div>
-				</div>
-
 				<h2>What is Jsonary?</h2>
-				<div class="section">
-				    <p>Jsonary can present JSON data as hyper-text, using <a href="http://json-schema.org/">JSON Hyper-Schema</a>.
-				    <p>JSON Hyper-Schemas turn your existing data into hyper-text - no special structures, no reserved properties.  The purpose of Jsonary is to combine JSON data with hyper-schemas, in order to treat it as hyper-text.
-				    <p>Jsonary can follow the hyper-links in your data, present an interface for forms, and can get you a working client with almost no effort if your API uses JSON Hyper-Schema.
-					<p>The UI can be customised piece-by-piece, turning your generic client into a production interface.  See <a href="about-jsonary.html">this page</a> for more information about Jsonary.
-				</div>
-				
-				<h2>Getting started</h2>
-				<div class="section">
-				    <p>First, download <a href="get-started-bundle.zip">this bundle</a> - it contains a generic JSON browser, and the default set of renderers.
-				    <p>Then follow this <a href="get-started-guide/">step-by-step guide</a> to start using JSON Hyper-Schema with your API.
-				</div>
-				
-				<h2>What is JSON Schema?</h2>
-				<div class="section">
-					<p>JSON Schema documents describe the nature and shape of JSON data.  They can also specify how to infer hyperlinks, turning JSON data into hyper-media documents.  The main site is <a href="http://json-schema.org/">json-schema.org</a>.
+				<div class="content-block">
+					<p>Jsonary is a library that deals with <a href="http://json-schema.org">JSON (Hyper-)Schema</a>.</p>
+					<p>It takes away all the detail of interpreting schemas and hyper-links, leaving you with a full hypermedia interpretation of your JSON data.</p>
+					<p>Jsonary also includes a rendering system, so you can embed your JSON data into web pages in a fully customisable way.</p>
 					
-<pre class="highlight-json-schema">
-{
-	"title": "Example schema",
-	"type": "object",
-	"properties": {
-		"id": {"type": "integer"},
-		"authorId": {"type": "integer"},
-		"message": {"type": "string"}
-	},
-	"links": [
-		{"rel": "self", "href": "/posts/{id}"},
-		{"rel": "author", "href": "/users/{authorId}"}
-	]
-}
-</pre>
-					
-					<p><a href="documentation/json-schema/">This page</a> provides some documentation for the format, along with interactive examples for various keywords.
-
-					<h3 class="subheading">Why do we use it?</h3>
-					
-					<p>JSON Schemas can provide constraints on the data (e.g. data types, required properties, minimum lengths), which Jsonary can use to provide a default editing interface.  Hyper-schemas also enable us to treat JSON data as hyper-media, giving us links and HTML-form-style functionality.
-					<p>Schemas can reference/link to other schemas, and specify complex behaviours - for example, conditional schemas that only apply if a particular property is present, or lists of sub-schemas of which only one may apply.  However, each schema has a unique URI, so the are perfect for selecting custom renderers.
+					<h4>Why should I use it?</h4>
+					<p><a href="http://json-schema.org">JSON Schema</a> can describe your existing JSON format/API as hypermedia: links, forms, multimedia interpretations, the whole deal.
+					<p>By building your JSON client using Jsonary, your client can take all its hypertext cues from the schema - and less hard-coded knowledge in the client means more flexibility.<p>
 				</div>
 
-				<h2>Documentation and walkthroughs</h2>
-				<div class="section">
-					<p>There are some walkthroughs, that show some use cases for Jsonary:
-					<ul>
-						<li><a href="feature-tour/">A quick feature tour</a>
-						<li><a href="walkthrough-basic/">Creating a generic JSON browser</a></li>
-						<li><a href="walkthrough-facebook/">Creating a Facebook client</a> (work-in-progress)</li>
-					</ul>
-					<p>The raw API documentation is still being improved.  You can view the current state of it <a href="demos/index-plain.html#../api/">here</a>.
+				<div class="content-block">
+					<h3>Examples</h3>
+					<p>Here is some example code that fetches a JSON document via AJAX and inspects it:</p>
+					<script src="https://gist.github.com/geraintluff/6f5b7bc104f2f2bac9d6.js"></script>
+					<p>And here is an example of rendering some editable JSON data, according to some schema constraints:</p>
+					<div id="example-block-0" class="example">(Jsonary example)</div>
+					<script src="js/onload.js">
+						Jsonary.getData("/examples/basic.json", function (data) {
+							var target = document.getElementById("example-block-0");
+							Jsonary.render(target, data.editableCopy());
+						});
+					</script>
 				</div>
 
-				<h2>Plugins/Extensions</h2>
-				<div class="section">
-					<p>Jsonary can be extended to provide additional functionality, either globally or to Jsonary Data/Schema objects.
-					<p>Here are the plugins that are bundled with Jsonary:
-					<ul>
-						<li><a href="documentation/plugins/undo.html">Undo/redo plugin</a></li>
-						<li>Generic table renderer (not documented ATM)</li>
-					</ul>
-				</div>
-
-				<h2>Tests</h2>
-				<div class="section">
-					<p>There are some <a href="tests/?all">tests</a> for Jsonary.
-				</div>
-				
-				<h2>License</h2>
-				<div class="section">
-					<p>Jsonary is licensed under the <a href="LICENSE.txt">MIT License</a>.
+				<div class="content-block">
+					<h3>Get started!</h3>
+					<p>Just download our <a href="get-started-bundle.zip">get-started bundle</a> and <a href="?page=get-started-guide">read the guide</a> to get going with Jsonary and JSON Schemas.</p>
+					<p>Alternatively, you can browse our <a href="?page=schema-guide">interactive guide to JSON Schema</a> to get a feel for how JSON Schema works.</p>
 				</div>
 			</div>
 		</div>
-		<script src="js/json-highlight.js"></script>
 	</body>
 </html>
