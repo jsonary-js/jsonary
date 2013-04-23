@@ -229,7 +229,7 @@ Request.prototype = {
 		var thisRequest = this;
 		thisRequest.successful = true;
 		Utils.log(Utils.logLevel.STANDARD, "Request success: " + this.url);
-		var lines = headerText.split("\n");
+		var lines = headerText.replace(/\r\n/g, "\n").split("\n");
 		var headers = {};
 		var contentType = null;
 		var contentTypeParameters = {};
