@@ -15,6 +15,7 @@
 			"items": {
 				"type": "boolean"
 			},
+			"minItems": 1,
 			"maxItems": 5
 		}
 	},

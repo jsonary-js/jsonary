@@ -12,6 +12,18 @@ body {
 	color: #222;
 }
 
+#logo-container {
+	position: relative;
+}
+
+#logo {
+	position: absolute;
+	right: 5px;
+	top: -30px;
+	height: 75px;
+	width: 75px;
+}
+
 #top-fade {
 	position: absolute;
 	top: 0;
@@ -52,7 +64,7 @@ table, tr, td {
 
 /* Header */
 
-h1 {
+#page-title {
 	margin: 0;
 	width: 100%;
 	border: 3px solid black;
@@ -84,6 +96,8 @@ h1 {
 	background-image: url('shadow-background.png');
 	background-position: top;
 	background-repeat: repeat-x;
+	
+	z-index: 1;
 
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
@@ -123,6 +137,10 @@ h1 {
 	padding-bottom: 0.5em;
 	line-height: 1.3em;
 	font-family: Helvetica, Arial, sans-serif;
+}
+
+.navigation ul {
+	margin: 0;
 }
 
 .navigation .current {
@@ -171,7 +189,7 @@ h2 {
 .content-block, .info-block, .navigation {
 	border: 3px solid black;
 	margin-top: 18px;
-	
+	width: 100%;
 	background-color: #FFF;
 }
 

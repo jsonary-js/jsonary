@@ -1,0 +1,17 @@
+{
+	"title": "Website page",
+	"type": "object",
+	"properties": {
+		"title": {"type": "string"},
+		"blocks": {
+			"type": "array",
+			"items": {"$ref": "#/definitions/block"}
+		}
+	},
+	"required": ["title"],
+	"definitions": {
+		"block": {
+			"title": "Block"
+		}
+	}
+}
