@@ -162,6 +162,7 @@
 					result += '<br><select name="' + inputName + '">';
 					for (var j = 0; j < options.length; j++) {
 						var schema = options[j];
+						schema.getFull(function (s) {schema = s;});
 						var selected = "";
 						if (data.schemas().indexOf(schema) != -1) {
 							context.uiState.xorSelected[i] = j;
@@ -179,6 +180,7 @@
 					context.uiState.orSelected[i] = [];
 					for (var j = 0; j < options.length; j++) {
 						var schema = options[j];
+						schema.getFull(function (s) {schema = s;});
 						var selected = "";
 						if (data.schemas().indexOf(schema) != -1) {
 							context.uiState.orSelected[i][j] = true;
@@ -214,6 +216,7 @@
 					}
 				}
 			}
+			newSchemas.getFull(function (sl) {newSchemas = sl;});
 			data.setValue(newSchemas.createValue());
 		},
 		action: function (context, actionName, value, arg1) {
@@ -404,10 +407,7 @@
 			var inputName = context.inputNameForAction('new-value');
 			var valueHtml = escapeHtml(data.value()).replace('"', '&quot;');
 			var style = "";
-			if (maxLength != null && maxLength <= 100) {
-				style += "maxWidth: " + (maxLength + 1) + "ex;";
-				style += "height: 1.5em;";
-			}
+			style += "width: 90%";
 			return '<textarea class="json-string" name="' + inputName + '" style="' + style + '">'
 				+ valueHtml
 				+ '</textarea>';
@@ -418,6 +418,9 @@
 			}
 		},
 		render: function (element, data, context) {
+			if (typeof window.getComputedStyle != "function") {
+				return;
+			}
 			// min/max length
 			var minLength = data.schemas().minLength();
 			var maxLength = data.schemas().maxLength();
