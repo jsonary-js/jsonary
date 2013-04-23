@@ -1,12 +1,17 @@
 // jstpl
 (function (global) {
 	var templateMap = {};
+	var loadedUrls = {};
 	function loadTemplates(url) {
 		if (url == undefined) {
 			var scripts = document.getElementsByTagName("script");
 			var lastScript = scripts[scripts.length - 1];
 			url = lastScript.getAttribute("src");
 		}
+		if (loadedUrls[url]) {
+			return;
+		}
+		loadedUrls[url] = true;
 
 		var xhr = new XMLHttpRequest();
 		xhr.open("GET", url, false);
@@ -27,6 +32,7 @@
 		return result;
 	}
 	function getTemplate(key) {
+		loadTemplates();
 		var rawCode = templateMap[key];
 		if (rawCode) {
 			return create(rawCode);
@@ -111,8 +117,6 @@
 // Jsonary plugin
 (function (Jsonary) {
 	
-	jstpl.loadTemplates();
-
 	/* Template: jsonary-template-header-code
 	var data = arguments[0], context = arguments[1];
 	function want(path) {

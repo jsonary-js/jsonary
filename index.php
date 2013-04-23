@@ -168,7 +168,7 @@
 		<script src="site/renderers/site.js"></script>
 		<script>
 			var pageUrl = <?php echo json_encode($pageUrl); ?>;
-			//Jsonary.render(document.getElementById("content"), pageUrl, {page: pageUrl});
+			Jsonary.render(document.getElementById("content"), pageUrl, {page: pageUrl});
 		</script>
 	</body>
 </html>
