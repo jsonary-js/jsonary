@@ -109,7 +109,7 @@
 		<link rel="stylesheet"  href="renderers/common.css"></link>
 
 		<script src="plugins/jsonary.undo.js"></script>
-		<script src="plugins/jsonary.jstpl.js"></script>
+		<script src="plugins/jsonary.jstl.js"></script>
 		<script>
 			var SITE_ROOT = "";
 		</script>
@@ -163,7 +163,6 @@
 			</div>
 		</div>
 		
-		<script src="js/jstpl.js"></script>
 		<script src="site/renderers/markdown.js"></script>
 		<script src="site/renderers/site.js"></script>
 		<script>

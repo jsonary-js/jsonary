@@ -65,7 +65,7 @@ Jsonary.render.register({
 	Gist ID:
 	<?/gist?>
 <?js } else {?>
-	<p><a href="https://gist.github.com/<?gist?>">view as Gist</a></p>
+	<p><a href="https://gist.github.com/<%gist%>">view as Gist</a></p>
 <?js } ?>
 */
 Jsonary.render.register({

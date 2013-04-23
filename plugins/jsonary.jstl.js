@@ -1,4 +1,4 @@
-// jstpl
+// jstl
 (function (global) {
 	var templateMap = {};
 	var loadedUrls = {};
@@ -108,7 +108,7 @@
 	publicApi.create = create;
 	publicApi.defaultFunction = defaultFunction;
 	publicApi.defaultHeaderCode = "var value = arguments[0];";
-	global.jstpl = publicApi;
+	global.jstl = publicApi;
 })((typeof module !== 'undefined' && module.exports) ? exports : this);
 
 // Jsonary plugin
@@ -124,7 +124,7 @@
 		echo(context.actionHtml(html, actionName));
 	};
 	*/
-	var headerCode = jstpl.getTemplate('jsonary-template-header-code').code;
+	var headerCode = jstl.getTemplate('jsonary-template-header-code').code;
 	var substitutionFunction = function (path) {
 		if (path == "$") {
 			return function (data, context) {
@@ -144,14 +144,14 @@
 	
 	Jsonary.extend({
 		template: function (key) {
-			var template = jstpl.getTemplate(key);
+			var template = jstl.getTemplate(key);
 			if (template == null) {
 				throw new Exception("Could not locate template: " + key);
 			}
 			return template.compile(substitutionFunction, headerCode);
 		},
 		loadTemplates: function () {
-			jstpl.loadTemplates();
+			jstl.loadTemplates();
 		}
 	});
 })(Jsonary);
