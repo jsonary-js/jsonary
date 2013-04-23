@@ -55,9 +55,6 @@
 						context.submissionData.setValue(submissionValue);
 					});
 				}
-				link.submissionSchemas.createValue(function (submissionValue) {
-					context.submissionData.setValue(submissionValue);
-				});
 				return true;
 			} else if (actionName == "submit") {
 				var link = context.data.links()[context.uiState.submitLink];
