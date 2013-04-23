@@ -1606,7 +1606,7 @@ Request.prototype = {
 		var thisRequest = this;
 		thisRequest.successful = true;
 		Utils.log(Utils.logLevel.STANDARD, "Request success: " + this.url);
-		var lines = headerText.split("\n");
+		var lines = headerText.replace(/\r\n/g, "\n").split("\n");
 		var headers = {};
 		var contentType = null;
 		var contentTypeParameters = {};
@@ -4621,7 +4621,7 @@ SchemaList.prototype = {
 	formats: function () {
 		var result = [];
 		for (var i = 0; i < this.length; i++) {
-			var format = this[0].format();
+			var format = this[i].format();
 			if (format != null) {
 				result.push(format);
 			}
