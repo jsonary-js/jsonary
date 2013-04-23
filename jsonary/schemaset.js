@@ -686,7 +686,7 @@ SchemaList.prototype = {
 	formats: function () {
 		var result = [];
 		for (var i = 0; i < this.length; i++) {
-			var format = this[0].format();
+			var format = this[i].format();
 			if (format != null) {
 				result.push(format);
 			}
