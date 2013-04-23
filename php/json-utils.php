@@ -2,7 +2,7 @@
 
 header("Content-Type: application/json");
 
-if (!defined(DEBUG)) {
+if (!defined('DEBUG')) {
 	define('DEBUG', false);
 }
 

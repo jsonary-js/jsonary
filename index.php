@@ -38,10 +38,10 @@
 		echo $indent.str_replace("\n", $indent, $html);
 	}
 	
-	function renderBlock($block, $blockLevel, $indent="\n\t\t\t\t") {
+	function renderBlock($block, $blockLevel=0, $indent="\n\t\t\t\t") {
 		$needsClose = TRUE;
 		$innerIndent = $indent."\t";
-		if ($blockLevel == "info") {
+		if ($blockLevel === "info") {
 			echo $indent.'<div class="info-block">';
 		} else if ($blockLevel == 0) {
 			echo $indent.'<div class="content-block">';
@@ -97,18 +97,19 @@
 <html>
 	<head>
 		<title><?php echo htmlentities($siteData->title); ?> - <?php echo htmlentities($pageData->title); ?></title>
+		<script src="js/css3-mediaqueries.js"></script>
 		<link rel="stylesheet" href="css/main/main.css" />
 		<meta name="viewport" content="width=480,initial-scale=1">
-		<script src="js/respond.min.js"></script>
 
 		<script src="jsonary.js"></script>
 		<script src="renderers/plain.jsonary.js"></script>
 		<script src="renderers/list-links.js"></script>
-		<script src="renderers/list-schemas.js"></script>
+		<!--<script src="renderers/list-schemas.js"></script>-->
 		<link rel="stylesheet"  href="renderers/plain.jsonary.css"></link>
 		<link rel="stylesheet"  href="renderers/common.css"></link>
 
 		<script src="plugins/jsonary.undo.js"></script>
+		<script src="plugins/jsonary.jstpl.js"></script>
 		<script>
 			var SITE_ROOT = "";
 		</script>
@@ -119,7 +120,7 @@
 			<div id="header">
 				<a href=".">
 					<h1 id="page-title">
-						<span id="logo-container"><img id="logo" src="Jsonary-glow.png"></span>
+						<span id="logo-container">&nbsp;<img id="logo" src="Jsonary-glow.png"></span>
 						<?php echo htmlentities($siteData->title); ?>
 					</h1>
 				</a>
@@ -132,6 +133,7 @@
 		
 			<div id="info">
 				<div class="navigation">
+					<h3>Navigation</h3>
 					<ul><?php
 						foreach ($siteData->pages as $page) {
 							if ($page->id == $pageId) {
@@ -161,13 +163,12 @@
 			</div>
 		</div>
 		
+		<script src="js/jstpl.js"></script>
+		<script src="site/renderers/markdown.js"></script>
 		<script src="site/renderers/site.js"></script>
-		<script src="js/onload.js">
-			var siteData = <?php echo json_encode($siteData); ?>;
+		<script>
 			var pageUrl = <?php echo json_encode($pageUrl); ?>;
-			var pageData = Jsonary.addToCache(<?php echo json_encode($pageData); ?>, pageUrl);
-			
-			Jsonary.render(document.getElementById("content"), "site.php/pages/index");
+			//Jsonary.render(document.getElementById("content"), pageUrl, {page: pageUrl});
 		</script>
 	</body>
 </html>

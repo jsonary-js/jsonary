@@ -25,7 +25,7 @@
 					"demoId": "example-block",
 					"initialText": "Something's wrong - there should be an example here",
 					"run-button": false,
-					"javascript": "Jsonary.getData(SITE_ROOT + 'examples/basic/', function (data) {\n\tvar target = document.getElementById('example-block');\n\tJsonary.render(target, data.editableCopy());\n});"
+					"javascript": "Jsonary.getData(SITE_ROOT + 'examples/basic/', function (data) {\n\tvar target = document.getElementById('example-block');\n\tif (target) {\n\t\tJsonary.render(target, data.editableCopy());\n\t}\n});"
 				}
 			]
 		},
