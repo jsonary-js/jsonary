@@ -70,39 +70,19 @@ Jsonary.render.register({
 */
 Jsonary.render.register({
 	renderHtml: Jsonary.template("schemas/page.json#/definitions/gist"),
-	enhance2: function (element, data, context) {
-		element.innerHTML = "";
-		var iframe = document.createElement("iframe");
-		iframe.setAttribute("width", "100%");
-		iframe.setAttribute("height", "60px");
-		iframe.style.visibility = "hidden";
-		iframe.style.border = "none";
-		element.appendChild(iframe);
-		
-		var callbackName = "gist_resize_" + Math.floor(Math.random()*100000000);
-		window[callbackName] = function (height) {
-			console.log(arguments);
+	enhance: function (element, data, context) {
+		var gistId = data.propertyValue("gist");
+		var callbackName = "gist_callback_" + Math.floor(Math.random()*100000000);
+		window[callbackName] = function (gistData) {
 			delete window[callbackName];
-			iframe.style.height = height + "px";
-			iframe.style.visibility = "visible";
+			var html = '<link rel="stylesheet" href="' + escapeHtml(gistData.stylesheet) + '"></link>';
+			html += gistData.div;
+			element.innerHTML = html;
+			script.parentNode.removeChild(script);
 		};
-		
-		var iframeCode = '<html>'
-						+ '<body onload="parent.' + callbackName + '(document.body.scrollHeight)">'
-							+ '<script type="text/javascript" src="https://gist.github.com/' + data.propertyValue("gist") + '.js"></script>'
-							+ '<style>td, th {font-size: 0.8em} .gist {font-size: 0.8em}</style>'
-						+ '</body>'
-					+ '</html>';
-		var gistFrameDoc = iframe.document;
-		if (iframe.contentDocument) {
-			gistFrameDoc = iframe.contentDocument;
-		} else if (iframe.contentWindow) {
-			gistFrameDoc = iframe.contentWindow.document;
-		}
-		gistFrameDoc.open();
-		gistFrameDoc.writeln(iframeCode);
-		gistFrameDoc.close();
-
+		var script = document.createElement("script");
+		script.setAttribute("src", "https://gist.github.com/" + gistId + ".json?callback=" + callbackName);
+		document.body.appendChild(script);
 	},
 	filter: function (data, schemas) {
 		return schemas.containsUrl("schemas/page.json#/definitions/gist");
