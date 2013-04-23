@@ -65,7 +65,7 @@
 		
 		var directFunctions = [];
 		var directFunctionVarNames = [];
-		var parts = template.split("<?");
+		var parts = template.split(/<\?js|<\?|<%/g);
 		var initialString = parts.shift();
 		jscode += '	var ' + resultVariableName + ' = ' + JSON.stringify(initialString) + ';\n';
 		jscode += '	var echo = function (str) {' + resultVariableName + ' += str;};\n';
@@ -74,10 +74,7 @@
 		}
 		while (parts.length > 0) {
 			var part = parts.shift();
-			if (part.substring(0, 2) == "js") {
-				part = part.substring(2);
-			}
-			var endIndex = part.indexOf("?>");
+			var endIndex = part.match(/\?>|%>/).index;
 			var embeddedCode = part.substring(0, endIndex);
 			var constant = part.substring(endIndex + 2);
 			
