@@ -1621,7 +1621,14 @@ Request.prototype = {
 			}
 			// Some browsers have all parameters as lower-case, so we do this for compatability
 			//       (discovered using Dolphin Browser on an Android phone)
-			headers[keyName.toLowerCase()] = value;
+			keyName = keyName.toLowerCase();
+			if (headers[keyName] == undefined) {
+				headers[keyName] = value;
+			} else if (typeof headers[keyName] == "object") {
+				headers[keyName].push(value);
+			} else {
+				headers[keyName] = [headers[keyName], value];
+			}
 		}
 		Utils.log(Utils.logLevel.DEBUG, "headers: " + JSON.stringify(headers, null, 4));
 		var contentType = headers["content-type"].split(";")[0];
@@ -1657,6 +1664,33 @@ Request.prototype = {
 				"rel": "root"
 			};
 			thisRequest.document.raw.addLink(link);
+		}
+		
+		// Links
+		if (headers["link"]) {
+			var links = (typeof headers["link"] == "object") ? headers['link'] : [headers['link']];
+			for (var i = 0; i < links.length; i++) {
+				var link = links[i];
+				var parts = link.trim().split(";");
+				var url = parts.shift().trim();
+				url = url.substring(1, url.length - 2);
+				var linkObj = {
+					"href": url
+				};
+				for (var j = 0; j < parts.length; j++) {
+					var part = parts[j];
+					var key = part.substring(0, part.indexOf("="));
+					var value = part.substring(key.length + 1);
+					if (value.charAt(0) == '"') {
+						value = JSON.parse(value);
+					}
+					if (key == "type") {
+						key = "mediaType";
+					}
+					linkObj[key] = value;
+				}
+				thisRequest.document.raw.addLink(linkObj);
+			}
 		}
 
 		thisRequest.checkForFullResponse();
