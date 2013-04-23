@@ -71,18 +71,20 @@ Jsonary.render.register({
 Jsonary.render.register({
 	renderHtml: Jsonary.template("schemas/page.json#/definitions/gist"),
 	enhance: function (element, data, context) {
-		var gistId = data.propertyValue("gist");
-		var callbackName = "gist_callback_" + Math.floor(Math.random()*100000000);
-		window[callbackName] = function (gistData) {
-			delete window[callbackName];
-			var html = '<link rel="stylesheet" href="' + escapeHtml(gistData.stylesheet) + '"></link>';
-			html += gistData.div;
-			element.innerHTML = html;
-			script.parentNode.removeChild(script);
-		};
-		var script = document.createElement("script");
-		script.setAttribute("src", "https://gist.github.com/" + gistId + ".json?callback=" + callbackName);
-		document.body.appendChild(script);
+		if (data.readOnly()) {
+			var gistId = data.propertyValue("gist");
+			var callbackName = "gist_callback_" + Math.floor(Math.random()*100000000);
+			window[callbackName] = function (gistData) {
+				delete window[callbackName];
+				var html = '<link rel="stylesheet" href="' + escapeHtml(gistData.stylesheet) + '"></link>';
+				html += gistData.div;
+				element.innerHTML = html;
+				script.parentNode.removeChild(script);
+			};
+			var script = document.createElement("script");
+			script.setAttribute("src", "https://gist.github.com/" + gistId + ".json?callback=" + callbackName);
+			document.body.appendChild(script);
+		}
 	},
 	filter: function (data, schemas) {
 		return schemas.containsUrl("schemas/page.json#/definitions/gist");
