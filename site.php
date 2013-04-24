@@ -13,7 +13,8 @@ $filename = "site{$pathInfo}.json";
 if ($method == "PUT" && $_SESSION[ADMINISTRATOR_FLAG]) {
 	$newData = json_decode(file_get_contents("php://input"));
 	if ($newData != NULL) {
-		file_put_contents($filename, json_encode($newData));
+		$result = file_put_contents($filename, json_encode($newData));
+		json_exit($result);
 	}
 }
 
