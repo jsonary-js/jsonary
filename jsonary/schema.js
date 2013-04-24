@@ -484,11 +484,10 @@ PotentialLink.prototype = {
 			} else if (candidateData.basicType() == "array" && isIndex(key)) {
 				subData = candidateData.index(key);
 			}
-			if (subData == undefined) {
+			if (subData == undefined || !subData.defined()) {
 				return false;
 			}
-			basicType = subData.basicType();
-			if (basicType != "string" && basicType != "number" && basicType != "integer") {
+			if (subData.basicType() == "null") {
 				return false;
 			}
 		}
@@ -550,7 +549,7 @@ function ActiveLink(rawLink, potentialLink, data) {
 
 	this.rel = rawLink.rel;
 	if (rawLink.method != undefined) {
-		this.method = rawLink;
+		this.method = rawLink.method;
 	} else if (rawLink.rel == "edit") {
 		this.method = "PUT"
 	} else if (rawLink.rel == "create") {
