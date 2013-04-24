@@ -1,9 +1,12 @@
 // jstl
-(function (global) {
+(function (publicApi) {
 	var templateMap = {};
 	var loadedUrls = {};
 	function loadTemplates(url) {
 		if (url == undefined) {
+			if (typeof document == "undefined") {
+				return;
+			}
 			var scripts = document.getElementsByTagName("script");
 			var lastScript = scripts[scripts.length - 1];
 			url = lastScript.getAttribute("src");
@@ -13,13 +16,20 @@
 		}
 		loadedUrls[url] = true;
 
-		var xhr = new XMLHttpRequest();
-		xhr.open("GET", url, false);
-		xhr.send();
-		var code = xhr.responseText;
+		var code = "";
+		if (typeof XMLHttpRequest != 'undefined') {
+			// In browser
+			var xhr = new XMLHttpRequest();
+			xhr.open("GET", url, false);
+			xhr.send();
+			code = xhr.responseText;
+		} else if (typeof require != 'undefined') {
+			// Server-side
+			var fs = require('fs');
+			code = fs.readFileSync(url).toString();
+		}
 
-		var result = {};
-		var parts = code.split(/\/\*\s*[Tt]emplate:/);
+		var parts = (" " + code).split(/\/\*\s*[Tt]emplate:/);
 		parts.shift();
 		for (var i = 0; i < parts.length; i++) {
 			var part = parts[i];
@@ -29,7 +39,6 @@
 			var template = part.substring(endOfLine + 1);
 			templateMap[key] = template;
 		}
-		return result;
 	}
 	function getTemplate(key) {
 		loadTemplates();
@@ -65,8 +74,8 @@
 		
 		var directFunctions = [];
 		var directFunctionVarNames = [];
-		var parts = template.split(/<\?js|<\?|<%/g);
-		var initialString = parts.shift();
+		var parts = (" " + template).split(/<\?js|<\?|<%/g);
+		var initialString = parts.shift().substring(1);
 		jscode += '	var ' + resultVariableName + ' = ' + JSON.stringify(initialString) + ';\n';
 		jscode += '	var echo = function (str) {' + resultVariableName + ' += str;};\n';
 		if (headerText) {
@@ -102,14 +111,12 @@
 		};
 	};
 	
-	var publicApi = {};
 	publicApi.loadTemplates = loadTemplates;
 	publicApi.getTemplate = getTemplate;
 	publicApi.create = create;
 	publicApi.defaultFunction = defaultFunction;
 	publicApi.defaultHeaderCode = "var value = arguments[0];";
-	global.jstl = publicApi;
-})((typeof module !== 'undefined' && module.exports) ? exports : this);
+})((typeof module !== 'undefined' && module.exports) ? exports : (this.jstl = {}, this.jstl));
 
 // Jsonary plugin
 (function (Jsonary) {
