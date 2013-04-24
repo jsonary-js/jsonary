@@ -20,13 +20,13 @@ if ($method == "PUT" && $_SESSION[ADMINISTRATOR_FLAG]) {
 
 $jsonData = json_decode(file_get_contents($filename));
 
-if (substr($filename, 0, strlen("site/pages/")) == "site/pages") {
-	json_exit($jsonData, SITE_ROOT."site/schemas/site.json");
-} else {
-	if ($_SESSION[ADMINISTRATOR_FLAG]) {
-		header("Link: <#>;rel=\"edit\"");
-	}
+if ($_SESSION[ADMINISTRATOR_FLAG]) {
+	header("Link: <#>;rel=\"edit\"");
+}
+if (substr($filename, 0, strlen("site/pages/")) == "site/pages/") {
 	json_exit($jsonData, SITE_ROOT."site/schemas/page.json");
+} else {
+	json_exit($jsonData, SITE_ROOT."site/schemas/site.json");
 }
 
 ?>

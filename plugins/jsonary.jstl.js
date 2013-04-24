@@ -128,7 +128,10 @@
 		return subData.defined() || !subData.readOnly();
 	};
 	function action(html, actionName) {
-		echo(context.actionHtml(html, actionName));
+		echo(context.actionHtml.apply(context, arguments));
+	};
+	function render(subData) {
+		echo(context.renderHtml(subData));
 	};
 	*/
 	var headerCode = jstl.getTemplate('jsonary-template-header-code').code;

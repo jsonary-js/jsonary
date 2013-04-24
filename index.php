@@ -3,6 +3,7 @@
 	include "php/markdown/markdown.php";
 
 	$siteFile = "site/site.json";
+	$siteUrl = "site.php/site";
 
 	$pageId = isset($_GET['page']) ? $_GET['page'] : 'index';
 	$pageId = str_replace(".", "_", $pageId);
@@ -166,8 +167,10 @@
 		<script src="site/renderers/markdown.js"></script>
 		<script src="site/renderers/site.js"></script>
 		<script>
+			var siteUrl = <?php echo json_encode($siteUrl); ?>;
+			Jsonary.render(document.getElementById("page"), siteUrl);
 			var pageUrl = <?php echo json_encode($pageUrl); ?>;
-			Jsonary.render(document.getElementById("content"), pageUrl, {page: pageUrl});
+//			Jsonary.render(document.getElementById("content"), pageUrl);
 		</script>
 	</body>
 </html>

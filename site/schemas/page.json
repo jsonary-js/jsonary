@@ -28,7 +28,8 @@
 				{"$ref": "#/definitions/markdown"},
 				{"$ref": "#/definitions/section"},
 				{"$ref": "#/definitions/gist"},
-				{"$ref": "#/definitions/demo"}
+				{"$ref": "#/definitions/demo"},
+				{"$ref": "#/definitions/keyValue"}
 			]
 		},
 		"markdown": {
@@ -71,6 +72,24 @@
 				}
 			},
 			"required": ["demoId", "javascript"]
+		},
+		"keyValue": {
+			"title": "Key-Value",
+			"type": "object",
+			"properties": {
+				"keyValue": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"key": {"type": "string"},
+							"value": {"$ref": "#/definitions/item"}
+						},
+						"required": ["key", "value"]
+					}
+				}
+			},
+			"required": ["keyValue"]
 		}
 	}
 }

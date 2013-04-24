@@ -18,6 +18,7 @@ body {
 }
 
 #logo {
+	border: none;
 	position: absolute;
 	right: 5px;
 	top: -30px;
@@ -103,6 +104,10 @@ table, tr, td {
 	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
+#get-started-block p {
+	display: inline;
+}
+
 /* Layout */
 
 #header, #info, #content {
@@ -171,6 +176,10 @@ table.key-value td.key {
 	font-weight: bold;
 	width: 8em;
 	padding-right: 0.8em;
+}
+
+table.key-value td.value p {
+	display: inline;
 }
 
 /* Content */

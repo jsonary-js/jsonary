@@ -1,4 +1,86 @@
-Jsonary.loadTemplates();
+/* Template: schemas/site.json
+			<div id="header">
+				<a href=".">
+					<h1 id="page-title">
+						<span id="logo-container">&nbsp;<img id="logo" src="Jsonary-glow.png"></span>
+						<?/title?>
+					</h1>
+				</a>
+				<div id="get-started-block">
+					<?/tagLine?>
+				</div>
+			</div>
+		
+			<div id="info">
+				<div class="navigation">
+					<h3>Navigation</h3>
+					<?js if (data.readOnly()) {
+							context.uiState.pageIndex = context.uiState.pageIndex || 0; ?>
+						<ul>
+							<?js data.property("pages").items(function (index, subData) {
+								var html = escapeHtml(subData.propertyValue("title"));
+								if (context.uiState.pageIndex == index) {
+									echo('<li class="current">');
+									echo(html);
+								} else {
+									echo('<li>');
+									action(html, "page", index);
+								}
+							}); ?>
+						</ul>
+					<?js } else { ?>
+						<?/pages?>
+					<?js } ?>
+				</div>
+				<?/blocks?>
+			</div>
+			
+			<div id="content">
+				<?js
+					if (data.readOnly()) {
+						var page = data.property("pages").item(context.uiState.pageIndex);
+						var pageLink = page.getLink("full");
+						render(pageLink.follow());
+					}
+				?>
+			</div>
+*/
+Jsonary.render.register({
+	renderHtml: Jsonary.template("schemas/site.json"),
+	filter: function (data, schemas) {
+		return schemas.containsUrl("schemas/site.json");
+	},
+	action: function (context, actionName, arg1) {
+		if (actionName == "page") {
+			context.uiState.pageIndex = arg1;
+			return true;
+		}
+	}
+});
+
+/* Template: schemas/site.json#/definitions/page-link
+<li><?js
+	var title = escapeHtml(data.propertyValue("title"));
+	action(title, "follow");
+?></li>
+*/
+Jsonary.render.register({
+	renderHtml: Jsonary.template("schemas/site.json#/definitions/page-link"),
+	filter: function (data, schemas) {
+		return false;
+		return data.readOnly() && schemas.containsUrl("schemas/site.json#/definitions/page-link");
+	},
+	action: function (context, actionName) {
+		if (actionName == "follow") {
+			var fullLink = context.data.links("full")[0];
+			if (fullLink) {
+				fullLink.follow();
+			}
+		}
+	}
+});
+
+// PAGE //
 
 /* Template: schemas/page.json
 <h2><?/title?></h2>
@@ -42,8 +124,14 @@ Jsonary.render.register({
 	<?/initialText?>
 </div>
 <?js if (!data.readOnly()) { ?>
-	JS Code:
-	<?/javascript?>
+	<div>
+		JS Code:
+		<?/javascript?>
+	</div>
+	<div>
+		Element Id:
+		<?/demoId?>
+	</div>
 <?js } ?>
 <?/content?>
 */
@@ -98,5 +186,41 @@ Jsonary.render.register({
 	},
 	filter: function (data, schemas) {
 		return schemas.containsUrl("schemas/page.json#/definitions/gist");
+	}
+});
+
+/* Template: schemas/page.json#/definitions/keyValue
+<?js if (data.readOnly()) { ?>
+	<table class="key-value">
+		<?js data.property("keyValue").items(function (index, subData) { ?>
+			<tr>
+				<td class="key"><?js render(subData.property("key")); ?></td>
+				<td class="value"><?js render(subData.property("value")); ?></td>
+			</tr>
+		<?js }); ?>
+	</table>
+<?js } else { ?>
+	<?/keyValue?>
+<?js } ?>
+*/
+Jsonary.render.register({
+	renderHtml: Jsonary.template("schemas/page.json#/definitions/keyValue"),
+	filter: function (data, schemas) {
+		return schemas.containsUrl("schemas/page.json#/definitions/keyValue");
+	}
+});
+
+/* Template: schemas/page.json#/definitions/keyValue/properties/keyValue/items
+<table class="key-value">
+	<tr>
+		<td class="key"><?/key?></td>
+		<td class="value"><?/value?></td>
+	</tr>
+</table>
+*/
+Jsonary.render.register({
+	renderHtml: Jsonary.template("schemas/page.json#/definitions/keyValue/properties/keyValue/items"),
+	filter: function (data, schemas) {
+		return schemas.containsUrl("schemas/page.json#/definitions/keyValue/properties/keyValue/items");
 	}
 });
