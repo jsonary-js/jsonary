@@ -549,7 +549,17 @@ function ActiveLink(rawLink, potentialLink, data) {
 	}
 
 	this.rel = rawLink.rel;
-	this.method = (rawLink.method != undefined) ? rawLink.method : "GET";
+	if (rawLink.method != undefined) {
+		this.method = rawLink;
+	} else if (rawLink.rel == "edit") {
+		this.method = "PUT"
+	} else if (rawLink.rel == "create") {
+		this.method = "POST"
+	} else if (rawLink.rel == "delete") {
+		this.method = "DELETE"
+	} else {
+		this.method = "GET";
+	}
 	if (rawLink.enctype != undefined) {
 		rawLink.encType = rawLink.enctype;
 		delete rawLink.enctype;
