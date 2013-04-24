@@ -230,12 +230,20 @@ p + p {
 /* Examples and code */
 
 .gist {
-	font-size: 0.9em;
+	font-size: 12px;
 	margin: 0.5em;
 }
 
+.gist .line-numbers, .gist .line-data {
+	font-size: 12px;
+	line-height: 14px;
+}
+
 .example {
+	width: 96%;
 	margin: 1em;
+	margin-left: 2%;
+	margin-right: 2%;
 	border: 1px solid #888;
 	border-radius: 3px;
 	background-color: #F0EFED;
