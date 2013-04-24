@@ -108,9 +108,15 @@ table, tr, td {
 	display: inline;
 }
 
+/* Footer */
+
+#footer {
+	clear: both;
+}
+
 /* Layout */
 
-#header, #info, #content {
+#header, #info, #content, #footer {
 	text-align: left;
 	margin: auto;
 }

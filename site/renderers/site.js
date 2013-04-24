@@ -1,11 +1,11 @@
 /* Template: schemas/site.json
 			<div id="header">
-				<a href=".">
+				<?js if (data.readOnly()) { ?><a href="."><?js } ?>
 					<h1 id="page-title">
 						<span id="logo-container">&nbsp;<img id="logo" src="Jsonary-glow.png"></span>
 						<?/title?>
 					</h1>
-				</a>
+				<?js if (data.readOnly()) { ?></a><?js } ?>
 				<div id="get-started-block">
 					<?/tagLine?>
 				</div>
@@ -44,6 +44,8 @@
 					}
 				?>
 			</div>
+			
+			<div id="footer"></div>
 */
 Jsonary.render.register({
 	renderHtml: Jsonary.template("schemas/site.json"),
