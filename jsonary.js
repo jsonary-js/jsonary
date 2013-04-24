@@ -2790,6 +2790,7 @@ publicApi.extendData = function (obj) {
 
 
 publicApi.create = function (rawData, baseUrl, readOnly) {
+	var rawData = (typeof rawData == "object") ? JSON.parse(JSON.stringify(rawData)) : rawData; // Hacky recursive copy
 	var definitive = baseUrl != undefined;
 	if (baseUrl != undefined && baseUrl.indexOf("#") != -1) {
 		var remainder = baseUrl.substring(baseUrl.indexOf("#") + 1);
@@ -3291,11 +3292,10 @@ PotentialLink.prototype = {
 			} else if (candidateData.basicType() == "array" && isIndex(key)) {
 				subData = candidateData.index(key);
 			}
-			if (subData == undefined) {
+			if (subData == undefined || !subData.defined()) {
 				return false;
 			}
-			basicType = subData.basicType();
-			if (basicType != "string" && basicType != "number" && basicType != "integer") {
+			if (subData.basicType() == "null") {
 				return false;
 			}
 		}
@@ -3357,7 +3357,7 @@ function ActiveLink(rawLink, potentialLink, data) {
 
 	this.rel = rawLink.rel;
 	if (rawLink.method != undefined) {
-		this.method = rawLink;
+		this.method = rawLink.method;
 	} else if (rawLink.rel == "edit") {
 		this.method = "PUT"
 	} else if (rawLink.rel == "create") {
@@ -4734,6 +4734,57 @@ SchemaSet.prototype = {
 		this.updateDependenciesWithKey(key);
 		this.updateMatchesWithKey(key);
 	},
+	updateFromSelfLink: function () {
+		this.cachedLinkList = null;
+		var activeSelfLinks = [];
+		// Disable all "self" links
+		for (var schemaKey in this.links) {
+			var linkList = this.links[schemaKey];
+			for (i = 0; i < linkList.length; i++) {
+				var linkInstance = linkList[i];
+				if (linkInstance.rel() == "self") {
+					linkInstance.active = false;
+				}
+			}
+		}
+		// Recalculate all "self" links, keeping them disabled
+		for (var schemaKey in this.links) {
+			var linkList = this.links[schemaKey];
+			for (i = 0; i < linkList.length; i++) {
+				var linkInstance = linkList[i];
+				if (linkInstance.rel() == "self") {
+					linkInstance.update();
+					if (linkInstance.active) {
+						activeSelfLinks.push(linkInstance);
+						linkInstance.active = false;
+						// Reset cache again
+						this.cachedLinkList = null;
+					}
+				}
+			}
+		}
+		// Re-enable all self links that should be active
+		for (var i = 0; i < activeSelfLinks.length; i++) {
+			activeSelfLinks[i].active = true;
+		}
+
+		// Update everything except the self links
+		for (var schemaKey in this.links) {
+			var linkList = this.links[schemaKey];
+			for (i = 0; i < linkList.length; i++) {
+				var linkInstance = linkList[i];
+				if (linkInstance.rel() != "self") {
+					linkInstance.update();
+				}
+			}
+		}
+		this.dataObj.properties(function (key, child) {
+			child.addLink(null);
+		});
+		this.dataObj.items(function (index, child) {
+			child.addLink(null);
+		});
+	},
 	updateLinksWithKey: function (key) {
 		var schemaKey, i, linkList, linkInstance;
 		var linksToUpdate = [];
@@ -4750,23 +4801,16 @@ SchemaSet.prototype = {
 			var updatedSelfLink = null;
 			for (i = 0; i < linksToUpdate.length; i++) {
 				linkInstance = linksToUpdate[i];
+				var oldHref = linkInstance.active ? linkInstance.rawLink.rawLink.href : null;
 				linkInstance.update();
-				if (linkInstance.active && linkInstance.rawLink.rawLink.rel == "self") {
+				var newHref = linkInstance.active ? linkInstance.rawLink.rawLink.href : null;
+				if (newHref != oldHref && linkInstance.rel() == "self") {
 					updatedSelfLink = linkInstance;
 					break;
 				}
 			}
 			if (updatedSelfLink != null) {
-				this.cachedLinkList = null;
-				for (schemaKey in this.links) {
-					linkList = this.links[schemaKey];
-					for (i = 0; i < linkList.length; i++) {
-						var linkInstance = linkList[i];
-						if (linkInstance != updatedSelfLink) {
-							linkInstance.update();
-						}
-					}
-				}
+				this.updateFromSelfLink(updatedSelfLink);
 			}
 			// TODO: have separate "link" listeners?
 			this.invalidateSchemaState();
@@ -4895,17 +4939,7 @@ SchemaSet.prototype = {
 			}
 		}
 		if (selfLink != null) {
-			// Delete the cache so that the "self" link shows up
-			this.cachedLinkList = null;
-			for (schemaKey in this.links) {
-				linkList = this.links[schemaKey];
-				for (i = 0; i < linkList.length; i++) {
-					var linkInstance = linkList[i];
-					if (linkInstance != selfLink) {
-						linkInstance.update();
-					}
-				}
-			}
+			this.updateFromSelfLink(selfLink);
 		}
 		this.invalidateSchemaState();
 	},
@@ -4945,6 +4979,11 @@ SchemaSet.prototype = {
 		}
 	},
 	addLink: function (rawLink) {
+		if (rawLink == null) {
+			this.updateFromSelfLink();
+			this.invalidateSchemaState();
+			return;
+		}
 		var schemaKey = Utils.getUniqueKey();
 		var linkData = publicApi.create(rawLink);
 		var potentialLink = new PotentialLink(linkData);
