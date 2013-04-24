@@ -72,12 +72,5 @@
 			},
 			"required": ["demoId", "javascript"]
 		}
-	},
-	"links": [
-		{
-			"rel": "edit",
-			"href": ".",
-			"method": "PUT"
-		}
-	]
+	}
 }
