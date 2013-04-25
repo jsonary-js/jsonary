@@ -187,6 +187,7 @@ textarea {
 	white-space: pre-wrap;
 	border-radius: 3px;
 	font-size: inherit;
+	min-width: 5em;
 }
 
 .json-string-content-editable {

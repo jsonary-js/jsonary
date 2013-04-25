@@ -1,6 +1,6 @@
 (function () {
 	function escapeHtml(text) {
-		return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;").replace('"', "&quot;");
+		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
 	}
 	if (window.escapeHtml == undefined) {
 		window.escapeHtml = escapeHtml;
