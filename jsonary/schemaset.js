@@ -62,10 +62,10 @@ var ALL_TYPES_DICT = {
 	"object": true
 };
 SchemaList.prototype = {
-	indexOf: function (schema) {
+	indexOf: function (schema, resolveRef) {
 		var i = this.length - 1;
 		while (i >= 0) {
-			if (schema.equals(this[i])) {
+			if (schema.equals(this[i], resolveRef)) {
 				return i;
 			}
 			i--;
@@ -401,67 +401,139 @@ SchemaList.prototype = {
 			return values;
 		}
 	},
-	allCombinations: function () {
+	allCombinations: function (callback) {
+		if (callback && !this.isFull()) {
+			this.getFull(function (full) {
+				full.allCombinations(callback);
+			});
+			return [];
+		}
+		var thisSchemaSet = this;
+		// This is a little inefficient
 		var xorSchemas = this.xorSchemas();
 		for (var i = 0; i < xorSchemas.length; i++) {
 			var found = false;
 			for (var optionNum = 0; optionNum < xorSchemas[i].length; optionNum++) {
 				var option = xorSchemas[i][optionNum];
-				if (this.indexOf(option) >= 0) {
+				if (this.indexOf(option, !!callback) >= 0) {
 					found = true;
 					break;
 				}
 			}
 			if (!found) {
 				var result = [];
+				var pending = 1;
+				var gotResult = function() {
+					pending--;
+					if (pending <= 0) {
+						callback(result);
+					}
+				};
 				for (var optionNum = 0; optionNum < xorSchemas[i].length; optionNum++) {
 					var option = xorSchemas[i][optionNum];
-					var subCombos = this.concat([option]).allCombinations();
-					result = result.concat(subCombos);
+					if (callback) {
+						pending++;
+						this.concat([option]).allCombinations(function (subCombos) {
+							result = result.concat(subCombos);
+							gotResult();
+						});
+					} else {
+						var subCombos = this.concat([option]).allCombinations();
+						result = result.concat(subCombos);
+					}
+				}
+				if (callback) {
+					gotResult();
 				}
 				return result;
 			}
 		}
 		
 		var orSchemas = this.orSchemas();
-		var totalCombos = [[]]
+		var totalCombos = null;
+		var orSelectionOptionSets = [];
+		var orPending = 1;
+		function gotOrResult() {
+			orPending--;
+			if (orPending <= 0) {
+				var totalCombos = [new SchemaList([])];
+				for (var optionSetIndex = 0; optionSetIndex < orSelectionOptionSets.length; optionSetIndex++) {
+					var optionSet = orSelectionOptionSets[optionSetIndex];
+					var newTotalCombos = [];
+					for (var optionIndex = 0; optionIndex < optionSet.length; optionIndex++) {
+						for (var comboIndex = 0; comboIndex < totalCombos.length; comboIndex++) {
+							newTotalCombos.push(totalCombos[comboIndex].concat(optionSet[optionIndex]));
+						}
+					}
+					totalCombos = newTotalCombos;
+				}
+				for (var i = 0; i < totalCombos.length; i++) {
+					totalCombos[i] = thisSchemaSet.concat(totalCombos[i]);
+				}
+				
+				callback(totalCombos);
+			}
+		};
 		for (var i = 0; i < orSchemas.length; i++) {
-			var remaining = [];
-			var found = false;
-			for (var optionNum = 0; optionNum < orSchemas[i].length; optionNum++) {
-				var option = orSchemas[i][optionNum];
-				if (this.indexOf(option) == -1) {
-					remaining.push(option);
-				} else {
-					found = true;
-				}
-			}
-			if (remaining.length > 0) {
-				var combos = [[]];
-				for (var remNum = 0; remNum < remaining.length; remNum++) {
-					var newCombos = [];
-					for (var combNum = 0; combNum < combos.length; combNum++) {
-						newCombos.push(combos[combNum]);
-						newCombos.push(combos[combNum].concat([remaining[remNum]]));
-					}
-					combos = newCombos;
-				} 
-				if (!found) {
-					combos.shift();
-				}
-				var newTotalCombos = [];
-				for (var combA = 0; combA < totalCombos.length; combA++) {
-					for (var combB = 0; combB < combos.length; combB++) {
-						newTotalCombos.push(totalCombos[combA].concat(combos[combB]));
+			(function (i) {
+				var remaining = [];
+				var found = false;
+				for (var optionNum = 0; optionNum < orSchemas[i].length; optionNum++) {
+					var option = orSchemas[i][optionNum];
+					if (thisSchemaSet.indexOf(option, !!callback) == -1) {
+						remaining.push(option);
+					} else {
+						found = true;
 					}
 				}
-				totalCombos = newTotalCombos;
+				if (remaining.length > 0) {
+					var orSelections = [[]];
+					for (var remNum = 0; remNum < remaining.length; remNum++) {
+						var newCombos = [];
+						for (var combNum = 0; combNum < orSelections.length; combNum++) {
+							newCombos.push(orSelections[combNum]);
+							newCombos.push(orSelections[combNum].concat([remaining[remNum]]));
+						}
+						orSelections = newCombos;
+					} 
+					if (!found) {
+						orSelections.shift();
+					}
+					if (callback) {
+						orSelectionOptionSets[i] = [];
+						for (var j = 0; j < orSelections.length; j++) {
+							var orSelectionSet = new SchemaList(orSelections[j]);
+							orPending++;
+							orSelectionSet.allCombinations(function (subCombos) {
+								orSelectionOptionSets[i] = orSelectionOptionSets[i].concat(subCombos);
+								gotOrResult();
+							});
+						}
+					} else {
+						orSelectionOptionSets[i] = orSelections;
+					}
+				}
+			})(i);
+		}
+		
+		var totalCombos = [new SchemaList([])];
+		for (var optionSetIndex = 0; optionSetIndex < orSelectionOptionSets.length; optionSetIndex++) {
+			var optionSet = orSelectionOptionSets[optionSetIndex];
+			var newTotalCombos = [];
+			for (var optionIndex = 0; optionIndex < optionSet.length; optionIndex++) {
+				for (var comboIndex = 0; comboIndex < totalCombos.length; comboIndex++) {
+					newTotalCombos.push(totalCombos[comboIndex].concat(optionSet[optionIndex]));
+				}
 			}
+			totalCombos = newTotalCombos;
 		}
 		for (var i = 0; i < totalCombos.length; i++) {
 			totalCombos[i] = this.concat(totalCombos[i]);
 		}
 		
+		if (callback) {
+			gotOrResult();
+		}
 		return totalCombos;
 	},
 	createValue: function(callback, ignoreChoices) {
@@ -646,6 +718,14 @@ SchemaList.prototype = {
 			}
 		}
 		return result;
+	},
+	isFull: function () {
+		for (var i = 0; i < this.length; i++) {
+			if (!this[i].isFull()) {
+				return false;
+			}
+		}
+		return true;
 	},
 	getFull: function(callback) {
 		if (this.length == 0) {

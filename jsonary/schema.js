@@ -48,23 +48,29 @@ Schema.prototype = {
 	referenceUrl: function () {
 		return this.data.referenceUrl();
 	},
-	isComplete: function () {
+	isFull: function () {
 		var refUrl = this.data.propertyValue("$ref");
 		return refUrl === undefined;
 	},
 	getFull: function (callback) {
 		var refUrl = this.data.propertyValue("$ref");
 		if (refUrl === undefined) {
-			callback(this, undefined);
-			return;
+			if (callback) {
+				callback.call(this, this, undefined);
+			}
+			return this;
 		}
 		refUrl = this.data.resolveUrl(refUrl);
 		if (refUrl.charAt(0) == "#" && (refUrl.length == 1 || refUrl.charAt(1) == "/")) {
 			var documentRoot = this.data.document.root;
 			var pointerPath = decodeURIComponent(refUrl.substring(1));
 			var schema = documentRoot.subPath(pointerPath).asSchema();
-			callback.call(schema, schema, null);
-		} else {
+			if (callback) {
+				callback.call(schema, schema, null);
+			} else {
+				return schema;
+			}
+		} else if (callback) {
 			getSchema(refUrl, callback);
 		}
 		return this;
@@ -246,12 +252,25 @@ Schema.prototype = {
 		}
 		return result;
 	},
-	equals: function (otherSchema) {
-		if (this === otherSchema) {
+	equals: function (otherSchema, resolveRef) {
+		var thisSchema = this;
+		if (resolveRef) {
+			otherSchema = otherSchema.getFull();
+			thisSchema = this.getFull();
+		}
+		if (thisSchema === otherSchema) {
 			return true;
 		}
-		if (this.referenceUrl() !== undefined && otherSchema.referenceUrl() !== undefined) {
-			return this.referenceUrl() === otherSchema.referenceUrl();
+		var thisRefUrl = thisSchema.referenceUrl();
+		var otherRefUrl = otherSchema.referenceUrl();
+		if (resolveRef && !thisSchema.isFull()) {
+			thisRefUrl = thisSchema.data.resolveUrl(this.data.propertyValue("$ref"));
+		}
+		if (resolveRef && !otherSchema.isFull()) {
+			otherRefUrl = otherSchema.data.resolveUrl(otherSchema.data.propertyValue("$ref"));
+		}
+		if (thisRefUrl !== undefined && otherRefUrl !== undefined) {
+			return thisRefUrl === otherRefUrl;
 		}
 		return this.data.equals(otherSchema.data);
 	},
@@ -366,6 +385,7 @@ Schema.prototype = {
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
 Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
+Schema.prototype.isComplete = Schema.prototype.isFull;
 
 publicApi.extendSchema = function (obj) {
 	for (var key in obj) {
