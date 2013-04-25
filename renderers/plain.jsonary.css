@@ -196,10 +196,11 @@ textarea {
 	outline: 1px solid #BBB;
 	border-radius: 0px;
 	color: #444;
-	margin: 0.5em;
+	margin: 0.3em;
 	padding: 0.3em;
-	font-family: monospace;
+	font-family: inherit;
 	text-shadow: none;
+	font-size: 0.9em;
 }
 
 .json-string-content-editable:focus {
