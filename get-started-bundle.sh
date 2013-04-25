@@ -2,6 +2,9 @@
 
 php jsonary.js.php > /dev/null
 
+rm -rf get-started-bundle/jsonary.js*
+cp jsonary.js get-started-bundle
+
 rm -rf get-started-bundle/renderers/
 cp -r renderers get-started-bundle
 
