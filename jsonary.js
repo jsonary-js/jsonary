@@ -4536,13 +4536,20 @@ SchemaList.prototype = {
 		return totalCombos;
 	},
 	createValue: function(callback, ignoreChoices) {
-		if (callback != null) {
-			this.getFull(function (schemas) {
-				callback.call(this, schemas.createValue());
-			});
-			return;
-		}
 		if (!ignoreChoices) {
+			if (callback != null) {
+				this.allCombinations(function (allCombinations) {
+					for (var i = 0; i < allCombinations.length; i++) {
+						var value = allCombinations[i].createValue(null, true);
+						if (value !== undefined) {
+							callback(value);
+							return;
+						}
+					}
+					callback(undefined);
+				});
+				return;
+			}
 			var allCombinations = this.allCombinations();
 			for (var i = 0; i < allCombinations.length; i++) {
 				var value = allCombinations[i].createValue(null, true);

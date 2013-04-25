@@ -163,3 +163,30 @@ tests.add("xorSchemas value", function () {
 	
 	return true;
 });
+
+
+tests.add("async createValue() with references", function () {
+	var thisTest = this;
+	var schema1 = Jsonary.createSchema({
+		type: "number",
+		oneOf: [
+			{"$ref": "#/definitions/moreThanOne"},
+			{"$ref": "#/definitions/lessThanTen"}
+		],
+		definitions: {
+			"moreThanOne": {"minimum": 1},
+			"lessThanTen": {"maximum": 10}
+		}
+	});
+	var schemaList = Jsonary.createSchemaList([schema1]);
+	
+	schemaList.createValue(function (value) {
+		thisTest.assert(value >= 1, "value >= 1,  was " + value);
+		thisTest.assert(value <= 10, "value <= 10,  was " + value);
+		thisTest.pass();
+	});
+	
+	setTimeout(function () {
+		thisTest.fail("Timeout");
+	}, 100);
+});
