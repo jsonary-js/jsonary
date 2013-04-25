@@ -164,7 +164,6 @@ tests.add("xorSchemas value", function () {
 	return true;
 });
 
-
 tests.add("async createValue() with references", function () {
 	var thisTest = this;
 	var schema1 = Jsonary.createSchema({
@@ -181,6 +180,72 @@ tests.add("async createValue() with references", function () {
 	var schemaList = Jsonary.createSchemaList([schema1]);
 	
 	schemaList.createValue(function (value) {
+		thisTest.assert(value >= 1, "value >= 1,  was " + value);
+		thisTest.assert(value <= 10, "value <= 10,  was " + value);
+		thisTest.pass();
+	});
+	
+	setTimeout(function () {
+		thisTest.fail("Timeout");
+	}, 100);
+});
+
+tests.add("async createValue() with references in properties", function () {
+	var thisTest = this;
+	var schema1 = Jsonary.createSchema({
+		"type": "object",
+		"properties": {
+			"example": {
+				type: "number",
+				oneOf: [
+					{"$ref": "#/definitions/moreThanOne"},
+					{"$ref": "#/definitions/lessThanTen"}
+				]
+			}
+		},
+		"required": ["example"],
+		definitions: {
+			"moreThanOne": {"minimum": 1},
+			"lessThanTen": {"maximum": 10}
+		}
+	});
+	var schemaList = Jsonary.createSchemaList([schema1]);
+	
+	schemaList.createValue(function (objValue) {
+		value = objValue.example;
+		thisTest.assert(typeof value == "number", "value should be number, was " + (typeof value));
+		thisTest.assert(value >= 1, "value >= 1,  was " + value);
+		thisTest.assert(value <= 10, "value <= 10,  was " + value);
+		thisTest.pass();
+	});
+	
+	setTimeout(function () {
+		thisTest.fail("Timeout");
+	}, 100);
+});
+
+tests.add("async createValue() with references in items", function () {
+	var thisTest = this;
+	var schema1 = Jsonary.createSchema({
+		"type": "array",
+		"items": {
+			type: "number",
+			oneOf: [
+				{"$ref": "#/definitions/moreThanOne"},
+				{"$ref": "#/definitions/lessThanTen"}
+			]
+		},
+		"minItems": 1,
+		definitions: {
+			"moreThanOne": {"minimum": 1},
+			"lessThanTen": {"maximum": 10}
+		}
+	});
+	var schemaList = Jsonary.createSchemaList([schema1]);
+	
+	schemaList.createValue(function (arrValue) {
+		value = arrValue[0];
+		thisTest.assert(typeof value == "number", "value should be number, was " + (typeof value));
 		thisTest.assert(value >= 1, "value >= 1,  was " + value);
 		thisTest.assert(value <= 10, "value <= 10,  was " + value);
 		thisTest.pass();

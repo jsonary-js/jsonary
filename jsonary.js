@@ -4539,17 +4539,23 @@ SchemaList.prototype = {
 		if (!ignoreChoices) {
 			if (callback != null) {
 				this.allCombinations(function (allCombinations) {
-					for (var i = 0; i < allCombinations.length; i++) {
-						var value = allCombinations[i].createValue(null, true);
-						if (value !== undefined) {
-							callback(value);
-							return;
+					function nextOption(index) {
+						if (index >= allCombinations.length) {
+							callback(undefined);
 						}
+						allCombinations[index].createValue(function (value) {
+							if (value !== undefined) {
+								callback(value);
+							} else {
+								nextOption(index + 1);
+							}
+						}, true);
 					}
-					callback(undefined);
+					nextOption(0);
 				});
 				return;
 			}
+			// Synchronous version
 			var allCombinations = this.allCombinations();
 			for (var i = 0; i < allCombinations.length; i++) {
 				var value = allCombinations[i].createValue(null, true);
@@ -4559,57 +4565,92 @@ SchemaList.prototype = {
 			}
 			return;
 		}
-		var candidates = [];
+
+		var basicTypes = this.basicTypes();
+		var pending = 0;
+		var chosenCandidate = undefined;
+		function gotCandidate(candidate) {
+			if (candidate !== undefined) {
+				var newBasicType = Utils.guessBasicType(candidate);
+				if (basicTypes.indexOf(newBasicType) == -1 && (newBasicType != "integer" || basicTypes.indexOf("number") == -1)) {
+					candidate = undefined;
+				}
+			}
+			if (candidate !== undefined && chosenCandidate === undefined) {
+				chosenCandidate = candidate;
+			}
+			pending--;
+			if (callback && pending <= 0) {
+				callback(chosenCandidate);
+			}
+			return chosenCandidate;
+		}
+
 		for (var i = 0; i < this.length; i++) {
 			if (this[i].hasDefault()) {
-				candidates.push(this[i].defaultValue());
+				pending++;
+				if (gotCandidate(this[i].defaultValue())) {
+					return chosenCandidate;
+				}
 			}
 		}
-		var basicTypes = this.basicTypes();
+		
 		var enumValues = this.enumValues();
 		if (enumValues != undefined) {
+			pending += enumValues.length;
 			for (var i = 0; i < enumValues.length; i++) {
-				candidates.push(enumValues[i]);
+				if (gotCandidate(enumValues[i])) {
+					return chosenCandidate;
+				}
 			}
 		} else {
+			pending += basicTypes.length;
 			for (var i = 0; i < basicTypes.length; i++) {
 				var basicType = basicTypes[i];
 				if (basicType == "null") {
-					candidates.push(null);
+					if (gotCandidate(null)) {
+						return chosenCandidate;
+					}
 				} else if (basicType == "boolean") {
-					candidates.push(true);
+					if (gotCandidate(true)) {
+						return true;
+					}
 				} else if (basicType == "integer" || basicType == "number") {
 					var candidate = this.createValueNumber();
-					if (candidate !== undefined) {
-						candidates.push(candidate);
+					if (gotCandidate(candidate)) {
+						return chosenCandidate;
 					}
 				} else if (basicType == "string") {
 					var candidate = this.createValueString();
-					if (candidate !== undefined) {
-						candidates.push(candidate);
+					if (gotCandidate(candidate)) {
+						return chosenCandidate;
 					}
 				} else if (basicType == "array") {
-					var candidate = this.createValueArray();
-					if (candidate !== undefined) {
-						candidates.push(candidate);
+					if (callback) {
+						this.createValueArray(function (candidate) {
+							gotCandidate(candidate);
+						});
+					} else {
+						var candidate = this.createValueArray();
+						if (gotCandidate(candidate)) {
+							return chosenCandidate;
+						}
 					}
 				} else if (basicType == "object") {
-					var candidate = this.createValueObject();
-					if (candidate !== undefined) {
-						candidates.push(candidate);
+					if (callback) {
+						var candidate = this.createValueObject(function (candidate) {
+							gotCandidate(candidate);
+						});
+					} else {
+						var candidate = this.createValueObject();
+						if (gotCandidate(candidate)) {
+							return chosenCandidate;
+						}
 					}
 				}
 			}
 		}
-		for (var candidateIndex = 0; candidateIndex < candidates.length; candidateIndex++) {
-			var candidate = candidates[candidateIndex];
-			var newBasicType = Utils.guessBasicType(candidate);
-			if (basicTypes.indexOf(newBasicType) == -1 && (newBasicType != "integer" || basicTypes.indexOf("number") == -1)) {
-				continue;
-			}
-			return candidate;
-		}
-		return;
+		return gotCandidate(chosenCandidate);
 	},
 	createValueNumber: function () {
 		var exclusiveMinimum = this.exclusiveMinimum();
@@ -4666,22 +4707,59 @@ SchemaList.prototype = {
 		var candidate = "";
 		return candidate;
 	},
-	createValueArray: function () {
+	createValueArray: function (callback) {
+		var thisSchemaSet = this;
 		var candidate = [];
 		var minItems = this.minItems();
-		if (minItems != undefined) {
-			while (candidate.length < minItems) {
-				candidate.push(this.createValueForIndex(candidate.length));
+		if (!minItems) {
+			if (callback) {
+				callback(candidate);
 			}
+			return candidate;
+		}
+		var pending = minItems;
+		for (var i = 0; i < minItems; i++) {
+			(function (i) {
+				if (callback) {
+					thisSchemaSet.createValueForIndex(i, function (value) {
+						candidate[i] = value;
+						pending--;
+						if (pending == 0) {
+							callback(candidate);
+						}
+					});
+				} else {
+					candidate[i] = this.createValueForIndex(i);
+				}
+			})(i);
 		}
 		return candidate;
 	},
-	createValueObject: function () {
+	createValueObject: function (callback) {
+		var thisSchemaSet = this;
 		var candidate = {};
 		var requiredProperties = this.requiredProperties();
+		if (requiredProperties.length == 0) {
+			if (callback) {
+				callback(candidate);
+			}
+			return candidate;
+		}
+		var pending = requiredProperties.length;
 		for (var i = 0; i < requiredProperties.length; i++) {
-			var key = requiredProperties[i];
-			candidate[key] = this.createValueForProperty(key);
+			(function (key) {
+				if (callback) {
+					thisSchemaSet.createValueForProperty(key, function (value) {
+						candidate[key] = value;
+						pending--;
+						if (pending == 0) {
+							callback(candidate);
+						}
+					});
+				} else {
+					candidate[key] = this.createValueForProperty(key);
+				}
+			})(requiredProperties[i]);
 		}
 		return candidate;
 	},
