@@ -730,7 +730,7 @@ SchemaList.prototype = {
 						}
 					});
 				} else {
-					candidate[i] = this.createValueForIndex(i);
+					candidate[i] = thisSchemaSet.createValueForIndex(i);
 				}
 			})(i);
 		}
@@ -758,7 +758,7 @@ SchemaList.prototype = {
 						}
 					});
 				} else {
-					candidate[key] = this.createValueForProperty(key);
+					candidate[key] = thisSchemaSet.createValueForProperty(key);
 				}
 			})(requiredProperties[i]);
 		}
