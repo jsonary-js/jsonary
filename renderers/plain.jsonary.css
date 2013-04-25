@@ -187,6 +187,26 @@ textarea {
 	border-radius: 3px;
 }
 
+.json-string-content-editable {
+	display: inline;
+	display: inline-block;
+	vertical-align: text-top;
+	background-color: #FFF;
+	background-color: rgba(255, 255, 255, 0.95);
+	outline: 1px solid #BBB;
+	color: #444;
+	margin: 0.5em;
+	padding: 0.3em;
+	font-family: monospace;
+	text-shadow: none;
+}
+
+.json-string-content-editable:focus {
+	color: #000;
+	border-color: #48C;
+	box-shadow: 0px 0px 10px #000;
+}
+
 textarea.json-string {
 	font-size: inherit;
 	font-weight: inherit;

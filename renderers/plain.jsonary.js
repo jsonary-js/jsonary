@@ -399,6 +399,29 @@
 		textarea.style.width = parseInt(style.width.substring(0, style.width.length - 2)) + 4 + "px";
 		textarea.style.height = parseInt(style.height.substring(0, style.height.length - 2)) + 4 + "px";
 	}
+	
+	function getText(element) {
+		var result = "";
+		for (var i = 0; i < element.childNodes.length; i++) {
+			var child = element.childNodes[i];
+			if (child.nodeType == 1) {
+				if (child.tagName.toLowerCase() == "br") {
+					result += "\n";
+					continue;
+				}
+				if (child.tagName.toLowerCase() == "td" || child.tagName.toLowerCase() == "th") {
+					result += "\t";
+				}
+				result += getText(child);
+				if (child.tagName.toLowerCase() == "tr" || child.tagName.toLowerCase() == "div") {
+					result += "\n";
+				}
+			} else if (child.nodeType == 3) {
+				result += child.nodeValue;
+			}
+		}
+		return result;
+	}
 
 	// Edit string
 	Jsonary.render.register({
@@ -418,6 +441,18 @@
 			}
 		},
 		render: function (element, data, context) {
+			//Use contentEditable
+			if (element.contentEditable !== null) {
+				element.innerHTML = '<span class="json-string json-string-content-editable">' + escapeHtml(data.value()) + '</span>';
+				var valueSpan = element.childNodes[0];
+				valueSpan.contentEditable = "true";
+				valueSpan.onblur = function () {
+					var newString = getText(valueSpan);
+					data.setValue(newString);
+				};
+				return;
+			}
+			
 			if (typeof window.getComputedStyle != "function") {
 				return;
 			}
@@ -482,6 +517,11 @@
 			element = null;
 		},
 		update: function (element, data, context, operation) {
+			if (element.contentEditable !== null) {
+				var valueSpan = element.childNodes[0];
+				valueSpan.innerHTML = escapeHtml(data.value());
+				return false;
+			};
 			if (operation.action() == "replace") {
 				var textarea = null;
 				for (var i = 0; i < element.childNodes.length; i++) {
