@@ -183,8 +183,10 @@ textarea {
 /**** String ****/
 
 .json-string {
+	white-space: pre;
 	white-space: pre-wrap;
 	border-radius: 3px;
+	font-size: inherit;
 }
 
 .json-string-content-editable {
@@ -207,6 +209,29 @@ textarea {
 	color: #000;
 	border-color: #48C;
 	box-shadow: 0px 0px 10px #000;
+}
+
+.json-string-content-editable p {
+	display: block;
+	margin: 0px;
+	padding: 0px;
+}
+
+.json-string-content-editable * {
+	position: static;
+	margin: 0px;
+	padding: 0px;
+	font-size: inherit;
+	font-family: inherit;
+	color: #000;
+	background: none;
+	border: none;
+	outline: none;
+	font-weight: normal;
+	font-style: normal;
+	text-decoration: none;
+	text-transform: none;
+	font-variant: normal;
 }
 
 textarea.json-string {
