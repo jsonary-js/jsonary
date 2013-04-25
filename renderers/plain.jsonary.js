@@ -409,6 +409,11 @@
 					result += "\n";
 					continue;
 				}
+				if (child.tagName.toLowerCase() == "p") {
+					if (result != "") {
+						result += "\n";
+					}
+				}
 				if (child.tagName.toLowerCase() == "td" || child.tagName.toLowerCase() == "th") {
 					result += "\t";
 				}
@@ -420,6 +425,7 @@
 				result += child.nodeValue;
 			}
 		}
+		result = result.replace("\r\n", "\n");
 		return result;
 	}
 
@@ -443,7 +449,7 @@
 		render: function (element, data, context) {
 			//Use contentEditable
 			if (element.contentEditable !== null) {
-				element.innerHTML = '<span class="json-string json-string-content-editable">' + escapeHtml(data.value()) + '</span>';
+				element.innerHTML = '<div class="json-string json-string-content-editable">' + escapeHtml(data.value()).replace(/\n/g, "<br>") + '</div>';
 				var valueSpan = element.childNodes[0];
 				valueSpan.contentEditable = "true";
 				valueSpan.onblur = function () {
@@ -519,7 +525,7 @@
 		update: function (element, data, context, operation) {
 			if (element.contentEditable !== null) {
 				var valueSpan = element.childNodes[0];
-				valueSpan.innerHTML = escapeHtml(data.value());
+				valueSpan.innerHTML = escapeHtml(data.value()).replace(/\n/g, "<br>");
 				return false;
 			};
 			if (operation.action() == "replace") {
