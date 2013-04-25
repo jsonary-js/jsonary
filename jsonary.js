@@ -5936,7 +5936,7 @@ publicApi.UriTemplate = UriTemplate;
 	Renderer.prototype = {
 		render: function (element, data, context) {
 			if (element == null) {
-				Jsonary.log(Jsonary.logLevel.ERROR, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);
+				Jsonary.log(Jsonary.logLevel.WARNING, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);
 				return this;
 			}
 			if (element[0] != undefined) {
