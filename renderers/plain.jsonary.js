@@ -405,20 +405,34 @@
 		for (var i = 0; i < element.childNodes.length; i++) {
 			var child = element.childNodes[i];
 			if (child.nodeType == 1) {
-				if (child.tagName.toLowerCase() == "br") {
+				var tagName = child.tagName.toLowerCase();
+				if (tagName == "br") {
 					result += "\n";
 					continue;
 				}
-				if (child.tagName.toLowerCase() == "p") {
+				if (child.tagName == "li") {
+					result += "\n*\t";
+				}
+				if (tagName == "p"
+					|| /^h[0-6]$/.test(tagName)
+					|| tagName == "header"
+					|| tagName == "aside"
+					|| tagName == "blockquote"
+					|| tagName == "footer"
+					|| tagName == "div"
+					|| tagName == "table"
+					|| tagName == "hr") {
 					if (result != "") {
 						result += "\n";
 					}
 				}
-				if (child.tagName.toLowerCase() == "td" || child.tagName.toLowerCase() == "th") {
+				if (tagName == "td" || tagName == "th") {
 					result += "\t";
 				}
+				
 				result += getText(child);
-				if (child.tagName.toLowerCase() == "tr" || child.tagName.toLowerCase() == "div") {
+				
+				if (tagName == "tr") {
 					result += "\n";
 				}
 			} else if (child.nodeType == 3) {

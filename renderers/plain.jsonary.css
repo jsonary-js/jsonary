@@ -203,13 +203,13 @@ textarea {
 	font-family: inherit;
 	text-shadow: none;
 	font-size: 0.9em;
+	line-height: 1.2em;
 }
 
 .json-string-content-editable:focus {
 	color: #000;
 	border-color: #48C;
 	box-shadow: 0px 0px 10px #000;
-	line-height: 1.2em;
 }
 
 .json-string-content-editable p {
