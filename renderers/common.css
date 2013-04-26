@@ -106,16 +106,15 @@
 	background-image: none;
 }
 
-.button.action {
-	color: #000;
-	background-color: #F0B870;
-	background-image: none;
-	font-weight: bold;
-	border-width: 2px;
-}
-
 .button.link:hover {
 	color: #07F;
 	background-color: #E8F0F8;
+	background-image: none;
+}
+
+.button.disabled, .button.disabled:hover {
+	border-color: #CCC;
+	color: #888;
+	background-color: #EEE;
 	background-image: none;
 }

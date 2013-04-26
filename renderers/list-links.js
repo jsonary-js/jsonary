@@ -14,9 +14,9 @@
 			}
 			var result = "";
 			if (context.uiState.editInPlace) {
-				var html = '<span class="button action">save</span>';
+				var html = '<span class="button">save</span>';
 				result += context.actionHtml(html, "submit");
-				var html = '<span class="button action">cancel</span>';
+				var html = '<span class="button">cancel</span>';
 				result += context.actionHtml(html, "cancel");
 				result += context.renderHtml(context.submissionData);
 				return result;
@@ -56,6 +56,7 @@
 				}
 				context.uiState.submitLink = arg1;
 				if (link.method == "PUT" && link.submissionSchemas.length == 0) {
+					context.uiState.editing = context.data.editableCopy();
 					context.submissionData = context.data.editableCopy();
 				} else {
 					context.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
