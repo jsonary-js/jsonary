@@ -4580,10 +4580,12 @@ SchemaList.prototype = {
 				chosenCandidate = candidate;
 			}
 			pending--;
-			if (callback && pending <= 0) {
-				callback(chosenCandidate);
+			if (pending <= 0) {
+				if (callback) {
+					callback(chosenCandidate);
+				}
+				return chosenCandidate;
 			}
-			return chosenCandidate;
 		}
 
 		for (var i = 0; i < this.length; i++) {
