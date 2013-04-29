@@ -1,0 +1,38 @@
+{
+	"title": "What is Jsonary?",
+	"blocks": [
+		{
+			"content": [
+				"Jsonary is a library that deals with [JSON (Hyper-)Schema](http://json-schema.org/).\n\nIt takes away all the detail of interpreting schemas and hyper-links, leaving you with a full hypermedia interpretation of your JSON data.\n\nJsonary also includes a rendering system, so you can embed your JSON data into web pages in a fully customisable way.\n",
+				{
+					"title": "Why should I use it?",
+					"content": [
+						"[JSON Schema](http://json-schema.org/) can describe your existing JSON format/API as hypermedia: links, forms, multimedia interpretations, the whole deal.\n\nBy building your JSON client using Jsonary, your client can take all its hypertext cues from the schema - and less hard-coded knowledge in the client means more flexibility.\n"
+					]
+				}
+			]
+		},
+		{
+			"title": "Examples",
+			"content": [
+				"Here is some example code that fetches a JSON document via AJAX and inspects it:",
+				{
+					"gist": "geraintluff/6f5b7bc104f2f2bac9d6"
+				},
+				"And here is an example of rendering some editable JSON data, according to some [schema constraints](examples/basic/schema.json):",
+				{
+					"demoId": "example-block",
+					"initialText": "Something's wrong - there should be an example here",
+					"run-button": false,
+					"javascript": "Jsonary.getData('/json/examples/basic/', function (data) {\n\tvar target = document.getElementById('example-block');\n\tif (target) {\n\t\tJsonary.render(target, data.editableCopy());\n\t}\n});"
+				}
+			]
+		},
+		{
+			"title": "Get started!",
+			"content": [
+				"Just download our [get-started bundle](get-started-bundle.zip) and [read the guide](?page=get-started-guide) to get going with Jsonary and JSON Schemas.\n\nAlternatively, you can browse our [interactive guide to JSON Schema](?page=schema-guide) to get a feel for how JSON Schema works.\n"
+			]
+		}
+	]
+}

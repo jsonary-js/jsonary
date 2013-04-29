@@ -1,0 +1,26 @@
+<?js
+
+var fs = require('fs');
+
+var SITE_DIR = "site-data/";
+var PAGES_DIR = SITE_DIR + "pages/";
+var SCHEMAS_PATH = "/json/schemas/";
+
+if (request.pathSuffix == undefined) {
+	shard.wait();
+	fs.readFile(SITE_DIR + "site.json", {encoding:'utf8'}, function (error, jsonText) {
+		response.setHeader('Content-Type', 'application/json; profile=' + SCHEMAS_PATH + 'site.json');
+		var data = JSON.parse(jsonText);
+		?><?js:data?><?js
+		shard.done();
+	});
+} else {
+	shard.wait();
+	fs.readFile(SITE_DIR + request.pathSuffix + ".json", {encoding:'utf8'}, function (error, jsonText) {
+		response.setHeader('Content-Type', 'application/json; profile=' + SCHEMAS_PATH + 'page.json');
+		var data = JSON.parse(jsonText);
+		?><?js:data?><?js
+		shard.done();
+	});
+}
+?>

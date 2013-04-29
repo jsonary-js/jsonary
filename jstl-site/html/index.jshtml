@@ -67,7 +67,12 @@ function renderKeyValue(item) {
 }
 
 function renderGist(item) {
-	return '<script src="https://gist.github.com/' + ent.encode(item.gist) + '.js"></script>';
+	var elementId = "gist-container-" + Math.random();
+	var result = '<div id="' + elementId + '">';
+	result += '<p><a href="https://gist.github.com/' + ent.encode(item.gist) + '">view as Gist</a>';
+	result += '</div>';
+	result += '<script src="js/onload.js">loadGist(document.getElementById("' + elementId + '"), ' + JSON.stringify(item.gist) + ');</script>';
+	return result;
 }
 
 function renderDemo(item) {
@@ -89,30 +94,40 @@ function renderDemo(item) {
 var fs = require('fs');
 var markdown = require('markdown').markdown;
 
-var SITE_DIR = "../site/";
+var SITE_DIR = "site-data/";
 var PAGES_DIR = SITE_DIR + "pages/";
+var siteUrl = "/json/";
 
 var pageId = request.query.page || "index";
 pageId = pageId.replace(/\.\.\//g, "");
 var pageFile = PAGES_DIR + pageId + ".json";
+var pageUrl = "/json/?page=" + encodeURIComponent(pageId);
 
-shard(function(shard, echo) {
-	fs.readFile(SITE_DIR + "site.json", {encoding:'utf8'}, function (error, jsonText) {
+// We're asynchronously loading some files
+shard.wait();
+
+fs.readFile(SITE_DIR + "site.json", {encoding:'utf8'}, function (error, jsonText) {
+	if (error) {
+		return shard.done(error);
+	}
+	var siteData = JSON.parse(jsonText);
+	fs.readFile(pageFile, {encoding:'utf8'}, function (error, jsonText) {
 		if (error) {
-			return shard.done(error);
-		}
-		var siteData = JSON.parse(jsonText);
-		fs.readFile(pageFile, {encoding:'utf8'}, function (error, jsonText) {
-			if (error) {
-				if (error.code != 'ENOENT') {
-					return shard.done(error);
-				}
-				jsonText = JSON.stringify({
-					title: "Page not found: " + pageId,
-					blocks: []
-				});
+			if (error.code != 'ENOENT') {
+				return shard.done(error);
 			}
-			var pageData = JSON.parse(jsonText);
+			jsonText = JSON.stringify({
+				title: "Page not found: " + pageId,
+				blocks: []
+			});
+		}
+		var pageData = JSON.parse(jsonText);
+		renderPage(siteData, pageData);
+		shard.done();
+	});
+});
+
+function renderPage(siteData, pageData) {
 ?>
 <html>
 	<head>
@@ -121,6 +136,8 @@ shard(function(shard, echo) {
 		<link rel="stylesheet" href="css/main/main.css" />
 		<meta name="viewport" content="width=480,initial-scale=1">
 
+		<script src="js/gist-async.js"></script>
+		
 		<script src="jsonary.js"></script>
 		<script src="renderers/plain.jsonary.js"></script>
 		<script src="renderers/list-links.js"></script>
@@ -183,19 +200,16 @@ shard(function(shard, echo) {
 			</div>
 		</div>
 		
-		<script src="site/renderers/markdown.js"></script>
-		<script src="site/renderers/site.js"></script>
+		<script src="/renderers/markdown.js"></script>
+		<script src="/renderers/site.js"></script>
 		<script>
-			var siteUrl = <?php echo json_encode($siteUrl); ?>;
-			Jsonary.render(document.getElementById("page"), siteUrl);
-			var pageUrl = <?php echo json_encode($pageUrl); ?>;
+			var siteUrl = <?js:siteUrl?>;
+			var pageUrl = <?js:pageUrl?>;
+			Jsonary.render(document.getElementById("page"), siteUrl, {page:pageUrl});
 //			Jsonary.render(document.getElementById("content"), pageUrl);
 		</script>
 	</body>
 </html>
 <?js
-			shard.done();
-		});
-	});
-});
+}
 ?>
