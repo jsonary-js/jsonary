@@ -1,4 +1,4 @@
-var jstlserver = require('jstl-server');
+var jstlserver = require('./jstl-server');
 var mime = require('mime');
 
 var server = jstlserver.createServer().listen(8080);
@@ -39,12 +39,7 @@ function setupServer(server) {
 		.addHandler(jstlserver.handlers.plain)
 	);
 
-	// Include the HTML site from html/
-	server.addHandler(jstlserver.directoryHandler("/", "html/")
-		.addHandler(jstlserver.handlers.jstl)
-		.addHandler(jstlserver.handlers.plain)
-	);
-	// And include the JSON APIs
+	// Include the JSON APIs from json/
 	server.addHandler(jstlserver.directoryHandler("/json/", "json/")
 		.addHandler(new jstlserver.Handler(true, function (request, response, next) {
 			request.path = request.path.replace(/^\/pages\//, "/index.jshtml/pages/");
@@ -52,6 +47,13 @@ function setupServer(server) {
 			next();
 		}))
 		.addHandler(jstlserver.handlers.jstl)
+		.addHandler(jstlserver.handlers.plain)
+	);
+
+	// Include the HTML site from html/
+	server.addHandler(jstlserver.directoryHandler("/", "html/")
+		.addHandler(jstlserver.handlers.jstl)
+		.addHandler(jstlserver.cacheControl(true, jstlserver.cacheControl.presets.staticFiles))
 		.addHandler(jstlserver.handlers.plain)
 	);
 }
