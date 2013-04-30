@@ -695,11 +695,26 @@ Data.prototype = {
 		}
 		return this;
 	},
-	properties: function (callback) {
-		var keys = this.keys();
-		for (var i = 0; i < keys.length; i++) {
-			var subData = this.property(keys[i]);
-			callback.call(subData, keys[i], subData);
+	properties: function (keys, callback, additionalCallback) {
+		var dataKeys;
+		if (typeof keys == 'function') {
+			callback = keys;
+			keys = this.keys();
+		}
+		if (callback) {
+			for (var i = 0; i < keys.length; i++) {
+				var subData = this.property(keys[i]);
+				callback.call(subData, keys[i], subData);
+			}
+		}
+		if (additionalCallback) {
+			var dataKeys = this.keys();
+			for (var i = 0; i < dataKeys.length; i++) {
+				if (keys.indexOf(dataKeys[i]) == -1) {
+					var subData = this.property(dataKeys[i]);
+					additionalCallback.call(subData, dataKeys[i], subData);
+				}
+			}
 		}
 		return this;
 	},
