@@ -1,0 +1,61 @@
+<?js
+	var fs = require('fs');
+	var path = require('path');
+
+	var BASE_DIR = "../jsonary/";
+	var TARGET_FILE = "../jsonary.js";
+
+	var files = [
+		'../LICENSE.txt',
+		'_compatability.js',
+		'_header.js',
+		'uri.js',
+		'uri-template.js',
+		'utils.js',
+		'monitors.js',
+		'request.js',
+		'patch.js',
+		'data.js',
+		'schema.js',
+		'schemamatch.js',
+		'schemaset.js',
+		'main.js',
+		'_footer.js',
+		'../plugins/jsonary.render.js'
+	];
+	var outputString = "";
+	
+	shard.wait();
+	shard.echo('Reading files from "jsonary/":<ul>');
+	nextFile();
+
+	function nextFile() {
+		if (files.length == 0) {
+			shard.echo('</ul>');
+			fs.writeFile(TARGET_FILE, outputString, {encoding:'utf8'}, function (error) {
+				if (error) {
+					throw error;
+				}
+				shard.echo('<hr><B>Saved to: <a href="jsonary.js">jsonary.js</a></B>');
+				shard.done();
+			});
+			return;
+		}
+		var fileEntry = files.shift();
+		var filename = path.resolve(BASE_DIR, fileEntry);
+		shard.echo('<li>' + ent.encode(fileEntry) + '');
+		fs.readFile(filename, {encoding:'utf8'}, function (error, data) {
+			if (error) {
+				throw error;
+			}
+			if (path.extname(filename) == ".txt") {
+				outputString += "/**\n" + data + "**/\n\n";
+			} else {
+				outputString += data + "\n";
+			}
+			shard.echo('<I style="color: #888">- done</I>');
+			nextFile();
+		});
+	}
+
+?><?=request.scriptPath?>

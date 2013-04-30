@@ -205,8 +205,15 @@ function renderPage(siteData, pageData) {
 		<script>
 			var siteUrl = <?js:siteUrl?>;
 			var pageUrl = <?js:pageUrl?>;
-			Jsonary.render(document.getElementById("page"), siteUrl, {page:pageUrl});
+					Jsonary.render(document.getElementById("page"), siteUrl, {page:pageUrl});
+			/*
+			// Pre-load schemas
+			Jsonary.getSchema('/json/schemas/site.json', function () {
+				Jsonary.getSchema('/json/schemas/page.json', function () {
+				});
+			});
 //			Jsonary.render(document.getElementById("content"), pageUrl);
+			*/
 		</script>
 	</body>
 </html>

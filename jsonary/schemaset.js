@@ -2,9 +2,36 @@ var schemaChangeListeners = [];
 publicApi.registerSchemaChangeListener = function (listener) {
 	schemaChangeListeners.push(listener);
 };
-function notifySchemaChangeListeners(data, schemaList) {
+var schemaChanges = {
+};
+var schemaNotifyPending = false;
+function notifyAllSchemaChanges() {
+	schemaNotifyPending = false;
+	var dataEntries = [];
+	for (var uniqueId in schemaChanges) {
+		var data = schemaChanges[uniqueId];
+		dataEntries.push({
+			data: data,
+			pointerPath: data.pointerPath()
+		});
+	}
+	schemaChanges = {};
+	dataEntries.sort(function (a, b) {
+		return a.pointerPath.length - b.pointerPath.length;
+	});
+	var dataObjects = [];
+	for (var i = 0; i < dataEntries.length; i++) {
+		dataObjects[i] = dataEntries[i].data;
+	}
 	for (var i = 0; i < schemaChangeListeners.length; i++) {
-		schemaChangeListeners[i].call(data, data, schemaList);
+		schemaChangeListeners[i].call(null, dataObjects);
+	}
+}
+function notifySchemaChangeListeners(data) {
+	schemaChanges[data.uniqueId] = data;
+	if (!schemaNotifyPending) {
+		schemaNotifyPending = true;
+		DelayedCallbacks.add(notifyAllSchemaChanges);
 	}
 }
 

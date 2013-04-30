@@ -17,6 +17,11 @@ if (request.pathSuffix == undefined) {
 } else {
 	shard.wait();
 	fs.readFile(SITE_DIR + request.pathSuffix + ".json", {encoding:'utf8'}, function (error, jsonText) {
+		if (error) {
+			response.setHeader('Content-Type', 'application/json');
+			?><?js:error?><?js
+			return shard.done();
+		}
 		response.setHeader('Content-Type', 'application/json; profile=' + SCHEMAS_PATH + 'page.json');
 		var data = JSON.parse(jsonText);
 		?><?js:data?><?js
