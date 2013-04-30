@@ -331,21 +331,25 @@ Schema.prototype = {
 	maxProperties: function () {
 		return this.data.propertyValue("maxProperties");
 	},
-	definedProperties: function() {
+	definedProperties: function(ignoreList) {
+		ignoreList = ignoreList || [];
 		var result = {};
-		this.data.property("properties").properties(function (key, subData) {
+		this.data.property("properties").properties(ignoreList, false, function (key, subData) {
 			result[key] = true;
 		});
 		return Object.keys(result);
 	},
-	knownProperties: function() {
+	knownProperties: function(ignoreList) {
+		ignoreList = ignoreList || [];
 		var result = {};
-		this.data.property("properties").properties(function (key, subData) {
+		this.data.property("properties").properties(ignoreList, false, function (key, subData) {
 			result[key] = true;
 		});
 		var required = this.requiredProperties();
 		for (var i = 0; i < required.length; i++) {
-			result[required[i]] = true;
+			if (ignoreList.indexOf(required[i]) == -1) {
+				result[required[i]] = true;
+			}
 		}
 		return Object.keys(result);
 	},

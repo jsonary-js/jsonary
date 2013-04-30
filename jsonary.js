@@ -3156,21 +3156,25 @@ Schema.prototype = {
 	maxProperties: function () {
 		return this.data.propertyValue("maxProperties");
 	},
-	definedProperties: function() {
+	definedProperties: function(ignoreList) {
+		ignoreList = ignoreList || [];
 		var result = {};
-		this.data.property("properties").properties(function (key, subData) {
+		this.data.property("properties").properties(ignoreList, false, function (key, subData) {
 			result[key] = true;
 		});
 		return Object.keys(result);
 	},
-	knownProperties: function() {
+	knownProperties: function(ignoreList) {
+		ignoreList = ignoreList || [];
 		var result = {};
-		this.data.property("properties").properties(function (key, subData) {
+		this.data.property("properties").properties(ignoreList, false, function (key, subData) {
 			result[key] = true;
 		});
 		var required = this.requiredProperties();
 		for (var i = 0; i < required.length; i++) {
-			result[required[i]] = true;
+			if (ignoreList.indexOf(required[i]) == -1) {
+				result[required[i]] = true;
+			}
 		}
 		return Object.keys(result);
 	},
@@ -4172,7 +4176,11 @@ SchemaList.prototype = {
 		}
 		return new SchemaList(newList);
 	},
-	definedProperties: function () {
+	definedProperties: function (ignoreList) {
+		if (ignoreList) {
+			this.definedProperties(); // create cached function
+			return this.definedProperties(ignoreList);
+		}
 		var additionalProperties = true;
 		var definedKeys = {};
 		this.each(function (index, schema) {
@@ -4201,24 +4209,48 @@ SchemaList.prototype = {
 		});
 		var result = Object.keys(definedKeys);
 		cacheResult(this, {
-			definedProperties: result,
 			allowedAdditionalProperties: additionalProperties
 		});
+		this.definedProperties = function (ignoreList) {
+			ignoreList = ignoreList || [];
+			var newList = [];
+			for (var i = 0; i < result.length; i++) {
+				if (ignoreList.indexOf(result[i]) == -1) {
+					newList.push(result[i]);
+				}
+			}
+			return newList;
+		};
 		return result;
 	},
-	knownProperties: function () {
+	knownProperties: function (ignoreList) {
+		if (ignoreList) {
+			this.knownProperties(); // create cached function
+			return this.knownProperties(ignoreList);
+		}
+		var result;
 		if (this.allowedAdditionalProperties()) {
-			var result = this.definedProperties().slice(0);
+			result = this.definedProperties().slice(0);
 			var requiredProperties = this.requiredProperties();
 			for (var i = 0; i < requiredProperties.length; i++) {
 				if (result.indexOf(requiredProperties[i]) == -1) {
 					result.push(requiredProperties[i]);
 				}
 			}
-			return result;
 		} else {
-			return this.definedProperties();
+			var result = this.definedProperties();
 		}
+		this.knownProperties = function (ignoreList) {
+			ignoreList = ignoreList || [];
+			var newList = [];
+			for (var i = 0; i < result.length; i++) {
+				if (ignoreList.indexOf(result[i]) == -1) {
+					newList.push(result[i]);
+				}
+			}
+			return newList;
+		};
+		return result.slice(0);
 	},
 	allowedAdditionalProperties: function () {
 		var additionalProperties = true;
