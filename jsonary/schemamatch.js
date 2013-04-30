@@ -407,14 +407,7 @@ function XorSelector(schemaKey, options, dataObj) {
 	for (var i = 0; i < options.length; i++) {
 		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
 		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
-			if (pendingUpdate) {
-				return;
-			}
-			pendingUpdate = true;
-			DelayedCallbacks.add(function () {
-				pendingUpdate = false;
-				thisXorSelector.update();
-			});
+			thisXorSelector.update();
 		}, false);
 	}
 	this.update();
@@ -465,14 +458,7 @@ function OrSelector(schemaKey, options, dataObj) {
 	for (var i = 0; i < options.length; i++) {
 		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
 		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
-			if (pendingUpdate) {
-				return;
-			}
-			pendingUpdate = true;
-			DelayedCallbacks.add(function () {
-				pendingUpdate = false;
-				thisOrSelector.update();
-			});
+			thisOrSelector.update();
 		}, false);
 	}
 	this.update();

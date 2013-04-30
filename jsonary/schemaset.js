@@ -1031,7 +1031,7 @@ SchemaSet.prototype = {
 	},
 	updateMatchesWithKey: function (key) {
 		// TODO: maintain a list of sorted keys, instead of sorting them each time
-		var schemaKeys = [];		
+		var schemaKeys = [];
 		for (schemaKey in this.matches) {
 			schemaKeys.push(schemaKey);
 		}
@@ -1039,8 +1039,10 @@ SchemaSet.prototype = {
 		schemaKeys.reverse();
 		for (var j = 0; j < schemaKeys.length; j++) {
 			var matchList = this.matches[schemaKeys[j]];
-			for (var i = 0; i < matchList.length; i++) {
-				matchList[i].dataUpdated(key);
+			if (matchList != undefined) {
+				for (var i = 0; i < matchList.length; i++) {
+					matchList[i].dataUpdated(key);
+				}
 			}
 		}
 	},
@@ -1232,6 +1234,7 @@ SchemaSet.prototype = {
 	},
 	removeSchema: function (schemaKey) {
 		//Utils.log(Utils.logLevel.DEBUG, "Actually removing schema:" + schemaKey);
+		DelayedCallbacks.increment();
 
 		this.dataObj.indices(function (i, subData) {
 			subData.removeSchema(schemaKey);
@@ -1267,6 +1270,7 @@ SchemaSet.prototype = {
 		if (keysToRemove.length > 0) {
 			this.invalidateSchemaState();
 		}
+		DelayedCallbacks.decrement();
 	},
 	clear: function () {
 		this.schemas = {};
@@ -1432,6 +1436,8 @@ function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 		schemaSet.removeSchema(inferredSchemaKey);
 		if (selectedOption != null) {
 			schemaSet.addSchema(selectedOption, inferredSchemaKey, schemaKeyHistory, false);
+		} else if (options.length > 0) {
+			schemaSet.addSchema(options[0], inferredSchemaKey, schemaKeyHistory, false);
 		}
 	});
 }
@@ -1459,6 +1465,9 @@ function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 				schemaSet.removeSchema(inferredSchemaKeys[i]);
 			}
 			optionsApplied[i] = found;
+		}
+		if (selectedOptions.length == 0 && options.length > 0) {
+			schemaSet.addSchema(options[0], inferredSchemaKeys[0], schemaKeyHistory, false);
 		}
 	});
 }

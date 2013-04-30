@@ -86,14 +86,19 @@ tests.add("oneOf validation", function () {
 tests.add("oneOf inference", function () {
 	var schema = Jsonary.createSchema({
 		"type": "object",
-		"oneOf": [
+		"anyOf": [
+			{},
 			{
-				"title": "Schema 1",
-				"required": ["key1"]
-			},
-			{
-				"title": "Schema 2",
-				"required": ["key2"]
+				"oneOf": [
+					{
+						"title": "Schema 1",
+						"required": ["key1"]
+					},
+					{
+						"title": "Schema 2",
+						"required": ["key2"]
+					}
+				]
 			}
 		]
 	});
@@ -121,16 +126,21 @@ tests.add("oneOf inference", function () {
 
 tests.add("oneOf inference 2", function () {
 	var schema = Jsonary.createSchema({
-		"type": "object",
+		"type": "array",
 		"items": {
-			"oneOf": [
+			"anyOf": [
+				{},
 				{
-					"title": "Schema 1",
-					"required": ["key1"]
-				},
-				{
-					"title": "Schema 2",
-					"required": ["key2"]
+					"oneOf": [
+						{
+							"title": "Schema 1",
+							"required": ["key1"]
+						},
+						{
+							"title": "Schema 2",
+							"required": ["key2"]
+						}
+					]
 				}
 			]
 		}
@@ -241,6 +251,7 @@ tests.add("anyOf inference", function () {
 	var schema = Jsonary.createSchema({
 		"type": "object",
 		"anyOf": [
+			{},
 			{
 				"title": "Schema 1",
 				"required": ["key1"]
