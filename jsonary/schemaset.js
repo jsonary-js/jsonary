@@ -1223,8 +1223,8 @@ SchemaSet.prototype = {
 			});
 		}
 	},
-	addSchemaMatchMonitor: function (monitorKey, schema, monitor, executeImmediately) {
-		var schemaMatch = new SchemaMatch(monitorKey, this.dataObj, schema);
+	addSchemaMatchMonitor: function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+		var schemaMatch = new SchemaMatch(monitorKey, this.dataObj, schema, impatientCallbacks);
 		if (this.matches[monitorKey] == undefined) {
 			this.matches[monitorKey] = [];
 		}
@@ -1265,6 +1265,9 @@ SchemaSet.prototype = {
 			delete this.schemas[key];
 			delete this.links[key];
 			delete this.matches[key];
+			delete this.xorSelectors[key];
+			delete this.orSelectors[key];
+			delete this.dependencySelectors[key];
 		}
 
 		if (keysToRemove.length > 0) {

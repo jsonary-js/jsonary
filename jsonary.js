@@ -1350,6 +1350,8 @@ ListenerSet.prototype = {
 	}
 };
 
+// DelayedCallbacks is used for notifications that might be external to the library
+// The callbacks are still executed synchronously - however, they are not executed while the system is in a transitional state.
 var DelayedCallbacks = {
 	depth: 0,
 	callbacks: [],
@@ -1363,15 +1365,15 @@ var DelayedCallbacks = {
 		}
 		while (this.depth == 0 && this.callbacks.length > 0) {
 			var callback = this.callbacks.shift();
+			this.depth++;
 			callback();
+			this.depth--
 		}
 	},
 	add: function (callback) {
-		if (this.depth == 0) {
-			callback();
-		} else {
-			this.callbacks.push(callback);
-		}
+		this.depth++;
+		this.callbacks.push(callback);
+		this.decrement();
 	}
 };
 
@@ -2548,8 +2550,8 @@ function Data(document, secrets, parent, parentKey) {
 		secrets.schemas.removeSchema(schemaKey);
 		return this;
 	};
-	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately) {
-		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately);
+	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately, impatientCallbacks);
 	};
 }
 Data.prototype = {
@@ -3482,12 +3484,13 @@ ActiveLink.prototype = {
 };
 
 
-function SchemaMatch(monitorKey, data, schema) {
+function SchemaMatch(monitorKey, data, schema, impatientCallbacks) {
 	var thisSchemaMatch = this;
 	this.monitorKey = monitorKey;
 	this.match = false;
 	this.matchFailReason = new SchemaMatchFailReason("initial failure", null);
 	this.monitors = new MonitorSet(schema);
+	this.impatientCallbacks = impatientCallbacks;
 	
 	this.propertyMatches = {};
 	this.indexMatches = {};
@@ -3542,7 +3545,7 @@ SchemaMatch.prototype = {
 			var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "and" + index);
 			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
 				thisSchemaMatch.update();
-			}, false);
+			}, false, true);
 			thisSchemaMatch.andMatches.push(subMatch);
 		});
 	},
@@ -3555,7 +3558,7 @@ SchemaMatch.prototype = {
 				var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "not" + index);
 				var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
 					thisSchemaMatch.update();
-				}, false);
+				}, false, true);
 				thisSchemaMatch.notMatches.push(subMatch);
 			})(i, notSchemas[i]);
 		}
@@ -3582,7 +3585,7 @@ SchemaMatch.prototype = {
 					subSchemas.each(function (i, subSchema) {
 						var subMatch = subData.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchemas[i], function () {
 							thisSchemaMatch.subMatchUpdated(key, subMatch);
-						}, false);
+						}, false, true);
 						matches.push(subMatch);
 					});
 					thisSchemaMatch.propertyMatches[key] = matches;
@@ -3613,7 +3616,7 @@ SchemaMatch.prototype = {
 					subSchemas.each(function (i, subSchema) {
 						var subMatch = subData.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchemas[i], function () {
 							thisSchemaMatch.subMatchUpdated(key, subMatch);
-						}, false);
+						}, false, true);
 						matches.push(subMatch);
 					});
 					thisSchemaMatch.indexMatches[index] = matches;
@@ -3649,7 +3652,7 @@ SchemaMatch.prototype = {
 					thisSchemaMatch.dependencyKeys[key].push(subMonitorKey);
 					var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(subMonitorKey, dependency, function () {
 						thisSchemaMatch.dependencyUpdated(key, index);
-					}, false);
+					}, false, true);
 					thisSchemaMatch.dependencies[key].push(subMatch);
 				})(i);
 			}
@@ -3659,23 +3662,37 @@ SchemaMatch.prototype = {
 		this.monitors.notify(this.match, this.matchFailReason);
 	},
 	setMatch: function (match, failReason) {
-		if (match && this.match) {
-			// If we're failing but not changing state, then the failReason has possibly changed
-			// However, if we're succeeding then nothing has changed, so don't notify anybody
-			return;
-		}
-		if (!match && !this.match && this.matchFailReason.equals(failReason)) {
-			return;
-		}
+		var thisMatch = this;
+		var oldMatch = this.match;
+		var oldFailReason = this.matchFailReason;
+		
 		this.match = match;
 		if (!match) {
 			this.matchFailReason = failReason;
 		} else {
 			this.matchFailReason = null;
 		}
-		this.notify();
-	},
-	subMatchUpdated: function (indexKey, subMatch) {
+		if (this.impatientCallbacks) {
+			return this.notify();
+		}
+		
+		if (this.pendingNotify) {
+			return;
+		}
+		this.pendingNotify = true;
+		DelayedCallbacks.add(function () {
+			thisMatch.pendingNotify = false;
+			if (thisMatch.match && oldMatch) {
+				// Still matches - no problem
+				return;
+			}
+			if (!thisMatch.match && !oldMatch && thisMatch.matchFailReason.equals(oldFailReason)) {
+				// Still failing for the same reason
+				return;
+			}
+			thisMatch.notify();
+		});
+	},	subMatchUpdated: function (indexKey, subMatch) {
 		this.update();
 	},
 	subMatchRemoved: function (indexKey, subMatch) {
@@ -3891,15 +3908,8 @@ function XorSelector(schemaKey, options, dataObj) {
 	for (var i = 0; i < options.length; i++) {
 		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
 		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
-			if (pendingUpdate) {
-				return;
-			}
-			pendingUpdate = true;
-			DelayedCallbacks.add(function () {
-				pendingUpdate = false;
-				thisXorSelector.update();
-			});
-		}, false);
+			thisXorSelector.update();
+		}, false, true);
 	}
 	this.update();
 }
@@ -3949,15 +3959,8 @@ function OrSelector(schemaKey, options, dataObj) {
 	for (var i = 0; i < options.length; i++) {
 		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
 		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
-			if (pendingUpdate) {
-				return;
-			}
-			pendingUpdate = true;
-			DelayedCallbacks.add(function () {
-				pendingUpdate = false;
-				thisOrSelector.update();
-			});
-		}, false);
+			thisOrSelector.update();
+		}, false, true);
 	}
 	this.update();
 }
@@ -5030,7 +5033,7 @@ SchemaSet.prototype = {
 	},
 	updateMatchesWithKey: function (key) {
 		// TODO: maintain a list of sorted keys, instead of sorting them each time
-		var schemaKeys = [];		
+		var schemaKeys = [];
 		for (schemaKey in this.matches) {
 			schemaKeys.push(schemaKey);
 		}
@@ -5038,8 +5041,10 @@ SchemaSet.prototype = {
 		schemaKeys.reverse();
 		for (var j = 0; j < schemaKeys.length; j++) {
 			var matchList = this.matches[schemaKeys[j]];
-			for (var i = 0; i < matchList.length; i++) {
-				matchList[i].dataUpdated(key);
+			if (matchList != undefined) {
+				for (var i = 0; i < matchList.length; i++) {
+					matchList[i].dataUpdated(key);
+				}
 			}
 		}
 	},
@@ -5220,8 +5225,8 @@ SchemaSet.prototype = {
 			});
 		}
 	},
-	addSchemaMatchMonitor: function (monitorKey, schema, monitor, executeImmediately) {
-		var schemaMatch = new SchemaMatch(monitorKey, this.dataObj, schema);
+	addSchemaMatchMonitor: function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+		var schemaMatch = new SchemaMatch(monitorKey, this.dataObj, schema, impatientCallbacks);
 		if (this.matches[monitorKey] == undefined) {
 			this.matches[monitorKey] = [];
 		}
@@ -5231,6 +5236,7 @@ SchemaSet.prototype = {
 	},
 	removeSchema: function (schemaKey) {
 		//Utils.log(Utils.logLevel.DEBUG, "Actually removing schema:" + schemaKey);
+		DelayedCallbacks.increment();
 
 		this.dataObj.indices(function (i, subData) {
 			subData.removeSchema(schemaKey);
@@ -5261,11 +5267,15 @@ SchemaSet.prototype = {
 			delete this.schemas[key];
 			delete this.links[key];
 			delete this.matches[key];
+			delete this.xorSelectors[key];
+			delete this.orSelectors[key];
+			delete this.dependencySelectors[key];
 		}
 
 		if (keysToRemove.length > 0) {
 			this.invalidateSchemaState();
 		}
+		DelayedCallbacks.decrement();
 	},
 	clear: function () {
 		this.schemas = {};
@@ -5431,6 +5441,8 @@ function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 		schemaSet.removeSchema(inferredSchemaKey);
 		if (selectedOption != null) {
 			schemaSet.addSchema(selectedOption, inferredSchemaKey, schemaKeyHistory, false);
+		} else if (options.length > 0) {
+			schemaSet.addSchema(options[0], inferredSchemaKey, schemaKeyHistory, false);
 		}
 	});
 }
@@ -5458,6 +5470,9 @@ function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 				schemaSet.removeSchema(inferredSchemaKeys[i]);
 			}
 			optionsApplied[i] = found;
+		}
+		if (selectedOptions.length == 0 && options.length > 0) {
+			schemaSet.addSchema(options[0], inferredSchemaKeys[0], schemaKeyHistory, false);
 		}
 	});
 }

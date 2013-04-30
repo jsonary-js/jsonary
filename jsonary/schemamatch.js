@@ -1,9 +1,10 @@
-function SchemaMatch(monitorKey, data, schema) {
+function SchemaMatch(monitorKey, data, schema, impatientCallbacks) {
 	var thisSchemaMatch = this;
 	this.monitorKey = monitorKey;
 	this.match = false;
 	this.matchFailReason = new SchemaMatchFailReason("initial failure", null);
 	this.monitors = new MonitorSet(schema);
+	this.impatientCallbacks = impatientCallbacks;
 	
 	this.propertyMatches = {};
 	this.indexMatches = {};
@@ -58,7 +59,7 @@ SchemaMatch.prototype = {
 			var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "and" + index);
 			var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
 				thisSchemaMatch.update();
-			}, false);
+			}, false, true);
 			thisSchemaMatch.andMatches.push(subMatch);
 		});
 	},
@@ -71,7 +72,7 @@ SchemaMatch.prototype = {
 				var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "not" + index);
 				var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
 					thisSchemaMatch.update();
-				}, false);
+				}, false, true);
 				thisSchemaMatch.notMatches.push(subMatch);
 			})(i, notSchemas[i]);
 		}
@@ -98,7 +99,7 @@ SchemaMatch.prototype = {
 					subSchemas.each(function (i, subSchema) {
 						var subMatch = subData.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchemas[i], function () {
 							thisSchemaMatch.subMatchUpdated(key, subMatch);
-						}, false);
+						}, false, true);
 						matches.push(subMatch);
 					});
 					thisSchemaMatch.propertyMatches[key] = matches;
@@ -129,7 +130,7 @@ SchemaMatch.prototype = {
 					subSchemas.each(function (i, subSchema) {
 						var subMatch = subData.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchemas[i], function () {
 							thisSchemaMatch.subMatchUpdated(key, subMatch);
-						}, false);
+						}, false, true);
 						matches.push(subMatch);
 					});
 					thisSchemaMatch.indexMatches[index] = matches;
@@ -165,7 +166,7 @@ SchemaMatch.prototype = {
 					thisSchemaMatch.dependencyKeys[key].push(subMonitorKey);
 					var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(subMonitorKey, dependency, function () {
 						thisSchemaMatch.dependencyUpdated(key, index);
-					}, false);
+					}, false, true);
 					thisSchemaMatch.dependencies[key].push(subMatch);
 				})(i);
 			}
@@ -175,23 +176,37 @@ SchemaMatch.prototype = {
 		this.monitors.notify(this.match, this.matchFailReason);
 	},
 	setMatch: function (match, failReason) {
-		if (match && this.match) {
-			// If we're failing but not changing state, then the failReason has possibly changed
-			// However, if we're succeeding then nothing has changed, so don't notify anybody
-			return;
-		}
-		if (!match && !this.match && this.matchFailReason.equals(failReason)) {
-			return;
-		}
+		var thisMatch = this;
+		var oldMatch = this.match;
+		var oldFailReason = this.matchFailReason;
+		
 		this.match = match;
 		if (!match) {
 			this.matchFailReason = failReason;
 		} else {
 			this.matchFailReason = null;
 		}
-		this.notify();
-	},
-	subMatchUpdated: function (indexKey, subMatch) {
+		if (this.impatientCallbacks) {
+			return this.notify();
+		}
+		
+		if (this.pendingNotify) {
+			return;
+		}
+		this.pendingNotify = true;
+		DelayedCallbacks.add(function () {
+			thisMatch.pendingNotify = false;
+			if (thisMatch.match && oldMatch) {
+				// Still matches - no problem
+				return;
+			}
+			if (!thisMatch.match && !oldMatch && thisMatch.matchFailReason.equals(oldFailReason)) {
+				// Still failing for the same reason
+				return;
+			}
+			thisMatch.notify();
+		});
+	},	subMatchUpdated: function (indexKey, subMatch) {
 		this.update();
 	},
 	subMatchRemoved: function (indexKey, subMatch) {
@@ -408,7 +423,7 @@ function XorSelector(schemaKey, options, dataObj) {
 		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
 		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
 			thisXorSelector.update();
-		}, false);
+		}, false, true);
 	}
 	this.update();
 }
@@ -459,7 +474,7 @@ function OrSelector(schemaKey, options, dataObj) {
 		this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
 		this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
 			thisOrSelector.update();
-		}, false);
+		}, false, true);
 	}
 	this.update();
 }
