@@ -332,26 +332,48 @@ Schema.prototype = {
 		return this.data.propertyValue("maxProperties");
 	},
 	definedProperties: function(ignoreList) {
-		ignoreList = ignoreList || [];
-		var result = {};
-		this.data.property("properties").properties(ignoreList, false, function (key, subData) {
-			result[key] = true;
-		});
-		return Object.keys(result);
+		if (ignoreList) {
+			this.definedProperties(); // created cached function
+			return this.definedProperties(ignoreList);
+		}
+		var keys = this.data.property("properties").keys();
+		this.definedProperties = function (ignoreList) {
+			ignoreList = ignoreList || [];
+			var result = [];
+			for (var i = 0; i < keys.length; i++) {
+				if (ignoreList.indexOf(keys[i]) == -1) {
+					result.push(keys[i]);
+				}
+			}
+			return result;
+		};
+		return keys.slice(0);
 	},
 	knownProperties: function(ignoreList) {
-		ignoreList = ignoreList || [];
+		if (ignoreList) {
+			this.knownProperties(); // created cached function
+			return this.knownProperties(ignoreList);
+		}
 		var result = {};
-		this.data.property("properties").properties(ignoreList, false, function (key, subData) {
+		this.data.property("properties").properties(function (key, subData) {
 			result[key] = true;
 		});
 		var required = this.requiredProperties();
 		for (var i = 0; i < required.length; i++) {
-			if (ignoreList.indexOf(required[i]) == -1) {
-				result[required[i]] = true;
-			}
+			result[required[i]] = true;
 		}
-		return Object.keys(result);
+		var keys = Object.keys(result);
+		this.knownProperties = function (ignoreList) {
+			ignoreList = ignoreList || [];
+			var result = [];
+			for (var i = 0; i < keys.length; i++) {
+				if (ignoreList.indexOf(keys[i]) == -1) {
+					result.push(keys[i]);
+				}
+			}
+			return result;
+		};
+		return keys.slice(0);
 	},
 	requiredProperties: function () {
 		var requiredKeys = this.data.propertyValue("required");
