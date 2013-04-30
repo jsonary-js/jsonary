@@ -500,8 +500,8 @@ function Data(document, secrets, parent, parentKey) {
 		secrets.schemas.removeSchema(schemaKey);
 		return this;
 	};
-	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately) {
-		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately);
+	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately, impatientCallbacks);
 	};
 }
 Data.prototype = {
