@@ -362,6 +362,15 @@ SchemaMatch.prototype = {
 				throw new SchemaMatchFailReason("Missing key " + JSON.stringify(key), this.schema);
 			}
 		}
+		if (this.schema.allowedAdditionalProperties() == false) {
+			var definedKeys = this.schema.definedProperties();
+			var dataKeys = this.data.keys();
+			for (var i = 0; i < dataKeys.length; i++) {
+				if (definedKeys.indexOf(dataKeys[i]) == -1) {
+					throw new SchemaMatchFailReason("Not allowed additional property: " + JSON.stringify(key), this.schema);
+				}
+			}
+		}
 		this.matchAgainstDependencies();
 	},
 	matchAgainstDependencies: function () {
