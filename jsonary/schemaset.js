@@ -2,9 +2,36 @@ var schemaChangeListeners = [];
 publicApi.registerSchemaChangeListener = function (listener) {
 	schemaChangeListeners.push(listener);
 };
-function notifySchemaChangeListeners(data, schemaList) {
+var schemaChanges = {
+};
+var schemaNotifyPending = false;
+function notifyAllSchemaChanges() {
+	schemaNotifyPending = false;
+	var dataEntries = [];
+	for (var uniqueId in schemaChanges) {
+		var data = schemaChanges[uniqueId];
+		dataEntries.push({
+			data: data,
+			pointerPath: data.pointerPath()
+		});
+	}
+	schemaChanges = {};
+	dataEntries.sort(function (a, b) {
+		return a.pointerPath.length - b.pointerPath.length;
+	});
+	var dataObjects = [];
+	for (var i = 0; i < dataEntries.length; i++) {
+		dataObjects[i] = dataEntries[i].data;
+	}
 	for (var i = 0; i < schemaChangeListeners.length; i++) {
-		schemaChangeListeners[i].call(data, data, schemaList);
+		schemaChangeListeners[i].call(null, dataObjects);
+	}
+}
+function notifySchemaChangeListeners(data) {
+	schemaChanges[data.uniqueId] = data;
+	if (!schemaNotifyPending) {
+		schemaNotifyPending = true;
+		DelayedCallbacks.add(notifyAllSchemaChanges);
 	}
 }
 
@@ -581,12 +608,10 @@ SchemaList.prototype = {
 				chosenCandidate = candidate;
 			}
 			pending--;
-			if (pending <= 0) {
-				if (callback) {
-					callback(chosenCandidate);
-				}
-				return chosenCandidate;
+			if (callback && pending <= 0) {
+				callback(chosenCandidate);
 			}
+			return chosenCandidate;
 		}
 
 		for (var i = 0; i < this.length; i++) {
@@ -1076,6 +1101,7 @@ SchemaSet.prototype = {
 				thisSchemaSet.checkForSchemasStable();
 				return;
 			}
+			DelayedCallbacks.increment();
 
 			thisSchemaSet.schemas[schemaKey].push(schema);
 			thisSchemaSet.schemasFixed[schemaKey] = thisSchemaSet.schemasFixed[schemaKey] || fixed;
@@ -1109,6 +1135,7 @@ SchemaSet.prototype = {
 
 			thisSchemaSet.schemaFlux--;
 			thisSchemaSet.invalidateSchemaState();
+			DelayedCallbacks.decrement();
 		});
 	},
 	addLinks: function (potentialLinks, schemaKey, schemaKeyHistory) {
@@ -1326,17 +1353,11 @@ SchemaSet.prototype = {
 		}
 		
 		var thisSchemaSet = this;
-		if (!this.pendingNotify) {
-			this.pendingNotify = true;
-			DelayedCallbacks.add(function () {
-				thisSchemaSet.pendingNotify = false;
-				if (!thisSchemaSet.schemasStable) {
-					thisSchemaSet.schemasStable = true;
-					notifySchemaChangeListeners(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
-				}
-				thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
-			});
+		if (!thisSchemaSet.schemasStable) {
+			thisSchemaSet.schemasStable = true;
+			notifySchemaChangeListeners(thisSchemaSet.dataObj);
 		}
+		thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
 		return true;
 	},
 	addSchemasForProperty: function (key, subData) {

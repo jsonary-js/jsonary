@@ -4001,9 +4001,36 @@ var schemaChangeListeners = [];
 publicApi.registerSchemaChangeListener = function (listener) {
 	schemaChangeListeners.push(listener);
 };
-function notifySchemaChangeListeners(data, schemaList) {
+var schemaChanges = {
+};
+var schemaNotifyPending = false;
+function notifyAllSchemaChanges() {
+	schemaNotifyPending = false;
+	var dataEntries = [];
+	for (var uniqueId in schemaChanges) {
+		var data = schemaChanges[uniqueId];
+		dataEntries.push({
+			data: data,
+			pointerPath: data.pointerPath()
+		});
+	}
+	schemaChanges = {};
+	dataEntries.sort(function (a, b) {
+		return a.pointerPath.length - b.pointerPath.length;
+	});
+	var dataObjects = [];
+	for (var i = 0; i < dataEntries.length; i++) {
+		dataObjects[i] = dataEntries[i].data;
+	}
 	for (var i = 0; i < schemaChangeListeners.length; i++) {
-		schemaChangeListeners[i].call(data, data, schemaList);
+		schemaChangeListeners[i].call(null, dataObjects);
+	}
+}
+function notifySchemaChangeListeners(data) {
+	schemaChanges[data.uniqueId] = data;
+	if (!schemaNotifyPending) {
+		schemaNotifyPending = true;
+		DelayedCallbacks.add(notifyAllSchemaChanges);
 	}
 }
 
@@ -4580,12 +4607,10 @@ SchemaList.prototype = {
 				chosenCandidate = candidate;
 			}
 			pending--;
-			if (pending <= 0) {
-				if (callback) {
-					callback(chosenCandidate);
-				}
-				return chosenCandidate;
+			if (callback && pending <= 0) {
+				callback(chosenCandidate);
 			}
+			return chosenCandidate;
 		}
 
 		for (var i = 0; i < this.length; i++) {
@@ -5075,6 +5100,7 @@ SchemaSet.prototype = {
 				thisSchemaSet.checkForSchemasStable();
 				return;
 			}
+			DelayedCallbacks.increment();
 
 			thisSchemaSet.schemas[schemaKey].push(schema);
 			thisSchemaSet.schemasFixed[schemaKey] = thisSchemaSet.schemasFixed[schemaKey] || fixed;
@@ -5108,6 +5134,7 @@ SchemaSet.prototype = {
 
 			thisSchemaSet.schemaFlux--;
 			thisSchemaSet.invalidateSchemaState();
+			DelayedCallbacks.decrement();
 		});
 	},
 	addLinks: function (potentialLinks, schemaKey, schemaKeyHistory) {
@@ -5325,17 +5352,11 @@ SchemaSet.prototype = {
 		}
 		
 		var thisSchemaSet = this;
-		if (!this.pendingNotify) {
-			this.pendingNotify = true;
-			DelayedCallbacks.add(function () {
-				thisSchemaSet.pendingNotify = false;
-				if (!thisSchemaSet.schemasStable) {
-					thisSchemaSet.schemasStable = true;
-					notifySchemaChangeListeners(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
-				}
-				thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
-			});
+		if (!thisSchemaSet.schemasStable) {
+			thisSchemaSet.schemasStable = true;
+			notifySchemaChangeListeners(thisSchemaSet.dataObj);
 		}
+		thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
 		return true;
 	},
 	addSchemasForProperty: function (key, subData) {
@@ -5569,25 +5590,34 @@ publicApi.UriTemplate = UriTemplate;
 				}
 			});
 		});
-		Jsonary.registerSchemaChangeListener(function (data, schemas) {
-			var uniqueId = data.uniqueId;
-			var elementIds = thisContext.elementLookup[uniqueId];
-			if (elementIds == undefined || elementIds.length == 0) {
-				return;
-			}
-			var elementIds = elementIds.slice(0);
-			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
-				if (element == undefined) {
-					continue;
+		Jsonary.registerSchemaChangeListener(function (dataObjects) {
+			var elementIdLookup = {};
+			for (var i = 0; i < dataObjects.length; i++) {
+				var data = dataObjects[i];
+				var uniqueId = data.uniqueId;
+				var elementIds = thisContext.elementLookup[uniqueId];
+				if (elementIds == undefined || elementIds.length == 0) {
+					return;
 				}
-				var prevContext = element.jsonaryContext;
-				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
-				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
-				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
-					renderer.render(element, data, prevContext);
-				} else {
-					prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+				elementIdLookup[uniqueId] = elementIds.slice(0);
+			}
+			for (var j = 0; j < dataObjects.length; j++) {
+				var data = dataObjects[j];
+				var uniqueId = data.uniqueId;
+				var elementIds = elementIdLookup[uniqueId];
+				for (var i = 0; i < elementIds.length; i++) {
+					var element = document.getElementById(elementIds[i]);
+					if (element == undefined) {
+						continue;
+					}
+					var prevContext = element.jsonaryContext;
+					var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
+					var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+					if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+						renderer.render(element, data, prevContext);
+					} else {
+						prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+					}
 				}
 			}
 		});
