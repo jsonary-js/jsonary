@@ -128,6 +128,43 @@ tests.add("knownProperties()", function () {
 	return true;
 });
 
+tests.add("knownProperties(ignoreList)", function () {
+	var schema1 = Jsonary.createSchema({
+		"properties": {
+			"key1": {},
+			"key2": {}
+		},
+		"required": ["anotherKey"]
+	});
+	var schema2 = Jsonary.createSchema({
+		"properties": {
+			"key2": {},
+			"key3": {}
+		},
+		"required": ["key1", "key2"]
+	});
+	var schema3 = Jsonary.createSchema({
+		"properties": {
+			"key1": {},
+			"key3": {}
+		},
+		"additionalProperties": false
+	});
+	
+	var known1 = schema1.knownProperties(["key2", "keyX"]);
+	this.assert(known1.length == 2, "known1.length == 2, was " + known1.length);
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2]);
+	var known2 = schemaList.knownProperties(["key2", "keyX"]);
+	this.assert(known2.length == 3, "known2.length == 3, was " + known2.length);
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2, schema3]);
+	var known3 = schemaList.knownProperties(["keyY"]);
+	this.assert(known3.length == 2, "known3.length == 2, was " + known3.length);
+	
+	return true;
+});
+
 tests.add("schemaList.propertyDependencies()", function () {
 	var schema1 = Jsonary.createSchema({
 		"dependencies": {
