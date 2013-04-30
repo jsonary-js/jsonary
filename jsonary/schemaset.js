@@ -1101,6 +1101,7 @@ SchemaSet.prototype = {
 				thisSchemaSet.checkForSchemasStable();
 				return;
 			}
+			DelayedCallbacks.increment();
 
 			thisSchemaSet.schemas[schemaKey].push(schema);
 			thisSchemaSet.schemasFixed[schemaKey] = thisSchemaSet.schemasFixed[schemaKey] || fixed;
@@ -1134,6 +1135,7 @@ SchemaSet.prototype = {
 
 			thisSchemaSet.schemaFlux--;
 			thisSchemaSet.invalidateSchemaState();
+			DelayedCallbacks.decrement();
 		});
 	},
 	addLinks: function (potentialLinks, schemaKey, schemaKeyHistory) {
@@ -1351,17 +1353,11 @@ SchemaSet.prototype = {
 		}
 		
 		var thisSchemaSet = this;
-		if (!this.pendingNotify) {
-			this.pendingNotify = true;
-			DelayedCallbacks.add(function () {
-				thisSchemaSet.pendingNotify = false;
-				if (!thisSchemaSet.schemasStable) {
-					thisSchemaSet.schemasStable = true;
-					notifySchemaChangeListeners(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
-				}
-				thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
-			});
+		if (!thisSchemaSet.schemasStable) {
+			thisSchemaSet.schemasStable = true;
+			notifySchemaChangeListeners(thisSchemaSet.dataObj);
 		}
+		thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
 		return true;
 	},
 	addSchemasForProperty: function (key, subData) {
