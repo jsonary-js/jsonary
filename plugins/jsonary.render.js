@@ -107,6 +107,37 @@
 			}
 			return this.getSubContext(this.elementId, this.data, label, uiState);
 		},
+		saveState: function () {
+			var result = {
+				uiState: this.uiState,
+				sub: {}
+			}
+			var interestingSub = false;
+			for (var key in this.subContexts) {
+				result.sub[key] = this.subContexts[key].saveState();
+				if (result.sub[key]) {
+					interestingSub = true;
+				}
+			}
+			for (var key in this.oldSubContexts) {
+				result.sub[key] = this.oldSubContexts[key].saveState();
+				if (result.sub[key]) {
+					interestingSub = true;
+				}
+			}
+			
+			var interestingUiState = this.uiState && Object.keys(this.uiState).length > 0;
+			if (!interestingSub) {
+				delete result.sub;
+			}
+			if (!interestingUiState) {
+				delete result.uiState;
+			}
+			if (!interestingSub && !interestingUiState) {
+				return null;
+			}
+			return result;
+		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			var labelKey = data.uniqueId + ":" + label;
 			if (this.oldSubContexts[labelKey] != undefined) {
@@ -231,7 +262,10 @@
 					return '<span id="' + elementId + '">Loading...</span>';
 				}
 			}
-
+			
+			if (uiStartingState === true) {
+				uiStartingState = this.uiState;
+			}
 			if (typeof uiStartingState != "object") {
 				uiStartingState = {};
 			}
@@ -391,19 +425,22 @@
 		}
 	};
 	var pageContext = new RenderContext();
+	Jsonary.pageContext = pageContext;
 
 	function render(element, data, uiStartingState) {
-		pageContext.render(element, data, null, uiStartingState);
+		var context = pageContext.render(element, data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
-		return this;
+		return context;
 	}
+	/*
 	function renderHtml(data, uiStartingState) {
 		var result = pageContext.renderHtml(data, null, uiStartingState);
-		pageContext.oldSubContexts = {};
-		pageContext.subContexts = {};
+		//pageContext.oldSubContexts = {};
+		//pageContext.subContexts = {};
 		return result;
 	}
+	*/
 
 	if (global.jQuery != undefined) {
 		render.empty = function (element) {

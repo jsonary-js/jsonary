@@ -15,16 +15,18 @@
 				<div class="navigation">
 					<h3>Navigation</h3>
 					<?js if (data.readOnly()) {
-							context.uiState.pageIndex = context.uiState.pageIndex || 0; ?>
+							context.uiState.page = context.uiState.page || "index";
+							var pageDataObj = data.subPath('/pages/0'); ?>
 						<ul>
 							<?js data.property("pages").items(function (index, subData) {
 								var html = escapeHtml(subData.propertyValue("title"));
-								if (context.uiState.pageIndex == index) {
+								if (context.uiState.page == subData.propertyValue("id")) {
 									echo('<li class="current">');
+									pageDataObj = subData;
 									echo(html);
 								} else {
 									echo('<li>');
-									action(html, "page", index);
+									action(html, "page", subData.propertyValue("id"));
 								}
 							}); ?>
 						</ul>
@@ -37,9 +39,8 @@
 			
 			<div id="content">
 				<?js
-					if (data.readOnly()) {
-						var page = data.property("pages").item(context.uiState.pageIndex);
-						var pageLink = page.getLink("full");
+					if (data.readOnly() && pageDataObj) {
+						var pageLink = pageDataObj.getLink("full");
 						render(pageLink.follow());
 					}
 				?>
@@ -54,7 +55,7 @@ Jsonary.render.register({
 	},
 	action: function (context, actionName, arg1) {
 		if (actionName == "page") {
-			context.uiState.pageIndex = arg1;
+			context.uiState.page = arg1;
 			return true;
 		}
 	}

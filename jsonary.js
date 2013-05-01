@@ -5728,6 +5728,37 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			return this.getSubContext(this.elementId, this.data, label, uiState);
 		},
+		saveState: function () {
+			var result = {
+				uiState: this.uiState,
+				sub: {}
+			}
+			var interestingSub = false;
+			for (var key in this.subContexts) {
+				result.sub[key] = this.subContexts[key].saveState();
+				if (result.sub[key]) {
+					interestingSub = true;
+				}
+			}
+			for (var key in this.oldSubContexts) {
+				result.sub[key] = this.oldSubContexts[key].saveState();
+				if (result.sub[key]) {
+					interestingSub = true;
+				}
+			}
+			
+			var interestingUiState = this.uiState && Object.keys(this.uiState).length > 0;
+			if (!interestingSub) {
+				delete result.sub;
+			}
+			if (!interestingUiState) {
+				delete result.uiState;
+			}
+			if (!interestingSub && !interestingUiState) {
+				return null;
+			}
+			return result;
+		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			var labelKey = data.uniqueId + ":" + label;
 			if (this.oldSubContexts[labelKey] != undefined) {
@@ -5852,7 +5883,10 @@ publicApi.UriTemplate = UriTemplate;
 					return '<span id="' + elementId + '">Loading...</span>';
 				}
 			}
-
+			
+			if (uiStartingState === true) {
+				uiStartingState = this.uiState;
+			}
 			if (typeof uiStartingState != "object") {
 				uiStartingState = {};
 			}
@@ -6012,17 +6046,21 @@ publicApi.UriTemplate = UriTemplate;
 		}
 	};
 	var pageContext = new RenderContext();
+	Jsonary.pageContext = pageContext;
+	Jsonary.saveState = function () {
+		return JSON.stringify(pageContext.saveState(), null, "\t");
+	};
 
 	function render(element, data, uiStartingState) {
-		pageContext.render(element, data, null, uiStartingState);
-		pageContext.oldSubContexts = {};
-		pageContext.subContexts = {};
+		var context = pageContext.render(element, data, null, uiStartingState);
+		//pageContext.oldSubContexts = {};
+		//pageContext.subContexts = {};
 		return this;
 	}
 	function renderHtml(data, uiStartingState) {
 		var result = pageContext.renderHtml(data, null, uiStartingState);
-		pageContext.oldSubContexts = {};
-		pageContext.subContexts = {};
+		//pageContext.oldSubContexts = {};
+		//pageContext.subContexts = {};
 		return result;
 	}
 

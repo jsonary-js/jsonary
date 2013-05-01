@@ -43,7 +43,7 @@
 				result += '</div></div>';
 			}
 			
-			result += context.renderHtml(data);
+			result += context.renderHtml(data, "data", true);
 			return result;
 		},
 		action: function (context, actionName, arg1) {

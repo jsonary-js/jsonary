@@ -204,11 +204,11 @@ function renderPage(siteData, pageData) {
 		<script src="/renderers/site.js"></script>
 		<script>
 			var siteUrl = <?js:siteUrl?>;
-			var pageUrl = <?js:pageUrl?>;
+			var pageId = <?js:pageId?>;
 			// Pre-load schemas to minimise flicker
 			Jsonary.getSchema('/json/schemas/site.json', function () {
 				Jsonary.getSchema('/json/schemas/page.json', function () {
-					Jsonary.render(document.getElementById("page"), siteUrl, {page:pageUrl});
+					Jsonary.render(document.getElementById("page"), siteUrl, {page:pageId});
 				});
 			});
 //			Jsonary.render(document.getElementById("content"), pageUrl);
