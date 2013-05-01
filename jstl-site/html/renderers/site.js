@@ -41,7 +41,7 @@
 				<?js
 					if (data.readOnly() && pageDataObj) {
 						var pageLink = pageDataObj.getLink("full");
-						render(pageLink.follow());
+						render(pageLink.follow(), 'page');
 					}
 				?>
 			</div>

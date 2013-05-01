@@ -206,19 +206,25 @@ function renderPage(siteData, pageData) {
 			var siteUrl = <?js:siteUrl?>;
 			var pageId = <?js:pageId?>;
 			// Pre-load schemas to minimise flicker
+			
+			var initialState = {page:pageId};
+			if (window.location.hash.substring(0, 2) == "#?") {
+				var initialState = Jsonary.decodeData(window.location.hash.substring(2));
+			}
 			Jsonary.getSchema('/json/schemas/site.json', function () {
 				Jsonary.getSchema('/json/schemas/page.json', function () {
-					Jsonary.render(document.getElementById("page"), siteUrl, {page:pageId}, contextCallback);
+					Jsonary.render(document.getElementById("page"), siteUrl, initialState, contextCallback);
 					
 					function contextCallback(pageContext) {
 						window.pageContext = pageContext;
 
 						console.log(JSON.stringify(pageContext.saveState(), null, 4));
 						setInterval(function () {
-							console.log(JSON.stringify(pageContext.saveState(), null, 4));
-//							var stateQuery = Jsonary.encodeData(pageContext.saveState());
-//							window.location.replace("#?" + stateQuery);
-						}, 3000);
+							var stateQuery = Jsonary.encodeData(pageContext.saveState());
+							if (window.location.hash != "#?" + stateQuery) {
+								window.location.replace("#?" + stateQuery);
+							}
+						}, 100);
 					}
 					
 				});

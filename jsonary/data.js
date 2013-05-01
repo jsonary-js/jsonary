@@ -772,3 +772,31 @@ publicApi.create = function (rawData, baseUrl, readOnly) {
 	return document.root;
 };
 
+Data.prototype.deflate = function () {
+	var schemas = [];
+	this.schemas().each(function (index, schema) {
+		if (schema.referenceUrl() != undefined) {
+			schemas.push(schema.referenceUrl());
+		} else {
+			schemas.push(schema.data.deflate());
+		}
+	});
+	var result = {
+		baseUrl: this.document.url,
+		readOnly: this.readOnly(),
+		value: this.value(),
+		schemas: schemas
+	}
+	return result;
+}
+publicApi.inflate = function (deflated) {
+	var data = publicApi.create(deflated.value, deflated.baseUrl, deflated.readOnly);
+	for (var i = 0; i < deflated.schemas.length; i++) {
+		var schema = deflated.schemas[i];
+		if (typeof schema == "object") {
+			var schema = publicApi.inflate(schema).asSchema();
+		}
+		data.addSchema(schema);
+	}
+	return data;
+}

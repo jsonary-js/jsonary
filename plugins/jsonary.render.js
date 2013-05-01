@@ -2,6 +2,15 @@
 	function copyValue(value) {
 		return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
 	}
+	var randomChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	function randomId(length) {
+		length = length || 10;
+		var result = "";
+		while (result.length < length) {
+			result += randomChars.charAt(Math.floor(Math.random()*randomChars.length));
+		}
+		return result;
+	}
 
 	function htmlEscapeSingleQuote (str) {
 		return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
@@ -98,6 +107,7 @@
 			}
 			return this.getSubContext(this.elementId, this.data, label, uiState);
 		},
+		subContextSavedStates: {},
 		saveState: function () {
 			var subStates = {};
 			for (var key in this.subContexts) {
@@ -108,7 +118,13 @@
 			}
 			
 			var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
-			return saveStateFunction.call(this.renderer, this.uiState, subStates);
+			return saveStateFunction.call(this.renderer, this.uiState, subStates, this.data);
+		},
+		loadState: function (savedState) {
+			var loadStateFunction = this.renderer ? this.renderer.loadState : Renderer.prototype.loadState;
+			var result = loadStateFunction.call(this.renderer, savedState);
+			this.uiState = result[0];
+			this.subContextSavedStates = result[1];
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			if (label || label === "") {
@@ -122,7 +138,12 @@
 			if (this.subContexts[labelKey] != undefined) {
 				if (this.subContexts[labelKey].data != data) {
 					delete this.subContexts[labelKey];
+					delete this.oldSubContexts[labelKey];
+					delete this.subContextSavedStates[labelKey];
 				}
+			}
+			if (this.subContextSavedStates[labelKey]) {
+				uiStartingState = this.subContextSavedStates[labelKey];
 			}
 			if (this.subContexts[labelKey] == undefined) {
 				var usedComponents = [];
@@ -140,7 +161,6 @@
 					this.baseContext = baseContext;
 					this.label = label;
 					this.data = data;
-					this.uiState = uiState;
 					this.uiStartingState = copyValue(uiState || {});
 					this.usedComponents = usedComponents;
 					this.subContexts = {};
@@ -164,9 +184,6 @@
 			}
 		},
 		render: function (element, data, label, uiStartingState, contextCallback) {
-			if (label == undefined) {
-				label = "";
-			}
 			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -208,6 +225,9 @@
 			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
 			if (renderer != undefined) {
 				subContext.renderer = renderer;
+				if (subContext.uiState == undefined) {
+					subContext.loadState(subContext.uiStartingState);
+				}
 				renderer.render(element, data, subContext);
 				subContext.clearOldSubContexts();
 			} else {
@@ -218,9 +238,6 @@
 			}
 		},
 		renderHtml: function (data, label, uiStartingState) {
-			if (label == undefined) {
-				label = "";
-			}
 			var elementId = this.getElementId();
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -238,7 +255,7 @@
 				});
 				if (!rendered) {
 					rendered = true;
-					return '<span id="' + elementId + '">Loading...</span>';
+					return '<span id="' + elementId + '" class="loading">Loading...</span>';
 				}
 			}
 			
@@ -252,6 +269,9 @@
 
 			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
 			subContext.renderer = renderer;
+			if (subContext.uiState == undefined) {
+				subContext.loadState(subContext.uiStartingState);
+			}
 			
 			var innerHtml = renderer.renderHtml(data, subContext);
 			subContext.clearOldSubContexts();
@@ -448,6 +468,9 @@
 		if (sourceObj.saveState) {
 			this.saveState = sourceObj.saveState;
 		}
+		if (sourceObj.loadState) {
+			this.loadState = sourceObj.loadState;
+		}
 	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
@@ -513,7 +536,7 @@
 			}
 			return redraw;
 		},
-		saveState: function (uiState, subStates) {
+		saveState: function (uiState, subStates, data) {
 			var result = {};
 			for (key in uiState) {
 				result[key] = uiState[key];
@@ -525,8 +548,50 @@
 			}
 			return result;
 		},
-		saveDataState: function (data) {
-			return data ? ("~data" + data.uniqueId) : undefined;
+		saveStateData: function (data) {
+			if (!data) {
+				return undefined;
+			}
+			data.saveStateId = data.saveStateId || randomId();
+			localStorage[data.saveStateId] = JSON.stringify({
+				accessed: (new Date).getTime(),
+				data: data.deflate()
+			});
+			return data.saveStateId;
+		},
+		loadState: function (savedState) {
+			var uiState = {};
+			var subStates = {};
+			for (var key in savedState) {
+				if (key.indexOf("-") != -1) {
+					var parts = key.split('-');
+					var subKey = parts.shift();
+					var remainderKey = parts.join('-');
+					if (!subStates[subKey]) {
+						subStates[subKey] = {};
+					}
+					subStates[subKey][remainderKey] = savedState[key];
+				} else {
+					uiState[key] = this.loadStateData(savedState[key]) || savedState[key];
+				}
+			}
+			return [
+				uiState,
+				subStates
+			]
+		},
+		loadStateData: function (savedState) {
+			if (!savedState) {
+				return undefined;
+			}
+			var stored = localStorage[savedState];
+			if (!stored) {
+				return undefined;
+			}
+			stored = JSON.parse(stored);
+			var data = Jsonary.inflate(stored.data);
+			data.saveStateId = savedState;
+			return data;
 		}
 	}
 

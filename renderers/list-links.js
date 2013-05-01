@@ -18,7 +18,7 @@
 				result += context.actionHtml(html, "submit");
 				var html = '<span class="button">cancel</span>';
 				result += context.actionHtml(html, "cancel");
-				result += context.renderHtml(context.submissionData);
+				result += context.renderHtml(context.uiState.submissionData, '~linkData');
 				return result;
 			}
 			
@@ -34,7 +34,7 @@
 				result += '<div class="prompt-outer"><div class="prompt-inner">';
 				result += context.actionHtml('<div class="prompt-overlay"></div>', 'cancel');
 				result += '<div class="prompt-box"><h1>' + Jsonary.escapeHtml(link.rel) + '</h1><h2>' + Jsonary.escapeHtml(link.method) + " " + Jsonary.escapeHtml(link.href) + '</h2>';
-				result += '<div>' + context.renderHtml(context.submissionData) + '</div>';
+				result += '<div>' + context.renderHtml(context.uiState.submissionData, '~linkData') + '</div>';
 				result += '</div>';
 				result += '<div class="prompt-buttons">';
 				result += context.actionHtml('<span class="button">Submit</span>', 'submit');
@@ -43,7 +43,7 @@
 				result += '</div></div>';
 			}
 			
-			result += context.renderHtml(data, "data", true);
+			result += context.renderHtml(data, "data");
 			return result;
 		},
 		action: function (context, actionName, arg1) {
@@ -57,11 +57,11 @@
 				context.uiState.submitLink = arg1;
 				if (link.method == "PUT" && link.submissionSchemas.length == 0) {
 					context.uiState.editing = context.data.editableCopy();
-					context.submissionData = context.data.editableCopy();
+					context.uiState.submissionData = context.data.editableCopy();
 				} else {
-					context.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
+					context.uiState.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
 					link.submissionSchemas.createValue(function (submissionValue) {
-						context.submissionData.setValue(submissionValue);
+						context.uiState.submissionData.setValue(submissionValue);
 					});
 				}
 				if (link.method == "PUT") {
@@ -70,15 +70,15 @@
 				return true;
 			} else if (actionName == "submit") {
 				var link = context.data.links()[context.uiState.submitLink];
-				link.follow(context.submissionData);
+				link.follow(context.uiState.submissionData);
 				delete context.uiState.submitLink;
 				delete context.uiState.editInPlace;
-				delete context.submissionData;
+				delete context.uiState.submissionData;
 				return true;
 			} else {
 				delete context.uiState.submitLink;
 				delete context.uiState.editInPlace;
-				delete context.submissionData;
+				delete context.uiState.submissionData;
 				return true;
 			}
 		},
@@ -88,14 +88,32 @@
 		saveState: function (uiState, subStates) {
 			var result = {};
 			if (uiState.submitLink !== undefined) {
-				result['~inPlace'] = uiState.editInPlace;
 				result['~link'] = uiState.submitLink;
-				result['~data'] = this.saveDataState(uiState.submissionData);
+				result['~inPlace'] = uiState.editInPlace;
+				result['~data'] = this.saveStateData(uiState.submissionData);
 			}
 			for (var key in subStates.data) {
 				result[key] = subStates.data[key];
 			}
 			return result;
+		},
+		loadState: function (savedState) {
+			var uiState = {};
+			if (savedState['~link'] != undefined) {
+				uiState.submitLink = savedState['~link'];
+				uiState.editInPlace = savedState['~inPlace'];
+				uiState.submissionData = this.loadStateData(savedState['~data']);
+				delete savedState['~link'];
+				delete savedState['~inPlace'];
+				delete savedState['~data'];
+				if (!uiState.submissionData) {
+					uiState = {};
+				}
+			}
+			return [
+				uiState,
+				{data: savedState}
+			];
 		}
 	});
 
