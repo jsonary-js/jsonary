@@ -87,28 +87,42 @@
 		},
 		saveState: function (uiState, subStates) {
 			var result = {};
-			if (uiState.submitLink !== undefined) {
-				result['~link'] = uiState.submitLink;
-				result['~inPlace'] = uiState.editInPlace;
-				result['~data'] = this.saveStateData(uiState.submissionData);
-			}
 			for (var key in subStates.data) {
 				result[key] = subStates.data[key];
+			}
+			if (result.link != undefined || result.inPlace != undefined || result.linkData != undefined || result[""] != undefined) {
+				var newResult = {"":"-"};
+				for (var key in result) {
+					newResult["-" + key] = result[key];
+				}
+				result = newResult;
+			}
+			if (uiState.submitLink !== undefined) {
+				result['link'] = uiState.submitLink;
+				result['inPlace'] = uiState.editInPlace;
+				result['data'] = this.saveStateData(uiState.submissionData);
 			}
 			return result;
 		},
 		loadState: function (savedState) {
 			var uiState = {};
-			if (savedState['~link'] != undefined) {
-				uiState.submitLink = savedState['~link'];
-				uiState.editInPlace = savedState['~inPlace'];
-				uiState.submissionData = this.loadStateData(savedState['~data']);
-				delete savedState['~link'];
-				delete savedState['~inPlace'];
-				delete savedState['~data'];
+			if (savedState['link'] != undefined) {
+				uiState.submitLink = savedState['link'];
+				uiState.editInPlace = savedState['inPlace'];
+				uiState.submissionData = this.loadStateData(savedState['data']);
+				delete savedState['link'];
+				delete savedState['inPlace'];
+				delete savedState['data'];
 				if (!uiState.submissionData) {
 					uiState = {};
 				}
+			}
+			if (savedState[""] != undefined) {
+				var newSavedState = {};
+				for (var key in savedState) {
+					newSavedState[key.substring(1)] = savedState[key];
+				}
+				savedState = newSavedState;
 			}
 			return [
 				uiState,
