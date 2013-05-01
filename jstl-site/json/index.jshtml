@@ -6,6 +6,8 @@ var SITE_DIR = "site-data/";
 var PAGES_DIR = SITE_DIR + "pages/";
 var SCHEMAS_PATH = "/json/schemas/";
 
+response.setHeader('Link', '<#>;rel=edit');
+
 if (request.pathSuffix == undefined) {
 	shard.wait();
 	fs.readFile(SITE_DIR + "site.json", {encoding:'utf8'}, function (error, jsonText) {

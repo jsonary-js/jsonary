@@ -5720,56 +5720,16 @@ publicApi.UriTemplate = UriTemplate;
 			return this.getSubContext(this.elementId, this.data, label, uiState);
 		},
 		saveState: function () {
-			var result = {};
-			for (var key in this.uiState) {
-				escapedKey = encodeURIComponent(key).replace(/-/, '%2D');
-				result[escapedKey] = this.uiState[key];
-			}
+			var subStates = {};
 			for (var key in this.subContexts) {
-				escapedKey = encodeURIComponent(key).replace(/-/, '%2D');
-				subResult = this.subContexts[key].saveState();
-				for (var subKey in subResult) {
-					result[(escapedKey ? (escapedKey + "-") : "") + subKey] = subResult[subKey];
-				}
+				subStates[key] = this.subContexts[key].saveState();
 			}
 			for (var key in this.oldSubContexts) {
-				escapedKey = encodeURIComponent(key).replace(/-/, '%2D');
-				subResult = this.oldSubContexts[key].saveState();
-				for (var subKey in subResult) {
-					result[(escapedKey ? (escapedKey + "-") : "") + subKey] = subResult[subKey];
-				}
-			}
-			return result;
-		
-			var result = {
-				uiState: this.uiState,
-				sub: {}
-			}
-			var interestingSub = false;
-			for (var key in this.subContexts) {
-				result.sub[key] = this.subContexts[key].saveState();
-				if (result.sub[key]) {
-					interestingSub = true;
-				}
-			}
-			for (var key in this.oldSubContexts) {
-				result.sub[key] = this.oldSubContexts[key].saveState();
-				if (result.sub[key]) {
-					interestingSub = true;
-				}
+				subStates[key] = this.oldSubContexts[key].saveState();
 			}
 			
-			var interestingUiState = this.uiState && Object.keys(this.uiState).length > 0;
-			if (!interestingSub) {
-				delete result.sub;
-			}
-			if (!interestingUiState) {
-				delete result.uiState;
-			}
-			if (!interestingSub && !interestingUiState) {
-				return null;
-			}
-			return result;
+			var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
+			return saveStateFunction.call(this.renderer, this.uiState, subStates);
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			if (label || label === "") {
@@ -6106,6 +6066,9 @@ publicApi.UriTemplate = UriTemplate;
 		if (typeof this.component == "string") {
 			this.component = [this.component];
 		}
+		if (sourceObj.saveState) {
+			this.saveState = sourceObj.saveState;
+		}
 	}
 	Renderer.prototype = {
 		render: function (element, data, context) {
@@ -6170,6 +6133,21 @@ publicApi.UriTemplate = UriTemplate;
 				}
 			}
 			return redraw;
+		},
+		saveState: function (uiState, subStates) {
+			var result = {};
+			for (key in uiState) {
+				result[key] = uiState[key];
+			}
+			for (var label in subStates) {
+				for (var subKey in subStates[label]) {
+					result[label + "-" + subKey] = subStates[label][subKey];
+				}
+			}
+			return result;
+		},
+		saveDataState: function (data) {
+			return data ? ("~data" + data.uniqueId) : undefined;
 		}
 	}
 

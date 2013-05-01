@@ -43,8 +43,7 @@
 				result += '</div></div>';
 			}
 			
-			result += context.renderHtml(data, "", true);
-			context.uiState = {};
+			result += context.renderHtml(data, "data", true);
 			return result;
 		},
 		action: function (context, actionName, arg1) {
@@ -85,6 +84,18 @@
 		},
 		filter: function () {
 			return true;
+		},
+		saveState: function (uiState, subStates) {
+			var result = {};
+			if (uiState.submitLink !== undefined) {
+				result['~inPlace'] = uiState.editInPlace;
+				result['~link'] = uiState.submitLink;
+				result['~data'] = this.saveDataState(uiState.submissionData);
+			}
+			for (var key in subStates.data) {
+				result[key] = subStates.data[key];
+			}
+			return result;
 		}
 	});
 

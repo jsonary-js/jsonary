@@ -211,10 +211,14 @@ function renderPage(siteData, pageData) {
 					Jsonary.render(document.getElementById("page"), siteUrl, {page:pageId}, contextCallback);
 					
 					function contextCallback(pageContext) {
+						window.pageContext = pageContext;
+
+						console.log(JSON.stringify(pageContext.saveState(), null, 4));
 						setInterval(function () {
-							var stateQuery = Jsonary.encodeData(pageContext.saveState());
-							window.location.replace("#?" + stateQuery);
-						}, 500);
+							console.log(JSON.stringify(pageContext.saveState(), null, 4));
+//							var stateQuery = Jsonary.encodeData(pageContext.saveState());
+//							window.location.replace("#?" + stateQuery);
+						}, 3000);
 					}
 					
 				});
