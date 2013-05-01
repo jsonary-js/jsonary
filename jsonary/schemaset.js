@@ -639,7 +639,9 @@ SchemaList.prototype = {
 			if (callback && pending <= 0) {
 				callback(chosenCandidate);
 			}
-			return chosenCandidate;
+			if (pending <= 0) {
+				return chosenCandidate;
+			}
 		}
 
 		for (var i = 0; i < this.length; i++) {
