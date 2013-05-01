@@ -5620,19 +5620,10 @@ publicApi.UriTemplate = UriTemplate;
 })(this); // Global wrapper
 
 (function (global) {
-	function encodeUiState (uiState) {
-		var json = JSON.stringify(uiState);
-		if (json == "{}") {
-			return null;
-		}
-		return json;
+	function copyValue(value) {
+		return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
 	}
-	function decodeUiState (uiStateString) {
-		if (uiStateString == "" || uiStateString == null) {
-			return {};
-		}
-		return JSON.parse(uiStateString);
-	}
+
 	function htmlEscapeSingleQuote (str) {
 		return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
 	}
@@ -5704,7 +5695,7 @@ publicApi.UriTemplate = UriTemplate;
 						continue;
 					}
 					var prevContext = element.jsonaryContext;
-					var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
+					var prevUiState = copyValue(this.uiStartingState);
 					var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 					if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 						renderer.render(element, data, prevContext);
@@ -5729,6 +5720,27 @@ publicApi.UriTemplate = UriTemplate;
 			return this.getSubContext(this.elementId, this.data, label, uiState);
 		},
 		saveState: function () {
+			var result = {};
+			for (var key in this.uiState) {
+				escapedKey = encodeURIComponent(key).replace(/-/, '%2D');
+				result[escapedKey] = this.uiState[key];
+			}
+			for (var key in this.subContexts) {
+				escapedKey = encodeURIComponent(key).replace(/-/, '%2D');
+				subResult = this.subContexts[key].saveState();
+				for (var subKey in subResult) {
+					result[(escapedKey ? (escapedKey + "-") : "") + subKey] = subResult[subKey];
+				}
+			}
+			for (var key in this.oldSubContexts) {
+				escapedKey = encodeURIComponent(key).replace(/-/, '%2D');
+				subResult = this.oldSubContexts[key].saveState();
+				for (var subKey in subResult) {
+					result[(escapedKey ? (escapedKey + "-") : "") + subKey] = subResult[subKey];
+				}
+			}
+			return result;
+		
 			var result = {
 				uiState: this.uiState,
 				sub: {}
@@ -5760,9 +5772,18 @@ publicApi.UriTemplate = UriTemplate;
 			return result;
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
-			var labelKey = data.uniqueId + ":" + label;
+			if (label || label === "") {
+				var labelKey = label;
+			} else {
+				var labelKey = data.uniqueId;
+			}
 			if (this.oldSubContexts[labelKey] != undefined) {
 				this.subContexts[labelKey] = this.oldSubContexts[labelKey];
+			}
+			if (this.subContexts[labelKey] != undefined) {
+				if (this.subContexts[labelKey].data != data) {
+					delete this.subContexts[labelKey];
+				}
 			}
 			if (this.subContexts[labelKey] == undefined) {
 				var usedComponents = [];
@@ -5781,6 +5802,7 @@ publicApi.UriTemplate = UriTemplate;
 					this.label = label;
 					this.data = data;
 					this.uiState = uiState;
+					this.uiStartingState = copyValue(uiState || {});
 					this.usedComponents = usedComponents;
 					this.subContexts = {};
 					this.oldSubContexts = {};
@@ -5802,7 +5824,7 @@ publicApi.UriTemplate = UriTemplate;
 				this.renderer.render(element, this.data, this);
 			}
 		},
-		render: function (element, data, label, uiStartingState) {
+		render: function (element, data, label, uiStartingState, contextCallback) {
 			if (label == undefined) {
 				label = "";
 			}
@@ -5813,7 +5835,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (data.getData != undefined) {
 				var thisContext = this;
 				data.getData(function (actualData) {
-					thisContext.render(element, actualData, label, uiStartingState);
+					thisContext.render(element, actualData, label, uiStartingState, contextCallback);
 				});
 				return;
 			}
@@ -5827,12 +5849,6 @@ publicApi.UriTemplate = UriTemplate;
 
 			var previousContext = element.jsonaryContext;
 			var subContext = this.getSubContext(element.id, data, label, uiStartingState);
-			var encodedState = encodeUiState(uiStartingState);
-			if (encodedState != null) {
-				element.setAttribute("data-jsonary", encodedState);
-			} else {
-				element.removeAttribute("data-jsonary");
-			}
 			element.jsonaryContext = subContext;
 
 			if (previousContext) {
@@ -5857,6 +5873,9 @@ publicApi.UriTemplate = UriTemplate;
 				subContext.clearOldSubContexts();
 			} else {
 				element.innerHTML = "NO RENDERER FOUND";
+			}
+			if (contextCallback) {
+				contextCallback(subContext);
 			}
 		},
 		renderHtml: function (data, label, uiStartingState) {
@@ -5885,14 +5904,13 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			
 			if (uiStartingState === true) {
-				uiStartingState = this.uiState;
+				uiStartingState = this.uiStartingState;
 			}
 			if (typeof uiStartingState != "object") {
 				uiStartingState = {};
 			}
 			var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 
-			var startingStateString = encodeUiState(uiStartingState);
 			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
 			subContext.renderer = renderer;
 			
@@ -5906,11 +5924,7 @@ publicApi.UriTemplate = UriTemplate;
 				this.elementLookup[uniqueId].push(elementId);
 			}
 			this.addEnhancement(elementId, subContext);
-			if (startingStateString != null) {
-				return '<span id="' + elementId + '" data-jsonary=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>' + innerHtml + '</span>';
-			} else {
-				return '<span id="' + elementId + '">' + innerHtml + '</span>';
-			}
+			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		update: function (data, operation) {
 			var uniqueId = data.uniqueId;
@@ -5925,7 +5939,7 @@ publicApi.UriTemplate = UriTemplate;
 					continue;
 				}
 				var prevContext = element.jsonaryContext;
-				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
+				var prevUiState = copyValue(this.uiStartingState);
 				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
@@ -6047,20 +6061,17 @@ publicApi.UriTemplate = UriTemplate;
 	};
 	var pageContext = new RenderContext();
 	Jsonary.pageContext = pageContext;
-	Jsonary.saveState = function () {
-		return JSON.stringify(pageContext.saveState(), null, "\t");
-	};
 
-	function render(element, data, uiStartingState) {
-		var context = pageContext.render(element, data, null, uiStartingState);
-		//pageContext.oldSubContexts = {};
-		//pageContext.subContexts = {};
-		return this;
+	function render(element, data, uiStartingState, contextCallback) {
+		var context = pageContext.render(element, data, null, uiStartingState, contextCallback);
+		pageContext.oldSubContexts = {};
+		pageContext.subContexts = {};
+		return context;
 	}
-	function renderHtml(data, uiStartingState) {
-		var result = pageContext.renderHtml(data, null, uiStartingState);
-		//pageContext.oldSubContexts = {};
-		//pageContext.subContexts = {};
+	function renderHtml(data, uiStartingState, contextCallback) {
+		var result = pageContext.renderHtml(data, null, uiStartingState, contextCallback);
+		pageContext.oldSubContexts = {};
+		pageContext.subContexts = {};
 		return result;
 	}
 

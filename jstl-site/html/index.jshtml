@@ -208,7 +208,15 @@ function renderPage(siteData, pageData) {
 			// Pre-load schemas to minimise flicker
 			Jsonary.getSchema('/json/schemas/site.json', function () {
 				Jsonary.getSchema('/json/schemas/page.json', function () {
-					Jsonary.render(document.getElementById("page"), siteUrl, {page:pageId});
+					Jsonary.render(document.getElementById("page"), siteUrl, {page:pageId}, contextCallback);
+					
+					function contextCallback(pageContext) {
+						setInterval(function () {
+							var stateQuery = Jsonary.encodeData(pageContext.saveState());
+							window.location.replace("#?" + stateQuery);
+						}, 500);
+					}
+					
 				});
 			});
 //			Jsonary.render(document.getElementById("content"), pageUrl);
