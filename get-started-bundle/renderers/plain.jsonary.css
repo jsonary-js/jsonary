@@ -183,11 +183,9 @@ textarea {
 /**** String ****/
 
 .json-string {
-	white-space: pre;
 	white-space: pre-wrap;
 	border-radius: 3px;
 	font-size: inherit;
-	min-width: 5em;
 }
 
 .json-string-content-editable {
@@ -205,6 +203,8 @@ textarea {
 	text-shadow: none;
 	font-size: 0.9em;
 	line-height: 1.2em;
+	min-width: 5em;
+	min-height: 1.2em;
 }
 
 .json-string-content-editable:focus {
