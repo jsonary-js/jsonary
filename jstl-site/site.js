@@ -1,4 +1,4 @@
-var jstlserver = require('jstl-server');
+var jstlserver = require('./jstl-server');
 var handlers = jstlserver.handlers;
 var mime = require('mime');
 
@@ -6,6 +6,7 @@ handlers.jstl.addIncludeDir("include/");
 
 var siteHandler = handlers.createComposite();
 
+var staticFiles = siteHandler.get();
 // Steal certain files from the parent directory
 var filesFromMain = {
 	"/jsonary.js": true,
@@ -13,7 +14,7 @@ var filesFromMain = {
 	"/get-started-bundle.zip": true,
 	"/LICENSE.txt": true
 }
-siteHandler.directory("/", "../")
+staticFiles.directory("/", "../")
 	.fileReader(function (request, response) {
 		return filesFromMain[request.path];
 	}, function (request, response, buffer, next) {
@@ -27,13 +28,13 @@ siteHandler.directory("/", "../")
 	});
 
 // Also, merge in the renderers/ and plugins/ directories
-siteHandler.directory("/renderers/", "../renderers")
+staticFiles.directory("/renderers/", "../renderers")
 	.add(handlers.plain);
-siteHandler.directory("/plugins/", "../plugins")
+staticFiles.directory("/plugins/", "../plugins")
 	.add(handlers.plain);
 
 // Include the JSON APIs from json/
-siteHandler.directory("/json/", "json/")
+staticFiles.directory("/json/", "json/")
 	.add(true, function (request, response, next) {
 		request.path = request.path.replace(/^\/pages\//, "/index.jshtml/pages/");
 		next();
@@ -42,7 +43,7 @@ siteHandler.directory("/json/", "json/")
 	.add(jstlserver.handlers.plain);
 
 // Include the HTML site from html/
-siteHandler.directory("/", "html/")
+staticFiles.directory("/", "html/")
 	.add(handlers.jstl)
 	.add(handlers.cacheControl(true, handlers.cacheControl.presets.staticFiles))
 	.add(handlers.plain);
