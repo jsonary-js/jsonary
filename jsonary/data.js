@@ -27,6 +27,7 @@ publicApi.batchDone = function () {
 };
 
 function Document(url, isDefinitive, readOnly) {
+	var thisDocument = this;
 	this.readOnly = !!readOnly;
 	this.url = url;
 	this.isDefinitive = isDefinitive;
@@ -40,9 +41,28 @@ function Document(url, isDefinitive, readOnly) {
 	this.registerChangeListener = function (listener) {
 		documentChangeListeners.push(listener);
 	};
+	
+	function notifyChangeListeners(patch) {
+		DelayedCallbacks.increment();
+		var listeners = changeListeners.concat(documentChangeListeners);
+		DelayedCallbacks.add(function () {
+			for (var i = 0; i < listeners.length; i++) {
+				listeners[i].call(thisDocument, patch, thisDocument);
+			}
+		});
+		DelayedCallbacks.decrement();
+	}
 
 	this.setRaw = function (value) {
+		var needsFakePatch = this.raw.defined();
 		rawSecrets.setValue(value);
+		// It's an update to a read-only document
+		if (needsFakePatch) {
+			rawSecrets.setValue(value);
+			var patch = new Patch();
+			patch.replace(this.raw.pointerPath(), value);
+			notifyChangeListeners(patch);
+		}
 	};
 	var rootListeners = new ListenerSet(this);
 	this.getRoot = function (callback) {
@@ -58,7 +78,6 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
-		var thisDocument = this;
 		if (this.readOnly) {
 			throw new Error("Cannot update read-only document");
 		}
@@ -71,16 +90,11 @@ function Document(url, isDefinitive, readOnly) {
 			return;
 		}
 		DelayedCallbacks.increment();
-		var listeners = changeListeners.concat(documentChangeListeners);
-		DelayedCallbacks.add(function () {
-			for (var i = 0; i < listeners.length; i++) {
-				listeners[i].call(thisDocument, patch, thisDocument);
-			}
-		});
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
 		this.raw.patch(rawPatch);
 		this.root.patch(rootPatch);
+		notifyChangeListeners(patch);
 		DelayedCallbacks.decrement();
 	};
 	this.affectedData = function (operation) {
@@ -113,6 +127,7 @@ function Document(url, isDefinitive, readOnly) {
 		return result;
 	}
 }
+
 Document.prototype = {
 	resolveUrl: function (url) {
 		return Uri.resolve(this.url, url);

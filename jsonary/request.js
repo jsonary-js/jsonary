@@ -386,6 +386,7 @@ Request.prototype = {
 		}
 		xhr.open(method, xhrUrl, true);
 		xhr.setRequestHeader("Content-Type", encType);
+		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
 		xhr.send(xhrData);
 	}
 };

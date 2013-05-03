@@ -1,3 +1,7 @@
+if (typeof localStorage == "undefined") {
+	window.localStorage = {};
+}
+
 // This is not a full ES5 shim - it just covers the functions that Jsonary uses.
 
 if (!Array.isArray) {

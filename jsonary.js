@@ -8,6 +8,10 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **/
 
+if (typeof localStorage == "undefined") {
+	window.localStorage = {};
+}
+
 // This is not a full ES5 shim - it just covers the functions that Jsonary uses.
 
 if (!Array.isArray) {
@@ -1765,6 +1769,7 @@ Request.prototype = {
 		}
 		xhr.open(method, xhrUrl, true);
 		xhr.setRequestHeader("Content-Type", encType);
+		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
 		xhr.send(xhrData);
 	}
 };
@@ -2080,6 +2085,7 @@ publicApi.batchDone = function () {
 };
 
 function Document(url, isDefinitive, readOnly) {
+	var thisDocument = this;
 	this.readOnly = !!readOnly;
 	this.url = url;
 	this.isDefinitive = isDefinitive;
@@ -2093,9 +2099,28 @@ function Document(url, isDefinitive, readOnly) {
 	this.registerChangeListener = function (listener) {
 		documentChangeListeners.push(listener);
 	};
+	
+	function notifyChangeListeners(patch) {
+		DelayedCallbacks.increment();
+		var listeners = changeListeners.concat(documentChangeListeners);
+		DelayedCallbacks.add(function () {
+			for (var i = 0; i < listeners.length; i++) {
+				listeners[i].call(thisDocument, patch, thisDocument);
+			}
+		});
+		DelayedCallbacks.decrement();
+	}
 
 	this.setRaw = function (value) {
+		var needsFakePatch = this.raw.defined();
 		rawSecrets.setValue(value);
+		// It's an update to a read-only document
+		if (needsFakePatch) {
+			rawSecrets.setValue(value);
+			var patch = new Patch();
+			patch.replace(this.raw.pointerPath(), value);
+			notifyChangeListeners(patch);
+		}
 	};
 	var rootListeners = new ListenerSet(this);
 	this.getRoot = function (callback) {
@@ -2111,7 +2136,6 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
-		var thisDocument = this;
 		if (this.readOnly) {
 			throw new Error("Cannot update read-only document");
 		}
@@ -2124,16 +2148,11 @@ function Document(url, isDefinitive, readOnly) {
 			return;
 		}
 		DelayedCallbacks.increment();
-		var listeners = changeListeners.concat(documentChangeListeners);
-		DelayedCallbacks.add(function () {
-			for (var i = 0; i < listeners.length; i++) {
-				listeners[i].call(thisDocument, patch, thisDocument);
-			}
-		});
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
 		this.raw.patch(rawPatch);
 		this.root.patch(rootPatch);
+		notifyChangeListeners(patch);
 		DelayedCallbacks.decrement();
 	};
 	this.affectedData = function (operation) {
@@ -2166,6 +2185,7 @@ function Document(url, isDefinitive, readOnly) {
 		return result;
 	}
 }
+
 Document.prototype = {
 	resolveUrl: function (url) {
 		return Uri.resolve(this.url, url);
@@ -5649,11 +5669,9 @@ DependencyApplier.prototype = {
 // TODO: re-structure monitor keys
 // TODO: separate schema monitors from type monitors?
 
-var configData = publicApi.create({
-	intelligentLinks: true,
-	intelligentPut: true
-});
-publicApi.config = configData;
+publicApi.config = {
+	antiCacheUrls: false
+}
 publicApi.UriTemplate = UriTemplate;
 
 })(this); // Global wrapper
@@ -6003,8 +6021,15 @@ publicApi.UriTemplate = UriTemplate;
 			return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
 		},
 		inputNameForAction: function (actionName) {
+			var historyChange = false;
+			var startIndex = 1;
+			if (typeof actionName == "boolean") {
+				historyChange = actionName;
+				actionName = arguments[1];
+				startIndex++;
+			}
 			var params = [];
-			for (var i = 1; i < arguments.length; i++) {
+			for (var i = startIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
 			var name = this.getElementId();
@@ -6012,7 +6037,8 @@ publicApi.UriTemplate = UriTemplate;
 				inputName: name,
 				actionName: actionName,
 				context: this,
-				params: params
+				params: params,
+				historyChange: historyChange
 			};
 			return name;
 		},
@@ -6098,6 +6124,7 @@ publicApi.UriTemplate = UriTemplate;
 					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
 						inputContext.rerender();
 					}
+					notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
 				};
 			}
 			element = null;

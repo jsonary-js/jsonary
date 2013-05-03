@@ -343,8 +343,15 @@
 			return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
 		},
 		inputNameForAction: function (actionName) {
+			var historyChange = false;
+			var startIndex = 1;
+			if (typeof actionName == "boolean") {
+				historyChange = actionName;
+				actionName = arguments[1];
+				startIndex++;
+			}
 			var params = [];
-			for (var i = 1; i < arguments.length; i++) {
+			for (var i = startIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
 			var name = this.getElementId();
@@ -352,7 +359,8 @@
 				inputName: name,
 				actionName: actionName,
 				context: this,
-				params: params
+				params: params,
+				historyChange: historyChange
 			};
 			return name;
 		},
@@ -438,6 +446,7 @@
 					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
 						inputContext.rerender();
 					}
+					notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
 				};
 			}
 			element = null;
