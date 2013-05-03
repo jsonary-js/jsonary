@@ -10,6 +10,9 @@ publicApi.createSchema = function (rawData, baseUrl) {
 	var data = publicApi.create(rawData, baseUrl, true);
 	return data.asSchema();
 };
+publicApi.isSchema = function (obj) {
+	return obj instanceof Schema;
+};
 
 publicApi.getSchema = getSchema;
 

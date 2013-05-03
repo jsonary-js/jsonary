@@ -1551,6 +1551,9 @@ publicApi.getData = function(params, callback, hintSchema) {
 	}
 	return request;
 };
+publicApi.isRequest = function (obj) {
+	return (obj instanceof Request) || (obj instanceof FragmentRequest);
+}
 
 var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
 
@@ -2821,6 +2824,9 @@ publicApi.create = function (rawData, baseUrl, readOnly) {
 	document.setRoot("");
 	return document.root;
 };
+publicApi.isData = function (obj) {
+	return obj instanceof Data;
+};
 
 Data.prototype.deflate = function () {
 	var schemas = [];
@@ -2862,6 +2868,9 @@ function getSchema(url, callback) {
 publicApi.createSchema = function (rawData, baseUrl) {
 	var data = publicApi.create(rawData, baseUrl, true);
 	return data.asSchema();
+};
+publicApi.isSchema = function (obj) {
+	return obj instanceof Schema;
 };
 
 publicApi.getSchema = getSchema;
@@ -5778,6 +5787,9 @@ publicApi.UriTemplate = UriTemplate;
 			this.subContextSavedStates = result[1];
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
+			if (typeof label == "object" && label != null) {
+				throw new Error('Label cannot be an object');
+			}
 			if (label || label === "") {
 				var labelKey = label;
 			} else {
@@ -5832,9 +5844,14 @@ publicApi.UriTemplate = UriTemplate;
 			var element = document.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
+				this.clearOldSubContexts();
 			}
 		},
 		render: function (element, data, label, uiStartingState, contextCallback) {
+			if (uiStartingState == undefined && typeof label == "object") {
+				uiStartingState = label;
+				label = null;
+			}
 			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -5889,6 +5906,10 @@ publicApi.UriTemplate = UriTemplate;
 			}
 		},
 		renderHtml: function (data, label, uiStartingState) {
+			if (uiStartingState == undefined && typeof label == "object") {
+				uiStartingState = label;
+				label = null;
+			}
 			var elementId = this.getElementId();
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -5901,7 +5922,12 @@ publicApi.UriTemplate = UriTemplate;
 						rendered = true;
 						data = actualData;
 					} else {
-						thisContext.render(document.getElementById(elementId), actualData, label, uiStartingState);
+						var element = document.getElementById(elementId);
+						if (element) {
+							thisContext.render(element, actualData, label, uiStartingState);
+						} else {
+							Jsonary.log(Jsonary.logLevel.WARNING, "Attempted delayed render to non-existent element: " + elementId);
+						}
 					}
 				});
 				if (!rendered) {
@@ -5959,13 +5985,22 @@ publicApi.UriTemplate = UriTemplate;
 			}
 		},
 		actionHtml: function(innerHtml, actionName) {
+			var startingIndex = 2;
+			var historyChange = false;
+			var linkUrl = "javascript:void(0)";
+			if (typeof actionName == "boolean") {
+				historyChange = arguments[1];
+				linkUrl = arguments[2] || linkUrl;
+				actionName = arguments[3];
+				startingIndex += 2;
+			}
 			var params = [];
-			for (var i = 2; i < arguments.length; i++) {
+			for (var i = startingIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
 			var elementId = this.getElementId();
-			this.addEnhancementAction(elementId, actionName, this, params);
-			return '<a href="javascript:void(0)" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
+			this.addEnhancementAction(elementId, actionName, this, params, historyChange);
+			return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
 		},
 		inputNameForAction: function (actionName) {
 			var params = [];
@@ -5984,14 +6019,15 @@ publicApi.UriTemplate = UriTemplate;
 		addEnhancement: function(elementId, context) {
 			this.enhancementContexts[elementId] = context;
 		},
-		addEnhancementAction: function (elementId, actionName, context, params) {
+		addEnhancementAction: function (elementId, actionName, context, params, historyChange) {
 			if (params == null) {
 				params = [];
 			}
 			this.enhancementActions[elementId] = {
 				actionName: actionName,
 				context: context,
-				params: params
+				params: params,
+				historyChange: historyChange
 			};
 		},
 		enhanceElement: function (element) {
@@ -6033,9 +6069,9 @@ publicApi.UriTemplate = UriTemplate;
 					var args = [actionContext, action.actionName].concat(action.params);
 					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
 						// Action returned positive - we should force a re-render
-						var element = document.getElementById(redrawElementId);
-						actionContext.renderer.render(element, actionContext.data, actionContext);
+						actionContext.rerender();
 					}
+					notifyActionHandlers(actionContext.data, actionContext, action.actionName, action.historyChange);
 					return false;
 				};
 			}
@@ -6060,9 +6096,7 @@ publicApi.UriTemplate = UriTemplate;
 					var inputContext = inputAction.context;
 					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
 					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
-						// Action returned positive - we should force a re-render
-						var element = document.getElementById(redrawElementId);
-						inputContext.renderer.render(element, inputContext.data, inputContext);
+						inputContext.rerender();
 					}
 				};
 			}
@@ -6165,8 +6199,9 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			return this;
 		},
-		action: function (context, actionName, data) {
-			return this.actionFunction.apply(this, arguments);
+		action: function (context, actionName) {
+			var result = this.actionFunction.apply(this, arguments);
+			return result;
 		},
 		canRender: function (data, schemas, uiState) {
 			if (this.filterFunction != undefined) {
@@ -6197,11 +6232,20 @@ publicApi.UriTemplate = UriTemplate;
 					result[label + "-" + subKey] = subStates[label][subKey];
 				}
 			}
+			for (key in result) {
+				if (Jsonary.isData(result[key])) {
+					result[key] = this.saveStateData(result[key]);
+				} else {
+				}
+			}
 			return result;
 		},
 		saveStateData: function (data) {
 			if (!data) {
 				return undefined;
+			}
+			if (data.document.isDefinitive) {
+				return "url:" + data.referenceUrl();
 			}
 			data.saveStateId = data.saveStateId || randomId();
 			localStorage[data.saveStateId] = JSON.stringify({
@@ -6224,6 +6268,13 @@ publicApi.UriTemplate = UriTemplate;
 					subStates[subKey][remainderKey] = savedState[key];
 				} else {
 					uiState[key] = this.loadStateData(savedState[key]) || savedState[key];
+					if (Jsonary.isRequest(uiState[key])) {
+						(function (key) {
+							uiState[key].getData(function (data) {
+								uiState[key] = data;
+							});
+						})(key);
+					}
 				}
 			}
 			return [
@@ -6232,6 +6283,14 @@ publicApi.UriTemplate = UriTemplate;
 			]
 		},
 		loadStateData: function (savedState) {
+			if (typeof savedState == "string" && savedState.substring(0, 4) == "url:") {
+				var url = savedState.substring(4);
+				var data = null;
+				var request = Jsonary.getData(url, function (urlData) {
+					data = urlData;
+				});
+				return data || request;
+			}
 			if (!savedState) {
 				return undefined;
 			}
@@ -6245,6 +6304,7 @@ publicApi.UriTemplate = UriTemplate;
 			return data;
 		}
 	}
+	Renderer.prototype.super_ = Renderer.prototype;
 
 	var rendererLookup = {};
 	var rendererList = [];
@@ -6268,6 +6328,21 @@ publicApi.UriTemplate = UriTemplate;
 	}
 	render.register = register;
 	render.deregister = deregister;
+	
+	var actionHandlers = [];
+	render.addActionHandler = function (callback) {
+		actionHandlers.push(callback);
+	};
+	function notifyActionHandlers(data, context, actionName, historyChange) {
+		historyChange = !!historyChange || (historyChange == undefined);
+		for (var i = 0; i < actionHandlers.length; i++) {
+			var callback = actionHandlers[i];
+			var result = callback(data, context, actionName, historyChange);
+			if (result === false) {
+				break;
+			}
+		}
+	};
 	
 	function lookupRenderer(rendererId) {
 		return rendererLookup[rendererId];

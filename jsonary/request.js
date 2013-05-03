@@ -172,6 +172,9 @@ publicApi.getData = function(params, callback, hintSchema) {
 	}
 	return request;
 };
+publicApi.isRequest = function (obj) {
+	return (obj instanceof Request) || (obj instanceof FragmentRequest);
+}
 
 var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
 

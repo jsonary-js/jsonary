@@ -771,6 +771,9 @@ publicApi.create = function (rawData, baseUrl, readOnly) {
 	document.setRoot("");
 	return document.root;
 };
+publicApi.isData = function (obj) {
+	return obj instanceof Data;
+};
 
 Data.prototype.deflate = function () {
 	var schemas = [];
