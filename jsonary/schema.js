@@ -556,6 +556,7 @@ PotentialLink.prototype = {
 			}
 		});
 		rawLink.href = publicData.resolveUrl(href);
+		rawLink.rel = rawLink.rel.toLowerCase();
 		return new ActiveLink(rawLink, this, publicData);
 	},
 	usesKey: function (key) {
@@ -568,7 +569,7 @@ PotentialLink.prototype = {
 		return false;
 	},
 	rel: function () {
-		return this.data.propertyValue("rel");
+		return this.data.propertyValue("rel").toLowerCase();
 	}
 };
 

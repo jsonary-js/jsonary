@@ -1,0 +1,81 @@
+<?php
+
+	$page = isset($_GET['page']) ? $_GET['page'] : 'index';
+	$page = str_replace(".", "_", $page);
+	$jsonFile = "site/{$page}.json";
+	$pageData = json_decode(file_get_contents($jsonFile));
+	var_dump($pageData);
+?>
+<html>
+	<head>
+		<title>Jsonary</title>
+		<link rel="stylesheet" href="css/main/main.css" />
+		<meta name="viewport" content="width=480">
+		<script src="js/respond.min.js"></script>
+	</head>
+	<body>
+		<div id="top-fade"></div>
+		<div id="page">
+			<div id="header">
+				<a href="?"><h1 id="jsonary-title">Jsonary</h1></a>
+				<div id="get-started-block">
+					download the <a href="get-started-bundle.zip">get-started bundle</a> and <a href="get-started-guide">read the guide</a>
+				</div>
+			</div>
+		
+			<div id="info">
+				<ul class="navigation">
+					<li class="current">What is Jsonary?</li>
+					<li><a href="?page=schema-guide">Guide to JSON Schema</a></li>
+				</ul>
+				
+				<div class="info-block">
+					<h3>Info</h3>
+					<table class="key-value">
+						<tr>
+							<td class="key">Licence</td>
+							<td class="value"><a href="LICENSE.txt">MIT</a></td>
+						</tr>
+						<tr>
+							<td class="key">Source</td>
+							<td class="value"><a href="https://github.com/geraintluff/jsonary">view on GitHub</a></td>
+						</tr>
+					</table>
+				</div>
+			</div>
+		
+			<div id="content">
+				<h2>What is Jsonary?</h2>
+				<div class="content-block">
+					<p>Jsonary is a library that deals with <a href="http://json-schema.org">JSON (Hyper-)Schema</a>.</p>
+					<p>It takes away all the detail of interpreting schemas and hyper-links, leaving you with a full hypermedia interpretation of your JSON data.</p>
+					<p>Jsonary also includes a rendering system, so you can embed your JSON data into web pages in a fully customisable way.</p>
+					
+					<h4>Why should I use it?</h4>
+					<p><a href="http://json-schema.org">JSON Schema</a> can describe your existing JSON format/API as hypermedia: links, forms, multimedia interpretations, the whole deal.
+					<p>By building your JSON client using Jsonary, your client can take all its hypertext cues from the schema - and less hard-coded knowledge in the client means more flexibility.<p>
+				</div>
+
+				<div class="content-block">
+					<h3>Examples</h3>
+					<p>Here is some example code that fetches a JSON document via AJAX and inspects it:</p>
+					<script src="https://gist.github.com/geraintluff/6f5b7bc104f2f2bac9d6.js"></script>
+					<p>And here is an example of rendering some editable JSON data, according to some schema constraints:</p>
+					<div id="example-block-0" class="example">(Jsonary example)</div>
+					<script src="js/onload.js">
+						Jsonary.getData("/examples/basic.json", function (data) {
+							var target = document.getElementById("example-block-0");
+							Jsonary.render(target, data.editableCopy());
+						});
+					</script>
+				</div>
+
+				<div class="content-block">
+					<h3>Get started!</h3>
+					<p>Just download our <a href="get-started-bundle.zip">get-started bundle</a> and <a href="?page=get-started-guide">read the guide</a> to get going with Jsonary and JSON Schemas.</p>
+					<p>Alternatively, you can browse our <a href="?page=schema-guide">interactive guide to JSON Schema</a> to get a feel for how JSON Schema works.</p>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
