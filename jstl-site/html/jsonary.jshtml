@@ -32,6 +32,7 @@
 	function nextFile() {
 		if (files.length == 0) {
 			shard.echo('</ul>');
+			outputString = outputString.replace(/\r/g, '').replace(/\n/g, '\r\n'); // Force Windows line-endings
 			fs.writeFile(TARGET_FILE, outputString, {encoding:'utf8'}, function (error) {
 				if (error) {
 					throw error;
