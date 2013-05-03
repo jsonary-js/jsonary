@@ -34,8 +34,9 @@ staticFiles.directory("/plugins/", "../plugins")
 	.add(handlers.plain);
 
 // Include the JSON APIs from json/
-staticFiles.directory("/json/", "json/")
+siteHandler.directory("/json/", "json/")
 	.add(true, function (request, response, next) {
+		console.log("JSON: " + request.method);
 		request.path = request.path.replace(/^\/pages\//, "/index.jshtml/pages/");
 		next();
 	})
@@ -43,20 +44,12 @@ staticFiles.directory("/json/", "json/")
 	.add(jstlserver.handlers.plain);
 
 // Include the HTML site from html/
-staticFiles.directory("/", "html/")
+siteHandler.directory("/", "html/")
 	.add(handlers.jstl)
 	.add(handlers.cacheControl(true, handlers.cacheControl.presets.staticFiles))
 	.add(handlers.plain);
-/*
-var server = jstlserver.createServer().listen(80);
-setupServer(server);
-*/
 
-function setupServer(server) {
-
-}
-
-setupServer(siteHandler);
+/********/
 
 var server = jstlserver.createServer().listen(8080);
 server.addHandler(siteHandler);

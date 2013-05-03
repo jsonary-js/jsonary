@@ -241,19 +241,24 @@
 	CompositeHandler.prototype.method = function (method, processor) {
 		var handler = handlers.method(method, processor);
 		this.addHandler(handler);
-		return this;
+		return handler;
 	};
-	CompositeHandler.prototype.get = function (method, processor) {
+	CompositeHandler.prototype.get = function (processor) {
 		return this.method("GET", processor);
 	}
-	CompositeHandler.prototype.put = function (method, processor) {
+	CompositeHandler.prototype.put = function (processor) {
 		return this.method("PUT", processor);
 	}
-	CompositeHandler.prototype.post = function (method, processor) {
+	CompositeHandler.prototype.post = function (processor) {
 		return this.method("POST", processor);
 	}
-	CompositeHandler.prototype.delete = function (method, processor) {
+	CompositeHandler.prototype.delete = function (processor) {
 		return this.method("DELETE", processor);
+	}
+	CompositeHandler.prototype.error = function (errorCode, error) {
+		return this.add(true, function (request, response, next) {
+			publicApi.errorPage(errorCode, error || null, request, response);
+		});
 	}
 	
 	function JstlServer() {
@@ -532,6 +537,9 @@
 		var filePath = fs.stat(filePath, function (error, stat) {
 			if (error) {
 				return next();
+			}
+			if (request.method != "GET") {
+				return publicApi.errorPage(405, null, request, response);
 			}
 			if (modifiedSince && (stat.mtime <= modifiedSince)) {
 				response.statusCode = 304;
