@@ -384,6 +384,14 @@ Request.prototype = {
 			xhrUrl += xhrData;
 			xhrData = undefined;
 		}
+		if (publicApi.config.antiCacheUrls) {
+			var extra = "_=" + Math.random();
+			if (xhrUrl.indexOf("?") == -1) {
+				xhrUrl += "?" + extra;
+			} else {
+				xhrUrl += "&" + extra;
+			}
+		}
 		xhr.open(method, xhrUrl, true);
 		xhr.setRequestHeader("Content-Type", encType);
 		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
