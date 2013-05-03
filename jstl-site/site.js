@@ -1,4 +1,4 @@
-var jstlserver = require('./jstl-server');
+var jstlserver = require('jstl-server');
 var handlers = jstlserver.handlers;
 var mime = require('mime');
 
