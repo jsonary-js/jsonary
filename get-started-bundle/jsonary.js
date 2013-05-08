@@ -8,6 +8,10 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **/
 
+if (typeof localStorage == "undefined") {
+	window.localStorage = {};
+}
+
 // This is not a full ES5 shim - it just covers the functions that Jsonary uses.
 
 if (!Array.isArray) {
@@ -1551,6 +1555,9 @@ publicApi.getData = function(params, callback, hintSchema) {
 	}
 	return request;
 };
+publicApi.isRequest = function (obj) {
+	return (obj instanceof Request) || (obj instanceof FragmentRequest);
+}
 
 var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
 
@@ -1681,7 +1688,7 @@ Request.prototype = {
 				};
 				for (var j = 0; j < parts.length; j++) {
 					var part = parts[j];
-					var key = part.substring(0, part.indexOf("="));
+					var key = part.substring(0, part.indexOf("=")).trim();
 					var value = part.substring(key.length + 1);
 					if (value.charAt(0) == '"') {
 						value = JSON.parse(value);
@@ -1760,8 +1767,17 @@ Request.prototype = {
 			xhrUrl += xhrData;
 			xhrData = undefined;
 		}
+		if (publicApi.config.antiCacheUrls) {
+			var extra = "_=" + Math.random();
+			if (xhrUrl.indexOf("?") == -1) {
+				xhrUrl += "?" + extra;
+			} else {
+				xhrUrl += "&" + extra;
+			}
+		}
 		xhr.open(method, xhrUrl, true);
 		xhr.setRequestHeader("Content-Type", encType);
+		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
 		xhr.send(xhrData);
 	}
 };
@@ -2077,6 +2093,7 @@ publicApi.batchDone = function () {
 };
 
 function Document(url, isDefinitive, readOnly) {
+	var thisDocument = this;
 	this.readOnly = !!readOnly;
 	this.url = url;
 	this.isDefinitive = isDefinitive;
@@ -2090,9 +2107,28 @@ function Document(url, isDefinitive, readOnly) {
 	this.registerChangeListener = function (listener) {
 		documentChangeListeners.push(listener);
 	};
+	
+	function notifyChangeListeners(patch) {
+		DelayedCallbacks.increment();
+		var listeners = changeListeners.concat(documentChangeListeners);
+		DelayedCallbacks.add(function () {
+			for (var i = 0; i < listeners.length; i++) {
+				listeners[i].call(thisDocument, patch, thisDocument);
+			}
+		});
+		DelayedCallbacks.decrement();
+	}
 
 	this.setRaw = function (value) {
+		var needsFakePatch = this.raw.defined();
 		rawSecrets.setValue(value);
+		// It's an update to a read-only document
+		if (needsFakePatch) {
+			rawSecrets.setValue(value);
+			var patch = new Patch();
+			patch.replace(this.raw.pointerPath(), value);
+			notifyChangeListeners(patch);
+		}
 	};
 	var rootListeners = new ListenerSet(this);
 	this.getRoot = function (callback) {
@@ -2108,7 +2144,6 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
-		var thisDocument = this;
 		if (this.readOnly) {
 			throw new Error("Cannot update read-only document");
 		}
@@ -2121,16 +2156,11 @@ function Document(url, isDefinitive, readOnly) {
 			return;
 		}
 		DelayedCallbacks.increment();
-		var listeners = changeListeners.concat(documentChangeListeners);
-		DelayedCallbacks.add(function () {
-			for (var i = 0; i < listeners.length; i++) {
-				listeners[i].call(thisDocument, patch, thisDocument);
-			}
-		});
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
 		this.raw.patch(rawPatch);
 		this.root.patch(rootPatch);
+		notifyChangeListeners(patch);
 		DelayedCallbacks.decrement();
 	};
 	this.affectedData = function (operation) {
@@ -2163,6 +2193,7 @@ function Document(url, isDefinitive, readOnly) {
 		return result;
 	}
 }
+
 Document.prototype = {
 	resolveUrl: function (url) {
 		return Uri.resolve(this.url, url);
@@ -2821,6 +2852,9 @@ publicApi.create = function (rawData, baseUrl, readOnly) {
 	document.setRoot("");
 	return document.root;
 };
+publicApi.isData = function (obj) {
+	return obj instanceof Data;
+};
 
 Data.prototype.deflate = function () {
 	var schemas = [];
@@ -2862,6 +2896,9 @@ function getSchema(url, callback) {
 publicApi.createSchema = function (rawData, baseUrl) {
 	var data = publicApi.create(rawData, baseUrl, true);
 	return data.asSchema();
+};
+publicApi.isSchema = function (obj) {
+	return obj instanceof Schema;
 };
 
 publicApi.getSchema = getSchema;
@@ -3406,6 +3443,7 @@ PotentialLink.prototype = {
 			}
 		});
 		rawLink.href = publicData.resolveUrl(href);
+		rawLink.rel = rawLink.rel.toLowerCase();
 		return new ActiveLink(rawLink, this, publicData);
 	},
 	usesKey: function (key) {
@@ -3418,7 +3456,7 @@ PotentialLink.prototype = {
 		return false;
 	},
 	rel: function () {
-		return this.data.propertyValue("rel");
+		return this.data.propertyValue("rel").toLowerCase();
 	}
 };
 
@@ -5640,11 +5678,9 @@ DependencyApplier.prototype = {
 // TODO: re-structure monitor keys
 // TODO: separate schema monitors from type monitors?
 
-var configData = publicApi.create({
-	intelligentLinks: true,
-	intelligentPut: true
-});
-publicApi.config = configData;
+publicApi.config = {
+	antiCacheUrls: false
+}
 publicApi.UriTemplate = UriTemplate;
 
 })(this); // Global wrapper
@@ -5778,6 +5814,9 @@ publicApi.UriTemplate = UriTemplate;
 			this.subContextSavedStates = result[1];
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
+			if (typeof label == "object" && label != null) {
+				throw new Error('Label cannot be an object');
+			}
 			if (label || label === "") {
 				var labelKey = label;
 			} else {
@@ -5832,9 +5871,14 @@ publicApi.UriTemplate = UriTemplate;
 			var element = document.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
+				this.clearOldSubContexts();
 			}
 		},
 		render: function (element, data, label, uiStartingState, contextCallback) {
+			if (uiStartingState == undefined && typeof label == "object") {
+				uiStartingState = label;
+				label = null;
+			}
 			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -5889,6 +5933,10 @@ publicApi.UriTemplate = UriTemplate;
 			}
 		},
 		renderHtml: function (data, label, uiStartingState) {
+			if (uiStartingState == undefined && typeof label == "object") {
+				uiStartingState = label;
+				label = null;
+			}
 			var elementId = this.getElementId();
 			if (typeof data == "string") {
 				data = Jsonary.getData(data);
@@ -5901,7 +5949,12 @@ publicApi.UriTemplate = UriTemplate;
 						rendered = true;
 						data = actualData;
 					} else {
-						thisContext.render(document.getElementById(elementId), actualData, label, uiStartingState);
+						var element = document.getElementById(elementId);
+						if (element) {
+							thisContext.render(element, actualData, label, uiStartingState);
+						} else {
+							Jsonary.log(Jsonary.logLevel.WARNING, "Attempted delayed render to non-existent element: " + elementId);
+						}
 					}
 				});
 				if (!rendered) {
@@ -5959,17 +6012,33 @@ publicApi.UriTemplate = UriTemplate;
 			}
 		},
 		actionHtml: function(innerHtml, actionName) {
+			var startingIndex = 2;
+			var historyChange = false;
+			var linkUrl = "javascript:void(0)";
+			if (typeof actionName == "boolean") {
+				historyChange = arguments[1];
+				linkUrl = arguments[2] || linkUrl;
+				actionName = arguments[3];
+				startingIndex += 2;
+			}
 			var params = [];
-			for (var i = 2; i < arguments.length; i++) {
+			for (var i = startingIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
 			var elementId = this.getElementId();
-			this.addEnhancementAction(elementId, actionName, this, params);
-			return '<a href="javascript:void(0)" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
+			this.addEnhancementAction(elementId, actionName, this, params, historyChange);
+			return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
 		},
 		inputNameForAction: function (actionName) {
+			var historyChange = false;
+			var startIndex = 1;
+			if (typeof actionName == "boolean") {
+				historyChange = actionName;
+				actionName = arguments[1];
+				startIndex++;
+			}
 			var params = [];
-			for (var i = 1; i < arguments.length; i++) {
+			for (var i = startIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
 			var name = this.getElementId();
@@ -5977,21 +6046,23 @@ publicApi.UriTemplate = UriTemplate;
 				inputName: name,
 				actionName: actionName,
 				context: this,
-				params: params
+				params: params,
+				historyChange: historyChange
 			};
 			return name;
 		},
 		addEnhancement: function(elementId, context) {
 			this.enhancementContexts[elementId] = context;
 		},
-		addEnhancementAction: function (elementId, actionName, context, params) {
+		addEnhancementAction: function (elementId, actionName, context, params, historyChange) {
 			if (params == null) {
 				params = [];
 			}
 			this.enhancementActions[elementId] = {
 				actionName: actionName,
 				context: context,
-				params: params
+				params: params,
+				historyChange: historyChange
 			};
 		},
 		enhanceElement: function (element) {
@@ -6033,9 +6104,9 @@ publicApi.UriTemplate = UriTemplate;
 					var args = [actionContext, action.actionName].concat(action.params);
 					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
 						// Action returned positive - we should force a re-render
-						var element = document.getElementById(redrawElementId);
-						actionContext.renderer.render(element, actionContext.data, actionContext);
+						actionContext.rerender();
 					}
+					notifyActionHandlers(actionContext.data, actionContext, action.actionName, action.historyChange);
 					return false;
 				};
 			}
@@ -6060,10 +6131,9 @@ publicApi.UriTemplate = UriTemplate;
 					var inputContext = inputAction.context;
 					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
 					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
-						// Action returned positive - we should force a re-render
-						var element = document.getElementById(redrawElementId);
-						inputContext.renderer.render(element, inputContext.data, inputContext);
+						inputContext.rerender();
 					}
+					notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
 				};
 			}
 			element = null;
@@ -6165,8 +6235,9 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			return this;
 		},
-		action: function (context, actionName, data) {
-			return this.actionFunction.apply(this, arguments);
+		action: function (context, actionName) {
+			var result = this.actionFunction.apply(this, arguments);
+			return result;
 		},
 		canRender: function (data, schemas, uiState) {
 			if (this.filterFunction != undefined) {
@@ -6197,11 +6268,20 @@ publicApi.UriTemplate = UriTemplate;
 					result[label + "-" + subKey] = subStates[label][subKey];
 				}
 			}
+			for (key in result) {
+				if (Jsonary.isData(result[key])) {
+					result[key] = this.saveStateData(result[key]);
+				} else {
+				}
+			}
 			return result;
 		},
 		saveStateData: function (data) {
 			if (!data) {
 				return undefined;
+			}
+			if (data.document.isDefinitive) {
+				return "url:" + data.referenceUrl();
 			}
 			data.saveStateId = data.saveStateId || randomId();
 			localStorage[data.saveStateId] = JSON.stringify({
@@ -6224,6 +6304,13 @@ publicApi.UriTemplate = UriTemplate;
 					subStates[subKey][remainderKey] = savedState[key];
 				} else {
 					uiState[key] = this.loadStateData(savedState[key]) || savedState[key];
+					if (Jsonary.isRequest(uiState[key])) {
+						(function (key) {
+							uiState[key].getData(function (data) {
+								uiState[key] = data;
+							});
+						})(key);
+					}
 				}
 			}
 			return [
@@ -6232,6 +6319,14 @@ publicApi.UriTemplate = UriTemplate;
 			]
 		},
 		loadStateData: function (savedState) {
+			if (typeof savedState == "string" && savedState.substring(0, 4) == "url:") {
+				var url = savedState.substring(4);
+				var data = null;
+				var request = Jsonary.getData(url, function (urlData) {
+					data = urlData;
+				});
+				return data || request;
+			}
 			if (!savedState) {
 				return undefined;
 			}
@@ -6245,6 +6340,7 @@ publicApi.UriTemplate = UriTemplate;
 			return data;
 		}
 	}
+	Renderer.prototype.super_ = Renderer.prototype;
 
 	var rendererLookup = {};
 	var rendererList = [];
@@ -6268,6 +6364,21 @@ publicApi.UriTemplate = UriTemplate;
 	}
 	render.register = register;
 	render.deregister = deregister;
+	
+	var actionHandlers = [];
+	render.addActionHandler = function (callback) {
+		actionHandlers.push(callback);
+	};
+	function notifyActionHandlers(data, context, actionName, historyChange) {
+		historyChange = !!historyChange || (historyChange == undefined);
+		for (var i = 0; i < actionHandlers.length; i++) {
+			var callback = actionHandlers[i];
+			var result = callback(data, context, actionName, historyChange);
+			if (result === false) {
+				break;
+			}
+		}
+	};
 	
 	function lookupRenderer(rendererId) {
 		return rendererLookup[rendererId];
