@@ -273,7 +273,7 @@ Schema.prototype = {
 			otherRefUrl = otherSchema.data.resolveUrl(otherSchema.data.propertyValue("$ref"));
 		}
 		if (thisRefUrl !== undefined && otherRefUrl !== undefined) {
-			return thisRefUrl === otherRefUrl;
+			return Utils.urlsEqual(thisRefUrl, otherRefUrl);
 		}
 		return this.data.equals(otherSchema.data);
 	},

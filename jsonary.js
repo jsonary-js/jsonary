@@ -3160,7 +3160,7 @@ Schema.prototype = {
 			otherRefUrl = otherSchema.data.resolveUrl(otherSchema.data.propertyValue("$ref"));
 		}
 		if (thisRefUrl !== undefined && otherRefUrl !== undefined) {
-			return thisRefUrl === otherRefUrl;
+			return Utils.urlsEqual(thisRefUrl, otherRefUrl);
 		}
 		return this.data.equals(otherSchema.data);
 	},
@@ -4984,6 +4984,12 @@ SchemaList.prototype = {
 			if (!this[i].isFull()) {
 				return false;
 			}
+			var andSchemas = this[i].andSchemas();
+			for (var j = 0; j < andSchemas.length; j++) {
+				if (this.indexOf(andSchemas[j], true) == -1) {
+					return false;
+				}
+			}
 		}
 		return true;
 	},
@@ -5950,6 +5956,7 @@ publicApi.UriTemplate = UriTemplate;
 						data = actualData;
 					} else {
 						var element = document.getElementById(elementId);
+						element.className = "";
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
