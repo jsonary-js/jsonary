@@ -866,6 +866,12 @@ SchemaList.prototype = {
 			if (!this[i].isFull()) {
 				return false;
 			}
+			var andSchemas = this[i].andSchemas();
+			for (var j = 0; j < andSchemas.length; j++) {
+				if (this.indexOf(andSchemas[j], true) == -1) {
+					return false;
+				}
+			}
 		}
 		return true;
 	},
