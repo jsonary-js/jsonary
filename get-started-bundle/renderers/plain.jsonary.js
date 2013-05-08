@@ -599,11 +599,15 @@
 				var minimum = data.schemas().minimum();
 				if (minimum == null || data.value() > minimum + interval || data.value() == (minimum + interval) && !data.schemas().exclusiveMinimum()) {
 					result = context.actionHtml('<span class="json-number-decrement button">-</span>', 'decrement') + result;
+				} else {
+					result = '<span class="json-number-decrement button disabled">-</span>' + result;
 				}
 				
 				var maximum = data.schemas().maximum();
 				if (maximum == null || data.value() < maximum - interval || data.value() == (maximum - interval) && !data.schemas().exclusiveMaximum()) {
 					result += context.actionHtml('<span class="json-number-increment button">+</span>', 'increment');
+				} else {
+					result += '<span class="json-number-increment button disabled">+</span>';
 				}
 			}
 			return result;

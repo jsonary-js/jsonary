@@ -1681,7 +1681,7 @@ Request.prototype = {
 				};
 				for (var j = 0; j < parts.length; j++) {
 					var part = parts[j];
-					var key = part.substring(0, part.indexOf("="));
+					var key = part.substring(0, part.indexOf("=")).trim();
 					var value = part.substring(key.length + 1);
 					if (value.charAt(0) == '"') {
 						value = JSON.parse(value);
