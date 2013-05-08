@@ -263,6 +263,7 @@
 						data = actualData;
 					} else {
 						var element = document.getElementById(elementId);
+						element.className = "";
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
