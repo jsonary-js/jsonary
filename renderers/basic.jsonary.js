@@ -19,7 +19,8 @@
 				var parent = data.parent();
 				if (parent.basicType() == "object") {
 					var required = parent.schemas().requiredProperties();
-					showDelete = required.indexOf(data.parentKey()) == -1;
+					var minProperties = parent.schemas().minProperties();
+					showDelete = required.indexOf(data.parentKey()) == -1 && parent.keys().length > minProperties;
 				} else if (parent.basicType() == "array") {
 					var tupleTypingLength = parent.schemas().tupleTypingLength();
 					var minItems = parent.schemas().minItems();
