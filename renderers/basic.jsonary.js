@@ -281,24 +281,27 @@
 			});
 			result += '</tbody></table>';
 			if (!data.readOnly()) {
-				var addLinkHtml = "";
 				var schemas = data.schemas();
-				var definedProperties = schemas.definedProperties();
-				var keyFunction = function (index, key) {
-					var addHtml = '<span class="json-object-add-key">' + escapeHtml(key) + '</span>';
-					addLinkHtml += context.actionHtml(addHtml, "add-named", key);
-				};
-				for (var i = 0; i < definedProperties.length; i++) {
-					if (!data.property(definedProperties[i]).defined()) {
-						keyFunction(i, definedProperties[i]);
+				var maxProperties = schemas.maxProperties();
+				if (maxProperties == null || maxProperties > data.keys().length) {
+					var addLinkHtml = "";
+					var definedProperties = schemas.definedProperties();
+					var keyFunction = function (index, key) {
+						var addHtml = '<span class="json-object-add-key">' + escapeHtml(key) + '</span>';
+						addLinkHtml += context.actionHtml(addHtml, "add-named", key);
+					};
+					for (var i = 0; i < definedProperties.length; i++) {
+						if (!data.property(definedProperties[i]).defined()) {
+							keyFunction(i, definedProperties[i]);
+						}
 					}
-				}
-				if (schemas.allowedAdditionalProperties()) {
-					var newHtml = '<span class="json-object-add-key-new">+ new</span>';
-					addLinkHtml += context.actionHtml(newHtml, "add-new");
-				}
-				if (addLinkHtml != "") {
-					result += '<span class="json-object-add">add: ' + addLinkHtml + '</span>';
+					if (schemas.allowedAdditionalProperties()) {
+						var newHtml = '<span class="json-object-add-key-new">+ new</span>';
+						addLinkHtml += context.actionHtml(newHtml, "add-new");
+					}
+					if (addLinkHtml != "") {
+						result += '<span class="json-object-add">add: ' + addLinkHtml + '</span>';
+					}
 				}
 			}
 			return result + "}";
