@@ -2233,7 +2233,6 @@ function Data(document, secrets, parent, parentKey) {
 	this.uniqueId = uniqueIdCounter++;
 	this.document = document;
 	this.readOnly = function (includeSchemas) {
-		includeSchema = false;
 		if (includeSchemas || includeSchemas === undefined) {
 			return document.readOnly
 				|| this.schemas().readOnly()

@@ -2232,8 +2232,14 @@ var uniqueIdCounter = 0;
 function Data(document, secrets, parent, parentKey) {
 	this.uniqueId = uniqueIdCounter++;
 	this.document = document;
-	this.readOnly = function () {
-		return document.readOnly;
+	this.readOnly = function (includeSchemas) {
+		if (includeSchemas || includeSchemas === undefined) {
+			return document.readOnly
+				|| this.schemas().readOnly()
+				|| (parent != undefined && parent.readOnly(true));
+		} else {
+			return document.readOnly;
+		}
 	};
 	
 	var value = undefined;
@@ -2731,7 +2737,7 @@ Data.prototype = {
 		}
 	},
 	readOnlyCopy: function () {
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			return this;
 		}
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", true);
@@ -2750,7 +2756,7 @@ Data.prototype = {
 	},
 	asSchema: function () {
 		var schema = new Schema(this.readOnlyCopy());
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			cacheResult(this, {asSchema: schema});
 		}
 		return schema;
@@ -2764,7 +2770,7 @@ Data.prototype = {
 		} else {
 			result = linkDefinition.linkForData(targetData);
 		}
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			cacheResult(this, {asLink: result});
 		}
 		return result;
@@ -2867,7 +2873,7 @@ Data.prototype.deflate = function () {
 	});
 	var result = {
 		baseUrl: this.document.url,
-		readOnly: this.readOnly(),
+		readOnly: this.document.readOnly,
 		value: this.value(),
 		schemas: schemas
 	}
@@ -3163,6 +3169,9 @@ Schema.prototype = {
 			return Utils.urlsEqual(thisRefUrl, otherRefUrl);
 		}
 		return this.data.equals(otherSchema.data);
+	},
+	readOnly: function () {
+		return !!(this.data.propertyValue("readOnly") || this.data.propertyValue("readonly"));
 	},
 	enumValues: function () {
 		return this.data.propertyValue("enum");
@@ -4542,6 +4551,19 @@ SchemaList.prototype = {
 			}
 		}
 		return requiredList;
+	},
+	readOnly: function () {
+		var readOnly = false;
+		for (var i = 0; i < this.length; i++) {
+			if (this[i].readOnly()) {
+				readOnly = true;
+				break;
+			}
+		}
+		this.readOnly = function () {
+			return readOnly;
+		}
+		return readOnly;
 	},
 	enumValues: function () {
 		var enums = undefined;
