@@ -425,6 +425,16 @@ SchemaList.prototype = {
 		}
 		return requiredList;
 	},
+	readOnly: function () {
+		var readOnly = false;
+		for (var i = 0; i < this.length; i++) {
+			if (this[i].readOnly()) {
+				readOnly = true;
+				break;
+			}
+		}
+		return readOnly;
+	},
 	enumValues: function () {
 		var enums = undefined;
 		for (var i = 0; i < this.length; i++) {

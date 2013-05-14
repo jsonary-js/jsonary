@@ -3164,6 +3164,9 @@ Schema.prototype = {
 		}
 		return this.data.equals(otherSchema.data);
 	},
+	readOnly: function () {
+		return !!(this.data.propertyValue("readOnly") || this.data.propertyValue("readonly"));
+	},
 	enumValues: function () {
 		return this.data.propertyValue("enum");
 	},
@@ -4542,6 +4545,16 @@ SchemaList.prototype = {
 			}
 		}
 		return requiredList;
+	},
+	readOnly: function () {
+		var readOnly = false;
+		for (var i = 0; i < this.length; i++) {
+			if (this[i].readOnly()) {
+				readOnly = true;
+				break;
+			}
+		}
+		return readOnly;
 	},
 	enumValues: function () {
 		var enums = undefined;

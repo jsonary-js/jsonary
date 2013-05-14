@@ -212,3 +212,25 @@ tests.add("schemaList.propertyDependencies()", function () {
 	
 	return true;
 });
+
+tests.add("schemaList.readOnly()", function () {
+	var schema1 = Jsonary.createSchema({});
+	var schema2 = Jsonary.createSchema({
+		readOnly: true
+	});
+	// Accept both capitalisations
+	var schema3 = Jsonary.createSchema({
+		readonly: true
+	});
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2]);
+	this.assert(schemaList.readOnly() == true, "1: true");
+	
+	var schemaList = schema1.asList();
+	this.assert(schemaList.readOnly() == false, "2: false");
+	
+	var schemaList = schema3.asList();
+	this.assert(schemaList.readOnly() == true, "3: true");
+
+	return true;
+});

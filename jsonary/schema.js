@@ -277,6 +277,9 @@ Schema.prototype = {
 		}
 		return this.data.equals(otherSchema.data);
 	},
+	readOnly: function () {
+		return !!(this.data.propertyValue("readOnly") || this.data.propertyValue("readonly"));
+	},
 	enumValues: function () {
 		return this.data.propertyValue("enum");
 	},
