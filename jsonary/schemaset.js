@@ -433,6 +433,9 @@ SchemaList.prototype = {
 				break;
 			}
 		}
+		this.readOnly = function () {
+			return readOnly;
+		}
 		return readOnly;
 	},
 	enumValues: function () {

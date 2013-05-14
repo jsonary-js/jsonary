@@ -234,3 +234,28 @@ tests.add("schemaList.readOnly()", function () {
 
 	return true;
 });
+
+tests.add("data.readOnly() from schema", function () {
+	var schema = Jsonary.createSchema({readOnly: true});
+	var data = Jsonary.create({});
+	
+	this.assert(data.readOnly() == false, "readOnly() == false");
+	data.addSchema(schema);
+	this.assert(data.readOnly() == true, "readOnly() == true");
+	this.assert(data.readOnly(false) == false, "readOnly(false) == true");
+	return true;
+});
+
+tests.add("subData.readOnly() from schema", function () {
+	var schema = Jsonary.createSchema({readOnly: true});
+	var data = Jsonary.create({
+		a: 1
+	});
+	var subData = data.property("a");
+	
+	this.assert(subData.readOnly() == false, "readOnly() == false");
+	data.addSchema(schema);
+	this.assert(subData.readOnly() == true, "readOnly() == true");
+	this.assert(subData.readOnly(false) == false, "readOnly(false) == true");
+	return true;
+});

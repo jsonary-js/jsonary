@@ -166,8 +166,15 @@ var uniqueIdCounter = 0;
 function Data(document, secrets, parent, parentKey) {
 	this.uniqueId = uniqueIdCounter++;
 	this.document = document;
-	this.readOnly = function () {
-		return document.readOnly;
+	this.readOnly = function (includeSchemas) {
+		includeSchema = false;
+		if (includeSchemas || includeSchemas === undefined) {
+			return document.readOnly
+				|| this.schemas().readOnly()
+				|| (parent != undefined && parent.readOnly(true));
+		} else {
+			return document.readOnly;
+		}
 	};
 	
 	var value = undefined;
@@ -665,7 +672,7 @@ Data.prototype = {
 		}
 	},
 	readOnlyCopy: function () {
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			return this;
 		}
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", true);
@@ -684,7 +691,7 @@ Data.prototype = {
 	},
 	asSchema: function () {
 		var schema = new Schema(this.readOnlyCopy());
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			cacheResult(this, {asSchema: schema});
 		}
 		return schema;
@@ -698,7 +705,7 @@ Data.prototype = {
 		} else {
 			result = linkDefinition.linkForData(targetData);
 		}
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			cacheResult(this, {asLink: result});
 		}
 		return result;
@@ -801,7 +808,7 @@ Data.prototype.deflate = function () {
 	});
 	var result = {
 		baseUrl: this.document.url,
-		readOnly: this.readOnly(),
+		readOnly: this.document.readOnly,
 		value: this.value(),
 		schemas: schemas
 	}
