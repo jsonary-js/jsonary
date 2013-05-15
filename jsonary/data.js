@@ -779,7 +779,7 @@ publicApi.extendData = function (obj) {
 
 publicApi.create = function (rawData, baseUrl, readOnly) {
 	var rawData = (typeof rawData == "object") ? JSON.parse(JSON.stringify(rawData)) : rawData; // Hacky recursive copy
-	var definitive = baseUrl != undefined;
+	var definitive = baseUrl != undefined && readOnly;
 	if (baseUrl != undefined && baseUrl.indexOf("#") != -1) {
 		var remainder = baseUrl.substring(baseUrl.indexOf("#") + 1);
 		if (remainder != "") {
