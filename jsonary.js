@@ -1730,7 +1730,7 @@ Request.prototype = {
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function () {
 			if (xhr.readyState == 4) {
-				if (xhr.status == 200) {
+				if (xhr.status >= 200 && xhr.status < 300) {
 					var data = xhr.responseText;
 					try {
 						data = JSON.parse(data);
