@@ -454,27 +454,43 @@
 		}
 	};
 	var pageContext = new RenderContext();
-	setInterval(function () {
-		// Clean-up sweep of pageContext's element lookup
-		var keysToRemove = [];
-		for (var key in pageContext.elementLookup) {
-			var elementIds = pageContext.elementLookup[key];
-			var found = false;
-			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
-				if (element) {
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				keysToRemove.push(key);
-			}
-		}
-		for (var i = 0; i < keysToRemove.length; i++) {
-			delete pageContext.elementLookup[keysToRemove[i]];
-		}
-	}, 30000); // Every 30 seconds
+
+    function cleanupAll(){
+        // Clean-up everything left over
+        for (var key in pageContext.elementLookup) {
+            delete pageContext.elementLookup[key];
+        };
+        //delete pageContext;
+        //pageContext = new RenderContext();
+    };
+
+    function cleanupGently(){
+        // Clean-up sweep of pageContext's element lookup
+        var keysToRemove = [];
+        for (var key in pageContext.elementLookup) {
+            var elementIds = pageContext.elementLookup[key];
+            var found = false;
+            for (var i = 0; i < elementIds.length; i++) {
+                var element = document.getElementById(elementIds[i]);
+                if (element) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                keysToRemove.push(key);
+            }
+        }
+        for (var i = 0; i < keysToRemove.length; i++) {
+            delete pageContext.elementLookup[keysToRemove[i]];
+        }
+
+    };
+
+    render.cleanupAll = cleanupAll;
+    render.cleanupGently = cleanupGently;
+
+    setInterval (cleanupGently(), 30000); // Every 30 seconds
 
 	function render(element, data, uiStartingState, contextCallback) {
 		var context = pageContext.render(element, data, null, uiStartingState, contextCallback);
@@ -499,8 +515,8 @@
 		};
 	}
 	render.Components = componentNames;
-	
-	/**********/
+
+    /**********/
 
 	var rendererIdCounter = 0;
 	
