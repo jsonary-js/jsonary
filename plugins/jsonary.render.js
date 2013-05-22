@@ -477,7 +477,9 @@
 	}, 30000); // Every 30 seconds
 
 	function render(element, data, uiStartingState, contextCallback) {
-		var context = pageContext.render(element, data, null, uiStartingState, contextCallback);
+		var innerElement = document.createElement('span');
+		element.appendChild(innerElement);
+		var context = pageContext.render(innerElement, data, null, uiStartingState, contextCallback);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return context;
