@@ -6175,8 +6175,8 @@ publicApi.UriTemplate = UriTemplate;
         for (var key in pageContext.elementLookup) {
             delete pageContext.elementLookup[key];
         };
-        //delete pageContext;
-        //pageContext = new RenderContext();
+        delete pageContext;
+        pageContext = new RenderContext();
     };
 
     function cleanupGently(){
