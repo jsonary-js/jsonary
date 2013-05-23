@@ -1730,7 +1730,7 @@ Request.prototype = {
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function () {
 			if (xhr.readyState == 4) {
-				if (xhr.status >= 200 && xhr.status < 300) {
+				if (xhr.status == 200) {
 					var data = xhr.responseText;
 					try {
 						data = JSON.parse(data);
@@ -2845,7 +2845,7 @@ publicApi.extendData = function (obj) {
 
 publicApi.create = function (rawData, baseUrl, readOnly) {
 	var rawData = (typeof rawData == "object") ? JSON.parse(JSON.stringify(rawData)) : rawData; // Hacky recursive copy
-	var definitive = baseUrl != undefined;
+	var definitive = baseUrl != undefined && readOnly;
 	if (baseUrl != undefined && baseUrl.indexOf("#") != -1) {
 		var remainder = baseUrl.substring(baseUrl.indexOf("#") + 1);
 		if (remainder != "") {
@@ -6096,16 +6096,21 @@ publicApi.UriTemplate = UriTemplate;
 		},
 		enhanceElement: function (element) {
 			var rootElement = element;
+			// Perform post-order depth-first walk of tree, calling enhanceElementSingle() on each element
+			// Post-order reduces orphaned enhancements by enhancing all children before the parent
 			while (element) {
-				if (element.nodeType == 1) {
-					this.enhanceElementSingle(element);
-				}
 				if (element.firstChild) {
 					element = element.firstChild;
 					continue;
 				}
 				while (!element.nextSibling && element != rootElement) {
+					if (element.nodeType == 1) {
+						this.enhanceElementSingle(element);
+					}
 					element = element.parentNode;
+				}
+				if (element.nodeType == 1) {
+					this.enhanceElementSingle(element);
 				}
 				if (element == rootElement) {
 					break;
@@ -6169,7 +6174,8 @@ publicApi.UriTemplate = UriTemplate;
 		}
 	};
 	var pageContext = new RenderContext();
-	setInterval(function () {
+	
+	function cleanup() {
 		// Clean-up sweep of pageContext's element lookup
 		var keysToRemove = [];
 		for (var key in pageContext.elementLookup) {
@@ -6189,7 +6195,36 @@ publicApi.UriTemplate = UriTemplate;
 		for (var i = 0; i < keysToRemove.length; i++) {
 			delete pageContext.elementLookup[keysToRemove[i]];
 		}
-	}, 30000); // Every 30 seconds
+		for (var key in pageContext.enhancementContexts) {
+			if (pageContext.enhancementContexts[key]) {
+				var context = pageContext.enhancementContexts[key];
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned context for element: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementContexts[key] = null;
+			}
+		}
+		for (var key in pageContext.enhancementActions) {
+			if (pageContext.enhancementActions[key]) {
+				var context = pageContext.enhancementActions[key].context;
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for element: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementActions[key] = null;
+			}
+		}
+		for (var key in pageContext.enhancementInputs) {
+			if (pageContext.enhancementInputs[key]) {
+				var context = pageContext.enhancementInputs[key].context;
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for input: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementInputs[key] = null;
+			}
+		}
+	}
+	setInterval(cleanup, 30000); // Every 30 seconds
+	Jsonary.cleanup = cleanup;
 
 	function render(element, data, uiStartingState, contextCallback) {
 		var innerElement = document.createElement('span');
