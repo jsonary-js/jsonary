@@ -31,6 +31,7 @@ function Document(url, isDefinitive, readOnly) {
 	this.readOnly = !!readOnly;
 	this.url = url;
 	this.isDefinitive = isDefinitive;
+	this.error = null;
 
 	var rootPath = null;
 	var rawSecrets = {};
@@ -729,6 +730,9 @@ Data.prototype = {
 			}
 		}
 		if (additionalCallback) {
+			if (typeof additionalCallback != 'function') {
+				additionalCallback = callback;
+			}
 			var dataKeys = this.keys();
 			for (var i = 0; i < dataKeys.length; i++) {
 				if (keys.indexOf(dataKeys[i]) == -1) {
