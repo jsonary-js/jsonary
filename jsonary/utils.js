@@ -262,6 +262,7 @@ var Utils = {
 		return result;
 	},
 	escapeHtml: function(text) {
+		text += "";
 		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
 	},
 	encodePointerComponent: function (component) {

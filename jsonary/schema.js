@@ -565,7 +565,7 @@ PotentialLink.prototype = {
 	usesKey: function (key) {
 		var i;
 		for (i = 0; i < this.dataParts.length; i++) {
-			if (this.dataParts[i] === key) {
+			if (this.dataParts[i] === key || this.dataParts[i] === null) {
 				return true;
 			}
 		}
