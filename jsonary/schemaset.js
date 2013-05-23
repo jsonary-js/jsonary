@@ -146,6 +146,16 @@ SchemaList.prototype = {
 		}
 		return new SchemaList(newList);
 	},
+	title: function () {
+		var titles = [];
+		for (var i = 0; i < this.length; i++) {
+			var title = this[i].title();
+			if (title) {
+				titles.push(title);
+			}
+		}
+		return titles.join(' - ');
+	},
 	definedProperties: function (ignoreList) {
 		if (ignoreList) {
 			this.definedProperties(); // create cached function
