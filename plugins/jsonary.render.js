@@ -381,16 +381,21 @@
 		},
 		enhanceElement: function (element) {
 			var rootElement = element;
+			// Perform post-order depth-first walk of tree, calling enhanceElementSingle() on each element
+			// Post-order reduces orphaned enhancements by enhancing all children before the parent
 			while (element) {
-				if (element.nodeType == 1) {
-					this.enhanceElementSingle(element);
-				}
 				if (element.firstChild) {
 					element = element.firstChild;
 					continue;
 				}
 				while (!element.nextSibling && element != rootElement) {
+					if (element.nodeType == 1) {
+						this.enhanceElementSingle(element);
+					}
 					element = element.parentNode;
+				}
+				if (element.nodeType == 1) {
+					this.enhanceElementSingle(element);
 				}
 				if (element == rootElement) {
 					break;
@@ -454,7 +459,8 @@
 		}
 	};
 	var pageContext = new RenderContext();
-	setInterval(function () {
+	
+	function cleanup() {
 		// Clean-up sweep of pageContext's element lookup
 		var keysToRemove = [];
 		for (var key in pageContext.elementLookup) {
@@ -474,7 +480,36 @@
 		for (var i = 0; i < keysToRemove.length; i++) {
 			delete pageContext.elementLookup[keysToRemove[i]];
 		}
-	}, 30000); // Every 30 seconds
+		for (var key in pageContext.enhancementContexts) {
+			if (pageContext.enhancementContexts[key]) {
+				var context = pageContext.enhancementContexts[key];
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned context for element: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementContexts[key] = null;
+			}
+		}
+		for (var key in pageContext.enhancementActions) {
+			if (pageContext.enhancementActions[key]) {
+				var context = pageContext.enhancementActions[key].context;
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for element: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementActions[key] = null;
+			}
+		}
+		for (var key in pageContext.enhancementInputs) {
+			if (pageContext.enhancementInputs[key]) {
+				var context = pageContext.enhancementInputs[key].context;
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for input: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementInputs[key] = null;
+			}
+		}
+	}
+	setInterval(cleanup, 30000); // Every 30 seconds
+	Jsonary.cleanup = cleanup;
 
 	function render(element, data, uiStartingState, contextCallback) {
 		var innerElement = document.createElement('span');
