@@ -51,12 +51,16 @@ textarea {
 	width: 4em;
 }
 
-.json-object-key-text {
+.json-object-key-text, .json-object-key-title {
 	text-align: right;
 	font-style: italic;
 	padding-right: 0.5em;
 	border-right: 1px solid #000;
 	white-space: pre;
+}
+
+.json-object-key-title {
+	font-style: normal;
 }
 
 .json-object-value {

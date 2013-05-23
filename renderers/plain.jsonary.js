@@ -35,10 +35,10 @@
 			if (showDelete) {
 				result += "<div class='json-object-delete-container'>";
 				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
-				result += context.renderHtml(data, context.uiState);
+				result += context.renderHtml(data, 'data');
 				result += '<div style="clear: both"></div></div>';
 			} else {
-				result += context.renderHtml(data, context.uiState);
+				result += context.renderHtml(data, 'data');
 			}
 			return result;
 		},
@@ -77,6 +77,15 @@
 		},
 		filter: function (data) {
 			return !data.readOnly();
+		},
+		saveState: function (uiState, subStates) {
+			return subStates.data;
+		},
+		loadState: function (savedState) {
+			return [
+				{},
+				{data: savedState}
+			];
 		}
 	});
 	
@@ -108,7 +117,7 @@
 			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
-			result += context.renderHtml(data);
+			result += context.renderHtml(data, 'data');
 			return result;
 		},
 		action: function (context, actionName, basicType) {
@@ -134,6 +143,39 @@
 		},
 		filter: function (data) {
 			return !data.readOnly();
+		},
+		saveState: function (uiState, subStates) {
+			var result = {};
+			if (uiState.dialogOpen) {
+				result.dialogOpen = true;
+			}
+			if (subStates.data._ != undefined || subStates.data.dialogOpen != undefined) {
+				result._ = subStates['data'];
+			} else {
+				for (var key in subStates.data) {
+					result[key] = subStates.data[key];
+				}
+			}
+			return result;
+		},
+		loadState: function (savedState) {
+			var uiState = savedState;
+			var subState = {};
+			if (savedState._ != undefined) {
+				var subState = savedState._;
+				delete savedState._;
+			} else {
+				var uiState = {};
+				if (savedState.dialogOpen) {
+					uiState.dialogOpen = true;
+				}
+				delete savedState.dialogOpen;
+				subState = savedState;
+			}
+			return [
+				uiState,
+				{data: subState}
+			];
 		}
 	});
 
@@ -219,7 +261,7 @@
 			if (!singleOption && fixedSchemas.length < data.schemas().length) {
 				result += context.actionHtml("<span class=\"json-select-type\">S</span>", "openDialog") + " ";
 			}
-			result += context.renderHtml(data);
+			result += context.renderHtml(data, 'data');
 			return result;
 		},
 		createValue: function (context) {
@@ -268,6 +310,39 @@
 		},
 		filter: function (data) {
 			return !data.readOnly();
+		},
+		saveState: function (uiState, subStates) {
+			var result = {};
+			if (uiState.dialogOpen) {
+				result.dialogOpen = true;
+			}
+			if (subStates.data._ != undefined || subStates.data.dialogOpen != undefined) {
+				result._ = subStates['data'];
+			} else {
+				for (var key in subStates.data) {
+					result[key] = subStates.data[key];
+				}
+			}
+			return result;
+		},
+		loadState: function (savedState) {
+			var uiState = savedState;
+			var subState = {};
+			if (savedState._ != undefined) {
+				var subState = savedState._;
+				delete savedState._;
+			} else {
+				var uiState = {};
+				if (savedState.dialogOpen) {
+					uiState.dialogOpen = true;
+				}
+				delete savedState.dialogOpen;
+				subState = savedState;
+			}
+			return [
+				uiState,
+				{data: subState}
+			];
 		}
 	});
 
@@ -303,7 +378,12 @@
 			var result = '<table class="json-object"><tbody>';
 			data.properties(function (key, subData) {
 				result += '<tr class="json-object-pair">';
-				result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + '</div></td>';
+				var title = subData.schemas().title();
+				if (title == "") {
+					result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + '</div></td>';
+				} else {
+					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(title) + '</div></td>';
+				}
 				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
 				result += '</tr>';
 			});
