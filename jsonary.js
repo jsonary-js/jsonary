@@ -1990,7 +1990,7 @@ PatchOperation.prototype = {
 				} else if (remainder.charAt(0) == "/") {
 					targetDepth = remainder.split("/").length;
 				}
-				if (!(targetDepth > minDepth)) {
+				if (!isNaN(targetDepth) && targetDepth < minDepth) {
 					minDepth = targetDepth;
 				}
 			}
@@ -2112,8 +2112,8 @@ publicApi.batchDone = function () {
 function Document(url, isDefinitive, readOnly) {
 	var thisDocument = this;
 	this.readOnly = !!readOnly;
+	this.isDefinitive = !!isDefinitive;
 	this.url = url;
-	this.isDefinitive = isDefinitive;
 	this.error = null;
 
 	var rootPath = null;
@@ -4768,7 +4768,7 @@ SchemaList.prototype = {
 				this.allCombinations(function (allCombinations) {
 					function nextOption(index) {
 						if (index >= allCombinations.length) {
-							callback(undefined);
+							return callback(undefined);
 						}
 						allCombinations[index].createValue(function (value) {
 							if (value !== undefined) {
@@ -4794,7 +4794,7 @@ SchemaList.prototype = {
 		}
 
 		var basicTypes = this.basicTypes();
-		var pending = 0;
+		var pending = 1;
 		var chosenCandidate = undefined;
 		function gotCandidate(candidate) {
 			if (candidate !== undefined) {
@@ -5893,6 +5893,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			if (this.subContextSavedStates[labelKey]) {
 				uiStartingState = this.subContextSavedStates[labelKey];
+				delete this.subContextSavedStates[labelKey];
 			}
 			if (this.subContexts[labelKey] == undefined) {
 				var usedComponents = [];
@@ -6311,6 +6312,22 @@ publicApi.UriTemplate = UriTemplate;
 		}
 	}
 	Renderer.prototype = {
+		updateAll: function () {
+			var elementIds = [];
+			for (var uniqueId in pageContext.elementLookup) {
+				elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
+			}
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
+				if (element == undefined) {
+					continue;
+				}
+				var context = element.jsonaryContext;
+				if (context.renderer.uniqueId = this.uniqueId) {
+					context.rerender();
+				}
+			}
+		},
 		render: function (element, data, context) {
 			if (element == null) {
 				Jsonary.log(Jsonary.logLevel.WARNING, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);
