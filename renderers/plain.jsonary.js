@@ -1,7 +1,5 @@
 (function () {
-	function escapeHtml(text) {
-		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-	}
+	var escapeHtml = Jsonary.escapeHtml;
 	if (window.escapeHtml == undefined) {
 		window.escapeHtml = escapeHtml;
 	}
@@ -11,7 +9,22 @@
 		renderHtml: function (data, context) {
 			if (!data.defined()) {
 				context.uiState.undefined = true;
-				return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
+				var title = "add";
+				var parent = data.parent();
+				if (parent && parent.basicType() == 'array') {
+					var schemas = parent.schemas().indexSchemas(data.parentKey());
+					schemas.getFull(function (s) {
+						schemas = s;
+					});
+					title = schemas.title() || title;
+				} else if (parent && parent.basicType() == 'object') {
+					var schemas = parent.schemas().propertySchemas(data.parentKey());
+					schemas.getFull(function (s) {
+						schemas = s;
+					});
+					title = schemas.title() || data.parentKey() || title;
+				}
+				return context.actionHtml('<span class="json-undefined-create">+ ' + Jsonary.escapeHtml(title) + '</span>', "create");
 			}
 			delete context.uiState.undefined;
 			var showDelete = false;
@@ -186,18 +199,20 @@
 		renderHtml: function (data, context) {
 			var result = "";
 			var fixedSchemas = data.schemas().fixed();
-			context.uiState.xorSelected = [];
-			context.uiState.orSelected = [];
-			
+
 			var singleOption = false;
-			if (fixedSchemas.length < data.schemas().length) {
-				var orSchemas = fixedSchemas.orSchemas();
-				if (orSchemas.length == 0) {
-					var xorSchemas = fixedSchemas.xorSchemas();
+			var xorSchemas;
+			var orSchemas = fixedSchemas.orSchemas();
+			if (orSchemas.length == 0) {
+				xorSchemas = fixedSchemas.xorSchemas();
+				if (xorSchemas.length == 1) {
 					singleOption = true;
 				}
 			}
+			
 			if (singleOption) {
+				context.uiState.xorSelected = [];
+				context.uiState.orSelected = [];
 				for (var i = 0; i < xorSchemas.length; i++) {
 					var options = xorSchemas[i];
 					var inputName = context.inputNameForAction('selectXorSchema', i);
@@ -236,7 +251,6 @@
 					}
 					result += '</select>';
 				}
-				orSchemas = orSchemas || fixedSchemas.orSchemas();
 				for (var i = 0; i < orSchemas.length; i++) {
 					var options = orSchemas[i];
 					var inputName = context.inputNameForAction('selectOrSchema', i);
@@ -382,7 +396,7 @@
 				if (title == "") {
 					result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + '</div></td>';
 				} else {
-					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(title) + '</div></td>';
+					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(title) + '</div><div class="json-object-key-text">(' + escapeHtml(key) + ')</div></td>';
 				}
 				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
 				result += '</tr>';
@@ -669,25 +683,22 @@
 
 	// Display/edit boolean	
 	Jsonary.render.register({
-		render: function (element, data) {
-			var valueSpan = document.createElement("a");
-			if (data.value()) {
-				valueSpan.setAttribute("class", "json-boolean-true");
-				valueSpan.innerHTML = "true";
-			} else {
-				valueSpan.setAttribute("class", "json-boolean-false");
-				valueSpan.innerHTML = "false";
+		renderHtml: function (data, context) {
+			if (data.readOnly()) {
+				if (data.value()) {
+					return '<span class="json-boolean-true">yes</span>';
+				} else {
+					return '<span class="json-boolean-false">no</span>';
+				}
 			}
-			element.appendChild(valueSpan);
-			if (!data.readOnly()) {
-				valueSpan.setAttribute("href", "#");
-				valueSpan.onclick = function (event) {
-					data.setValue(!data.value());
-					return false;
-				};
+			var result = "";
+			var inputName = context.inputNameForAction('switch');
+			return '<input type="checkbox" class="json-boolean" name="' + inputName + '" ' + (data.value() ? 'checked' : '' ) + '></input>';
+		},
+		action: function (context, actionName, arg1) {
+			if (actionName == "switch") {
+				context.data.setValue(arg1);
 			}
-			valueSpan = null;
-			element = null;
 		},
 		filter: function (data) {
 			return data.basicType() == "boolean";
