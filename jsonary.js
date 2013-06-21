@@ -665,7 +665,7 @@ Uri.resolve = function(base, relative) {
 	if (!(base instanceof Uri)) {
 		base = new Uri(base);
 	}
-	result = new Uri(relative + "");
+	var result = new Uri(relative + "");
 	if (result.scheme == null) {
 		result.scheme = base.scheme;
 		result.doubleSlash = base.doubleSlash;
@@ -1972,13 +1972,12 @@ PatchOperation.prototype = {
 		if (typeof path == "object") {
 			path = path.pointerPath();
 		}
-		path += "/";
 		var minDepth = NaN;
 		if (this._subject.substring(0, path.length) == path) {
 			var remainder = this._subject.substring(path.length);
-			if (remainder == 0) {
+			if (remainder.length == 0) {
 				minDepth = 0;
-			} else {
+			} else if (remainder.charAt(0) == "/") {
 				minDepth = remainder.split("/").length;
 			}
 		}
@@ -1986,9 +1985,9 @@ PatchOperation.prototype = {
 			if (this._target.substring(0, path.length) == path) {
 				var targetDepth;
 				var remainder = this._target.substring(path.length);
-				if (remainder == 0) {
+				if (remainder.length == 0) {
 					targetDepth = 0;
-				} else {
+				} else if (remainder.charAt(0) == "/") {
 					targetDepth = remainder.split("/").length;
 				}
 				if (!(targetDepth > minDepth)) {

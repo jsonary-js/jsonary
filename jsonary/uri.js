@@ -124,7 +124,7 @@ Uri.resolve = function(base, relative) {
 	if (!(base instanceof Uri)) {
 		base = new Uri(base);
 	}
-	result = new Uri(relative + "");
+	var result = new Uri(relative + "");
 	if (result.scheme == null) {
 		result.scheme = base.scheme;
 		result.doubleSlash = base.doubleSlash;
