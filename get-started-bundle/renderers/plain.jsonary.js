@@ -1,7 +1,5 @@
 (function () {
-	function escapeHtml(text) {
-		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
-	}
+	var escapeHtml = Jsonary.escapeHtml;
 	if (window.escapeHtml == undefined) {
 		window.escapeHtml = escapeHtml;
 	}
@@ -11,7 +9,22 @@
 		renderHtml: function (data, context) {
 			if (!data.defined()) {
 				context.uiState.undefined = true;
-				return context.actionHtml('<span class="json-undefined-create">+ create</span>', "create");
+				var title = "add";
+				var parent = data.parent();
+				if (parent && parent.basicType() == 'array') {
+					var schemas = parent.schemas().indexSchemas(data.parentKey());
+					schemas.getFull(function (s) {
+						schemas = s;
+					});
+					title = schemas.title() || title;
+				} else if (parent && parent.basicType() == 'object') {
+					var schemas = parent.schemas().propertySchemas(data.parentKey());
+					schemas.getFull(function (s) {
+						schemas = s;
+					});
+					title = schemas.title() || data.parentKey() || title;
+				}
+				return context.actionHtml('<span class="json-undefined-create">+ ' + Jsonary.escapeHtml(title) + '</span>', "create");
 			}
 			delete context.uiState.undefined;
 			var showDelete = false;
@@ -35,10 +48,10 @@
 			if (showDelete) {
 				result += "<div class='json-object-delete-container'>";
 				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
-				result += context.renderHtml(data, context.uiState);
+				result += context.renderHtml(data, 'data');
 				result += '<div style="clear: both"></div></div>';
 			} else {
-				result += context.renderHtml(data, context.uiState);
+				result += context.renderHtml(data, 'data');
 			}
 			return result;
 		},
@@ -77,6 +90,15 @@
 		},
 		filter: function (data) {
 			return !data.readOnly();
+		},
+		saveState: function (uiState, subStates) {
+			return subStates.data;
+		},
+		loadState: function (savedState) {
+			return [
+				{},
+				{data: savedState}
+			];
 		}
 	});
 	
@@ -108,7 +130,7 @@
 			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
-			result += context.renderHtml(data);
+			result += context.renderHtml(data, 'data');
 			return result;
 		},
 		action: function (context, actionName, basicType) {
@@ -134,6 +156,39 @@
 		},
 		filter: function (data) {
 			return !data.readOnly();
+		},
+		saveState: function (uiState, subStates) {
+			var result = {};
+			if (uiState.dialogOpen) {
+				result.dialogOpen = true;
+			}
+			if (subStates.data._ != undefined || subStates.data.dialogOpen != undefined) {
+				result._ = subStates['data'];
+			} else {
+				for (var key in subStates.data) {
+					result[key] = subStates.data[key];
+				}
+			}
+			return result;
+		},
+		loadState: function (savedState) {
+			var uiState = savedState;
+			var subState = {};
+			if (savedState._ != undefined) {
+				var subState = savedState._;
+				delete savedState._;
+			} else {
+				var uiState = {};
+				if (savedState.dialogOpen) {
+					uiState.dialogOpen = true;
+				}
+				delete savedState.dialogOpen;
+				subState = savedState;
+			}
+			return [
+				uiState,
+				{data: subState}
+			];
 		}
 	});
 
@@ -144,13 +199,42 @@
 		renderHtml: function (data, context) {
 			var result = "";
 			var fixedSchemas = data.schemas().fixed();
+
+			var singleOption = false;
+			var xorSchemas;
+			var orSchemas = fixedSchemas.orSchemas();
+			if (orSchemas.length == 0) {
+				xorSchemas = fixedSchemas.xorSchemas();
+				if (xorSchemas.length == 1) {
+					singleOption = true;
+				}
+			}
 			
-			context.uiState.xorSelected = [];
-			context.uiState.orSelected = [];
+			if (singleOption) {
+				context.uiState.xorSelected = [];
+				context.uiState.orSelected = [];
+				for (var i = 0; i < xorSchemas.length; i++) {
+					var options = xorSchemas[i];
+					var inputName = context.inputNameForAction('selectXorSchema', i);
+					result += '<select name="' + inputName + '">';
+					for (var j = 0; j < options.length; j++) {
+						var schema = options[j];
+						schema.getFull(function (s) {schema = s;});
+						var selected = "";
+						if (data.schemas().indexOf(schema) != -1) {
+							context.uiState.xorSelected[i] = j;
+							selected = " selected";
+						}
+						result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+					}
+					result += '</select>';
+				}
+			}
+			
 			if (context.uiState.dialogOpen) {
 				result += '<div class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
 				result += context.actionHtml('close', "closeDialog");
-				var xorSchemas = fixedSchemas.xorSchemas();
+				xorSchemas = xorSchemas || fixedSchemas.xorSchemas();
 				for (var i = 0; i < xorSchemas.length; i++) {
 					var options = xorSchemas[i];
 					var inputName = context.inputNameForAction('selectXorSchema', i);
@@ -167,7 +251,6 @@
 					}
 					result += '</select>';
 				}
-				var orSchemas = fixedSchemas.orSchemas();
 				for (var i = 0; i < orSchemas.length; i++) {
 					var options = orSchemas[i];
 					var inputName = context.inputNameForAction('selectOrSchema', i);
@@ -189,10 +272,10 @@
 				}
 				result += '</span></div>';
 			}
-			if (fixedSchemas.length < data.schemas().length) {
+			if (!singleOption && fixedSchemas.length < data.schemas().length) {
 				result += context.actionHtml("<span class=\"json-select-type\">S</span>", "openDialog") + " ";
 			}
-			result += context.renderHtml(data);
+			result += context.renderHtml(data, 'data');
 			return result;
 		},
 		createValue: function (context) {
@@ -241,6 +324,39 @@
 		},
 		filter: function (data) {
 			return !data.readOnly();
+		},
+		saveState: function (uiState, subStates) {
+			var result = {};
+			if (uiState.dialogOpen) {
+				result.dialogOpen = true;
+			}
+			if (subStates.data._ != undefined || subStates.data.dialogOpen != undefined) {
+				result._ = subStates['data'];
+			} else {
+				for (var key in subStates.data) {
+					result[key] = subStates.data[key];
+				}
+			}
+			return result;
+		},
+		loadState: function (savedState) {
+			var uiState = savedState;
+			var subState = {};
+			if (savedState._ != undefined) {
+				var subState = savedState._;
+				delete savedState._;
+			} else {
+				var uiState = {};
+				if (savedState.dialogOpen) {
+					uiState.dialogOpen = true;
+				}
+				delete savedState.dialogOpen;
+				subState = savedState;
+			}
+			return [
+				uiState,
+				{data: subState}
+			];
 		}
 	});
 
@@ -276,7 +392,12 @@
 			var result = '<table class="json-object"><tbody>';
 			data.properties(function (key, subData) {
 				result += '<tr class="json-object-pair">';
-				result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + '</div></td>';
+				var title = subData.schemas().title();
+				if (title == "") {
+					result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + '</div></td>';
+				} else {
+					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(title) + '</div><div class="json-object-key-text">(' + escapeHtml(key) + ')</div></td>';
+				}
 				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
 				result += '</tr>';
 			});
@@ -562,25 +683,22 @@
 
 	// Display/edit boolean	
 	Jsonary.render.register({
-		render: function (element, data) {
-			var valueSpan = document.createElement("a");
-			if (data.value()) {
-				valueSpan.setAttribute("class", "json-boolean-true");
-				valueSpan.innerHTML = "true";
-			} else {
-				valueSpan.setAttribute("class", "json-boolean-false");
-				valueSpan.innerHTML = "false";
+		renderHtml: function (data, context) {
+			if (data.readOnly()) {
+				if (data.value()) {
+					return '<span class="json-boolean-true">yes</span>';
+				} else {
+					return '<span class="json-boolean-false">no</span>';
+				}
 			}
-			element.appendChild(valueSpan);
-			if (!data.readOnly()) {
-				valueSpan.setAttribute("href", "#");
-				valueSpan.onclick = function (event) {
-					data.setValue(!data.value());
-					return false;
-				};
+			var result = "";
+			var inputName = context.inputNameForAction('switch');
+			return '<input type="checkbox" class="json-boolean" name="' + inputName + '" ' + (data.value() ? 'checked' : '' ) + '></input>';
+		},
+		action: function (context, actionName, arg1) {
+			if (actionName == "switch") {
+				context.data.setValue(arg1);
 			}
-			valueSpan = null;
-			element = null;
 		},
 		filter: function (data) {
 			return data.basicType() == "boolean";

@@ -665,7 +665,7 @@ Uri.resolve = function(base, relative) {
 	if (!(base instanceof Uri)) {
 		base = new Uri(base);
 	}
-	result = new Uri(relative + "");
+	var result = new Uri(relative + "");
 	if (result.scheme == null) {
 		result.scheme = base.scheme;
 		result.doubleSlash = base.doubleSlash;
@@ -1193,6 +1193,7 @@ var Utils = {
 		return result;
 	},
 	escapeHtml: function(text) {
+		text += "";
 		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
 	},
 	encodePointerComponent: function (component) {
@@ -1561,6 +1562,13 @@ publicApi.isRequest = function (obj) {
 
 var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
 
+function HttpError (code) {
+	this.httpCode = code;
+	this.message = "HTTP Status: " + code;
+}
+HttpError.prototype = new Error();
+publicApi.HttpError = HttpError;
+
 function Request(url, method, data, encType, hintSchema) {
 	url = Utils.resolveRelativeUri(url);
 
@@ -1578,7 +1586,7 @@ function Request(url, method, data, encType, hintSchema) {
 	Utils.log(Utils.logLevel.STANDARD, "Sending request for: " + url);
 	var thisRequest = this;
 	this.successful = undefined;
-	this.errorMessage = undefined;
+	this.error = null;
 	this.url = url;
 
 	var isDefinitive = (data == undefined) || (data == "");
@@ -1713,13 +1721,14 @@ Request.prototype = {
 			}
 		});
 	},
-	ajaxError: function (message) {
+	ajaxError: function (error, data) {
 		this.fetched = true;
 		var thisRequest = this;
 		thisRequest.successful = false;
-		thisRequest.errorMessage = message;
-		Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + message + ")");
-		thisRequest.document.setRaw(undefined);
+		thisRequest.error = error;
+		Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + error.message + ")");
+		thisRequest.document.error = error;
+		thisRequest.document.setRaw(data);
 		thisRequest.document.raw.whenSchemasStable(function () {
 			thisRequest.checkForFullResponse();
 			thisRequest.document.setRoot("");
@@ -1730,13 +1739,17 @@ Request.prototype = {
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function () {
 			if (xhr.readyState == 4) {
-				if (xhr.status == 200) {
-					var data = xhr.responseText;
+				if (xhr.status >= 200 && xhr.status < 300) {
+					var data = xhr.responseText = xhr.responseText || null;
 					try {
 						data = JSON.parse(data);
 					} catch (e) {
-						thisRequest.ajaxError(e);
-						return;
+						if (xhr.status !=204) {
+							thisRequest.ajaxError(e, data);
+							return;
+						} else {
+							data = null;
+						}
 					}
 					var headers = xhr.getAllResponseHeaders();
 					if (headers == "") {	// Firefox bug  >_>
@@ -1752,7 +1765,12 @@ Request.prototype = {
 					}
 					thisRequest.ajaxSuccess(data, headers, hintSchema);
 				} else {
-					thisRequest.ajaxError("HTTP Status " + xhr.status);
+					var data = xhr.responseText || null;
+					try {
+						data = JSON.parse(data);
+					} catch (e) {
+					}
+					thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
 				}
 			}
 		};
@@ -1809,7 +1827,7 @@ function RequestFake(url, rawData, schemaUrl, cacheFunction, cacheKey) {
 		});
 	}
 	this.successful = true;
-	this.errorMessage = undefined;
+	this.error = null;
 
 	this.fetched = false;
 	this.invalidate = function() {
@@ -1954,13 +1972,12 @@ PatchOperation.prototype = {
 		if (typeof path == "object") {
 			path = path.pointerPath();
 		}
-		path += "/";
 		var minDepth = NaN;
 		if (this._subject.substring(0, path.length) == path) {
 			var remainder = this._subject.substring(path.length);
-			if (remainder == 0) {
+			if (remainder.length == 0) {
 				minDepth = 0;
-			} else {
+			} else if (remainder.charAt(0) == "/") {
 				minDepth = remainder.split("/").length;
 			}
 		}
@@ -1968,12 +1985,12 @@ PatchOperation.prototype = {
 			if (this._target.substring(0, path.length) == path) {
 				var targetDepth;
 				var remainder = this._target.substring(path.length);
-				if (remainder == 0) {
+				if (remainder.length == 0) {
 					targetDepth = 0;
-				} else {
+				} else if (remainder.charAt(0) == "/") {
 					targetDepth = remainder.split("/").length;
 				}
-				if (!(targetDepth > minDepth)) {
+				if (!isNaN(targetDepth) && targetDepth < minDepth) {
 					minDepth = targetDepth;
 				}
 			}
@@ -2095,8 +2112,9 @@ publicApi.batchDone = function () {
 function Document(url, isDefinitive, readOnly) {
 	var thisDocument = this;
 	this.readOnly = !!readOnly;
+	this.isDefinitive = !!isDefinitive;
 	this.url = url;
-	this.isDefinitive = isDefinitive;
+	this.error = null;
 
 	var rootPath = null;
 	var rawSecrets = {};
@@ -2795,6 +2813,9 @@ Data.prototype = {
 			}
 		}
 		if (additionalCallback) {
+			if (typeof additionalCallback != 'function') {
+				additionalCallback = callback;
+			}
 			var dataKeys = this.keys();
 			for (var i = 0; i < dataKeys.length; i++) {
 				if (keys.indexOf(dataKeys[i]) == -1) {
@@ -2845,7 +2866,7 @@ publicApi.extendData = function (obj) {
 
 publicApi.create = function (rawData, baseUrl, readOnly) {
 	var rawData = (typeof rawData == "object") ? JSON.parse(JSON.stringify(rawData)) : rawData; // Hacky recursive copy
-	var definitive = baseUrl != undefined;
+	var definitive = baseUrl != undefined && readOnly;
 	if (baseUrl != undefined && baseUrl.indexOf("#") != -1) {
 		var remainder = baseUrl.substring(baseUrl.indexOf("#") + 1);
 		if (remainder != "") {
@@ -3458,7 +3479,7 @@ PotentialLink.prototype = {
 	usesKey: function (key) {
 		var i;
 		for (i = 0; i < this.dataParts.length; i++) {
-			if (this.dataParts[i] === key) {
+			if (this.dataParts[i] === key || this.dataParts[i] === null) {
 				return true;
 			}
 		}
@@ -4273,6 +4294,16 @@ SchemaList.prototype = {
 		}
 		return new SchemaList(newList);
 	},
+	title: function () {
+		var titles = [];
+		for (var i = 0; i < this.length; i++) {
+			var title = this[i].title();
+			if (title) {
+				titles.push(title);
+			}
+		}
+		return titles.join(' - ');
+	},
 	definedProperties: function (ignoreList) {
 		if (ignoreList) {
 			this.definedProperties(); // create cached function
@@ -4737,7 +4768,7 @@ SchemaList.prototype = {
 				this.allCombinations(function (allCombinations) {
 					function nextOption(index) {
 						if (index >= allCombinations.length) {
-							callback(undefined);
+							return callback(undefined);
 						}
 						allCombinations[index].createValue(function (value) {
 							if (value !== undefined) {
@@ -4763,7 +4794,7 @@ SchemaList.prototype = {
 		}
 
 		var basicTypes = this.basicTypes();
-		var pending = 0;
+		var pending = 1;
 		var chosenCandidate = undefined;
 		function gotCandidate(candidate) {
 			if (candidate !== undefined) {
@@ -5862,6 +5893,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			if (this.subContextSavedStates[labelKey]) {
 				uiStartingState = this.subContextSavedStates[labelKey];
+				delete this.subContextSavedStates[labelKey];
 			}
 			if (this.subContexts[labelKey] == undefined) {
 				var usedComponents = [];
@@ -6096,16 +6128,21 @@ publicApi.UriTemplate = UriTemplate;
 		},
 		enhanceElement: function (element) {
 			var rootElement = element;
+			// Perform post-order depth-first walk of tree, calling enhanceElementSingle() on each element
+			// Post-order reduces orphaned enhancements by enhancing all children before the parent
 			while (element) {
-				if (element.nodeType == 1) {
-					this.enhanceElementSingle(element);
-				}
 				if (element.firstChild) {
 					element = element.firstChild;
 					continue;
 				}
 				while (!element.nextSibling && element != rootElement) {
+					if (element.nodeType == 1) {
+						this.enhanceElementSingle(element);
+					}
 					element = element.parentNode;
+				}
+				if (element.nodeType == 1) {
+					this.enhanceElementSingle(element);
 				}
 				if (element == rootElement) {
 					break;
@@ -6169,7 +6206,8 @@ publicApi.UriTemplate = UriTemplate;
 		}
 	};
 	var pageContext = new RenderContext();
-	setInterval(function () {
+	
+	function cleanup() {
 		// Clean-up sweep of pageContext's element lookup
 		var keysToRemove = [];
 		for (var key in pageContext.elementLookup) {
@@ -6189,10 +6227,41 @@ publicApi.UriTemplate = UriTemplate;
 		for (var i = 0; i < keysToRemove.length; i++) {
 			delete pageContext.elementLookup[keysToRemove[i]];
 		}
-	}, 30000); // Every 30 seconds
+		for (var key in pageContext.enhancementContexts) {
+			if (pageContext.enhancementContexts[key]) {
+				var context = pageContext.enhancementContexts[key];
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned context for element: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementContexts[key] = null;
+			}
+		}
+		for (var key in pageContext.enhancementActions) {
+			if (pageContext.enhancementActions[key]) {
+				var context = pageContext.enhancementActions[key].context;
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for element: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementActions[key] = null;
+			}
+		}
+		for (var key in pageContext.enhancementInputs) {
+			if (pageContext.enhancementInputs[key]) {
+				var context = pageContext.enhancementInputs[key].context;
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for input: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementInputs[key] = null;
+			}
+		}
+	}
+	setInterval(cleanup, 30000); // Every 30 seconds
+	Jsonary.cleanup = cleanup;
 
 	function render(element, data, uiStartingState, contextCallback) {
-		var context = pageContext.render(element, data, null, uiStartingState, contextCallback);
+		var innerElement = document.createElement('span');
+		element.appendChild(innerElement);
+		var context = pageContext.render(innerElement, data, null, uiStartingState, contextCallback);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return context;
@@ -6243,6 +6312,22 @@ publicApi.UriTemplate = UriTemplate;
 		}
 	}
 	Renderer.prototype = {
+		updateAll: function () {
+			var elementIds = [];
+			for (var uniqueId in pageContext.elementLookup) {
+				elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
+			}
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
+				if (element == undefined) {
+					continue;
+				}
+				var context = element.jsonaryContext;
+				if (context.renderer.uniqueId = this.uniqueId) {
+					context.rerender();
+				}
+			}
+		},
 		render: function (element, data, context) {
 			if (element == null) {
 				Jsonary.log(Jsonary.logLevel.WARNING, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);

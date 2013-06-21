@@ -144,13 +144,40 @@
 		renderHtml: function (data, context) {
 			var result = "";
 			var fixedSchemas = data.schemas().fixed();
-			
 			context.uiState.xorSelected = [];
 			context.uiState.orSelected = [];
+			
+			var singleOption = false;
+			if (fixedSchemas.length < data.schemas().length) {
+				var orSchemas = fixedSchemas.orSchemas();
+				if (orSchemas.length == 0) {
+					var xorSchemas = fixedSchemas.xorSchemas();
+					singleOption = true;
+				}
+			}
+			if (singleOption) {
+				for (var i = 0; i < xorSchemas.length; i++) {
+					var options = xorSchemas[i];
+					var inputName = context.inputNameForAction('selectXorSchema', i);
+					result += '<select name="' + inputName + '">';
+					for (var j = 0; j < options.length; j++) {
+						var schema = options[j];
+						schema.getFull(function (s) {schema = s;});
+						var selected = "";
+						if (data.schemas().indexOf(schema) != -1) {
+							context.uiState.xorSelected[i] = j;
+							selected = " selected";
+						}
+						result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+					}
+					result += '</select>';
+				}
+			}
+			
 			if (context.uiState.dialogOpen) {
 				result += '<div class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
 				result += context.actionHtml('close', "closeDialog");
-				var xorSchemas = fixedSchemas.xorSchemas();
+				xorSchemas = xorSchemas || fixedSchemas.xorSchemas();
 				for (var i = 0; i < xorSchemas.length; i++) {
 					var options = xorSchemas[i];
 					var inputName = context.inputNameForAction('selectXorSchema', i);
@@ -167,7 +194,7 @@
 					}
 					result += '</select>';
 				}
-				var orSchemas = fixedSchemas.orSchemas();
+				orSchemas = orSchemas || fixedSchemas.orSchemas();
 				for (var i = 0; i < orSchemas.length; i++) {
 					var options = orSchemas[i];
 					var inputName = context.inputNameForAction('selectOrSchema', i);
@@ -189,7 +216,7 @@
 				}
 				result += '</span></div>';
 			}
-			if (fixedSchemas.length < data.schemas().length) {
+			if (!singleOption && fixedSchemas.length < data.schemas().length) {
 				result += context.actionHtml("<span class=\"json-select-type\">S</span>", "openDialog") + " ";
 			}
 			result += context.renderHtml(data);
