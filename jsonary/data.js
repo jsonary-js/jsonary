@@ -29,8 +29,8 @@ publicApi.batchDone = function () {
 function Document(url, isDefinitive, readOnly) {
 	var thisDocument = this;
 	this.readOnly = !!readOnly;
+	this.isDefinitive = !!isDefinitive;
 	this.url = url;
-	this.isDefinitive = isDefinitive;
 	this.error = null;
 
 	var rootPath = null;
