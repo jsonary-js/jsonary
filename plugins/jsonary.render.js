@@ -147,6 +147,7 @@
 			}
 			if (this.subContextSavedStates[labelKey]) {
 				uiStartingState = this.subContextSavedStates[labelKey];
+				delete this.subContextSavedStates[labelKey];
 			}
 			if (this.subContexts[labelKey] == undefined) {
 				var usedComponents = [];
@@ -565,6 +566,22 @@
 		}
 	}
 	Renderer.prototype = {
+		updateAll: function () {
+			var elementIds = [];
+			for (var uniqueId in pageContext.elementLookup) {
+				elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
+			}
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
+				if (element == undefined) {
+					continue;
+				}
+				var context = element.jsonaryContext;
+				if (context.renderer.uniqueId = this.uniqueId) {
+					context.rerender();
+				}
+			}
+		},
 		render: function (element, data, context) {
 			if (element == null) {
 				Jsonary.log(Jsonary.logLevel.WARNING, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);
