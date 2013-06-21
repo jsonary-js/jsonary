@@ -620,7 +620,7 @@ SchemaList.prototype = {
 				this.allCombinations(function (allCombinations) {
 					function nextOption(index) {
 						if (index >= allCombinations.length) {
-							callback(undefined);
+							return callback(undefined);
 						}
 						allCombinations[index].createValue(function (value) {
 							if (value !== undefined) {
@@ -646,7 +646,7 @@ SchemaList.prototype = {
 		}
 
 		var basicTypes = this.basicTypes();
-		var pending = 0;
+		var pending = 1;
 		var chosenCandidate = undefined;
 		function gotCandidate(candidate) {
 			if (candidate !== undefined) {
