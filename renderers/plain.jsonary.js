@@ -296,6 +296,9 @@
 			}
 			newSchemas.getFull(function (sl) {newSchemas = sl;});
 			data.setValue(newSchemas.createValue());
+			newSchemas.createValue(function (value) {
+				data.setValue(value);
+			})
 		},
 		action: function (context, actionName, value, arg1) {
 			if (actionName == "closeDialog") {
@@ -389,43 +392,49 @@
 	Jsonary.render.register({	
 		renderHtml: function (data, context) {
 			var uiState = context.uiState;
-			var result = '<table class="json-object"><tbody>';
-			data.properties(function (key, subData) {
+			var result = "";
+			result += '<fieldset class="json-object-outer">';
+			var title = data.schemas().title();
+			if (title) {
+				result += '<legend class="json-object-title">' + Jsonary.escapeHtml(title) + '</legend>';
+			}
+			result += '<table class="json-object"><tbody>';
+			var drawProperty = function (key, subData) {
 				result += '<tr class="json-object-pair">';
-				var title = subData.schemas().title();
-				if (title == "") {
-					result +=	'<td class="json-object-key"><div class="json-object-key-text">' + escapeHtml(key) + '</div></td>';
+				if (subData.defined()) {
+					var title = subData.schemas().title();
 				} else {
-					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(title) + '</div><div class="json-object-key-text">(' + escapeHtml(key) + ')</div></td>';
+					var title = subData.parent().schemas().propertySchemas(subData.parentKey()).title();
+				}
+				if (title == "") {
+					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div></td>';
+				} else {
+					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div><div class="json-object-key-text">' + escapeHtml(title) + '</div></td>';
 				}
 				result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
 				result += '</tr>';
-			});
-			result += '</tbody></table>';
+			}
 			if (!data.readOnly()) {
 				var schemas = data.schemas();
+				var definedProperties = schemas.definedProperties();
 				var maxProperties = schemas.maxProperties();
-				if (maxProperties == null || maxProperties > schemas.keys().length) {
-					var addLinkHtml = "";
-					var definedProperties = schemas.definedProperties();
-					var keyFunction = function (index, key) {
-						var addHtml = '<span class="json-object-add-key">' + escapeHtml(key) + '</span>';
-						addLinkHtml += context.actionHtml(addHtml, "add-named", key);
-					};
-					for (var i = 0; i < definedProperties.length; i++) {
-						if (!data.property(definedProperties[i]).defined()) {
-							keyFunction(i, definedProperties[i]);
-						}
+				var canAdd = (maxProperties == null || maxProperties > schemas.keys().length);
+				data.properties(definedProperties, function (key, subData) {
+					if (canAdd || subData.defined()) {
+						drawProperty(key, subData);
 					}
-					if (schemas.allowedAdditionalProperties()) {
-						var newHtml = '<span class="json-object-add-key-new">+ new</span>';
-						addLinkHtml += context.actionHtml(newHtml, "add-new");
-					}
-					if (addLinkHtml != "") {
-						result += '<span class="json-object-add">add: ' + addLinkHtml + '</span>';
-					}
+				}, drawProperty);
+
+				if (canAdd && schemas.allowedAdditionalProperties()) {
+					result += '<tr class="json-object-pair"><td class="json-object-key"><div class="json-object-key-text">';
+					result += context.actionHtml('+ new', "add-new");
+					result += '</div></td><td></td></tr>';
 				}
+			} else {
+				data.properties(drawProperty);
 			}
+			result += '</table>';
+			result += '</fieldset>';
 			return result;
 		},
 		action: function (context, actionName, arg1) {

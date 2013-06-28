@@ -23,10 +23,14 @@
 			}
 			
 			var links = data.links();
-			for (var i = 0; i < links.length; i++) {
-				var link = links[i];
-				var html = '<span class="button link">' + Jsonary.escapeHtml(link.title || link.rel) + '</span>';
-				result += context.actionHtml(html, 'follow-link', i);
+			if (links.length) {
+				result += '<span class="link-list">';
+				for (var i = 0; i < links.length; i++) {
+					var link = links[i];
+					var html = '<span class="button link">' + Jsonary.escapeHtml(link.title || link.rel) + '</span>';
+					result += context.actionHtml(html, 'follow-link', i);
+				}
+				result += '</span>';
 			}
 
 			if (context.uiState.submitLink != undefined) {

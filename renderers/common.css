@@ -16,6 +16,7 @@
 	position: absolute;
 	left: 10%;
 	width: 80%;
+	z-index: 1000;
 }
 
 .prompt-inner {
