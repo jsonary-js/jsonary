@@ -5869,10 +5869,29 @@ publicApi.UriTemplate = UriTemplate;
 		usedComponents: [],
 		rootContext: null,
 		baseContext: null,
-		subContext: function (label, uiState) {
-			// TODO: for read-only, some kind of relative path?
-			if (Jsonary.isData(label)) {
-				label = "data" + label.uniqueId;
+		labelForData: function (data) {
+			if (this.data && data.document.isDefinitive) {
+				var dataUrl = data.referenceUrl();
+				if (dataUrl) {
+					var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
+					var truncate = 0;
+					while (dataUrl.substring(0, baseUrl.length - truncate) != baseUrl.substring(0, baseUrl.length - truncate)) {
+						truncate++;
+					}
+					var remainder = dataUrl.substring(baseUrl.length - truncate);
+					if (truncate) {
+						return truncate + "!" + remainder;
+					} else {
+						return "!" + remainder;
+					}
+				}
+			}
+			return "!" + data.uniqueId;
+		},
+		subContext: function (label, uiState, clearComponents) {
+			// TODO: for read-only ones, use some kind of relative path - perhaps move to getSubContext
+ 			if (Jsonary.isData(label)) {
+				label = this.labelForData(label);
 			}
 			uiState = uiState || {};
 			var subContext = this.getSubContext(false, this.data, label, uiState);
@@ -5909,7 +5928,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (label || label === "") {
 				var labelKey = label;
 			} else {
-				var labelKey = data.uniqueId;
+				var labelKey = this.labelForData(data);
 			}
 			if (this.oldSubContexts[labelKey] != undefined) {
 				this.subContexts[labelKey] = this.oldSubContexts[labelKey];
