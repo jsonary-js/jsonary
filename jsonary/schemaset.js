@@ -1260,6 +1260,11 @@ SchemaSet.prototype = {
 			this.invalidateSchemaState();
 			return;
 		}
+		if (rawLink.rel == "invalidate" || rawLink.rel == "invalidates") {
+			var invalidateUrl = this.dataObj.resolveUrl(rawLink.href);
+			publicApi.invalidate(invalidateUrl);
+			return;
+		}
 		var schemaKey = Utils.getUniqueKey();
 		var linkData = publicApi.create(rawLink);
 		var potentialLink = new PotentialLink(linkData);
