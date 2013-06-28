@@ -5057,6 +5057,13 @@ SchemaList.prototype = {
 		return true;
 	},
 	getFull: function(callback) {
+		if (!callback) {
+			var result = this;
+			this.getFull(function (fullResult) {
+				result = fullResult;
+			});
+			return result;
+		}
 		if (this.length == 0) {
 			callback.call(this, this);
 			return this;
