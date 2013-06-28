@@ -700,6 +700,13 @@ ActiveLink.prototype = {
 		}
 		for (var i = 0; i < handlers.length; i++) {
 			var handler = handlers[i];
+			if (typeof handler !== 'function') {
+				if (handler) {
+					continue;
+				} else {
+					break;
+				}
+			}
 			if (handler.call(this, this, submissionData, request) === false) {
 				break;
 			}
