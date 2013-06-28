@@ -46,7 +46,18 @@ textarea {
 }
 
 .json-object-outer {
+	background-color: #FFF;
 	border-radius: 3px;
+}
+
+.json-object-outer > legend {
+	background-color: #EEE;
+	border: 1px solid #BBB;
+	border-radius: 3px;
+	font-size: 0.8em;
+	padding: 0.2em;
+	padding-left: 0.7em;
+	padding-right: 0.7em;
 }
 
 .json-object-pair {
