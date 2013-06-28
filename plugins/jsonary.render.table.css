@@ -1,0 +1,20 @@
+.json-array-table {
+	border-spacing: 0;
+	border-collapse: collapse;
+}
+
+.json-array-table > thead > tr > th {
+	background-color: #EEE;
+	border: 1px solid #888;
+	padding: 0.3em;
+	font-size: 0.9em;
+	font-weight: bold;
+	text-align: center;
+}
+
+.json-array-table > tbody > tr > td {
+	border: 1px solid #BBB;
+	padding: 0.2em;
+	font-size: inherit;
+	text-align: left;
+}
