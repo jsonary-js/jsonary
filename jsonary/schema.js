@@ -560,6 +560,7 @@ PotentialLink.prototype = {
 		});
 		rawLink.href = publicData.resolveUrl(href);
 		rawLink.rel = rawLink.rel.toLowerCase();
+		rawLink.title = rawLink.title;
 		return new ActiveLink(rawLink, this, publicData);
 	},
 	usesKey: function (key) {
@@ -601,6 +602,7 @@ function ActiveLink(rawLink, potentialLink, data) {
 	}
 
 	this.rel = rawLink.rel;
+	this.title = rawLink.title;
 	if (rawLink.method != undefined) {
 		this.method = rawLink.method;
 	} else if (rawLink.rel == "edit") {
