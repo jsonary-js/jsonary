@@ -102,6 +102,10 @@
 		rootContext: null,
 		baseContext: null,
 		subContext: function (label, uiState) {
+			// TODO: for read-only, some kind of relative path?
+			if (Jsonary.isData(label)) {
+				label = "data" + label.uniqueId;
+			}
 			if (uiState == undefined) {
 				uiState = {};
 			}
@@ -514,6 +518,7 @@
 
 	function render(element, data, uiStartingState, contextCallback) {
 		var innerElement = document.createElement('span');
+		element.innerHTML = "";
 		element.appendChild(innerElement);
 		var context = pageContext.render(innerElement, data, null, uiStartingState, contextCallback);
 		pageContext.oldSubContexts = {};
