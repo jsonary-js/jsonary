@@ -14,9 +14,9 @@
 			}
 			var result = "";
 			if (context.uiState.editInPlace) {
-				var html = '<span class="button">save</span>';
+				var html = '<span class="button action">save</span>';
 				result += context.actionHtml(html, "submit");
-				var html = '<span class="button">cancel</span>';
+				var html = '<span class="button action">cancel</span>';
 				result += context.actionHtml(html, "cancel");
 				result += context.renderHtml(context.uiState.submissionData, '~linkData');
 				return result;
@@ -33,7 +33,7 @@
 				var link = data.links()[context.uiState.submitLink];
 				result += '<div class="prompt-outer"><div class="prompt-inner">';
 				result += context.actionHtml('<div class="prompt-overlay"></div>', 'cancel');
-				result += '<div class="prompt-box"><h1>' + Jsonary.escapeHtml(link.rel) + '</h1><h2>' + Jsonary.escapeHtml(link.method) + " " + Jsonary.escapeHtml(link.href) + '</h2>';
+				result += '<div class="prompt-box"><h1>' + Jsonary.escapeHtml(link.title || link.rel) + '</h1><h2>' + Jsonary.escapeHtml(link.method) + " " + Jsonary.escapeHtml(link.href) + '</h2>';
 				result += '<div>' + context.renderHtml(context.uiState.submissionData, '~linkData') + '</div>';
 				result += '</div>';
 				result += '<div class="prompt-buttons">';
@@ -109,8 +109,8 @@
 			var uiState = {};
 			if (savedState['link'] != undefined) {
 				var parts = savedState['link'].split("-");
-				uiState.submitLink = parts.shift() || 0;
-				if (parts.shift()) {
+				uiState.submitLink = parseInt(parts.shift()) || 0;
+				if (parseInt(parts.shift())) {
 					uiState.editInPlace = true
 				}
 				uiState.submissionData = this.loadStateData(parts.join("-"));
