@@ -306,14 +306,15 @@ Request.prototype = {
 				var link = links[i];
 				var parts = link.trim().split(";");
 				var url = parts.shift().trim();
-				url = url.substring(1, url.length - 2);
+				url = url.substring(1, url.length - 1);
 				var linkObj = {
 					"href": url
 				};
 				for (var j = 0; j < parts.length; j++) {
 					var part = parts[j];
-					var key = part.substring(0, part.indexOf("=")).trim();
+					var key = part.substring(0, part.indexOf("="));
 					var value = part.substring(key.length + 1);
+					key = key.trim();
 					if (value.charAt(0) == '"') {
 						value = JSON.parse(value);
 					}
