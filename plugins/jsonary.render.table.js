@@ -7,13 +7,36 @@
 		config.columns = config.columns || [""];
 		config.titles = config.titles || {};
 		config.titleHtml = config.titleHtml || {};
+		config.defaultTitleHtml = config.defaultTitleHtml || function (data, context, columnPath) {
+			var title = columnPath;
+			if (columnPath == "" || columnPath.charAt(0) == "/") {
+				var schemas = data.schemas().indexSchemas(0).getFull(); // Assume first row is representative
+				var parts = Jsonary.splitPointer(columnPath);
+				while (parts.length) {
+					schemas = schemas.propertySchemas(parts.shift()).getFull();
+				}
+				var title = schemas.title() || title;
+			}
+			return '<th>' + Jsonary.escapeHtml(title) + '</th>';
+		};
 		config.cellRenderHtml = config.cellRenderHtml || {};
 		config.defaultCellRenderHtml = config.defaultCellRenderHtml || function (cellData, context) {
 			return '<td>' + context.renderHtml(cellData) + '</td>';
 		};
-		config.tableRenderHtml = function (data, context) {
+		config.defaultRenderHtml = function (data, context) {
 			return thisRenderer.tableRenderHtml(data, context);
 		}
+		config.defaultRowRenderHtml = function (rowData, context) {
+			var result = "<tr>";
+			for (var i = 0; i < config.columns.length; i++) {
+				var columnPath = config.columns[i];
+				var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
+				var cellRenderHtml = config.cellRenderHtml[columnPath] || config.defaultCellRenderHtml;
+				result += cellRenderHtml(cellData, thisRenderer.cellContext(cellData, context, columnPath));
+			}
+			result += '</tr>';
+			return result;
+		};
 
 		config.classes = config.classes || {};
 		config.classes.table = config.classes.table || "json-array-table";
@@ -22,34 +45,53 @@
 	};
 	TableRenderer.prototype = {
 		action: function (context, actionName) {
-			var columnPath = context.columnPath;
-			if (columnPath == undefined) {
-				return this.config.action.apply(this.config, arguments);
+			if (context.cellData) {
+				var columnPath = context.columnPath;
+				var cellAction = this.config.cellAction[columnPath];
+				var newArgs = [context.cellData];
+				while (newArgs.length <= arguments.length) {
+					newArgs.push(arguments[newArgs.length - 1]);
+				}
+				return cellAction.apply(this.config, newArgs);
+			} else if (context.rowData) {
+				var rowAction = this.config.rowAction;
+				var newArgs = [context.rowData];
+				while (newArgs.length <= arguments.length) {
+					newArgs.push(arguments[newArgs.length - 1]);
+				}
+				return rowAction.apply(this.config, newArgs);
 			}
-			var cellAction = this.config.cellAction[columnPath];
-			var newArgs = [context.cellData];
-			while (newArgs.length <= arguments.length) {
-				newArgs.push(arguments[newArgs.length - 1]);
-			}
-			var result = cellAction.apply(this.config, newArgs);
-			return result;
+			return this.config.action.apply(this.config, arguments);
 		},
 		filter: function (data, schemas) {
 			return this.config.filter(data, schemas);
 		},
-		cellContext: function (data, context, columnPath) {
+		rowContext: function (data, context) {
 			var subContext = context.subContext(data);
+			subContext.rowData = data;
+			return subContext;
+		},
+		cellContext: function (data, context, columnPath) {
+			var subContext = context.subContext('col' + columnPath);
 			subContext.columnPath = columnPath;
 			subContext.cellData = data;
 			return subContext;
 		},
 		renderHtml: function (data, context) {
 			var config = this.config;
-			result = "";
 			if (config.renderHtml) {
 				return config.renderHtml(data, context);
+			} else {
+				return config.defaultRenderHtml(data, context);
 			}
-			return this.tableRenderHtml(data, context);
+		},
+		rowRenderHtml: function (data, context) {
+			var config = this.config;
+			if (config.rowRenderHtml) {
+				return config.rowRenderHtml(data, context);
+			} else {
+				return config.defaultRowRenderHtml(data, context);
+			}
 		},
 		tableRenderHtml: function (data, context) {
 			var thisRenderer = this;
@@ -59,26 +101,26 @@
 			result += '<thead><tr>';
 			for (var i = 0; i < config.columns.length; i++) {
 				var columnPath = config.columns[i];
-				var titleHtml = config.titleHtml[columnPath] || Jsonary.escapeHtml(config.titles[columnPath] || columnPath);
+				var titleHtml = config.titleHtml[columnPath];
+				if (!titleHtml) {
+					if (config.titles[columnPath] != undefined) {
+						titleHtml = '<th>' + Jsonary.escapeHtml(config.titles[columnPath]) + '</th>';
+					} else {
+						titleHtml = config.defaultTitleHtml;
+					}
+				}
 				if (typeof titleHtml == 'function') {
 					var titleContext = context.subContext('title' + columnPath);
-					titleHtml = titleHtml.call(config, data, titleContext);
-				} else {
-					titleHtml = '<th>' + titleHtml + '</th>';
+					titleContext.columnPath = titleContext;
+					titleHtml = titleHtml.call(config, data, titleContext, columnPath);
 				}
 				result += titleHtml;
 			}
 			result += '</tr></thead>';
 			result += '<tbody>'
 			data.items(function (index, rowData) {
-				result += '<tr>';
-				for (var i = 0; i < config.columns.length; i++) {
-					var columnPath = config.columns[i];
-					var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
-					var cellRenderHtml = config.cellRenderHtml[columnPath] || config.defaultCellRenderHtml;
-					result += cellRenderHtml(cellData, thisRenderer.cellContext(cellData, context, columnPath));
-				}
-				result += '</tr>';
+				var rowContext = thisRenderer.rowContext(rowData, context);
+				result += thisRenderer.rowRenderHtml(rowData, rowContext);
 			});
 			result += '</tbody>';
 			result += '</table>';
