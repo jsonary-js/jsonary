@@ -1690,14 +1690,15 @@ Request.prototype = {
 				var link = links[i];
 				var parts = link.trim().split(";");
 				var url = parts.shift().trim();
-				url = url.substring(1, url.length - 2);
+				url = url.substring(1, url.length - 1);
 				var linkObj = {
 					"href": url
 				};
 				for (var j = 0; j < parts.length; j++) {
 					var part = parts[j];
-					var key = part.substring(0, part.indexOf("=")).trim();
+					var key = part.substring(0, part.indexOf("="));
 					var value = part.substring(key.length + 1);
+					key = key.trim();
 					if (value.charAt(0) == '"') {
 						value = JSON.parse(value);
 					}
@@ -1740,7 +1741,7 @@ Request.prototype = {
 		xhr.onreadystatechange = function () {
 			if (xhr.readyState == 4) {
 				if (xhr.status >= 200 && xhr.status < 300) {
-					var data = xhr.responseText = xhr.responseText || null;
+					var data = xhr.responseText || null;
 					try {
 						data = JSON.parse(data);
 					} catch (e) {
@@ -3474,6 +3475,7 @@ PotentialLink.prototype = {
 		});
 		rawLink.href = publicData.resolveUrl(href);
 		rawLink.rel = rawLink.rel.toLowerCase();
+		rawLink.title = rawLink.title;
 		return new ActiveLink(rawLink, this, publicData);
 	},
 	usesKey: function (key) {
@@ -3515,6 +3517,7 @@ function ActiveLink(rawLink, potentialLink, data) {
 	}
 
 	this.rel = rawLink.rel;
+	this.title = rawLink.title;
 	if (rawLink.method != undefined) {
 		this.method = rawLink.method;
 	} else if (rawLink.rel == "edit") {
@@ -3612,6 +3615,13 @@ ActiveLink.prototype = {
 		}
 		for (var i = 0; i < handlers.length; i++) {
 			var handler = handlers[i];
+			if (typeof handler !== 'function') {
+				if (handler) {
+					continue;
+				} else {
+					break;
+				}
+			}
 			if (handler.call(this, this, submissionData, request) === false) {
 				break;
 			}
@@ -5408,6 +5418,11 @@ SchemaSet.prototype = {
 			this.invalidateSchemaState();
 			return;
 		}
+		if (rawLink.rel == "invalidate" || rawLink.rel == "invalidates") {
+			var invalidateUrl = this.dataObj.resolveUrl(rawLink.href);
+			publicApi.invalidate(invalidateUrl);
+			return;
+		}
 		var schemaKey = Utils.getUniqueKey();
 		var linkData = publicApi.create(rawLink);
 		var potentialLink = new PotentialLink(linkData);
@@ -5848,10 +5863,18 @@ publicApi.UriTemplate = UriTemplate;
 		rootContext: null,
 		baseContext: null,
 		subContext: function (label, uiState) {
-			if (uiState == undefined) {
-				uiState = {};
+			// TODO: for read-only, some kind of relative path?
+			if (Jsonary.isData(label)) {
+				label = "data" + label.uniqueId;
 			}
-			return this.getSubContext(this.elementId, this.data, label, uiState);
+			var uiState = uiState || {};
+			var subContext = this.getSubContext(false, this.data, label, uiState);
+			subContext.renderer = this.renderer;
+			subContext.parent = this;
+			if (!subContext.uiState) {
+				subContext.loadState(subContext.uiStartingState);
+			}
+			return subContext;
 		},
 		subContextSavedStates: {},
 		saveState: function () {
@@ -5928,6 +5951,9 @@ publicApi.UriTemplate = UriTemplate;
 			this.subContexts = {};
 		},
 		rerender: function () {
+			if (this.parent && !this.elementId) {
+				return this.parent.rerender();
+			}
 			var element = document.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
@@ -6062,7 +6088,9 @@ publicApi.UriTemplate = UriTemplate;
 				if (element == undefined) {
 					continue;
 				}
-				var prevContext = element.jsonaryContext;
+				// If the element doesn't have a context, but update is being called, then it's probably (inadvisedly) trying to change something during its initial render.
+				// If so, check the enhancement contexts.
+				var prevContext = element.jsonaryContext || this.enhancementContexts[elementIds[i]];
 				var prevUiState = copyValue(this.uiStartingState);
 				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
@@ -6260,6 +6288,7 @@ publicApi.UriTemplate = UriTemplate;
 
 	function render(element, data, uiStartingState, contextCallback) {
 		var innerElement = document.createElement('span');
+		element.innerHTML = "";
 		element.appendChild(innerElement);
 		var context = pageContext.render(innerElement, data, null, uiStartingState, contextCallback);
 		pageContext.oldSubContexts = {};
