@@ -356,7 +356,7 @@ Request.prototype = {
 		xhr.onreadystatechange = function () {
 			if (xhr.readyState == 4) {
 				if (xhr.status >= 200 && xhr.status < 300) {
-					var data = xhr.responseText = xhr.responseText || null;
+					var data = xhr.responseText || null;
 					try {
 						data = JSON.parse(data);
 					} catch (e) {
