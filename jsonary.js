@@ -5867,7 +5867,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (Jsonary.isData(label)) {
 				label = "data" + label.uniqueId;
 			}
-			var uiState = uiState || {};
+			uiState = uiState || {};
 			var subContext = this.getSubContext(false, this.data, label, uiState);
 			subContext.renderer = this.renderer;
 			subContext.parent = this;
