@@ -106,10 +106,14 @@
 			if (Jsonary.isData(label)) {
 				label = "data" + label.uniqueId;
 			}
-			if (uiState == undefined) {
-				uiState = {};
+			var uiState = uiState || {};
+			var subContext = this.getSubContext(false, this.data, label, uiState);
+			subContext.renderer = this.renderer;
+			subContext.parent = this;
+			if (!subContext.uiState) {
+				subContext.loadState(subContext.uiStartingState);
 			}
-			return this.getSubContext(this.elementId, this.data, label, uiState);
+			return subContext;
 		},
 		subContextSavedStates: {},
 		saveState: function () {
@@ -186,6 +190,9 @@
 			this.subContexts = {};
 		},
 		rerender: function () {
+			if (this.parent && !this.elementId) {
+				return this.parent.rerender();
+			}
 			var element = document.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
@@ -320,7 +327,9 @@
 				if (element == undefined) {
 					continue;
 				}
-				var prevContext = element.jsonaryContext;
+				// If the element doesn't have a context, but update is being called, then it's probably (inadvisedly) trying to change something during its initial render.
+				// If so, check the enhancement contexts.
+				var prevContext = element.jsonaryContext || this.enhancementContexts[elementIds[i]];
 				var prevUiState = copyValue(this.uiStartingState);
 				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
