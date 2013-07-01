@@ -865,6 +865,13 @@ SchemaList.prototype = {
 		}
 		return result;
 	},
+	tupleTyping: function () {
+		var result = 0;
+		for (var i = 0; i < this.length; i++) {
+			result = Math.max(result, this[i].tupleTyping());
+		}
+		return result;
+	},
 	createValueForProperty: function(key, callback) {
 		var propertySchemas = this.propertySchemas(key);
 		return propertySchemas.createValue(callback);

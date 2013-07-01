@@ -154,6 +154,13 @@ Schema.prototype = {
 		}
 		return new SchemaList();
 	},
+	tupleTyping: function () {
+		var items = this.data.property("items");
+		if (items.basicType() == "array") {
+			return items.length();
+		}
+		return 0;
+	},
 	andSchemas: function () {
 		var result = [];
 		var extData = this.data.property("extends");

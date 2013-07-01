@@ -3060,6 +3060,13 @@ Schema.prototype = {
 		}
 		return new SchemaList();
 	},
+	tupleTyping: function () {
+		var items = this.data.property("items");
+		if (items.basicType() == "array") {
+			return items.length();
+		}
+		return 0;
+	},
 	andSchemas: function () {
 		var result = [];
 		var extData = this.data.property("extends");
@@ -5008,6 +5015,13 @@ SchemaList.prototype = {
 		var result = new SchemaList();
 		for (var i = 0; i < this.length; i++) {
 			result = result.concat(this[i].indexSchemas(index));
+		}
+		return result;
+	},
+	tupleTyping: function () {
+		var result = 0;
+		for (var i = 0; i < this.length; i++) {
+			result = Math.max(result, this[i].tupleTyping());
 		}
 		return result;
 	},
