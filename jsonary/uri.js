@@ -113,10 +113,8 @@ Uri.prototype = {
 };
 Uri.resolve = function(base, relative) {
 	if (relative == undefined) {
-		return base;
-		//  We used to resolve relative to window.location, but we want to be able to run outside the browser as well
-		//relative = base;
-		//base = window.location.toString();
+		relative = base;
+		base = window.location.toString();
 	}
 	if (base == undefined) {
 		return relative;
