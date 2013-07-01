@@ -121,14 +121,24 @@ SchemaList.prototype = {
 		}
 		return false;
 	},
-	links: function () {
+	links: function (rel) {
 		var result = [];
 		var i, schema;
 		for (i = 0; i < this.length; i++) {
-			schema = this[i];
+			var schema = this[i];
 			result = result.concat(schema.links());
 		}
-		return result;
+		this.links = function (rel) {
+			var filtered = [];
+			for (var i = 0; i < result.length; i++) {
+				var link = result[i];
+				if (rel == undefined || link.rel == rel) {
+					filtered.push(link);
+				}
+			}
+			return filtered;
+		};
+		return this.links(rel);
 	},
 	each: function (callback) {
 		for (var i = 0; i < this.length; i++) {

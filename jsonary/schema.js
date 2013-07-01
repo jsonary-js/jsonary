@@ -39,8 +39,15 @@ function Schema(data) {
 			potentialLinks[potentialLinks.length] = new PotentialLink(subData);
 		});
 	}
-	this.links = function () {
-		return potentialLinks.slice(0);
+	this.links = function (rel) {
+		var filtered = [];
+		for (var i = 0; i < potentialLinks.length; i++) {
+			var link = potentialLinks[i];
+			if (rel == undefined || link.rel == rel) {
+				filtered.push(link);
+			}
+		}
+		return filtered;
 	};
 	this.schemaTitle = this.title();	
 }

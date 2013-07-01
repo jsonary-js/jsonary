@@ -283,8 +283,8 @@ var Utils = {
 	},
 	joinPointer: function (pointerComponents) {
 		var result = "";
-		for (var i = 0; i < parts.length; i++) {
-			result += "/" + Utils.encodePointerComponent(parts[i]);
+		for (var i = 0; i < pointerComponents.length; i++) {
+			result += "/" + Utils.encodePointerComponent(pointerComponents[i]);
 		}
 		return result;
 	}
