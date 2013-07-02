@@ -103,7 +103,8 @@
 		baseContext: null,
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
-				var dataUrl = data.referenceUrl();
+				var selfLink = data.getLink('self');
+				var dataUrl = selfLink ? selfLink.href : data.referenceUrl();
 				if (dataUrl) {
 					var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
 					var truncate = 0;
