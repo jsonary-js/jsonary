@@ -229,6 +229,7 @@
 			}
 			if (data.getData != undefined) {
 				var thisContext = this;
+				element.innerHTML = '<div class="loading"></div>';
 				data.getData(function (actualData) {
 					thisContext.render(element, actualData, label, uiStartingState, contextCallback);
 				});
@@ -294,7 +295,6 @@
 						data = actualData;
 					} else {
 						var element = document.getElementById(elementId);
-						element.className = "";
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
@@ -304,7 +304,7 @@
 				});
 				if (!rendered) {
 					rendered = true;
-					return '<span id="' + elementId + '" class="loading">Loading...</span>';
+					return '<span id="' + elementId + '"><div class="loading"></div></span>';
 				}
 			}
 			
