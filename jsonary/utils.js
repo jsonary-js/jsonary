@@ -139,7 +139,7 @@ var Utils = {
 	lcm: function(a, b) {
 		return Math.abs(a*b/this.hcf(a, b));
 	},
-		encodeData: function (data, encType, variant) {
+	encodeData: function (data, encType, variant) {
 		if (encType == undefined) {
 			encType = "application/x-www-form-urlencoded";
 		}
