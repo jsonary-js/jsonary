@@ -234,7 +234,7 @@
 				data.getData(function (actualData) {
 					thisContext.render(element, actualData, label, uiStartingState, contextCallback);
 				});
-				return;
+				return null;
 			}
 
 			if (typeof uiStartingState != "object") {
@@ -277,6 +277,7 @@
 			if (contextCallback) {
 				contextCallback(subContext);
 			}
+			return subContext;
 		},
 		renderHtml: function (data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
