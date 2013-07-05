@@ -501,17 +501,6 @@
 		}
 	});
 
-	// Display string
-	Jsonary.render.register({
-		renderHtml: function (data, context) {
-			var date = new Date(data.value());
-			return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
-		},
-		filter: function (data, schemas) {
-			return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;
-		}
-	});
-	
 	function copyTextStyle(source, target) {
 		var style = getComputedStyle(source, null);
 		for (var key in style) {
