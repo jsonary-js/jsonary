@@ -147,7 +147,7 @@ var Utils = {
 			return JSON.stringify(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
 			if (variant == "dotted") {
-				return Utils.formEncode(data, "", '.', '');
+				return Utils.formEncode(data, "", '.', '', '|');
 			} else {
 				return Utils.formEncode(data, "", '[', ']');
 			}
@@ -163,7 +163,7 @@ var Utils = {
 			return JSON.parse(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
 			if (variant == "dotted") {
-				return Utils.formDecode(data, '.', '');
+				return Utils.formDecode(data, '.', '', '|');
 			} else {
 				return Utils.formDecode(data, '[', ']');
 			}
@@ -171,7 +171,7 @@ var Utils = {
 			throw new Error("Unknown encoding type: " + this.encType);
 		}
 	},
-	formEncode: function (data, prefix, sepBefore, sepAfter) {
+	formEncode: function (data, prefix, sepBefore, sepAfter, arrayJoin) {
 		if (prefix == undefined) {
 			prefix = "";
 		}
@@ -184,7 +184,7 @@ var Utils = {
 				if (value == null) {
 					result.push(key + "=null");
 				} else if (typeof value == "object") {
-					var subResult = Utils.formEncode(value, complexKey, sepBefore, sepAfter);
+					var subResult = Utils.formEncode(value, complexKey, sepBefore, sepAfter, arrayJoin);
 					if (subResult) {
 						result.push(subResult);
 					}
@@ -206,11 +206,23 @@ var Utils = {
 				var value = data[key];
 				if (prefix != "") {
 					key = prefix + encodeURIComponent(sepBefore + key + sepAfter);
+				} else {
+					key = encodeURIComponent(key);
 				}
-				if (value == null) {
+				if (value === undefined) {
+				} else if (value === null) {
 					result.push(key + "=null");
+				} else if (arrayJoin && Array.isArray(value)) {
+					if (value.length > 0) {
+						var arrayItems = [];
+						while (arrayItems.length < value.length) {
+							arrayItems[arrayItems.length] = encodeURIComponent(value[arrayItems.length]);
+						}
+						var joined = arrayJoin + arrayItems.join(arrayJoin);
+						result.push(key + "=" + joined);
+					}
 				} else if (typeof value == "object") {
-					var subResult = Utils.formEncode(value, key, sepBefore, sepAfter);
+					var subResult = Utils.formEncode(value, key, sepBefore, sepAfter, arrayJoin);
 					if (subResult) {
 						result.push(subResult);
 					}
@@ -229,7 +241,19 @@ var Utils = {
 		}
 		return result.join("&");
 	},
-	formDecode: function (data, sepBefore, sepAfter) {
+	formDecodeString: function (value) {
+		if (value == "true") {
+			value = true;
+		} else if (value == "false") {
+			value = false;
+		} else if (value == "null") {
+			value = null;
+		} else if (parseFloat(value) + "" == value) {
+			value = parseFloat(value);
+		}
+		return value;
+	},
+	formDecode: function (data, sepBefore, sepAfter, arrayJoin) {
 		var result = {};
 		var parts = data.split("&");
 		for (var partIndex = 0; partIndex < parts.length; partIndex++) {
@@ -239,14 +263,14 @@ var Utils = {
 			if (part.indexOf("=") >= 0) {
 				key = part.substring(0, part.indexOf("="));
 				value = decodeURIComponent(part.substring(part.indexOf("=") + 1));
-				if (value == "true") {
-					value = true;
-				} else if (value == "false") {
-					value = false;
-				} else if (value == "null") {
-					value = null;
-				} else if (parseFloat(value) + "" == value) {
-					value = parseFloat(value);
+				if (arrayJoin && value.charAt(0) == arrayJoin) {
+					value = value.split(arrayJoin);
+					value.shift();
+					for (var i = 0; i < value.length; i++) {
+						value[i] = Utils.formDecodeString(value[i]);
+					}
+				} else {
+					value = Utils.formDecodeString(value);
 				}
 			}
 			key = decodeURIComponent(key);
