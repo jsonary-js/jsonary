@@ -1,4 +1,4 @@
-if (typeof localStorage == "undefined") {
+if (typeof window != "undefined" && typeof localStorage == "undefined") {
 	window.localStorage = {};
 }
 

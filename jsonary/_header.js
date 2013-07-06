@@ -1,12 +1,9 @@
-(function(global) { // Global wrapper
+(function(publicApi) { // Global wrapper
 	
-var publicApi = {
-    "toString": function() {
-        return "[JsonApi]";
-    },
-    plugins: {}
+publicApi.toString = function() {
+	return "<Jsonary>";
 };
-global.Jsonary = publicApi;
+publicApi.plugins = {};
 
 function setTimeout(fn, t) {
 	throw new Error("setTimeout() should not be used");

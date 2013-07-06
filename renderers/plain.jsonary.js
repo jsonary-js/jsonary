@@ -1,7 +1,7 @@
-(function () {
+(function (global) {
 	var escapeHtml = Jsonary.escapeHtml;
-	if (window.escapeHtml == undefined) {
-		window.escapeHtml = escapeHtml;
+	if (global.escapeHtml == undefined) {
+		global.escapeHtml = escapeHtml;
 	}
 
 	Jsonary.render.register({
@@ -807,4 +807,4 @@
 		}
 	});
 
-})();
+})(this);

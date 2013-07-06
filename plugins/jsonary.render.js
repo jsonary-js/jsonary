@@ -1,4 +1,6 @@
 (function (global) {
+	var Jsonary = global.Jsonary;
+
 	function copyValue(value) {
 		return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
 	}
@@ -363,7 +365,7 @@
 		actionHtml: function(innerHtml, actionName) {
 			var startingIndex = 2;
 			var historyChange = false;
-			var linkUrl = "javascript:void(0)";
+			var linkUrl = Jsonary.actionUrl(actionName);
 			if (typeof actionName == "boolean") {
 				historyChange = arguments[1];
 				linkUrl = arguments[2] || linkUrl;
@@ -872,6 +874,9 @@
 
 	Jsonary.extend({
 		render: render,
+		actionUrl: function () {
+			return "javascript:void(0)";
+		},
 		renderHtml: renderHtml
 	});
 	Jsonary.extendData({
