@@ -43,9 +43,6 @@ var jsonaryCss = [
 ];
 var jsonaryCssBundle = bundle.plain(jsonaryCss, 'bundle.css');
 app.all('/', function (request, response) {
-	// Temporary: refresh bundle each time
-	jsonaryJsBundle = bundle.js(jsonaryJs, 'bundle.js');
-	
 	var Jsonary = createJsonary();
 
 	var renderContext, data;
