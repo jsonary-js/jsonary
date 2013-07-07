@@ -34,8 +34,12 @@ function Document(url, isDefinitive, readOnly) {
 	this.error = null;
 
 	var rootPath = null;
+	this.rootPath = function () {
+		return rootPath;
+	};
 	var rawSecrets = {};
 	this.raw = new Data(this, rawSecrets);
+	this.uniqueId = this.raw.uniqueId;
 	this.root = null;
 	
 	var documentChangeListeners = [];
@@ -801,8 +805,14 @@ publicApi.isData = function (obj) {
 };
 
 Data.prototype.deflate = function () {
+	var result = this.document.deflate();
+	result.path = this.pointerPath();
+	return result;
+};
+Document.prototype.deflate = function () {
+	var rawData = this.raw;
 	var schemas = [];
-	this.schemas().each(function (index, schema) {
+	rawData.schemas().each(function (index, schema) {
 		if (schema.referenceUrl() != undefined) {
 			schemas.push(schema.referenceUrl());
 		} else {
@@ -810,13 +820,14 @@ Data.prototype.deflate = function () {
 		}
 	});
 	var result = {
-		baseUrl: this.document.url,
-		readOnly: this.document.readOnly,
-		value: this.value(),
-		schemas: schemas
+		baseUrl: this.url,
+		readOnly: this.readOnly,
+		value: rawData.value(),
+		schemas: schemas,
+		root: this.rootPath()
 	}
 	return result;
-}
+};
 publicApi.inflate = function (deflated) {
 	var data = publicApi.create(deflated.value, deflated.baseUrl, deflated.readOnly);
 	for (var i = 0; i < deflated.schemas.length; i++) {
@@ -826,5 +837,9 @@ publicApi.inflate = function (deflated) {
 		}
 		data.addSchema(schema);
 	}
-	return data;
-}
+	data.document.setRoot(deflated.root);
+	if (deflated.path) {
+		return data.document.raw.subPath(deflated.path);
+	}
+	return data.document;
+};

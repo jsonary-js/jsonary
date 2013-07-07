@@ -162,7 +162,7 @@
 			if (uiState.dialogOpen) {
 				result.dialogOpen = true;
 			}
-			if (subStates.data._ != undefined || subStates.data.dialogOpen != undefined) {
+			if (subStates.data && (subStates.data._ != undefined || subStates.data.dialogOpen != undefined)) {
 				result._ = subStates['data'];
 			} else {
 				for (var key in subStates.data) {
@@ -691,11 +691,11 @@
 			}
 			var result = "";
 			var inputName = context.inputNameForAction('switch');
-			return '<input type="checkbox" class="json-boolean" name="' + inputName + '" ' + (data.value() ? 'checked' : '' ) + '></input>';
+			return '<input type="checkbox" class="json-boolean" name="' + inputName + '" value="1" ' + (data.value() ? 'checked' : '' ) + '></input>';
 		},
 		action: function (context, actionName, arg1) {
 			if (actionName == "switch") {
-				context.data.setValue(arg1);
+				context.data.setValue(!!arg1);
 			}
 		},
 		filter: function (data) {

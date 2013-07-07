@@ -39,7 +39,9 @@
 	};	
 	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
+	var contextIdCounter = 0;
 	function RenderContext(elementIdPrefix) {
+		this.uniqueId = contextIdCounter++;
 		var thisContext = this;
 		this.elementLookup = {};
 
@@ -123,7 +125,7 @@
 			}
 			return "!" + data.uniqueId;
 		},
-		subContext: function (label, uiState, clearComponents) {
+		subContext: function (label, uiState) {
 			// TODO: for read-only ones, use some kind of relative path - perhaps move to getSubContext
  			if (Jsonary.isData(label)) {
 				label = this.labelForData(label);
@@ -155,6 +157,93 @@
 			var result = loadStateFunction.call(this.renderer, savedState);
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
+		},
+		saveCompleteState: function (skipEnhancements) {
+			var state = {};
+			state.rendererId = this.renderer ? this.renderer.uniqueId : null;
+			state.sub = {};
+
+			var result = {
+				actions: {},
+				inputs: {},
+				rootContext: this.uniqueId,
+				contexts: {},
+				documents: {}
+			};
+			result.contexts[this.uniqueId] = state;
+			for (var key in this.subContexts) {
+				var subContext = this.subContexts[key];
+				state.sub[key] = subContext.uniqueId;
+				var subResult = subContext.saveCompleteState(true);
+				for (var subKey in subResult.contexts) {
+					result.contexts[subKey] = subResult.contexts[subKey];
+				}
+				for (var subKey in subResult.documents) {
+					result.documents[subKey] = subResult.documents[subKey];
+				}
+			}
+			for (var key in this.oldSubContexts) {
+				var subContext = this.oldSubContexts[key];
+				state.sub[key] = subContext.uniqueId;
+				var subResult = subContext.saveCompleteState(true);
+				for (var subKey in subResult.contexts) {
+					result.contexts[subKey] = subResult.contexts[subKey];
+				}
+				for (var subKey in subResult.documents) {
+					result.documents[subKey] = subResult.documents[subKey];
+				}
+			}
+
+			if (!this.data) {
+				state.data = null;
+			} else {
+				state.data = {
+					path: this.data.pointerPath(),
+					document: this.data.document.uniqueId
+				};
+				if (!result.documents[this.data.document.uniqueId]) {
+					result.documents[this.data.document.uniqueId] = this.data.document.deflate();
+				}
+			}
+			
+			if (!skipEnhancements) {
+				for (var key in this.enhancementActions) {
+					var enhancement = this.enhancementActions[key];
+					result.actions[key] = {
+						context: enhancement.context.uniqueId,
+						name: enhancement.actionName,
+						params: enhancement.params
+					};
+					var c = enhancement.context;
+					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
+						result.contexts[c.uniqueId].keep = true;
+						c = c.baseContext;
+					}
+				}
+				for (var key in this.enhancementInputs) {
+					var enhancement = this.enhancementInputs[key];
+					result.inputs[key] = {
+						context: enhancement.context.uniqueId,
+						name: enhancement.actionName,
+						params: enhancement.params
+					};
+					var c = enhancement.context;
+					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
+						result.contexts[c.uniqueId].keep = true;
+						c = c.baseContext;
+					}
+				}
+				var newContexts = {};
+				for (var key in result.contexts) {
+					if (result.contexts[key].keep) {
+						newContexts[key] = result.contexts[key];
+						delete newContexts[key].keep;
+					}
+				}
+				result.contexts = newContexts;
+				result.uiState = this.saveState();
+			}
+			return result;
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			if (typeof label == "object" && label != null) {
@@ -191,6 +280,7 @@
 					elementId = elementId.id;
 				}
 				function Context(rootContext, baseContext, label, data, uiState, usedComponents) {
+					this.uniqueId = contextIdCounter++;
 					this.rootContext = rootContext;
 					this.baseContext = baseContext;
 					this.label = label;
@@ -281,7 +371,7 @@
 			}
 			return subContext;
 		},
-		renderHtml: function (data, label, uiStartingState) {
+		renderHtml: function (data, label, uiStartingState, contextCallback) {
 			if (uiStartingState == undefined && typeof label == "object") {
 				uiStartingState = label;
 				label = null;
@@ -300,7 +390,7 @@
 					} else {
 						var element = document.getElementById(elementId);
 						if (element) {
-							thisContext.render(element, actualData, label, uiStartingState);
+							thisContext.render(element, actualData, label, uiStartingState, contextCallback);
 						} else {
 							Jsonary.log(Jsonary.logLevel.WARNING, "Attempted delayed render to non-existent element: " + elementId);
 						}
@@ -336,6 +426,9 @@
 				this.elementLookup[uniqueId].push(elementId);
 			}
 			this.addEnhancement(elementId, subContext);
+			if (contextCallback) {
+				contextCallback(subContext);
+			}
 			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		update: function (data, operation) {
@@ -365,7 +458,7 @@
 		actionHtml: function(innerHtml, actionName) {
 			var startingIndex = 2;
 			var historyChange = false;
-			var linkUrl = Jsonary.actionUrl(actionName);
+			var linkUrl = Jsonary.render.actionUrl(this, actionName);
 			if (typeof actionName == "boolean") {
 				historyChange = arguments[1];
 				linkUrl = arguments[2] || linkUrl;
@@ -378,7 +471,7 @@
 			}
 			var elementId = this.getElementId();
 			this.addEnhancementAction(elementId, actionName, this, params, historyChange);
-			return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
+			return Jsonary.render.actionHtml(elementId, linkUrl, innerHtml);
 		},
 		inputNameForAction: function (actionName) {
 			var historyChange = false;
@@ -496,6 +589,75 @@
 		}
 	};
 	var pageContext = new RenderContext();
+	render.loadCompleteState = function (saved) {
+		var contexts = {};
+		var documents = {};
+		for (var key in saved.documents) {
+			documents[key] = Jsonary.inflate(saved.documents[key]);
+		}
+		
+		function contextData(id) {
+			var state = saved.contexts[id];
+			if (state.data) {
+				var document = documents[state.data.document];
+				return document.raw.subPath(state.data.path);
+			}
+			return null;
+		}
+		
+		function loadContext(context, id) {
+			var state = saved.contexts[id];
+			contexts[id] = context;
+			
+			var renderer = rendererLookup[state.rendererId];
+			context.renderer = renderer;
+			context.loadState(context.uiStartingState);
+			if (state.sub) {
+				for (var key in state.sub) {
+					var savedId = state.sub[key];
+					if (contexts[savedId] || !saved.contexts[savedId]) {
+						continue;
+					}
+					var data = contextData(savedId);
+					var subContext = context.getSubContext("", data, key);
+					loadContext(subContext, savedId);
+				}
+			}
+		}
+		var rootContextId = saved.rootContext;
+		var rootData = contextData(rootContextId);
+		var rootContext = pageContext.getSubContext('', rootData, null, saved.uiState);
+		loadContext(rootContext, rootContextId);
+
+		var actions = {};		
+		for (var key in saved.actions) {
+			(function (key, action) {
+				var action = saved.actions[key];
+				var actionContext = contexts[action.context];
+				actions[key] = function () {
+					var args = [actionContext, action.name].concat(action.params || []);
+					return actionContext.renderer.action.apply(actionContext.renderer, args);
+				};
+			})(key, saved.actions[key]);
+		}
+		var inputs = {};
+		for (var key in saved.inputs) {
+			(function (key, input) {
+				var input = saved.inputs[key];
+				var inputContext = contexts[input.context];
+				inputs[key] = function (value) {
+					var args = [inputContext, input.name, value].concat(input.params || []);
+					return inputContext.renderer.action.apply(inputContext.renderer, args);
+				};
+			})(key, saved.inputs[key]);
+		}
+
+		return {
+			context: rootContext,
+			actions: actions,
+			inputs: inputs
+		};
+	};
 	
 	function cleanup() {
 		// Clean-up sweep of pageContext's element lookup
@@ -574,6 +736,12 @@
 		};
 	}
 	render.Components = componentNames;
+	render.actionUrl = function (context, actionName) {
+		return "javascript:void(0)";
+	};
+	render.actionHtml = function (elementId, linkUrl, innerHtml) {
+		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
+	};
 	
 	/**********/
 
@@ -874,9 +1042,6 @@
 
 	Jsonary.extend({
 		render: render,
-		actionUrl: function () {
-			return "javascript:void(0)";
-		},
 		renderHtml: renderHtml
 	});
 	Jsonary.extendData({
