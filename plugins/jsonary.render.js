@@ -707,7 +707,9 @@
 			}
 		}
 	}
-	setInterval(cleanup, 30000); // Every 30 seconds
+	if (typeof document != 'undefined') {
+		setInterval(cleanup, 30000); // Every 30 seconds
+	}
 	Jsonary.cleanup = cleanup;
 
 	function render(element, data, uiStartingState, contextCallback) {
