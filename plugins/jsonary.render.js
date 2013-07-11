@@ -108,6 +108,7 @@
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
 				var selfLink = data.getLink('self');
+				// Use "self" link for better persistence when data changes
 				var dataUrl = selfLink ? selfLink.href : data.referenceUrl();
 				if (dataUrl) {
 					var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
@@ -122,11 +123,28 @@
 						return "!" + remainder;
 					}
 				}
+			} else if (this.data && this.data.document == data.document) {
+				var basePointer = this.data.pointerPath();
+				var dataPointer = data.pointerPath();
+				var truncate = 0;
+				while (dataPointer.substring(0, basePointer.length - truncate) != basePointer.substring(0, basePointer.length - truncate)) {
+					truncate++;
+				}
+				var remainder = dataPointer.substring(basePointer.length - truncate);
+				if (truncate) {
+					return truncate + "!" + remainder;
+				} else {
+					return "!" + remainder;
+				}
 			}
-			return "!" + data.uniqueId;
+			if (this.renderer) {
+				// This is bad because it makes the UI state less transferable
+				Jsonary.log(Jsonary.logLevel.WARNING, "No label supplied for data in renderer " + JSON.stringify(this.renderer.name));
+			}
+			
+			return "$" + data.uniqueId;
 		},
 		subContext: function (label, uiState) {
-			// TODO: for read-only ones, use some kind of relative path - perhaps move to getSubContext
  			if (Jsonary.isData(label)) {
 				label = this.labelForData(label);
 			}
@@ -202,7 +220,7 @@
 					document: this.data.document.uniqueId
 				};
 				if (!result.documents[this.data.document.uniqueId]) {
-					result.documents[this.data.document.uniqueId] = this.data.document.deflate();
+					result.documents[this.data.document.uniqueId] = this.data.document.deflate(true);
 				}
 			}
 			
@@ -310,6 +328,28 @@
 				this.renderer.render(element, this.data, this);
 				this.clearOldSubContexts();
 			}
+		},
+		rerenderHtml: function () {
+			if (this.uiState == undefined) {
+				this.loadState(this.uiStartingState);
+			}
+			
+			var renderer = this.renderer;
+			var data = this.data;
+			var elementId = this.elementId;
+			
+			var innerHtml = renderer.renderHtml(data, this);
+			this.clearOldSubContexts();
+
+			var uniqueId = data.uniqueId;
+			if (this.elementLookup[uniqueId] == undefined) {
+				this.elementLookup[uniqueId] = [];
+			}
+			if (this.elementLookup[uniqueId].indexOf(elementId) == -1) {
+				this.elementLookup[uniqueId].push(elementId);
+			}
+			this.addEnhancement(elementId, this);
+			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		render: function (element, data, label, uiStartingState, contextCallback) {
 			if (uiStartingState == undefined && typeof label == "object") {
@@ -589,12 +629,22 @@
 		}
 	};
 	var pageContext = new RenderContext();
-	render.loadCompleteState = function (saved) {
-		var contexts = {};
+	render.loadDocumentsFromState = function (saved) {
 		var documents = {};
 		for (var key in saved.documents) {
 			documents[key] = Jsonary.inflate(saved.documents[key]);
 		}
+		saved.parsedDocuments = function () {
+			return documents;
+		};
+		return documents;
+	};
+	render.loadCompleteState = function (saved) {
+		var contexts = {};
+		if (!saved.parsedDocuments) {
+			render.loadDocumentsFromState(saved);
+		}
+		var documents = saved.parsedDocuments();
 		
 		function contextData(id) {
 			var state = saved.contexts[id];
@@ -746,6 +796,29 @@
 	};
 	
 	/**********/
+	
+	render.saveData = function (data, saveDataId) {
+		if (typeof localStorage == 'undefined') {
+			return "LOCALSTORAGE_MISSING";
+		}
+		localStorage[data.saveStateId] = JSON.stringify({
+			accessed: (new Date).getTime(),
+			data: data.deflate()
+		});
+		return saveDataId;
+	};
+	render.loadData = function (saveDataId) {
+		console.log("Loading: " + saveDataId);
+		if (typeof localStorage == "undefined") {
+			return undefined;
+		}
+		var stored = localStorage[saveDataId];
+		if (!stored) {
+			return undefined;
+		}
+		stored = JSON.parse(stored);
+		return Jsonary.inflate(stored.data);
+	}
 
 	var rendererIdCounter = 0;
 	
@@ -761,6 +834,7 @@
 			}
 		}
 		this.uniqueId = rendererIdCounter++;
+		this.name = sourceObj.name || ("#" + this.uniqueId);
 		this.component = (sourceObj.component != undefined) ? sourceObj.component : componentList[componentList.length - 1];
 		if (typeof this.component == "string") {
 			this.component = [this.component];
@@ -879,11 +953,7 @@
 				return "url:" + data.referenceUrl();
 			}
 			data.saveStateId = data.saveStateId || randomId();
-			localStorage[data.saveStateId] = JSON.stringify({
-				accessed: (new Date).getTime(),
-				data: data.deflate()
-			});
-			return data.saveStateId;
+			return render.saveData(data, data.saveStateId) || data.saveStateId;
 		},
 		loadState: function (savedState) {
 			var uiState = {};
@@ -925,13 +995,11 @@
 			if (!savedState) {
 				return undefined;
 			}
-			var stored = localStorage[savedState];
-			if (!stored) {
-				return undefined;
+			
+			var data = render.loadData(savedState);
+			if (data) {
+				data.saveStateId = savedState;
 			}
-			stored = JSON.parse(stored);
-			var data = Jsonary.inflate(stored.data);
-			data.saveStateId = savedState;
 			return data;
 		}
 	}

@@ -113,6 +113,9 @@ Uri.prototype = {
 };
 Uri.resolve = function(base, relative) {
 	if (relative == undefined) {
+		if (typeof window == 'undefined') {
+			return base;
+		}
 		relative = base;
 		base = window.location.toString();
 	}

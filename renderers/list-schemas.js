@@ -3,6 +3,7 @@
 	Jsonary.render.Components.add("LIST_SCHEMAS");
 
 	Jsonary.render.register({
+		name: "Jsonary list clickable schema titles",
 		component: Jsonary.render.Components.LIST_SCHEMAS,
 		update: function (element, data, context, operation) {
 			// We don't care about data changes - when the schemas change, a re-render is forced anyway.

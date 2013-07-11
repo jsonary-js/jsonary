@@ -5,6 +5,7 @@
 	}
 
 	Jsonary.render.register({
+		name: "Jsonary plain add/remove",
 		component: Jsonary.render.Components.ADD_REMOVE,
 		renderHtml: function (data, context) {
 			if (!data.defined()) {
@@ -103,6 +104,7 @@
 	});
 	
 	Jsonary.render.register({
+		name: "Jsonary plain type-selector",
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
 			var result = "";
@@ -195,6 +197,7 @@
 	// Display schema switcher
 	Jsonary.render.Components.add("SCHEMA_SWITCHER");
 	Jsonary.render.register({
+		name: "Jsonary plain schema-switcher",
 		component: Jsonary.render.Components.SCHEMA_SWITCHER,
 		renderHtml: function (data, context) {
 			var result = "";
@@ -365,6 +368,7 @@
 
 	// Display raw JSON
 	Jsonary.render.register({
+		name: "Jsonary plain raw JSON display",
 		renderHtml: function (data, context) {
 			if (!data.defined()) {
 				return "";
@@ -390,6 +394,7 @@
 
 	// Display/edit objects
 	Jsonary.render.register({	
+		name: "Jsonary plain objects",
 		renderHtml: function (data, context) {
 			var uiState = context.uiState;
 			var result = "";
@@ -460,6 +465,7 @@
 
 	// Display/edit arrays
 	Jsonary.render.register({
+		name: "Jsonary plain arrays",
 		renderHtml: function (data, context) {
 			var tupleTypingLength = data.schemas().tupleTypingLength();
 			var maxItems = data.schemas().maxItems();
@@ -493,6 +499,7 @@
 	
 	// Display string
 	Jsonary.render.register({
+		name: "Jsonary plain display string",
 		renderHtml: function (data, context) {
 			return '<span class="json-string">' + escapeHtml(data.value()) + '</span>';
 		},
@@ -562,6 +569,7 @@
 
 	// Edit string
 	Jsonary.render.register({
+		name: "Jsonary plain edit string",
 		renderHtml: function (data, context) {
 			var maxLength = data.schemas().maxLength();
 			var inputName = context.inputNameForAction('new-value');
@@ -681,6 +689,7 @@
 
 	// Display/edit boolean	
 	Jsonary.render.register({
+		name: "Jsonary plain booleans",
 		renderHtml: function (data, context) {
 			if (data.readOnly()) {
 				if (data.value()) {
@@ -705,6 +714,7 @@
 	
 	// Edit number
 	Jsonary.render.register({
+		name: "Jsonary plain edit number",
 		renderHtml: function (data, context) {
 			var result = context.actionHtml('<span class="json-number">' + data.value() + '</span>', "input");
 			
@@ -767,6 +777,7 @@
 
 	// Edit enums
 	Jsonary.render.register({
+		name: "Jsonary plain enums",
 		render: function (element, data, context) {
 			var enumValues = data.schemas().enumValues();
 			if (enumValues.length == 0) {

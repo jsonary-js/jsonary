@@ -652,6 +652,9 @@ Uri.prototype = {
 };
 Uri.resolve = function(base, relative) {
 	if (relative == undefined) {
+		if (typeof window == 'undefined') {
+			return base;
+		}
 		relative = base;
 		base = window.location.toString();
 	}
@@ -1435,6 +1438,67 @@ if (typeof XMLHttpRequest == "undefined") {
 	};
 }
 
+publicApi.ajaxFunction = function (params, callback) {
+	var xhrUrl = params.url;
+	var xhrData = params.data;
+	var encType = params.encType;
+	
+	var xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function () {
+		if (xhr.readyState == 4) {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				var data = xhr.responseText || null;
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+					if (xhr.status !=204) {
+						thisRequest.ajaxError(e, data);
+						return;
+					} else {
+						data = null;
+					}
+				}
+				var headers = xhr.getAllResponseHeaders();
+				if (headers == "") {	// Firefox bug  >_>
+					headers = [];
+					var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
+					for (var i = 0; i < desiredHeaders.length; i++) {
+						var value = xhr.getResponseHeader(desiredHeaders[i]);
+						if (value != "" && value != null) {
+							headers.push(desiredHeaders[i] + ": " + value);
+						}
+					}
+					headers = headers.join("\n");
+				}
+				callback(null, data, headers);
+			} else {
+				var data = xhr.responseText || null;
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+				}
+				var headers = xhr.getAllResponseHeaders();
+				if (headers == "") {	// Firefox bug  >_>
+					headers = [];
+					var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
+					for (var i = 0; i < desiredHeaders.length; i++) {
+						var value = xhr.getResponseHeader(desiredHeaders[i]);
+						if (value != "" && value != null) {
+							headers.push(desiredHeaders[i] + ": " + value);
+						}
+					}
+					headers = headers.join("\n");
+				}
+				callback(new HttpError(xhr.status, xhr), data, headers);
+			}
+		}
+	};
+	xhr.open(method, xhrUrl, true);
+	xhr.setRequestHeader("Content-Type", encType);
+	xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
+	xhr.send(xhrData);
+};
+
 // Default cache
 (function () {
 	var cacheData = {};
@@ -1560,14 +1624,21 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 		var cacheKey = JSON.stringify(url) + ":" + JSON.stringify(data);
 		var result = cacheFunction(cacheKey);
 		if (result != undefined) {
-			return new FragmentRequest(result, fragment);
+			return {
+				request: result,
+				fragmentRequest: new FragmentRequest(result, fragment)
+			};
 		}
 	}
-	var request = new Request(url, method, data, encType, hintSchema);
-	if (cacheable) {
-		cacheFunction(cacheKey, request);
-	}
-	return new FragmentRequest(request, fragment);
+	var request = new Request(url, method, data, encType, hintSchema, function (request) {
+		if (cacheable) {
+			cacheFunction(cacheKey, request);
+		}
+	});
+	return {
+		request: request,
+		fragmentRequest: new FragmentRequest(request, fragment)
+	};
 }
 
 function addToCache(url, rawData, schemaUrl, cacheFunction) {
@@ -1584,7 +1655,7 @@ publicApi.getData = function(params, callback, hintSchema) {
 	if (typeof params == "string") {
 		params = {url: params};
 	}
-	var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema);
+	var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema).fragmentRequest;
 	if (callback != undefined) {
 		request.getData(callback);
 	}
@@ -1603,7 +1674,9 @@ function HttpError (code) {
 HttpError.prototype = new Error();
 publicApi.HttpError = HttpError;
 
-function Request(url, method, data, encType, hintSchema) {
+function Request(url, method, data, encType, hintSchema, executeImmediately) {
+	executeImmediately(this);
+	this.circular = true;
 	url = Utils.resolveRelativeUri(url);
 
 	data = Utils.encodeData(data, encType);
@@ -1629,6 +1702,7 @@ function Request(url, method, data, encType, hintSchema) {
 
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
+	delete this.circular;
 	this.invalidate = function() {
 		if (method == "GET") {
 			this.fetchData(url, method, data, encType, hintSchema);
@@ -1746,15 +1820,19 @@ Request.prototype = {
 		}
 
 		thisRequest.checkForFullResponse();
-		thisRequest.document.raw.whenSchemasStable(function () {
-			var rootLink = thisRequest.document.raw.getLink("root");
-			if (rootLink != undefined) {
-				var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
-				thisRequest.document.setRoot(fragment);
-			} else {
-				thisRequest.document.setRoot("");
-			}
-		});
+		if (!thisRequest.circular) {
+			thisRequest.document.raw.whenSchemasStable(function () {
+				var rootLink = thisRequest.document.raw.getLink("root");
+				if (rootLink != undefined) {
+					var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
+					thisRequest.document.setRoot(fragment);
+				} else {
+					thisRequest.document.setRoot("");
+				}
+			});
+		} else {
+			thisRequest.document.setRoot("");
+		}
 	},
 	ajaxError: function (error, data) {
 		this.fetched = true;
@@ -1771,44 +1849,6 @@ Request.prototype = {
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
 		var thisRequest = this;
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState == 4) {
-				if (xhr.status >= 200 && xhr.status < 300) {
-					var data = xhr.responseText || null;
-					try {
-						data = JSON.parse(data);
-					} catch (e) {
-						if (xhr.status !=204) {
-							thisRequest.ajaxError(e, data);
-							return;
-						} else {
-							data = null;
-						}
-					}
-					var headers = xhr.getAllResponseHeaders();
-					if (headers == "") {	// Firefox bug  >_>
-						headers = [];
-						var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
-						for (var i = 0; i < desiredHeaders.length; i++) {
-							var value = xhr.getResponseHeader(desiredHeaders[i]);
-							if (value != "" && value != null) {
-								headers.push(desiredHeaders[i] + ": " + value);
-							}
-						}
-						headers = headers.join("\n");
-					}
-					thisRequest.ajaxSuccess(data, headers, hintSchema);
-				} else {
-					var data = xhr.responseText || null;
-					try {
-						data = JSON.parse(data);
-					} catch (e) {
-					}
-					thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
-				}
-			}
-		};
 		var xhrUrl = url;
 		var xhrData = data;
 		if ((method == "GET" || method == "DELETE") && (xhrData != undefined && xhrData != "")) {
@@ -1828,10 +1868,19 @@ Request.prototype = {
 				xhrUrl += "&" + extra;
 			}
 		}
-		xhr.open(method, xhrUrl, true);
-		xhr.setRequestHeader("Content-Type", encType);
-		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
-		xhr.send(xhrData);
+		
+		var params = {
+			url: xhrUrl,
+			data: xhrData,
+			encType: encType
+		};
+		publicApi.ajaxFunction(params, function (error, data, headers) {
+			if (!error) {
+				thisRequest.ajaxSuccess(data, headers, hintSchema);
+			} else {
+				thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
+			}
+		});
 	}
 };
 
@@ -2927,7 +2976,10 @@ Data.prototype.deflate = function () {
 	result.path = this.pointerPath();
 	return result;
 };
-Document.prototype.deflate = function () {
+Document.prototype.deflate = function (canUseUrl) {
+	if (this.isDefinitive) {
+		return this.url;
+	}
 	var rawData = this.raw;
 	var schemas = [];
 	rawData.schemas().each(function (index, schema) {
@@ -2947,6 +2999,10 @@ Document.prototype.deflate = function () {
 	return result;
 };
 publicApi.inflate = function (deflated) {
+	if (typeof deflated == "string") {
+		var request = requestJson(deflated).request;
+		return request.document;
+	}
 	var data = publicApi.create(deflated.value, deflated.baseUrl, deflated.readOnly);
 	for (var i = 0; i < deflated.schemas.length; i++) {
 		var schema = deflated.schemas[i];
@@ -5957,6 +6013,7 @@ publicApi.UriTemplate = UriTemplate;
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
 				var selfLink = data.getLink('self');
+				// Use "self" link for better persistence when data changes
 				var dataUrl = selfLink ? selfLink.href : data.referenceUrl();
 				if (dataUrl) {
 					var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
@@ -5971,11 +6028,28 @@ publicApi.UriTemplate = UriTemplate;
 						return "!" + remainder;
 					}
 				}
+			} else if (this.data && this.data.document == data.document) {
+				var basePointer = this.data.pointerPath();
+				var dataPointer = data.pointerPath();
+				var truncate = 0;
+				while (dataPointer.substring(0, basePointer.length - truncate) != basePointer.substring(0, basePointer.length - truncate)) {
+					truncate++;
+				}
+				var remainder = dataPointer.substring(basePointer.length - truncate);
+				if (truncate) {
+					return truncate + "!" + remainder;
+				} else {
+					return "!" + remainder;
+				}
 			}
-			return "!" + data.uniqueId;
+			if (this.renderer) {
+				// This is bad because it makes the UI state less transferable
+				Jsonary.log(Jsonary.logLevel.WARNING, "No label supplied for data in renderer " + JSON.stringify(this.renderer.name));
+			}
+			
+			return "$" + data.uniqueId;
 		},
 		subContext: function (label, uiState) {
-			// TODO: for read-only ones, use some kind of relative path - perhaps move to getSubContext
  			if (Jsonary.isData(label)) {
 				label = this.labelForData(label);
 			}
@@ -6051,7 +6125,7 @@ publicApi.UriTemplate = UriTemplate;
 					document: this.data.document.uniqueId
 				};
 				if (!result.documents[this.data.document.uniqueId]) {
-					result.documents[this.data.document.uniqueId] = this.data.document.deflate();
+					result.documents[this.data.document.uniqueId] = this.data.document.deflate(true);
 				}
 			}
 			
@@ -6159,6 +6233,28 @@ publicApi.UriTemplate = UriTemplate;
 				this.renderer.render(element, this.data, this);
 				this.clearOldSubContexts();
 			}
+		},
+		rerenderHtml: function () {
+			if (this.uiState == undefined) {
+				this.loadState(this.uiStartingState);
+			}
+			
+			var renderer = this.renderer;
+			var data = this.data;
+			var elementId = this.elementId;
+			
+			var innerHtml = renderer.renderHtml(data, this);
+			this.clearOldSubContexts();
+
+			var uniqueId = data.uniqueId;
+			if (this.elementLookup[uniqueId] == undefined) {
+				this.elementLookup[uniqueId] = [];
+			}
+			if (this.elementLookup[uniqueId].indexOf(elementId) == -1) {
+				this.elementLookup[uniqueId].push(elementId);
+			}
+			this.addEnhancement(elementId, this);
+			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		render: function (element, data, label, uiStartingState, contextCallback) {
 			if (uiStartingState == undefined && typeof label == "object") {
@@ -6438,12 +6534,22 @@ publicApi.UriTemplate = UriTemplate;
 		}
 	};
 	var pageContext = new RenderContext();
-	render.loadCompleteState = function (saved) {
-		var contexts = {};
+	render.loadDocumentsFromState = function (saved) {
 		var documents = {};
 		for (var key in saved.documents) {
 			documents[key] = Jsonary.inflate(saved.documents[key]);
 		}
+		saved.parsedDocuments = function () {
+			return documents;
+		};
+		return documents;
+	};
+	render.loadCompleteState = function (saved) {
+		var contexts = {};
+		if (!saved.parsedDocuments) {
+			render.loadDocumentsFromState(saved);
+		}
+		var documents = saved.parsedDocuments();
 		
 		function contextData(id) {
 			var state = saved.contexts[id];
@@ -6595,6 +6701,29 @@ publicApi.UriTemplate = UriTemplate;
 	};
 	
 	/**********/
+	
+	render.saveData = function (data, saveDataId) {
+		if (typeof localStorage == 'undefined') {
+			return "LOCALSTORAGE_MISSING";
+		}
+		localStorage[data.saveStateId] = JSON.stringify({
+			accessed: (new Date).getTime(),
+			data: data.deflate()
+		});
+		return saveDataId;
+	};
+	render.loadData = function (saveDataId) {
+		console.log("Loading: " + saveDataId);
+		if (typeof localStorage == "undefined") {
+			return undefined;
+		}
+		var stored = localStorage[saveDataId];
+		if (!stored) {
+			return undefined;
+		}
+		stored = JSON.parse(stored);
+		return Jsonary.inflate(stored.data);
+	}
 
 	var rendererIdCounter = 0;
 	
@@ -6610,6 +6739,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 		}
 		this.uniqueId = rendererIdCounter++;
+		this.name = sourceObj.name || ("#" + this.uniqueId);
 		this.component = (sourceObj.component != undefined) ? sourceObj.component : componentList[componentList.length - 1];
 		if (typeof this.component == "string") {
 			this.component = [this.component];
@@ -6728,11 +6858,7 @@ publicApi.UriTemplate = UriTemplate;
 				return "url:" + data.referenceUrl();
 			}
 			data.saveStateId = data.saveStateId || randomId();
-			localStorage[data.saveStateId] = JSON.stringify({
-				accessed: (new Date).getTime(),
-				data: data.deflate()
-			});
-			return data.saveStateId;
+			return render.saveData(data, data.saveStateId) || data.saveStateId;
 		},
 		loadState: function (savedState) {
 			var uiState = {};
@@ -6774,13 +6900,11 @@ publicApi.UriTemplate = UriTemplate;
 			if (!savedState) {
 				return undefined;
 			}
-			var stored = localStorage[savedState];
-			if (!stored) {
-				return undefined;
+			
+			var data = render.loadData(savedState);
+			if (data) {
+				data.saveStateId = savedState;
 			}
-			stored = JSON.parse(stored);
-			var data = Jsonary.inflate(stored.data);
-			data.saveStateId = savedState;
 			return data;
 		}
 	}

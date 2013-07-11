@@ -809,7 +809,10 @@ Data.prototype.deflate = function () {
 	result.path = this.pointerPath();
 	return result;
 };
-Document.prototype.deflate = function () {
+Document.prototype.deflate = function (canUseUrl) {
+	if (this.isDefinitive) {
+		return this.url;
+	}
 	var rawData = this.raw;
 	var schemas = [];
 	rawData.schemas().each(function (index, schema) {
@@ -829,6 +832,10 @@ Document.prototype.deflate = function () {
 	return result;
 };
 publicApi.inflate = function (deflated) {
+	if (typeof deflated == "string") {
+		var request = requestJson(deflated).request;
+		return request.document;
+	}
 	var data = publicApi.create(deflated.value, deflated.baseUrl, deflated.readOnly);
 	for (var i = 0; i < deflated.schemas.length; i++) {
 		var schema = deflated.schemas[i];

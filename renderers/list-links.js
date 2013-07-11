@@ -3,6 +3,7 @@
 	Jsonary.render.Components.add("LIST_LINKS");
 	
 	Jsonary.render.register({
+		name: "Jsonary list links with prompt",
 		component: Jsonary.render.Components.LIST_LINKS,
 		update: function (element, data, context, operation) {
 			// We don't care about data changes - when the links change, a re-render is forced anyway.
