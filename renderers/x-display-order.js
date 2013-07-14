@@ -1,3 +1,23 @@
+// Display-order extension
+Jsonary.extendSchema({
+	displayOrder: function () {
+		return this.data.propertyValue("displayOrder");
+	}
+});
+Jsonary.extendSchemaList({
+	displayOrder: function () {
+		var displayOrder = null;
+		this.each(function (index, schema) {
+			var value = schema.displayOrder();
+			if (value != null && (displayOrder == null || value < displayOrder)) {
+				displayOrder = value;
+			}
+		});
+		return displayOrder;
+	}
+});
+
+
 // Display/edit objects, using displayOrder for ordering
 Jsonary.render.register({	
 	renderHtml: function (data, context) {
