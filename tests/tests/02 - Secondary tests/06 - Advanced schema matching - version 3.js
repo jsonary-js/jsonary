@@ -364,3 +364,80 @@ tests.add("\"not\" match (disallow)", function () {
 
 	return true;
 });
+
+tests.add("additionalProperties schema", function () {
+	var data = Jsonary.create({a:1, b:2});
+	var schema = Jsonary.createSchema({
+		properties: {
+			"a": {},
+			"b": {}
+		},
+		additionalProperties: {type: "number"}
+	});
+
+	var match = null;
+	var failReason = null;
+	var notificationCount = 0;
+	var schemaKey = Jsonary.getMonitorKey();
+	data.addSchemaMatchMonitor(schemaKey, schema, function (m, fr) {
+		notificationCount++;
+		match = m;
+		failReason = fr;
+	});
+
+	this.assert(match, "should match initially");
+	this.assert(notificationCount == 1, "notificationCount == 1, not " + notificationCount);
+
+	data.set('/c', 5.5);
+	this.assert(match, "should still match after stage 2");
+	this.assert(notificationCount == 1, "notificationCount still 1, not " + notificationCount);
+
+	data.set('/c', 'test string');
+	this.assert(!match, "should not match after stage 3");
+	this.assert(notificationCount == 2, "notificationCount == 2, not " + notificationCount);
+
+	data.removeProperty("c");
+	this.assert(match, "should match after stage 4");
+	this.assert(notificationCount == 3, "notificationCount == 3, not " + notificationCount);
+
+	return true;
+});
+
+
+tests.add("additionalProperties boolean", function () {
+	var data = Jsonary.create({a:1, b:2});
+	var schema = Jsonary.createSchema({
+		properties: {
+			"a": {},
+			"b": {}
+		},
+		additionalProperties: false
+	});
+
+	var match = null;
+	var failReason = null;
+	var notificationCount = 0;
+	var schemaKey = Jsonary.getMonitorKey();
+	data.addSchemaMatchMonitor(schemaKey, schema, function (m, fr) {
+		notificationCount++;
+		match = m;
+		failReason = fr;
+	});
+
+	this.assert(match, "should match initially");
+	this.assert(notificationCount == 1, "notificationCount == 1, not " + notificationCount);
+
+	data.set('/c', 5.5);
+	this.assert(!match, "should not match after stage 2");
+	this.assert(notificationCount == 2, "notificationCount == 2, not " + notificationCount);
+
+	data.set('/c', 'test string');
+	this.assert(!match, "should not match after stage 3");
+	this.assert(notificationCount == 2, "notificationCount still 2, not " + notificationCount);
+
+	data.removeProperty("c");
+	this.assert(match, "should match after stage 4");
+	this.assert(notificationCount == 3, "notificationCount == 3, not " + notificationCount);
+
+	return true;
+});

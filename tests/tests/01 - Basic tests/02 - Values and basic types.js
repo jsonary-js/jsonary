@@ -231,3 +231,39 @@ tests.add("document.set()", function () {
 	this.assert(document.get("/key/subKey") == "new value", "values do not match");
 	return true;
 });
+
+tests.add("properties() iterator", function () {
+	var data = Jsonary.create({a:1, b:2, c:3});
+	var counter = 0;
+	data.properties(function (key, subData) {
+		counter++;
+	});
+	return counter == 3;
+});
+
+tests.add("properties() iterator with prescribed keys", function () {
+	var data = Jsonary.create({a:1, b:2, c:3});
+	var result = [];
+	data.properties(["a", "b"], function (key, subData) {
+		result.push(subData.value());
+	});
+	data.properties(["b", "c"], function (key, subData) {
+		result.push(subData.value());
+	});
+	return result[0] == 1 && result[1] == 2 && result[2] == 2 && result[3] == 3;
+});
+
+tests.add("properties() iterator with prescribed keys and secondary callback", function () {
+	var data = Jsonary.create({a:1, b:2, c:3, d:10});
+	var result = [];
+	var additionalResult = [];
+	data.properties(["b", "c"], function (key, subData) {
+		result.push(subData.value());
+	}, function (otherKey, subData) {
+		additionalResult.push(subData.value());
+	});
+	data.properties([], false, function () {});
+	this.assert(result.length == 2, "result.length == 2");
+	this.assert(additionalResult.length == 2 && additionalResult[0] + additionalResult[1] == 11, "additionalResult");
+	return true;
+});

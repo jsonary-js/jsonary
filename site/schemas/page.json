@@ -1,0 +1,95 @@
+{
+	"title": "Website page",
+	"type": "object",
+	"properties": {
+		"title": {"type": "string"},
+		"blocks": {
+			"type": "array",
+			"items": {"$ref": "#/definitions/block"}
+		}
+	},
+	"required": ["title", "blocks"],
+	"definitions": {
+		"block": {
+			"title": "Block",
+			"type": "object",
+			"properties": {
+				"title": {"type": "string"},
+				"content": {
+					"type": "array",
+					"items": {"$ref": "#/definitions/item"}
+				}
+			},
+			"required": ["content"]
+		},
+		"item": {
+			"title": "Item",
+			"oneOf": [
+				{"$ref": "#/definitions/markdown"},
+				{"$ref": "#/definitions/section"},
+				{"$ref": "#/definitions/gist"},
+				{"$ref": "#/definitions/demo"},
+				{"$ref": "#/definitions/keyValue"}
+			]
+		},
+		"markdown": {
+			"title": "Markdown",
+			"type": "string",
+			"format": "markdown"
+		},
+		"section": {
+			"title": "Section",
+			"type": "object",
+			"properties": {
+				"title": {"type": "string"},
+				"content": {
+					"type": "array",
+					"items": {"$ref": "#/definitions/item"}
+				}
+			},
+			"required": ["title", "content"]
+		},
+		"gist": {
+			"title": "Gist",
+			"type": "object",
+			"properties": {
+				"gist": {"type": "string"}
+			},
+			"required": ["gist"]
+		},
+		"demo": {
+			"title": "Demo",
+			"type": "object",
+			"properties": {
+				"demoId": {"type": ["string", "number"]},
+				"initialText": {"type": "string"},
+				"run-button": {"type": "boolean", "default": "false"},
+				"javascript": {
+					"type": "string",
+					"media": {
+						"type": "application/javascript"
+					}
+				}
+			},
+			"required": ["demoId", "javascript"]
+		},
+		"keyValue": {
+			"title": "Key-Value",
+			"type": "object",
+			"properties": {
+				"keyValue": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"key": {"type": "string"},
+							"value": {"$ref": "#/definitions/item"}
+						},
+						"required": ["key", "value"]
+					}
+				}
+			},
+			"required": ["keyValue"]
+		}
+	}
+}

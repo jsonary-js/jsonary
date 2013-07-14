@@ -1,0 +1,40 @@
+{
+	"title": "Website",
+	"type": "object",
+	"properties": {
+		"title": {"type": "string"},
+		"tagLine": {
+			"type": "string",
+			"format": "markdown"
+		},
+		"blocks": {
+			"type": "array",
+			"items": {"$ref": "#/definitions/info-block"}
+		},
+		"pages": {
+			"type": "array",
+			"items": {"$ref": "#/definitions/page-link"}
+		}
+	},
+	"required": ["title", "blocks"],
+	"definitions": {
+		"info-block": {
+			"allOf": [{"$ref": "page.json#/definitions/block"}]
+		},
+		"page-link": {
+			"type": "object",
+			"properties": {
+				"title": {"type": "string"},
+				"id": {"type": "string"}
+			},
+			"required": ["title", "id"],
+			"additionalProperties": false,
+			"links": [
+				{
+					"rel": "full",
+					"href": "pages/{+id}"
+				}
+			]
+		}
+	}
+}

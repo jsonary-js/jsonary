@@ -172,8 +172,18 @@ publicApi.getData = function(params, callback, hintSchema) {
 	}
 	return request;
 };
+publicApi.isRequest = function (obj) {
+	return (obj instanceof Request) || (obj instanceof FragmentRequest);
+}
 
 var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
+
+function HttpError (code) {
+	this.httpCode = code;
+	this.message = "HTTP Status: " + code;
+}
+HttpError.prototype = new Error();
+publicApi.HttpError = HttpError;
 
 function Request(url, method, data, encType, hintSchema) {
 	url = Utils.resolveRelativeUri(url);
@@ -192,7 +202,7 @@ function Request(url, method, data, encType, hintSchema) {
 	Utils.log(Utils.logLevel.STANDARD, "Sending request for: " + url);
 	var thisRequest = this;
 	this.successful = undefined;
-	this.errorMessage = undefined;
+	this.error = null;
 	this.url = url;
 
 	var isDefinitive = (data == undefined) || (data == "");
@@ -229,7 +239,7 @@ Request.prototype = {
 		var thisRequest = this;
 		thisRequest.successful = true;
 		Utils.log(Utils.logLevel.STANDARD, "Request success: " + this.url);
-		var lines = headerText.split("\n");
+		var lines = headerText.replace(/\r\n/g, "\n").split("\n");
 		var headers = {};
 		var contentType = null;
 		var contentTypeParameters = {};
@@ -244,7 +254,14 @@ Request.prototype = {
 			}
 			// Some browsers have all parameters as lower-case, so we do this for compatability
 			//       (discovered using Dolphin Browser on an Android phone)
-			headers[keyName.toLowerCase()] = value;
+			keyName = keyName.toLowerCase();
+			if (headers[keyName] == undefined) {
+				headers[keyName] = value;
+			} else if (typeof headers[keyName] == "object") {
+				headers[keyName].push(value);
+			} else {
+				headers[keyName] = [headers[keyName], value];
+			}
 		}
 		Utils.log(Utils.logLevel.DEBUG, "headers: " + JSON.stringify(headers, null, 4));
 		var contentType = headers["content-type"].split(";")[0];
@@ -281,6 +298,34 @@ Request.prototype = {
 			};
 			thisRequest.document.raw.addLink(link);
 		}
+		
+		// Links
+		if (headers["link"]) {
+			var links = (typeof headers["link"] == "object") ? headers['link'] : [headers['link']];
+			for (var i = 0; i < links.length; i++) {
+				var link = links[i];
+				var parts = link.trim().split(";");
+				var url = parts.shift().trim();
+				url = url.substring(1, url.length - 1);
+				var linkObj = {
+					"href": url
+				};
+				for (var j = 0; j < parts.length; j++) {
+					var part = parts[j];
+					var key = part.substring(0, part.indexOf("="));
+					var value = part.substring(key.length + 1);
+					key = key.trim();
+					if (value.charAt(0) == '"') {
+						value = JSON.parse(value);
+					}
+					if (key == "type") {
+						key = "mediaType";
+					}
+					linkObj[key] = value;
+				}
+				thisRequest.document.raw.addLink(linkObj);
+			}
+		}
 
 		thisRequest.checkForFullResponse();
 		thisRequest.document.raw.whenSchemasStable(function () {
@@ -293,13 +338,14 @@ Request.prototype = {
 			}
 		});
 	},
-	ajaxError: function (message) {
+	ajaxError: function (error, data) {
 		this.fetched = true;
 		var thisRequest = this;
 		thisRequest.successful = false;
-		thisRequest.errorMessage = message;
-		Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + message + ")");
-		thisRequest.document.setRaw(undefined);
+		thisRequest.error = error;
+		Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + error.message + ")");
+		thisRequest.document.error = error;
+		thisRequest.document.setRaw(data);
 		thisRequest.document.raw.whenSchemasStable(function () {
 			thisRequest.checkForFullResponse();
 			thisRequest.document.setRoot("");
@@ -310,13 +356,17 @@ Request.prototype = {
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function () {
 			if (xhr.readyState == 4) {
-				if (xhr.status == 200) {
-					var data = xhr.responseText;
+				if (xhr.status >= 200 && xhr.status < 300) {
+					var data = xhr.responseText || null;
 					try {
 						data = JSON.parse(data);
 					} catch (e) {
-						thisRequest.ajaxError(e);
-						return;
+						if (xhr.status !=204) {
+							thisRequest.ajaxError(e, data);
+							return;
+						} else {
+							data = null;
+						}
 					}
 					var headers = xhr.getAllResponseHeaders();
 					if (headers == "") {	// Firefox bug  >_>
@@ -332,7 +382,12 @@ Request.prototype = {
 					}
 					thisRequest.ajaxSuccess(data, headers, hintSchema);
 				} else {
-					thisRequest.ajaxError("HTTP Status " + xhr.status);
+					var data = xhr.responseText || null;
+					try {
+						data = JSON.parse(data);
+					} catch (e) {
+					}
+					thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
 				}
 			}
 		};
@@ -347,8 +402,17 @@ Request.prototype = {
 			xhrUrl += xhrData;
 			xhrData = undefined;
 		}
+		if (publicApi.config.antiCacheUrls) {
+			var extra = "_=" + Math.random();
+			if (xhrUrl.indexOf("?") == -1) {
+				xhrUrl += "?" + extra;
+			} else {
+				xhrUrl += "&" + extra;
+			}
+		}
 		xhr.open(method, xhrUrl, true);
 		xhr.setRequestHeader("Content-Type", encType);
+		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
 		xhr.send(xhrData);
 	}
 };
@@ -380,7 +444,7 @@ function RequestFake(url, rawData, schemaUrl, cacheFunction, cacheKey) {
 		});
 	}
 	this.successful = true;
-	this.errorMessage = undefined;
+	this.error = null;
 
 	this.fetched = false;
 	this.invalidate = function() {

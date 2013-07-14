@@ -52,8 +52,8 @@ tests.add("asLink()", function() {
 });
 
 tests.add("Data-dependant link", function() {
-    var values = [null, 5, [], "test", {}];
-    var expectedLinks = [null, "prefix_5_suffix", null, "prefix_test_suffix", null];
+    var values = [undefined, 5, [], "test", {}, null, undefined];
+    var expectedLinks = [null, "prefix_5_suffix", "prefix__suffix", "prefix_test_suffix", "prefix__suffix", null, null];
     var schemas, links, link;
     var data = Jsonary.create(exampleData);
 
@@ -99,7 +99,7 @@ tests.add("Inferred schema", function() {
     schemas = data.schemas();
     links = data.links();
     this.assert(schemas.length == 2, "Once the schema_url property has been set, there should be two schemas");    
-    this.assert(links.length == 2, "There should be two links after the schema_url property has been set");
+    this.assert(links.length == 2, "There should be two links after the schema_url property has been set, not " + links.length);
 
     data.removeProperty("schema_url");
     schemas = data.schemas();
@@ -122,3 +122,52 @@ tests.add("Inferred schema", function() {
     return true;
 });
 
+tests.add("Self links", function () {
+	var schema = Jsonary.createSchema({
+		additionalProperties: {"$ref": "#"},
+		items: {"$ref": "#"},
+		links: [
+			{
+				"rel": "self",
+				"href": "{+self}"
+			},
+			{
+				"rel": "other",
+				"href": "{+other}"
+			}
+		]
+	});
+	var data = Jsonary.create({
+		other: "test1",
+		subData: {
+			"self": "test2/",
+			"other": "test3"
+		}
+	}).addSchema(schema);
+	
+	this.assert(data.links().length == 1, "One link for root item");
+	this.assert(data.links()[0].rel == "other", "One link for root item: other");
+	this.assert(data.links()[0].href == "test1", "One link for root item: test1");
+
+	var subData = data.property("subData");
+	this.assert(subData.links().length == 2, "One link for subData item");
+	this.assert(subData.links("self")[0].href == "test2/", "test2/");
+	this.assert(subData.links("other")[0].href == "test2/test3", "test2/test3");
+	
+	data.property("self").setValue("prefix/");
+	this.assert(data.links("other")[0].href == "prefix/test1", "prefix/test1");
+	this.assert(subData.links("self")[0].href == "prefix/test2/", "prefix/test2/");
+	this.assert(subData.links("other")[0].href == "prefix/test2/test3", "prefix/test2/test3");
+
+	data.property("self").setValue("prefix2/");
+	this.assert(data.links("other")[0].href == "prefix2/test1", "prefix2/test1");
+	this.assert(subData.links("self")[0].href == "prefix2/test2/", "prefix2/test2/");
+	this.assert(subData.links("other")[0].href == "prefix2/test2/test3", "prefix2/test2/test3");
+	
+	data.property("self").remove();
+	this.assert(data.links()[0].href == "test1", "returns to: test1");
+	this.assert(subData.links("self")[0].href == "test2/", "returns to: test2/");
+	this.assert(subData.links("other")[0].href == "test2/test3", "returns to: test2/test3");
+	
+	return true;
+});

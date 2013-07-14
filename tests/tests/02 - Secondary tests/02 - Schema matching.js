@@ -243,10 +243,13 @@ tests.add("Basic type sub-data change", function () {
 	this.assert(i == 5, "we should have had exactly 5 notifications by now, not " + i);
 
 	data.index(1).setValue(dataString); // 6
-	var prevCount = i;  // status hasn't changed, but fail reason might have (not guaranteed), so we may or may not get a notification
+	if (i == 5) {
+		i = 6;
+	}
+	this.assert(i == 6, "we should have had 5 or 6 notifications by now, not " + i);
 
 	data.removeIndex(0); // 7
-	this.assert(i == prevCount + 1, "we should have had exactly one notification when we remove index 0, as the new value slides into place");
+	this.assert(i == 7, "we should have had a notification when we remove index 0, as the new value slides into place");
 
 	setTimeout(function () {
 		thisTest.fail("timeout");

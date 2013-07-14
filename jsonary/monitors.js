@@ -81,6 +81,8 @@ ListenerSet.prototype = {
 	}
 };
 
+// DelayedCallbacks is used for notifications that might be external to the library
+// The callbacks are still executed synchronously - however, they are not executed while the system is in a transitional state.
 var DelayedCallbacks = {
 	depth: 0,
 	callbacks: [],
@@ -94,14 +96,14 @@ var DelayedCallbacks = {
 		}
 		while (this.depth == 0 && this.callbacks.length > 0) {
 			var callback = this.callbacks.shift();
+			this.depth++;
 			callback();
+			this.depth--
 		}
 	},
 	add: function (callback) {
-		if (this.depth == 0) {
-			callback();
-		} else {
-			this.callbacks.push(callback);
-		}
+		this.depth++;
+		this.callbacks.push(callback);
+		this.decrement();
 	}
 };

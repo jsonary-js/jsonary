@@ -27,9 +27,11 @@ publicApi.batchDone = function () {
 };
 
 function Document(url, isDefinitive, readOnly) {
+	var thisDocument = this;
 	this.readOnly = !!readOnly;
+	this.isDefinitive = !!isDefinitive;
 	this.url = url;
-	this.isDefinitive = isDefinitive;
+	this.error = null;
 
 	var rootPath = null;
 	var rawSecrets = {};
@@ -40,9 +42,28 @@ function Document(url, isDefinitive, readOnly) {
 	this.registerChangeListener = function (listener) {
 		documentChangeListeners.push(listener);
 	};
+	
+	function notifyChangeListeners(patch) {
+		DelayedCallbacks.increment();
+		var listeners = changeListeners.concat(documentChangeListeners);
+		DelayedCallbacks.add(function () {
+			for (var i = 0; i < listeners.length; i++) {
+				listeners[i].call(thisDocument, patch, thisDocument);
+			}
+		});
+		DelayedCallbacks.decrement();
+	}
 
 	this.setRaw = function (value) {
+		var needsFakePatch = this.raw.defined();
 		rawSecrets.setValue(value);
+		// It's an update to a read-only document
+		if (needsFakePatch) {
+			rawSecrets.setValue(value);
+			var patch = new Patch();
+			patch.replace(this.raw.pointerPath(), value);
+			notifyChangeListeners(patch);
+		}
 	};
 	var rootListeners = new ListenerSet(this);
 	this.getRoot = function (callback) {
@@ -58,7 +79,6 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
-		var thisDocument = this;
 		if (this.readOnly) {
 			throw new Error("Cannot update read-only document");
 		}
@@ -71,16 +91,11 @@ function Document(url, isDefinitive, readOnly) {
 			return;
 		}
 		DelayedCallbacks.increment();
-		var listeners = changeListeners.concat(documentChangeListeners);
-		DelayedCallbacks.add(function () {
-			for (var i = 0; i < listeners.length; i++) {
-				listeners[i].call(thisDocument, patch, thisDocument);
-			}
-		});
 		var rawPatch = patch.filter("?");
 		var rootPatch = patch.filterRemainder("?");
 		this.raw.patch(rawPatch);
 		this.root.patch(rootPatch);
+		notifyChangeListeners(patch);
 		DelayedCallbacks.decrement();
 	};
 	this.affectedData = function (operation) {
@@ -113,6 +128,7 @@ function Document(url, isDefinitive, readOnly) {
 		return result;
 	}
 }
+
 Document.prototype = {
 	resolveUrl: function (url) {
 		return Uri.resolve(this.url, url);
@@ -151,8 +167,14 @@ var uniqueIdCounter = 0;
 function Data(document, secrets, parent, parentKey) {
 	this.uniqueId = uniqueIdCounter++;
 	this.document = document;
-	this.readOnly = function () {
-		return document.readOnly;
+	this.readOnly = function (includeSchemas) {
+		if (includeSchemas || includeSchemas === undefined) {
+			return document.readOnly
+				|| this.schemas().readOnly()
+				|| (parent != undefined && parent.readOnly(true));
+		} else {
+			return document.readOnly;
+		}
 	};
 	
 	var value = undefined;
@@ -500,8 +522,8 @@ function Data(document, secrets, parent, parentKey) {
 		secrets.schemas.removeSchema(schemaKey);
 		return this;
 	};
-	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately) {
-		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately);
+	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately, impatientCallbacks);
 	};
 }
 Data.prototype = {
@@ -650,7 +672,7 @@ Data.prototype = {
 		}
 	},
 	readOnlyCopy: function () {
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			return this;
 		}
 		var copy = publicApi.create(this.value(), this.document.url + "#:copy", true);
@@ -669,7 +691,7 @@ Data.prototype = {
 	},
 	asSchema: function () {
 		var schema = new Schema(this.readOnlyCopy());
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			cacheResult(this, {asSchema: schema});
 		}
 		return schema;
@@ -683,7 +705,7 @@ Data.prototype = {
 		} else {
 			result = linkDefinition.linkForData(targetData);
 		}
-		if (this.readOnly()) {
+		if (this.readOnly(false)) {
 			cacheResult(this, {asLink: result});
 		}
 		return result;
@@ -695,11 +717,29 @@ Data.prototype = {
 		}
 		return this;
 	},
-	properties: function (callback) {
-		var keys = this.keys();
-		for (var i = 0; i < keys.length; i++) {
-			var subData = this.property(keys[i]);
-			callback.call(subData, keys[i], subData);
+	properties: function (keys, callback, additionalCallback) {
+		var dataKeys;
+		if (typeof keys == 'function') {
+			callback = keys;
+			keys = this.keys();
+		}
+		if (callback) {
+			for (var i = 0; i < keys.length; i++) {
+				var subData = this.property(keys[i]);
+				callback.call(subData, keys[i], subData);
+			}
+		}
+		if (additionalCallback) {
+			if (typeof additionalCallback != 'function') {
+				additionalCallback = callback;
+			}
+			var dataKeys = this.keys();
+			for (var i = 0; i < dataKeys.length; i++) {
+				if (keys.indexOf(dataKeys[i]) == -1) {
+					var subData = this.property(dataKeys[i]);
+					additionalCallback.call(subData, dataKeys[i], subData);
+				}
+			}
 		}
 		return this;
 	},
@@ -742,7 +782,8 @@ publicApi.extendData = function (obj) {
 
 
 publicApi.create = function (rawData, baseUrl, readOnly) {
-	var definitive = baseUrl != undefined;
+	var rawData = (typeof rawData == "object") ? JSON.parse(JSON.stringify(rawData)) : rawData; // Hacky recursive copy
+	var definitive = baseUrl != undefined && readOnly;
 	if (baseUrl != undefined && baseUrl.indexOf("#") != -1) {
 		var remainder = baseUrl.substring(baseUrl.indexOf("#") + 1);
 		if (remainder != "") {
@@ -755,4 +796,35 @@ publicApi.create = function (rawData, baseUrl, readOnly) {
 	document.setRoot("");
 	return document.root;
 };
+publicApi.isData = function (obj) {
+	return obj instanceof Data;
+};
 
+Data.prototype.deflate = function () {
+	var schemas = [];
+	this.schemas().each(function (index, schema) {
+		if (schema.referenceUrl() != undefined) {
+			schemas.push(schema.referenceUrl());
+		} else {
+			schemas.push(schema.data.deflate());
+		}
+	});
+	var result = {
+		baseUrl: this.document.url,
+		readOnly: this.document.readOnly,
+		value: this.value(),
+		schemas: schemas
+	}
+	return result;
+}
+publicApi.inflate = function (deflated) {
+	var data = publicApi.create(deflated.value, deflated.baseUrl, deflated.readOnly);
+	for (var i = 0; i < deflated.schemas.length; i++) {
+		var schema = deflated.schemas[i];
+		if (typeof schema == "object") {
+			var schema = publicApi.inflate(schema).asSchema();
+		}
+		data.addSchema(schema);
+	}
+	return data;
+}

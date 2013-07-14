@@ -1,0 +1,238 @@
+<?js
+function renderItem(item, blockLevel) {
+	blockLevel = blockLevel || 0;
+	if (typeof item == "string") {
+		return renderMarkdown(item, blockLevel == 0);
+	} else if (item.content) {
+		return renderBlock(item, blockLevel);
+	} else if (item.keyValue) {
+		return renderKeyValue(item, blockLevel);
+	} else if (item.gist) {
+		return renderGist(item, blockLevel);
+	} else if (item.demoId) {
+		return renderDemo(item, blockLevel);
+	}
+}
+
+function renderMarkdown(markdownText, stripSingleParagraph) {
+	var html = markdown.toHTML(markdownText);
+	if (stripSingleParagraph) {
+		var paragraphCount = html.match(/<p>/g).length;
+		if (paragraphCount == 1) {
+			html = html.replace("<p>", "").replace("</p>", "");
+		}
+	}
+	return html;
+}
+
+function renderBlock(block, blockLevel) {
+	blockLevel = blockLevel || 0;
+	var result = "";
+	var needsClose = true;
+	if (blockLevel == "info") {
+		result += '<div class="info-block">';
+	} else if (blockLevel == 0) {
+		result += '<div class="content-block">';
+	} else {
+		needsClose = false;
+	}
+	
+	if (block.title) {
+		var hLevel = "h" + (blockLevel + 3);
+		result += '<' + hLevel + '>' + ent.encode(block.title) + '</' + hLevel + '>';
+	}
+	
+	for (var i = 0; i < block.content.length; i++) {
+		var item = block.content[i];
+		result += renderItem(item, blockLevel + 1);
+	}
+	
+	if (needsClose) {
+		result += '</div>';
+	}
+	return result;
+}
+
+function renderKeyValue(item) {
+	var result = '<table class="key-value">';
+	for (var i = 0; i < item.keyValue.length; i++) {
+		var row = item.keyValue[i];
+		result += '<tr>';
+		result += '<td class="key">' + ent.encode(row.key) + '</td>';
+		result += '<td class="value">' + renderItem(row.value) + '</td>';
+		result += '</tr>';
+	}
+	result += '</table>';
+	return result;
+}
+
+function renderGist(item) {
+	var elementId = "gist-container-" + Math.random();
+	var result = '<div id="' + elementId + '">';
+	result += '<p><a href="https://gist.github.com/' + ent.encode(item.gist) + '">view as Gist</a>';
+	result += '</div>';
+	result += '<script src="js/onload.js">loadGist(document.getElementById("' + elementId + '"), ' + JSON.stringify(item.gist) + ');</script>';
+	return result;
+}
+
+function renderDemo(item) {
+	var result = "";
+	var elementId = item.demoId + "-" + Math.random();
+	var jsCode = item.javascript.replace(item.demoId, elementId);
+	result += '<div id="' + ent.encode(elementId) + '" class="example">';
+	if (item.initialText) {
+		result += ent.encode(item.initialText);
+	}
+	result += '</div>';
+	result += '<script src="js/onload.js">' + jsCode + '</script>';
+	return result;
+}
+
+?>
+<?js
+
+var fs = require('fs');
+var markdown = require('markdown').markdown;
+
+var SITE_DIR = "site-data/";
+var PAGES_DIR = SITE_DIR + "pages/";
+var siteUrl = "/json/";
+
+var pageId = request.query.page || "index";
+pageId = pageId.replace(/\.\.\//g, "");
+var pageFile = PAGES_DIR + pageId + ".json";
+var pageUrl = "/json/?page=" + encodeURIComponent(pageId);
+
+// We're asynchronously loading some files
+shard.wait();
+
+fs.readFile(SITE_DIR + "site.json", {encoding:'utf8'}, function (error, jsonText) {
+	if (error) {
+		return shard.done(error);
+	}
+	var siteData = JSON.parse(jsonText);
+	fs.readFile(pageFile, {encoding:'utf8'}, function (error, jsonText) {
+		if (error) {
+			if (error.code != 'ENOENT') {
+				return shard.done(error);
+			}
+			jsonText = JSON.stringify({
+				title: "Page not found: " + pageId,
+				blocks: []
+			});
+		}
+		var pageData = JSON.parse(jsonText);
+		renderPage(siteData, pageData);
+		shard.done();
+	});
+});
+
+function renderPage(siteData, pageData) {
+?>
+<html>
+	<head>
+		<title><?js=siteData.title?> - <?js=pageData.title?></title>
+		<script src="js/css3-mediaqueries.js"></script>
+		<link rel="stylesheet" href="css/main/main.css" />
+		<meta name="viewport" content="width=480,initial-scale=1">
+
+		<script src="js/gist-async.js"></script>
+		
+		<script src="jsonary.js"></script>
+		<script src="renderers/plain.jsonary.js"></script>
+		<script src="renderers/list-links.js"></script>
+		<!--<script src="renderers/list-schemas.js"></script>-->
+		<link rel="stylesheet"  href="renderers/plain.jsonary.css"></link>
+		<link rel="stylesheet"  href="renderers/common.css"></link>
+
+		<script src="plugins/jsonary.undo.js"></script>
+		<script src="plugins/jsonary.jstl.js"></script>
+		<script>
+			var SITE_ROOT = "";
+		</script>
+	</head>
+	<body>
+		<div id="top-fade"></div>
+		<div id="page">
+			<div id="header">
+				<a href=".">
+					<h1 id="page-title">
+						<span id="logo-container">&nbsp;<img id="logo" src="images/Jsonary-glow.png"></span>
+						<?js=siteData.title?>
+					</h1>
+				</a>
+				<div id="get-started-block">
+					<?js*renderItem(siteData.tagLine)?>
+				</div>
+			</div>
+		
+			<div id="info">
+				<div class="navigation">
+					<h3>Navigation</h3>
+					<ul>
+						<?js
+							for (var i = 0; i < siteData.pages.length; i++) {
+								var page = siteData.pages[i];
+								if (page.id == pageId) { ?>
+									<li class="current"><?js=page.title?></li>
+								<?js } else { ?>
+									<li><a href="?page=<?js%page.id?>"><?js=page.title?></a>
+								<?js }
+							}
+						?>
+					</ul>
+				</div>
+				<?js
+					for (var i = 0; i < siteData.blocks.length; i++) {
+						renderBlock(siteData.blocks[i]);
+					}
+				?>
+			</div>
+			
+			<div id="content">
+				<h2><?js=pageData.title?></h2>
+				<?js
+					for (var i = 0; i < pageData.blocks.length; i++) {
+						var block = pageData.blocks[i];
+						echo(renderBlock(block));
+					}
+				?>
+			</div>
+		</div>
+		
+		<script src="/renderers/markdown.js"></script>
+		<script src="/renderers/site.js"></script>
+		<script>
+			var siteUrl = <?js:siteUrl?>;
+			var pageId = <?js:pageId?>;
+			// Pre-load schemas to minimise flicker
+			
+			var initialState = {page:pageId};
+			if (window.location.hash.substring(0, 2) == "#?") {
+				var initialState = Jsonary.decodeData(window.location.hash.substring(2));
+			}
+			Jsonary.getSchema('/json/schemas/site.json', function () {
+				Jsonary.getSchema('/json/schemas/page.json', function () {
+					Jsonary.render(document.getElementById("page"), siteUrl, initialState, contextCallback);
+					
+					function contextCallback(pageContext) {
+						window.pageContext = pageContext;
+
+						console.log(JSON.stringify(pageContext.saveState(), null, 4));
+						setInterval(function () {
+							var stateQuery = Jsonary.encodeData(pageContext.saveState());
+							if (window.location.hash != "#?" + stateQuery) {
+								window.location.replace("#?" + stateQuery);
+							}
+						}, 100);
+					}
+					
+				});
+			});
+//			Jsonary.render(document.getElementById("content"), pageUrl);
+		</script>
+	</body>
+</html>
+<?js
+}
+?>

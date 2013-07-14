@@ -1,9 +1,0 @@
-{
-	"title": "Example schema",
-	"type": "object",
-	"properties": {
-		"title": {"type": "string"},
-		"message": {"type": "string"}
-	},
-	"required": ["title", "message"]
-}

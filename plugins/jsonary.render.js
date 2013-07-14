@@ -1,17 +1,17 @@
 (function (global) {
-	function encodeUiState (uiState) {
-		var json = JSON.stringify(uiState);
-		if (json == "{}") {
-			return null;
-		}
-		return json;
+	function copyValue(value) {
+		return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
 	}
-	function decodeUiState (uiStateString) {
-		if (uiStateString == "" || uiStateString == null) {
-			return {};
+	var randomChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	function randomId(length) {
+		length = length || 10;
+		var result = "";
+		while (result.length < length) {
+			result += randomChars.charAt(Math.floor(Math.random()*randomChars.length));
 		}
-		return JSON.parse(uiStateString);
+		return result;
 	}
+
 	function htmlEscapeSingleQuote (str) {
 		return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
 	}
@@ -62,25 +62,34 @@
 				}
 			});
 		});
-		Jsonary.registerSchemaChangeListener(function (data, schemas) {
-			var uniqueId = data.uniqueId;
-			var elementIds = thisContext.elementLookup[uniqueId];
-			if (elementIds == undefined || elementIds.length == 0) {
-				return;
-			}
-			var elementIds = elementIds.slice(0);
-			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
-				if (element == undefined) {
-					continue;
+		Jsonary.registerSchemaChangeListener(function (dataObjects) {
+			var elementIdLookup = {};
+			for (var i = 0; i < dataObjects.length; i++) {
+				var data = dataObjects[i];
+				var uniqueId = data.uniqueId;
+				var elementIds = thisContext.elementLookup[uniqueId];
+				if (elementIds == undefined || elementIds.length == 0) {
+					return;
 				}
-				var prevContext = element.jsonaryContext;
-				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
-				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
-				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
-					renderer.render(element, data, prevContext);
-				} else {
-					prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+				elementIdLookup[uniqueId] = elementIds.slice(0);
+			}
+			for (var j = 0; j < dataObjects.length; j++) {
+				var data = dataObjects[j];
+				var uniqueId = data.uniqueId;
+				var elementIds = elementIdLookup[uniqueId];
+				for (var i = 0; i < elementIds.length; i++) {
+					var element = document.getElementById(elementIds[i]);
+					if (element == undefined) {
+						continue;
+					}
+					var prevContext = element.jsonaryContext;
+					var prevUiState = copyValue(this.uiStartingState);
+					var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+					if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+						renderer.render(element, data, prevContext);
+					} else {
+						prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+					}
 				}
 			}
 		});
@@ -92,16 +101,81 @@
 		usedComponents: [],
 		rootContext: null,
 		baseContext: null,
-		subContext: function (label, uiState) {
-			if (uiState == undefined) {
-				uiState = {};
+		labelForData: function (data) {
+			if (this.data && data.document.isDefinitive) {
+				var selfLink = data.getLink('self');
+				var dataUrl = selfLink ? selfLink.href : data.referenceUrl();
+				if (dataUrl) {
+					var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
+					var truncate = 0;
+					while (dataUrl.substring(0, baseUrl.length - truncate) != baseUrl.substring(0, baseUrl.length - truncate)) {
+						truncate++;
+					}
+					var remainder = dataUrl.substring(baseUrl.length - truncate);
+					if (truncate) {
+						return truncate + "!" + remainder;
+					} else {
+						return "!" + remainder;
+					}
+				}
 			}
-			return this.getSubContext(this.elementId, this.data, label, uiState);
+			return "!" + data.uniqueId;
+		},
+		subContext: function (label, uiState, clearComponents) {
+			// TODO: for read-only ones, use some kind of relative path - perhaps move to getSubContext
+ 			if (Jsonary.isData(label)) {
+				label = this.labelForData(label);
+			}
+			uiState = uiState || {};
+			var subContext = this.getSubContext(false, this.data, label, uiState);
+			subContext.renderer = this.renderer;
+			subContext.parent = this;
+			if (!subContext.uiState) {
+				subContext.loadState(subContext.uiStartingState);
+			}
+			return subContext;
+		},
+		subContextSavedStates: {},
+		saveState: function () {
+			var subStates = {};
+			for (var key in this.subContexts) {
+				subStates[key] = this.subContexts[key].saveState();
+			}
+			for (var key in this.oldSubContexts) {
+				subStates[key] = this.oldSubContexts[key].saveState();
+			}
+			
+			var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
+			return saveStateFunction.call(this.renderer, this.uiState, subStates, this.data);
+		},
+		loadState: function (savedState) {
+			var loadStateFunction = this.renderer ? this.renderer.loadState : Renderer.prototype.loadState;
+			var result = loadStateFunction.call(this.renderer, savedState);
+			this.uiState = result[0];
+			this.subContextSavedStates = result[1];
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
-			var labelKey = data.uniqueId + ":" + label;
+			if (typeof label == "object" && label != null) {
+				throw new Error('Label cannot be an object');
+			}
+			if (label || label === "") {
+				var labelKey = label;
+			} else {
+				var labelKey = this.labelForData(data);
+			}
 			if (this.oldSubContexts[labelKey] != undefined) {
 				this.subContexts[labelKey] = this.oldSubContexts[labelKey];
+			}
+			if (this.subContexts[labelKey] != undefined) {
+				if (this.subContexts[labelKey].data != data) {
+					delete this.subContexts[labelKey];
+					delete this.oldSubContexts[labelKey];
+					delete this.subContextSavedStates[labelKey];
+				}
+			}
+			if (this.subContextSavedStates[labelKey]) {
+				uiStartingState = this.subContextSavedStates[labelKey];
+				delete this.subContextSavedStates[labelKey];
 			}
 			if (this.subContexts[labelKey] == undefined) {
 				var usedComponents = [];
@@ -119,7 +193,7 @@
 					this.baseContext = baseContext;
 					this.label = label;
 					this.data = data;
-					this.uiState = uiState;
+					this.uiStartingState = copyValue(uiState || {});
 					this.usedComponents = usedComponents;
 					this.subContexts = {};
 					this.oldSubContexts = {};
@@ -136,14 +210,19 @@
 			this.subContexts = {};
 		},
 		rerender: function () {
+			if (this.parent && !this.elementId) {
+				return this.parent.rerender();
+			}
 			var element = document.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
+				this.clearOldSubContexts();
 			}
 		},
-		render: function (element, data, label, uiStartingState) {
-			if (label == undefined) {
-				label = "";
+		render: function (element, data, label, uiStartingState, contextCallback) {
+			if (uiStartingState == undefined && typeof label == "object") {
+				uiStartingState = label;
+				label = null;
 			}
 			// If data is a URL, then fetch it and call back
 			if (typeof data == "string") {
@@ -151,10 +230,11 @@
 			}
 			if (data.getData != undefined) {
 				var thisContext = this;
+				element.innerHTML = '<div class="loading"></div>';
 				data.getData(function (actualData) {
-					thisContext.render(element, actualData, label, uiStartingState);
+					thisContext.render(element, actualData, label, uiStartingState, contextCallback);
 				});
-				return;
+				return null;
 			}
 
 			if (typeof uiStartingState != "object") {
@@ -166,12 +246,6 @@
 
 			var previousContext = element.jsonaryContext;
 			var subContext = this.getSubContext(element.id, data, label, uiStartingState);
-			var encodedState = encodeUiState(uiStartingState);
-			if (encodedState != null) {
-				element.setAttribute("data-jsonary", encodedState);
-			} else {
-				element.removeAttribute("data-jsonary");
-			}
 			element.jsonaryContext = subContext;
 
 			if (previousContext) {
@@ -192,15 +266,23 @@
 			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
 			if (renderer != undefined) {
 				subContext.renderer = renderer;
+				if (subContext.uiState == undefined) {
+					subContext.loadState(subContext.uiStartingState);
+				}
 				renderer.render(element, data, subContext);
 				subContext.clearOldSubContexts();
 			} else {
 				element.innerHTML = "NO RENDERER FOUND";
 			}
+			if (contextCallback) {
+				contextCallback(subContext);
+			}
+			return subContext;
 		},
 		renderHtml: function (data, label, uiStartingState) {
-			if (label == undefined) {
-				label = "";
+			if (uiStartingState == undefined && typeof label == "object") {
+				uiStartingState = label;
+				label = null;
 			}
 			var elementId = this.getElementId();
 			if (typeof data == "string") {
@@ -214,23 +296,33 @@
 						rendered = true;
 						data = actualData;
 					} else {
-						thisContext.render(document.getElementById(elementId), actualData, label, uiStartingState);
+						var element = document.getElementById(elementId);
+						if (element) {
+							thisContext.render(element, actualData, label, uiStartingState);
+						} else {
+							Jsonary.log(Jsonary.logLevel.WARNING, "Attempted delayed render to non-existent element: " + elementId);
+						}
 					}
 				});
 				if (!rendered) {
 					rendered = true;
-					return '<span id="' + elementId + '">Loading...</span>';
+					return '<span id="' + elementId + '"><div class="loading"></div></span>';
 				}
 			}
-
+			
+			if (uiStartingState === true) {
+				uiStartingState = this.uiStartingState;
+			}
 			if (typeof uiStartingState != "object") {
 				uiStartingState = {};
 			}
 			var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 
-			var startingStateString = encodeUiState(uiStartingState);
 			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
 			subContext.renderer = renderer;
+			if (subContext.uiState == undefined) {
+				subContext.loadState(subContext.uiStartingState);
+			}
 			
 			var innerHtml = renderer.renderHtml(data, subContext);
 			subContext.clearOldSubContexts();
@@ -242,11 +334,7 @@
 				this.elementLookup[uniqueId].push(elementId);
 			}
 			this.addEnhancement(elementId, subContext);
-			if (startingStateString != null) {
-				return '<span id="' + elementId + '" data-jsonary=\'' + htmlEscapeSingleQuote(startingStateString) + '\'>' + innerHtml + '</span>';
-			} else {
-				return '<span id="' + elementId + '">' + innerHtml + '</span>';
-			}
+			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		update: function (data, operation) {
 			var uniqueId = data.uniqueId;
@@ -260,8 +348,10 @@
 				if (element == undefined) {
 					continue;
 				}
-				var prevContext = element.jsonaryContext;
-				var prevUiState = decodeUiState(element.getAttribute("data-jsonary"));
+				// If the element doesn't have a context, but update is being called, then it's probably (inadvisedly) trying to change something during its initial render.
+				// If so, check the enhancement contexts.
+				var prevContext = element.jsonaryContext || this.enhancementContexts[elementIds[i]];
+				var prevUiState = copyValue(this.uiStartingState);
 				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
@@ -271,17 +361,33 @@
 			}
 		},
 		actionHtml: function(innerHtml, actionName) {
+			var startingIndex = 2;
+			var historyChange = false;
+			var linkUrl = "javascript:void(0)";
+			if (typeof actionName == "boolean") {
+				historyChange = arguments[1];
+				linkUrl = arguments[2] || linkUrl;
+				actionName = arguments[3];
+				startingIndex += 2;
+			}
 			var params = [];
-			for (var i = 2; i < arguments.length; i++) {
+			for (var i = startingIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
 			var elementId = this.getElementId();
-			this.addEnhancementAction(elementId, actionName, this, params);
-			return '<a href="javascript:void(0)" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
+			this.addEnhancementAction(elementId, actionName, this, params, historyChange);
+			return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
 		},
 		inputNameForAction: function (actionName) {
+			var historyChange = false;
+			var startIndex = 1;
+			if (typeof actionName == "boolean") {
+				historyChange = actionName;
+				actionName = arguments[1];
+				startIndex++;
+			}
 			var params = [];
-			for (var i = 1; i < arguments.length; i++) {
+			for (var i = startIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
 			var name = this.getElementId();
@@ -289,35 +395,42 @@
 				inputName: name,
 				actionName: actionName,
 				context: this,
-				params: params
+				params: params,
+				historyChange: historyChange
 			};
 			return name;
 		},
 		addEnhancement: function(elementId, context) {
 			this.enhancementContexts[elementId] = context;
 		},
-		addEnhancementAction: function (elementId, actionName, context, params) {
+		addEnhancementAction: function (elementId, actionName, context, params, historyChange) {
 			if (params == null) {
 				params = [];
 			}
 			this.enhancementActions[elementId] = {
 				actionName: actionName,
 				context: context,
-				params: params
+				params: params,
+				historyChange: historyChange
 			};
 		},
 		enhanceElement: function (element) {
 			var rootElement = element;
+			// Perform post-order depth-first walk of tree, calling enhanceElementSingle() on each element
+			// Post-order reduces orphaned enhancements by enhancing all children before the parent
 			while (element) {
-				if (element.nodeType == 1) {
-					this.enhanceElementSingle(element);
-				}
 				if (element.firstChild) {
 					element = element.firstChild;
 					continue;
 				}
 				while (!element.nextSibling && element != rootElement) {
+					if (element.nodeType == 1) {
+						this.enhanceElementSingle(element);
+					}
 					element = element.parentNode;
+				}
+				if (element.nodeType == 1) {
+					this.enhanceElementSingle(element);
 				}
 				if (element == rootElement) {
 					break;
@@ -345,9 +458,9 @@
 					var args = [actionContext, action.actionName].concat(action.params);
 					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
 						// Action returned positive - we should force a re-render
-						var element = document.getElementById(redrawElementId);
-						actionContext.renderer.render(element, actionContext.data, actionContext);
+						actionContext.rerender();
 					}
+					notifyActionHandlers(actionContext.data, actionContext, action.actionName, action.historyChange);
 					return false;
 				};
 			}
@@ -372,25 +485,78 @@
 					var inputContext = inputAction.context;
 					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
 					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
-						// Action returned positive - we should force a re-render
-						var element = document.getElementById(redrawElementId);
-						inputContext.renderer.render(element, inputContext.data, inputContext);
+						inputContext.rerender();
 					}
+					notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
 				};
 			}
 			element = null;
 		}
 	};
 	var pageContext = new RenderContext();
+	
+	function cleanup() {
+		// Clean-up sweep of pageContext's element lookup
+		var keysToRemove = [];
+		for (var key in pageContext.elementLookup) {
+			var elementIds = pageContext.elementLookup[key];
+			var found = false;
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
+				if (element) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				keysToRemove.push(key);
+			}
+		}
+		for (var i = 0; i < keysToRemove.length; i++) {
+			delete pageContext.elementLookup[keysToRemove[i]];
+		}
+		for (var key in pageContext.enhancementContexts) {
+			if (pageContext.enhancementContexts[key]) {
+				var context = pageContext.enhancementContexts[key];
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned context for element: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementContexts[key] = null;
+			}
+		}
+		for (var key in pageContext.enhancementActions) {
+			if (pageContext.enhancementActions[key]) {
+				var context = pageContext.enhancementActions[key].context;
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for element: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementActions[key] = null;
+			}
+		}
+		for (var key in pageContext.enhancementInputs) {
+			if (pageContext.enhancementInputs[key]) {
+				var context = pageContext.enhancementInputs[key].context;
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for input: ' + JSON.stringify(key)
+					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\ndata: ' + context.data.json());
+				pageContext.enhancementInputs[key] = null;
+			}
+		}
+	}
+	setInterval(cleanup, 30000); // Every 30 seconds
+	Jsonary.cleanup = cleanup;
 
-	function render(element, data, uiStartingState) {
-		pageContext.render(element, data, null, uiStartingState);
+	function render(element, data, uiStartingState, contextCallback) {
+		var innerElement = document.createElement('span');
+		element.innerHTML = "";
+		element.appendChild(innerElement);
+		var context = pageContext.render(innerElement, data, null, uiStartingState, contextCallback);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
-		return this;
+		return context;
 	}
-	function renderHtml(data, uiStartingState) {
-		var result = pageContext.renderHtml(data, null, uiStartingState);
+	function renderHtml(data, uiStartingState, contextCallback) {
+		var result = pageContext.renderHtml(data, null, uiStartingState, contextCallback);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return result;
@@ -427,11 +593,33 @@
 		if (typeof this.component == "string") {
 			this.component = [this.component];
 		}
+		if (sourceObj.saveState) {
+			this.saveState = sourceObj.saveState;
+		}
+		if (sourceObj.loadState) {
+			this.loadState = sourceObj.loadState;
+		}
 	}
 	Renderer.prototype = {
+		updateAll: function () {
+			var elementIds = [];
+			for (var uniqueId in pageContext.elementLookup) {
+				elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
+			}
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
+				if (element == undefined) {
+					continue;
+				}
+				var context = element.jsonaryContext;
+				if (context.renderer.uniqueId = this.uniqueId) {
+					context.rerender();
+				}
+			}
+		},
 		render: function (element, data, context) {
 			if (element == null) {
-				Jsonary.log(Jsonary.logLevel.ERROR, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);
+				Jsonary.log(Jsonary.logLevel.WARNING, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);
 				return this;
 			}
 			if (element[0] != undefined) {
@@ -470,8 +658,9 @@
 			}
 			return this;
 		},
-		action: function (context, actionName, data) {
-			return this.actionFunction.apply(this, arguments);
+		action: function (context, actionName) {
+			var result = this.actionFunction.apply(this, arguments);
+			return result;
 		},
 		canRender: function (data, schemas, uiState) {
 			if (this.filterFunction != undefined) {
@@ -491,8 +680,90 @@
 				}
 			}
 			return redraw;
+		},
+		saveState: function (uiState, subStates, data) {
+			var result = {};
+			for (key in uiState) {
+				result[key] = uiState[key];
+			}
+			for (var label in subStates) {
+				for (var subKey in subStates[label]) {
+					result[label + "-" + subKey] = subStates[label][subKey];
+				}
+			}
+			for (key in result) {
+				if (Jsonary.isData(result[key])) {
+					result[key] = this.saveStateData(result[key]);
+				} else {
+				}
+			}
+			return result;
+		},
+		saveStateData: function (data) {
+			if (!data) {
+				return undefined;
+			}
+			if (data.document.isDefinitive) {
+				return "url:" + data.referenceUrl();
+			}
+			data.saveStateId = data.saveStateId || randomId();
+			localStorage[data.saveStateId] = JSON.stringify({
+				accessed: (new Date).getTime(),
+				data: data.deflate()
+			});
+			return data.saveStateId;
+		},
+		loadState: function (savedState) {
+			var uiState = {};
+			var subStates = {};
+			for (var key in savedState) {
+				if (key.indexOf("-") != -1) {
+					var parts = key.split('-');
+					var subKey = parts.shift();
+					var remainderKey = parts.join('-');
+					if (!subStates[subKey]) {
+						subStates[subKey] = {};
+					}
+					subStates[subKey][remainderKey] = savedState[key];
+				} else {
+					uiState[key] = this.loadStateData(savedState[key]) || savedState[key];
+					if (Jsonary.isRequest(uiState[key])) {
+						(function (key) {
+							uiState[key].getData(function (data) {
+								uiState[key] = data;
+							});
+						})(key);
+					}
+				}
+			}
+			return [
+				uiState,
+				subStates
+			]
+		},
+		loadStateData: function (savedState) {
+			if (typeof savedState == "string" && savedState.substring(0, 4) == "url:") {
+				var url = savedState.substring(4);
+				var data = null;
+				var request = Jsonary.getData(url, function (urlData) {
+					data = urlData;
+				});
+				return data || request;
+			}
+			if (!savedState) {
+				return undefined;
+			}
+			var stored = localStorage[savedState];
+			if (!stored) {
+				return undefined;
+			}
+			stored = JSON.parse(stored);
+			var data = Jsonary.inflate(stored.data);
+			data.saveStateId = savedState;
+			return data;
 		}
 	}
+	Renderer.prototype.super_ = Renderer.prototype;
 
 	var rendererLookup = {};
 	var rendererList = [];
@@ -516,6 +787,21 @@
 	}
 	render.register = register;
 	render.deregister = deregister;
+	
+	var actionHandlers = [];
+	render.addActionHandler = function (callback) {
+		actionHandlers.push(callback);
+	};
+	function notifyActionHandlers(data, context, actionName, historyChange) {
+		historyChange = !!historyChange || (historyChange == undefined);
+		for (var i = 0; i < actionHandlers.length; i++) {
+			var callback = actionHandlers[i];
+			var result = callback(data, context, actionName, historyChange);
+			if (result === false) {
+				break;
+			}
+		}
+	};
 	
 	function lookupRenderer(rendererId) {
 		return rendererLookup[rendererId];

@@ -1,0 +1,10 @@
+<?js
+
+var data = {
+	stringProperty: "Some example data",
+	integerProperty: 5
+};
+
+response.setHeader('Content-Type', 'application/json; profile=schema.json');
+
+?><?js:data?>

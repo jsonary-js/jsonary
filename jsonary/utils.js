@@ -139,44 +139,55 @@ var Utils = {
 	lcm: function(a, b) {
 		return Math.abs(a*b/this.hcf(a, b));
 	},
-	encodeData: function (data, encType) {
+	encodeData: function (data, encType, variant) {
 		if (encType == undefined) {
 			encType = "application/x-www-form-urlencoded";
 		}
 		if (encType == "application/json") {
 			return JSON.stringify(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
-			return Utils.formEncode(data);
+			if (variant == "dotted") {
+				return Utils.formEncode(data, "", '.', '', '|');
+			} else {
+				return Utils.formEncode(data, "", '[', ']');
+			}
 		} else {
 			throw new Error("Unknown encoding type: " + this.encType);
 		}
 	},
-	decodeData: function (data, encType) {
+	decodeData: function (data, encType, variant) {
 		if (encType == undefined) {
 			encType = "application/x-www-form-urlencoded";
 		}
 		if (encType == "application/json") {
 			return JSON.parse(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
-			return Utils.formDecode(data);
+			if (variant == "dotted") {
+				return Utils.formDecode(data, '.', '', '|');
+			} else {
+				return Utils.formDecode(data, '[', ']');
+			}
 		} else {
 			throw new Error("Unknown encoding type: " + this.encType);
 		}
 	},
-	formEncode: function (data, prefix) {
+	formEncode: function (data, prefix, sepBefore, sepAfter, arrayJoin) {
 		if (prefix == undefined) {
 			prefix = "";
 		}
 		var result = [];
 		if (Array.isArray(data)) {
 			for (var i = 0; i < data.length; i++) {
-				var key = (prefix == "") ? i : prefix + encodeURIComponent("[]");
-				var complexKey = (prefix == "") ? i : prefix + encodeURIComponent("[" + i + "]");
+				var key = (prefix == "") ? i : prefix + encodeURIComponent(sepBefore + sepAfter);
+				var complexKey = (prefix == "") ? i : prefix + encodeURIComponent(sepBefore + i + sepAfter);
 				var value = data[i];
 				if (value == null) {
 					result.push(key + "=null");
 				} else if (typeof value == "object") {
-					result.push(Utils.formEncode(value, complexKey));
+					var subResult = Utils.formEncode(value, complexKey, sepBefore, sepAfter, arrayJoin);
+					if (subResult) {
+						result.push(subResult);
+					}
 				} else if (typeof value == "boolean") {
 					if (value) {
 						result.push(key + "=true");
@@ -194,12 +205,27 @@ var Utils = {
 				}
 				var value = data[key];
 				if (prefix != "") {
-					key = prefix + encodeURIComponent("[" + key + "]");
+					key = prefix + encodeURIComponent(sepBefore + key + sepAfter);
+				} else {
+					key = encodeURIComponent(key);
 				}
-				if (value == "null") {
+				if (value === undefined) {
+				} else if (value === null) {
 					result.push(key + "=null");
+				} else if (arrayJoin && Array.isArray(value)) {
+					if (value.length > 0) {
+						var arrayItems = [];
+						while (arrayItems.length < value.length) {
+							arrayItems[arrayItems.length] = encodeURIComponent(value[arrayItems.length]);
+						}
+						var joined = arrayJoin + arrayItems.join(arrayJoin);
+						result.push(key + "=" + joined);
+					}
 				} else if (typeof value == "object") {
-					result.push(Utils.formEncode(value, key));
+					var subResult = Utils.formEncode(value, key, sepBefore, sepAfter, arrayJoin);
+					if (subResult) {
+						result.push(subResult);
+					}
 				} else if (typeof value == "boolean") {
 					if (value) {
 						result.push(key + "=true");
@@ -215,7 +241,19 @@ var Utils = {
 		}
 		return result.join("&");
 	},
-	formDecode: function (data) {
+	formDecodeString: function (value) {
+		if (value == "true") {
+			value = true;
+		} else if (value == "false") {
+			value = false;
+		} else if (value == "null") {
+			value = null;
+		} else if (parseFloat(value) + "" == value) {
+			value = parseFloat(value);
+		}
+		return value;
+	},
+	formDecode: function (data, sepBefore, sepAfter, arrayJoin) {
 		var result = {};
 		var parts = data.split("&");
 		for (var partIndex = 0; partIndex < parts.length; partIndex++) {
@@ -225,21 +263,21 @@ var Utils = {
 			if (part.indexOf("=") >= 0) {
 				key = part.substring(0, part.indexOf("="));
 				value = decodeURIComponent(part.substring(part.indexOf("=") + 1));
-				if (value == "true") {
-					value = true;
-				} else if (value == "false") {
-					value = false;
-				} else if (value == "null") {
-					value = null;
-				} else if (parseFloat(value) + "" == value) {
-					value = parseFloat(value);
+				if (arrayJoin && value.charAt(0) == arrayJoin) {
+					value = value.split(arrayJoin);
+					value.shift();
+					for (var i = 0; i < value.length; i++) {
+						value[i] = Utils.formDecodeString(value[i]);
+					}
+				} else {
+					value = Utils.formDecodeString(value);
 				}
 			}
 			key = decodeURIComponent(key);
 			var subject = result;
-			var keyparts = key.split("[");
+			var keyparts = key.split(sepBefore);
 			for (var i = 1; i < keyparts.length; i++) {
-				keyparts[i] = keyparts[i].substring(0, keyparts[i].length - 1);
+				keyparts[i] = keyparts[i].substring(0, keyparts[i].length - sepAfter.length);
 			}
 			for (var i = 0; i < keyparts.length; i++) {
 				if (Array.isArray(subject) && keyparts[i] == "") {
@@ -262,6 +300,7 @@ var Utils = {
 		return result;
 	},
 	escapeHtml: function(text) {
+		text += "";
 		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
 	},
 	encodePointerComponent: function (component) {
@@ -282,8 +321,8 @@ var Utils = {
 	},
 	joinPointer: function (pointerComponents) {
 		var result = "";
-		for (var i = 0; i < parts.length; i++) {
-			result += "/" + Utils.encodePointerComponent(parts[i]);
+		for (var i = 0; i < pointerComponents.length; i++) {
+			result += "/" + Utils.encodePointerComponent(pointerComponents[i]);
 		}
 		return result;
 	}
