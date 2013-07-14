@@ -103,7 +103,8 @@
 		baseContext: null,
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
-				var dataUrl = data.referenceUrl();
+				var selfLink = data.getLink('self');
+				var dataUrl = selfLink ? selfLink.href : data.referenceUrl();
 				if (dataUrl) {
 					var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
 					var truncate = 0;
@@ -229,10 +230,11 @@
 			}
 			if (data.getData != undefined) {
 				var thisContext = this;
+				element.innerHTML = '<div class="loading"></div>';
 				data.getData(function (actualData) {
 					thisContext.render(element, actualData, label, uiStartingState, contextCallback);
 				});
-				return;
+				return null;
 			}
 
 			if (typeof uiStartingState != "object") {
@@ -275,6 +277,7 @@
 			if (contextCallback) {
 				contextCallback(subContext);
 			}
+			return subContext;
 		},
 		renderHtml: function (data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
@@ -294,7 +297,6 @@
 						data = actualData;
 					} else {
 						var element = document.getElementById(elementId);
-						element.className = "";
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
@@ -304,7 +306,7 @@
 				});
 				if (!rendered) {
 					rendered = true;
-					return '<span id="' + elementId + '" class="loading">Loading...</span>';
+					return '<span id="' + elementId + '"><div class="loading"></div></span>';
 				}
 			}
 			
