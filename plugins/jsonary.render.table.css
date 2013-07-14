@@ -12,9 +12,41 @@
 	text-align: center;
 }
 
+.json-array-table > thead > tr > th.json-array-table-pages {
+	border-bottom: 1px solid #BBB;
+	background-color: #DDD;
+}
+
+.json-array-table > thead > tr > th.json-array-table-pages .button {
+	font-family: Courier New, monospace;
+}
+
 .json-array-table > tbody > tr > td {
 	border: 1px solid #BBB;
 	padding: 0.2em;
 	font-size: inherit;
 	text-align: left;
+}
+
+.json-array-table > tbody > tr > td.json-array-table-full {
+	padding: 0.3em;
+	background-color: #EEE;
+}
+
+.json-array-table > tbody > tr > td.json-array-table-add {
+	text-align: center;
+}
+
+.json-array-table-full-buttons {
+	text-align: center;
+}
+
+.json-array-table-full-title {
+	text-align: center;
+	margin: -0.3em;
+	margin-bottom: 0.5em;
+	background-color: #CCC;
+	border-bottom: 1px solid #BBB;
+	font-weight: bold;
+	padding: 0.2em;
 }
