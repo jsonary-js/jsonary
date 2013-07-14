@@ -530,7 +530,8 @@ if (typeof JSON !== 'object') {
 var publicApi = {
     "toString": function() {
         return "[JsonApi]";
-    }
+    },
+    plugins: {}
 };
 global.Jsonary = publicApi;
 
