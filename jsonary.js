@@ -6003,7 +6003,10 @@ publicApi.UriTemplate = UriTemplate;
 				this.subContexts[labelKey] = this.oldSubContexts[labelKey];
 			}
 			if (this.subContexts[labelKey] != undefined) {
-				if (this.subContexts[labelKey].data != data) {
+				if (this.subContexts[labelKey].data === null) {
+					// null can be used as a placeholder, to get callbacks when rendering requests/urls
+					this.subContexts[labelKey].data = data;
+				} else if (this.subContexts[labelKey].data != data) {
 					delete this.subContexts[labelKey];
 					delete this.oldSubContexts[labelKey];
 					delete this.subContextSavedStates[labelKey];
@@ -6055,7 +6058,7 @@ publicApi.UriTemplate = UriTemplate;
 				this.clearOldSubContexts();
 			}
 		},
-		render: function (element, data, label, uiStartingState, contextCallback) {
+		render: function (element, data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
 				uiStartingState = label;
 				label = null;
@@ -6067,10 +6070,10 @@ publicApi.UriTemplate = UriTemplate;
 			if (data.getData != undefined) {
 				var thisContext = this;
 				element.innerHTML = '<div class="loading"></div>';
-				data.getData(function (actualData) {
-					thisContext.render(element, actualData, label, uiStartingState, contextCallback);
+				var request = data.getData(function (actualData) {
+					thisContext.render(element, actualData, label, uiStartingState);
 				});
-				return null;
+				return this.getSubContext(element.id, null, label, uiStartingState);
 			}
 
 			if (typeof uiStartingState != "object") {
@@ -6109,9 +6112,6 @@ publicApi.UriTemplate = UriTemplate;
 				subContext.clearOldSubContexts();
 			} else {
 				element.innerHTML = "NO RENDERER FOUND";
-			}
-			if (contextCallback) {
-				contextCallback(subContext);
 			}
 			return subContext;
 		},
@@ -6382,17 +6382,17 @@ publicApi.UriTemplate = UriTemplate;
 	setInterval(cleanup, 30000); // Every 30 seconds
 	Jsonary.cleanup = cleanup;
 
-	function render(element, data, uiStartingState, contextCallback) {
+	function render(element, data, uiStartingState) {
 		var innerElement = document.createElement('span');
 		element.innerHTML = "";
 		element.appendChild(innerElement);
-		var context = pageContext.render(innerElement, data, null, uiStartingState, contextCallback);
+		var context = pageContext.subContext(Math.random());
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
-		return context;
+		return context.render(innerElement, data, 'render', uiStartingState);
 	}
-	function renderHtml(data, uiStartingState, contextCallback) {
-		var result = pageContext.renderHtml(data, null, uiStartingState, contextCallback);
+	function renderHtml(data, uiStartingState) {
+		var result = pageContext.renderHtml(data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return result;
