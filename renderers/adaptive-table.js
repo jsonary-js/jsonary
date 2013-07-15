@@ -10,10 +10,19 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 //            tableClass: "json-detail-table",
 //            addHtml: "+", // Text for adding, we use a png
 //            removeHtml: "x", //Text for removing, we use a png
-            sort:{},
-            rowsPerPage: 15
+            sort: {},
+            rowsPerPage: 15,
+            cellAction: {
+                'remove': function (data, context, actionName) {
+                    if (actionName == "remove") {
+                        data.remove();
+                        return false;
+                    }
+                }
+            }
         });
         var columnsObj = {};
+
         function addColumnsFromSchemas(schemas, pathPrefix) {
             schemas = schemas.getFull();
 
@@ -33,7 +42,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
                         }
                     });
                     // add sorting
-                    renderer.config.sort[column]=true;
+                    renderer.config.sort[column] = true;
                 }
             }
 
@@ -71,6 +80,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
                 }
             }
         }
+
         function addColumnsFromLink(linkDefinition, index) {
             var columnName = "link$" + index + "$" + linkDefinition.rel();
 
@@ -83,6 +93,16 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 
             renderer.addLinkColumn(linkDefinition, columnTitle, linkText, activeText, isConfirm);
         }
+
+        // 'remove' column
+        if (!data.readOnly()) {
+            renderer.addColumn('remove', '', function (data, context) {
+                var result = '<td>';
+                result += context.actionHtml('<span class="json-table-object-delete">X</span>', 'remove');
+                return result + '</td>';
+            });
+        }
+
         var itemSchemas = data.schemas().indexSchemas(0).getFull();
         addColumnsFromSchemas(itemSchemas);
         return renderer;
