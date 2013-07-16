@@ -47,8 +47,11 @@
 			var result = "";
 			if (showDelete) {
 				result += "<div class='json-object-delete-container'>";
-				//result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
-                result += context.actionHtml("<span class='" + "json-object-delete-" + parent.basicType() + "'>X</span>", "remove") + " ";
+				if (parent.basicType() == "object") {
+					result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
+				} else {
+					result += context.actionHtml("<span class='json-array-delete'>X</span>", "remove") + " ";
+				}
 				result += context.renderHtml(data, 'data');
 				result += '<div style="clear: both"></div></div>';
 			} else {
