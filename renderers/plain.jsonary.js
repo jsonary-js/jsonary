@@ -46,12 +46,9 @@
 			}
 			var result = "";
 			if (showDelete) {
-				result += "<div class='json-object-delete-container'>";
-				if (parent.basicType() == "object") {
-					result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
-				} else {
-					result += context.actionHtml("<span class='json-array-delete'>X</span>", "remove") + " ";
-				}
+				var parentType = parent.basicType();
+				result += "<div class='json-" + parentType + "-delete-container'>";
+				result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
 				result += context.renderHtml(data, 'data');
 				result += '<div style="clear: both"></div></div>';
 			} else {
