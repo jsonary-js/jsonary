@@ -1,0 +1,252 @@
+/*turn grid on on table, to see alignment; this is only for debug purpose*/
+/*.json-detail-table , th, td {*/
+/*border: 1px solid black;*/
+/*}*/
+
+/*make select box readable*/
+.json-object, select{
+    font-size: medium;
+}
+
+.json-object-key{
+    background-color: #eaeaea;
+    vertical-align: middle;
+}
+
+/*trick to make top alignement look better*/
+.json-object-key-text{
+    /*margin-top: 4px;*/
+}
+
+
+.json-detail-table th {
+    background-color: #eaeaea;
+    text-align: left;
+    color: black;
+    font-style: normal;
+    font-weight: bold;
+
+    border: none;
+    padding-right: 0.5em;
+    padding-left: 0.5em;
+    white-space: pre;
+
+}
+.json-detail-table th a{
+    color: black;
+}
+.json-object .json-detail-table th:first-child {
+    background-color: transparent;
+}
+
+/*tricky font-family MUST be set since it is copied witch getComputedStyle, this is js standard...*/
+.json-string{
+    font-family: Times;
+}
+
+.json-object-key-text {
+    text-align: right;
+    font-style: normal;
+    font-weight: bold;
+    border: none;
+    padding-right: 0.5em;
+    padding-left: 0.5em;
+    white-space: pre;
+}
+
+.json-object-delete-container{
+    padding-left: 2em; /* adjust this padding if size of img in .json-object-delete-* changes */ /*see below for the "better" variant*/
+
+}
+
+.json-object-delete-object {
+    background-image: url(./minus-32.png);  /* shows image */
+    height: 32px;                        /* be sure to set height & width */
+    width:  32px;
+    background-repeat: no-repeat;
+    /*background-color: #a7a2a2; enable this to see object deletes*/
+    /*background-position: center;*/
+
+    /* Hide the text. */
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+
+    /*from default*/
+
+    position: absolute;
+    left: 0;
+    top: 0;
+
+    font-family: monospace;
+    font-style: normal;
+    font-weight: bold;
+    color: #F0F;
+    text-decoration: none;
+    margin-right: 1em;
+}
+
+.json-object-delete-array {
+    background-image: url(./minus-32.png);  /* shows image */
+    height: 32px;                        /* be sure to set height & width */
+    width:  32px;
+    background-repeat: no-repeat;
+    /*background-position: center;*/
+
+    /* Hide the text. */
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+
+    /*from default*/
+
+    position: absolute;
+    left: 0;
+    top: 0;
+
+    font-family: monospace;
+    font-style: normal;
+    font-weight: bold;
+    color: #F0F;
+    text-decoration: none;
+    margin-right: 1em;
+}
+
+
+.json-detail-table-remove a {
+    background-image: url(./minus-32.png);  /* shows image */
+    display: block;
+    height: 32px;                        /* be sure to set height & width */
+    width:  32px;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    /* Hide the text. */
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.json-array-add {
+    background-image: url(./plus-32.png);  /* shows image */
+    display: block;
+    height: 32px;                        /* be sure to set height & width */
+    width:  32px;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    /* Hide the text. */
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/*draw border aroud tables and arrays*/
+.json-detail-table {
+    border: 1px solid #ddd;
+}
+
+/*arrays start*/
+.json-array-item {
+    border-left: 1px solid #ddd;
+    border-right: 1px solid #ddd;
+    width: auto;
+    /* display: table-row; TODO: this would look better, but border disappears*/
+}
+
+.json-array-item:first-of-type {
+    border-top: 1px solid #ddd;
+}
+.json-array-item:last-of-type {
+    border-bottom: 1px solid #ddd;
+}
+.json-array-item:nth-of-type(even) {
+    background-color: #f2f6fa;
+}
+
+/*arrays end*/
+
+.json-detail-table  tr:nth-of-type(even)  {
+    background-color: #f2f6fa;
+}
+
+
+.json-detail-table-add a {
+    background-image: url(./plus-32.png);  /* shows image */
+    display: block;
+    height: 32px;                        /* be sure to set height & width */
+    width:  32px;
+    background-repeat: no-repeat;
+    background-position: left;
+
+    /* Hide the text. */
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.json-object-add-key, .json-object-add-key-new {
+    padding: 2px;
+}
+.json-object-add {
+    margin: 8px;
+}
+
+
+/* "better" variant ; positioning of delete icons ??????*/
+/* adjust all of this if size of img in .json-object-delete-* changes */
+.json-object-delete-object {
+    left:-3.4em;
+}
+.json-object-delete-container {
+    padding-left:0em;
+}
+.json-mode-edit .json-object-key {
+    padding-right: 2em;
+}
+
+.json-mode-edit .json-array-item {
+    padding-left: 2.4em;
+}
+.json-object-delete-array {
+    left:-2.7em;
+}
+.json-array-add {
+    /* adjust under delete */
+    padding-left: 0.7em;
+}
+
+@media (min-width: 1140px) { /* if bigger than shrink zoom (default means iPad), son inside this we have the normal one */
+    .json-object-delete-object, .json-object-delete-array, .json-detail-table-remove a , .json-array-add, .json-detail-table-add a {
+        zoom: 60%
+    }
+    /* adjust all of this if size of img in .json-object-delete-* changes */
+    .json-object-delete-object {
+        left:-4em;
+    }
+    .json-object-delete-container {
+        padding-left:0em;
+    }
+    .json-mode-edit .json-object-key {
+        padding-right: 1.6em;
+    }
+
+    .json-mode-edit .json-array-item {
+        padding-left: 1.6em;
+    }
+    .json-object-delete-array {
+        left:-2.9em;
+    }
+    .json-array-add {
+        /* adjust under delete */
+        padding-left: 1em;
+    }
+}
+
+
+/* Validation*/
+.validationError {
+    color: red;
+    font-weight: bold;
+    display: list-item;
+}
