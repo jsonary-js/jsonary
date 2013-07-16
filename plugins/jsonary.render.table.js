@@ -330,7 +330,8 @@
 				sortFunctions.push(function (a, b) {
 					var valueA = a.get(path);
 					var valueB = b.get(path);
-					var comparison = thisConfig.sort[path] ? thisConfig.sort[path](valueA, valueB) : thisConfig.defaultSort(valueA, valueB);
+					//var comparison = thisConfig.sort[path] ? thisConfig.sort[path](valueA, valueB) : thisConfig.defaultSort(valueA, valueB);
+                    var comparison = (typeof thisConfig.sort[path] == 'function') ? thisConfig.sort[path](valueA, valueB) : thisConfig.defaultSort(valueA, valueB);
 					return multiplier*comparison;
 				});
 			}
