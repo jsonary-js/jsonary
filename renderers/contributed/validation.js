@@ -1,6 +1,5 @@
-
+// Uses (if exists) a "validation" property on the root object that matches the output of tv4 (https://github.com/geraintluff/tv4)
 Jsonary.render.Components.add('VALIDATION');
-
 Jsonary.render.register({
     component: Jsonary.render.Components.VALIDATION,
     renderHtml: function (data, context) {
