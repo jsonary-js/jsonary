@@ -5,11 +5,6 @@ Jsonary.render.register(Jsonary.plugins.Generator({
     rendererForData: function (data) {
         var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
         var renderer = new FancyTableRenderer({
-//            addClass: "json-detail-table-add",
-//            removeClass: "json-detail-table-remove",
-//            tableClass: "json-detail-table",
-//            addHtml: "+", // Text for adding, we use a png
-//            removeHtml: "x", //Text for removing, we use a png
             sort: {},
             rowsPerPage: 15,
             cellAction: {
@@ -108,7 +103,20 @@ Jsonary.render.register(Jsonary.plugins.Generator({
         return renderer;
     },
     filter: function (data, schemas) {
-        return data.basicType() == "array" && schemas.displayAsTable();
+        if (data.basicType() == "array") {
+        	if (schemas.displayAsTable()) {
+        		return true;
+        	}
+        	// Array full of objects
+		if (!schemas.tupleTyping()) {
+			var indexSchemas = schemas.indexSchemas(0);
+			var itemTypes = indexSchemas.basicTypes();
+			if (itemTypes.length == 1 && itemTypes[0] == "object") {
+				return true;
+			}
+		}
+       }
+	return false;
     }
 }));
 
@@ -131,7 +139,7 @@ Jsonary.extendSchemaList({
     }
 });
 
-// displayAsTable extension (non-standard keyword), based on Ognian's code
+// displayAsTable extension (non-standard keyword, suggested by Ognian)
 Jsonary.extendSchema({
     displayAsTable: function () {
         return !!this.data.propertyValue("displayAsTable");
