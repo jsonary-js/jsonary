@@ -413,6 +413,9 @@
 			var rowOrder = this.rowOrder(data, context);
 
 			var pages = this.pages(rowOrder);
+			if (!pages.length) {
+				pages = [[]];
+			}
 			var page = context.uiState.page || 0;
 			var pageRows = pages[page];
 			if (!pageRows) {
