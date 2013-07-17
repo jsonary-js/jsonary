@@ -23,6 +23,7 @@
 		};
 		obj.update = function (element, data, context) {
 			context.generatedRenderer = context.generatedRenderer || obj.rendererForData(context.data);
+			context.generatedRenderer.defaultUpdate = this.defaultUpdate;
 			if (context.generatedRenderer.update) {
 				return context.generatedRenderer.update.apply(context.generatedRenderer, arguments);
 			} else {
