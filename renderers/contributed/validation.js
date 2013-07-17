@@ -10,7 +10,10 @@ Jsonary.render.register({
 			for (var i = 0; i < errors.length; i++) {
 				if (errors[i].dataPath == data.pointerPath()) {
 					result += "<span class='validation-error'>" + errors[i].message + "</span>";
-				}
+                    //remove i entry in errors, so that it is not displayed again where "leftover's" are displayed
+                    errors.splice(i, 1);
+
+                }
 			}
 		}
 		return context.renderHtml(data) + result;
