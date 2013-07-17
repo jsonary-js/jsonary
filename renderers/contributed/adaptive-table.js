@@ -109,7 +109,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 			}
 			// Array full of objects
 			if (!schemas.tupleTyping()) {
-				var indexSchemas = schemas.indexSchemas(0);
+				var indexSchemas = schemas.indexSchemas(0).getFull();
 				var itemTypes = indexSchemas.basicTypes();
 				if (itemTypes.length == 1 && itemTypes[0] == "object") {
 					return true;
