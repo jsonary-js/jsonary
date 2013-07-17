@@ -87,7 +87,7 @@
 			}
 		},
 		update: function (element, data, context, operation) {
-			return data.defined() == !context.uiState.undefined;
+			return data.defined() == !!context.uiState.undefined;
 		},
 		filter: function (data) {
 			return !data.readOnly();
