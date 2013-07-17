@@ -88,7 +88,7 @@ textarea {
 	vertical-align: top;
 }
 
-.json-object-delete-container, json-array-delete-container {
+.json-object-delete-container, .json-array-delete-container {
 	position: relative;
 	vertical-align: top;
 	padding-left: 1.2em;
