@@ -67,8 +67,6 @@
 		wrapTitleFunction: function (functionThis, original, columnKey) {
 			var thisRenderer = this;
 			return function (cellData, context) {
-//				var titleContext = context.subContext('title' + columnKey);
-//				titleContext.columnPath = titleContext;
 				var titleContext = context;
 				return original.call(functionThis, cellData, titleContext, columnKey);
 			}
@@ -330,7 +328,7 @@
 				sortFunctions.push(function (a, b) {
 					var valueA = a.get(path);
 					var valueB = b.get(path);
-					var comparison = thisConfig.sort[path] ? thisConfig.sort[path](valueA, valueB) : thisConfig.defaultSort(valueA, valueB);
+					var comparison = (typeof thisConfig.sort[path] == 'function') ? thisConfig.sort[path](valueA, valueB) : thisConfig.defaultSort(valueA, valueB);
 					return multiplier*comparison;
 				});
 			}
@@ -415,6 +413,9 @@
 			var rowOrder = this.rowOrder(data, context);
 
 			var pages = this.pages(rowOrder);
+			if (!pages.length) {
+				pages = [[]];
+			}
 			var page = context.uiState.page || 0;
 			var pageRows = pages[page];
 			if (!pageRows) {
@@ -460,11 +461,20 @@
 			if (data.readOnly() && columnKey.charAt(0) == "/" && this.sort[columnKey]) {
 				var result = '<th>';
 				context.uiState.sort = context.uiState.sort || [];
-				result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
 				if (context.uiState.sort[0] == "asc" + columnKey) {
-					result += ' <span class="json-array-table-sort-asc">up</span>'
+					result += '<div class="json-array-table-sort-asc">';
+					result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+					result += '<span class="json-array-table-sort-text">up</span>';
+					result += '</div>';
 				} else if (context.uiState.sort[0] == "desc" + columnKey) {
-					result += ' <span class="json-array-table-sort-desc">down</span>'
+					result += '<div class="json-array-table-sort-desc">';
+					result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+					result += '<span class="json-array-table-sort-text">down</span>';
+					result += '</div>';
+				} else {
+					result += '<div class="json-array-table-sort">';
+					result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+					result += '</div>';
 				}
 				return result + '</th>'
 			}

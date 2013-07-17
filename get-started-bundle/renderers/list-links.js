@@ -27,6 +27,9 @@
 				result += '<span class="link-list">';
 				for (var i = 0; i < links.length; i++) {
 					var link = links[i];
+					if (link.rel == "self") {
+						continue;
+					}
 					var html = '<span class="button link">' + Jsonary.escapeHtml(link.title || link.rel) + '</span>';
 					result += context.actionHtml(html, 'follow-link', i);
 				}

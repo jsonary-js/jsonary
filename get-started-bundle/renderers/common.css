@@ -84,6 +84,17 @@
 	height: 1em;
 }
 
+.dialog-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	background-color: rgba(100, 100, 100, 0.5);
+	background-image: URL('images/background-stripe.png');
+	opacity: 0.3;
+}
+
 .dialog-box {
 	position: absolute;
 	top: -0.1em;
@@ -97,6 +108,7 @@
 	background-color: #FFF;
 	box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1), 0px 3px 5px rgba(0, 0, 0, 0.3);
 	min-width: 100px;
+	z-index: 1000;
 }
 
 .dialog-title {
