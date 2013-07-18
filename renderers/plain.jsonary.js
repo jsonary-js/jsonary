@@ -558,6 +558,7 @@
 			}
 		}
 		result = result.replace("\r\n", "\n");
+		result = result.replace(/\n$/, "");
 		return result;
 	}
 
