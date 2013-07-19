@@ -10,6 +10,9 @@ Jsonary.render.register({
 			for (var i = 0; i < errors.length; i++) {
 				if (errors[i].dataPath == data.pointerPath()) {
 					result += "<span class='validation-error'>" + errors[i].message + "</span>";
+                    //mark i entry in errors as rendered, so that we can display not rendered errors somewhere else
+                    errors[i].rendered=true;
+
 				}
 			}
 		}
