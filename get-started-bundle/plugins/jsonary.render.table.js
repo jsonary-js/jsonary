@@ -126,6 +126,13 @@
 				return this.config.render(element, data, context);
 			}
 		},
+		update: function (element, data, context, operation) {
+			if (this.config.update) {
+				this.config.defaultUpdate = this.config.defaultUpdate || this.defaultUpdate;
+				return this.config.update.apply(this, arguments);
+			}
+			return this.defaultUpdate.apply(this, arguments);
+		},
 		register: function(filterFunction) {
 			if (filterFunction) {
 				this.filter = filterFunction;
@@ -246,8 +253,88 @@
 			}
 			return prevAddColumn.call(this, key, title, renderHtml);
 		};
+		
+		// Delete column for editable items
+		this.addConditionalColumn(function (data) {
+			return !data.readOnly() && data.length() > data.schemas().minItems();
+		}, "remove", "", function (data, context) {
+			var result = '<td>';
+			
+			// Check whether a delete is appropriate
+			var arrayData = data.parent();
+			var tupleTypingLength = arrayData.schemas().tupleTypingLength();
+			var minItems = arrayData.schemas().minItems();
+			var index = parseInt(data.parentKey());
+			if ((index >= tupleTypingLength || index == arrayData.length() - 1)
+				&& arrayData.length() > minItems) {
+				result += context.actionHtml('<span class="json-array-table-delete">X</span>', 'remove');
+			}
+			return result + '</td>';
+		});
+		config.cellAction.remove = function (data, context, actionName) {
+			if (actionName == "remove") {
+				data.remove();
+				return false;
+			}
+		};
+
+		// Move column for editable items
+		this.addConditionalColumn(function (data) {
+			return !data.readOnly() && data.length() > (data.schemas().tupleTypingLength() + 1);
+		}, "move", function (data, context) {
+			if (context.uiState.moveRow != undefined) {
+				return '<th style="padding: 0; text-align: center">'
+					+ context.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
+					+ '</th>';
+			}
+			return '<th></th>';
+		}, function (data, context) {
+			var result = '<td>';
+			var tableContext = context.parent.parent;
+			
+			// Check whether a move is appropriate
+			var arrayData = data.parent();
+			var tupleTypingLength = arrayData.schemas().tupleTypingLength();
+			var index = parseInt(data.parentKey());
+			if (index >= tupleTypingLength) {
+				if (tableContext.uiState.moveRow == undefined) {
+					result += tableContext.actionHtml('<div class="json-array-table-move-select">move</div>', 'move-select', index);
+				} else if (tableContext.uiState.moveRow == index) {
+					result += tableContext.actionHtml('<div class="json-array-table-move-cancel">cancel</div>', 'move-cancel');
+				} else {
+					result += tableContext.actionHtml('<div class="json-array-table-move-to">to here</div>', 'move', tableContext.uiState.moveRow, index);
+				}
+			}
+			return result + '</td>';
+		});
 	}
 	FancyTableRenderer.prototype = Object.create(TableRenderer.prototype);
+	FancyTableRenderer.prototype.addConditionalColumn = function (condition, key, title, renderHtml) {
+		var titleAsFunction = (typeof title == 'function') ? title : function (data, context) {
+			return '<th>' + Jsonary.escapeHtml(title) + '</th>';
+		};
+		if (!renderHtml) {
+			renderHtml = function (data, context) {
+				return this.defaultCellRenderHtml(data, context);
+			};
+		}
+		var titleFunction = function (data, context) {
+			if (!condition.call(this, data, context)) {
+				return '<th style="display: none"></th>';
+			} else {
+				return titleAsFunction.call(this, data, context);
+			}
+		};
+		var renderFunction = function (data, cellContext) {
+			var tableContext = cellContext.parent.parent;
+			if (!condition.call(this, tableContext.data, tableContext)) {
+				return '<td style="display: none"></td>';
+			} else {
+				return renderHtml.call(this, data, cellContext, key);
+			}
+		};
+		this.addColumn(key, titleFunction, renderFunction);
+	};
 	FancyTableRenderer.prototype.addLinkColumn = function (linkRel, title, linkHtml, activeHtml, isConfirm) {
 		if (typeof linkRel == "string") {
 			var columnName = "link$" + linkRel;
@@ -435,7 +522,7 @@
 			}
 			return result + '</tbody>';
 		},
-		action: function (data, context, actionName, arg1) {
+		action: function (data, context, actionName, arg1, arg2) {
 			if (actionName == "sort") {
 				delete context.uiState.page;
 				var columnKey = arg1;
@@ -454,6 +541,19 @@
 			} else if (actionName == "page") {
 				context.uiState.page = parseInt(arg1);
 				return true;
+			} else if (actionName == "move-select") {
+				var index = arg1;
+				context.uiState.moveRow = index;
+				return true;
+			} else if (actionName == "move-cancel") {
+				delete context.uiState.moveRow;
+				return true;
+			} else if (actionName == "move") {
+				var fromIndex = arg1;
+				var toIndex = arg2;
+				delete context.uiState.moveRow;
+				data.item(fromIndex).moveTo(data.item(toIndex));
+				return false;
 			}
 			return TableRenderer.defaults.action.apply(this, arguments);
 		},
@@ -523,6 +623,7 @@
 			return result;
 		},
 		rowAction: function (data, context, actionName, arg1, arg2) {
+			delete context.parent.uiState.moveRow;
 			if (actionName == "expand") {
 				if (context.uiState.expand) {
 					delete context.uiState.expand;
@@ -581,6 +682,13 @@
 				return true;
 			}
 			return TableRenderer.defaults.rowAction.apply(this, arguments);
+		},
+		update: function (element, data, context, operation) {
+			if (context.uiState.moveRow != undefined) {
+				delete context.uiState.moveRow;
+				return true;
+			}
+			return this.defaultUpdate(element, data, context, operation);
 		},
 		linkHandler: function () {}
 	};

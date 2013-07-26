@@ -1124,6 +1124,8 @@ var Utils = {
 					} else {
 						result.push(key + "=false");
 					}
+				} else if (value === "") {
+					result.push(key);
 				} else {
 					result.push(key + "=" + encodeURIComponent(value));
 				}
@@ -1162,6 +1164,8 @@ var Utils = {
 					} else {
 						result.push(key + "=false");
 					}
+				} else if (value === "") {
+					result.push(key);
 				} else {
 					result.push(key + "=" + encodeURIComponent(value));
 				}
@@ -1438,6 +1442,67 @@ if (typeof XMLHttpRequest == "undefined") {
 	};
 }
 
+publicApi.ajaxFunction = function (params, callback) {
+	var xhrUrl = params.url;
+	var xhrData = params.data;
+	var encType = params.encType;
+	
+	var xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function () {
+		if (xhr.readyState == 4) {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				var data = xhr.responseText || null;
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+					if (xhr.status !=204) {
+						thisRequest.ajaxError(e, data);
+						return;
+					} else {
+						data = null;
+					}
+				}
+				var headers = xhr.getAllResponseHeaders();
+				if (headers == "") {	// Firefox bug  >_>
+					headers = [];
+					var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
+					for (var i = 0; i < desiredHeaders.length; i++) {
+						var value = xhr.getResponseHeader(desiredHeaders[i]);
+						if (value != "" && value != null) {
+							headers.push(desiredHeaders[i] + ": " + value);
+						}
+					}
+					headers = headers.join("\n");
+				}
+				callback(null, data, headers);
+			} else {
+				var data = xhr.responseText || null;
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+				}
+				var headers = xhr.getAllResponseHeaders();
+				if (headers == "") {	// Firefox bug  >_>
+					headers = [];
+					var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
+					for (var i = 0; i < desiredHeaders.length; i++) {
+						var value = xhr.getResponseHeader(desiredHeaders[i]);
+						if (value != "" && value != null) {
+							headers.push(desiredHeaders[i] + ": " + value);
+						}
+					}
+					headers = headers.join("\n");
+				}
+				callback(new HttpError(xhr.status, xhr), data, headers);
+			}
+		}
+	};
+	xhr.open(method, xhrUrl, true);
+	xhr.setRequestHeader("Content-Type", encType);
+	xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
+	xhr.send(xhrData);
+};
+
 // Default cache
 (function () {
 	var cacheData = {};
@@ -1563,14 +1628,21 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 		var cacheKey = JSON.stringify(url) + ":" + JSON.stringify(data);
 		var result = cacheFunction(cacheKey);
 		if (result != undefined) {
-			return new FragmentRequest(result, fragment);
+			return {
+				request: result,
+				fragmentRequest: new FragmentRequest(result, fragment)
+			};
 		}
 	}
-	var request = new Request(url, method, data, encType, hintSchema);
-	if (cacheable) {
-		cacheFunction(cacheKey, request);
-	}
-	return new FragmentRequest(request, fragment);
+	var request = new Request(url, method, data, encType, hintSchema, function (request) {
+		if (cacheable) {
+			cacheFunction(cacheKey, request);
+		}
+	});
+	return {
+		request: request,
+		fragmentRequest: new FragmentRequest(request, fragment)
+	};
 }
 
 function addToCache(url, rawData, schemaUrl, cacheFunction) {
@@ -1587,7 +1659,7 @@ publicApi.getData = function(params, callback, hintSchema) {
 	if (typeof params == "string") {
 		params = {url: params};
 	}
-	var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema);
+	var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema).fragmentRequest;
 	if (callback != undefined) {
 		request.getData(callback);
 	}
@@ -1606,7 +1678,9 @@ function HttpError (code) {
 HttpError.prototype = new Error();
 publicApi.HttpError = HttpError;
 
-function Request(url, method, data, encType, hintSchema) {
+function Request(url, method, data, encType, hintSchema, executeImmediately) {
+	executeImmediately(this);
+	this.circular = true;
 	url = Utils.resolveRelativeUri(url);
 
 	data = Utils.encodeData(data, encType);
@@ -1632,6 +1706,7 @@ function Request(url, method, data, encType, hintSchema) {
 
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
+	delete this.circular;
 	this.invalidate = function() {
 		if (method == "GET") {
 			this.fetchData(url, method, data, encType, hintSchema);
@@ -1749,15 +1824,19 @@ Request.prototype = {
 		}
 
 		thisRequest.checkForFullResponse();
-		thisRequest.document.raw.whenSchemasStable(function () {
-			var rootLink = thisRequest.document.raw.getLink("root");
-			if (rootLink != undefined) {
-				var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
-				thisRequest.document.setRoot(fragment);
-			} else {
-				thisRequest.document.setRoot("");
-			}
-		});
+		if (!thisRequest.circular) {
+			thisRequest.document.raw.whenSchemasStable(function () {
+				var rootLink = thisRequest.document.raw.getLink("root");
+				if (rootLink != undefined) {
+					var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
+					thisRequest.document.setRoot(fragment);
+				} else {
+					thisRequest.document.setRoot("");
+				}
+			});
+		} else {
+			thisRequest.document.setRoot("");
+		}
 	},
 	ajaxError: function (error, data) {
 		this.fetched = true;
@@ -1774,44 +1853,6 @@ Request.prototype = {
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
 		var thisRequest = this;
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState == 4) {
-				if (xhr.status >= 200 && xhr.status < 300) {
-					var data = xhr.responseText || null;
-					try {
-						data = JSON.parse(data);
-					} catch (e) {
-						if (xhr.status !=204) {
-							thisRequest.ajaxError(e, data);
-							return;
-						} else {
-							data = null;
-						}
-					}
-					var headers = xhr.getAllResponseHeaders();
-					if (headers == "") {	// Firefox bug  >_>
-						headers = [];
-						var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
-						for (var i = 0; i < desiredHeaders.length; i++) {
-							var value = xhr.getResponseHeader(desiredHeaders[i]);
-							if (value != "" && value != null) {
-								headers.push(desiredHeaders[i] + ": " + value);
-							}
-						}
-						headers = headers.join("\n");
-					}
-					thisRequest.ajaxSuccess(data, headers, hintSchema);
-				} else {
-					var data = xhr.responseText || null;
-					try {
-						data = JSON.parse(data);
-					} catch (e) {
-					}
-					thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
-				}
-			}
-		};
 		var xhrUrl = url;
 		var xhrData = data;
 		if ((method == "GET" || method == "DELETE") && (xhrData != undefined && xhrData != "")) {
@@ -1831,10 +1872,19 @@ Request.prototype = {
 				xhrUrl += "&" + extra;
 			}
 		}
-		xhr.open(method, xhrUrl, true);
-		xhr.setRequestHeader("Content-Type", encType);
-		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
-		xhr.send(xhrData);
+		
+		var params = {
+			url: xhrUrl,
+			data: xhrData,
+			encType: encType
+		};
+		publicApi.ajaxFunction(params, function (error, data, headers) {
+			if (!error) {
+				thisRequest.ajaxSuccess(data, headers, hintSchema);
+			} else {
+				thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
+			}
+		});
 	}
 };
 
@@ -6070,10 +6120,11 @@ publicApi.UriTemplate = UriTemplate;
 			if (data.getData != undefined) {
 				var thisContext = this;
 				element.innerHTML = '<div class="loading"></div>';
+				var subContext = this.getSubContext(element.id, null, label, uiStartingState);
 				var request = data.getData(function (actualData) {
 					thisContext.render(element, actualData, label, uiStartingState);
 				});
-				return this.getSubContext(element.id, null, label, uiStartingState);
+				return subContext;;
 			}
 
 			if (typeof uiStartingState != "object") {

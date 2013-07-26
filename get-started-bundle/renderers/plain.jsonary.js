@@ -87,7 +87,7 @@
 			}
 		},
 		update: function (element, data, context, operation) {
-			return context.uiState.undefined;
+			return data.defined() == !!context.uiState.undefined;
 		},
 		filter: function (data) {
 			return !data.readOnly();
@@ -558,6 +558,7 @@
 			}
 		}
 		result = result.replace("\r\n", "\n");
+		result = result.replace(/\n$/, "");
 		return result;
 	}
 

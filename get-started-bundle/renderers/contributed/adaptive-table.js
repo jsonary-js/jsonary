@@ -6,15 +6,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 		var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
 		var renderer = new FancyTableRenderer({
 			sort: {},
-			rowsPerPage: 15,
-			cellAction: {
-				'remove': function (data, context, actionName) {
-					if (actionName == "remove") {
-						data.remove();
-						return false;
-					}
-				}
-			}
+			rowsPerPage: 15
 		});
 		var columnsObj = {};
 
@@ -87,15 +79,6 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 			}
 
 			renderer.addLinkColumn(linkDefinition, columnTitle, linkText, activeText, isConfirm);
-		}
-
-		// 'remove' column
-		if (!data.readOnly()) {
-			renderer.addColumn('remove', '', function (data, context) {
-				var result = '<td>';
-				result += context.actionHtml('<span class="json-table-object-delete">X</span>', 'remove');
-				return result + '</td>';
-			});
 		}
 
 		var itemSchemas = data.schemas().indexSchemas(0).getFull();
