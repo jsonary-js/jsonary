@@ -234,10 +234,11 @@
 			if (data.getData != undefined) {
 				var thisContext = this;
 				element.innerHTML = '<div class="loading"></div>';
+				var subContext = this.getSubContext(element.id, null, label, uiStartingState);
 				var request = data.getData(function (actualData) {
 					thisContext.render(element, actualData, label, uiStartingState);
 				});
-				return this.getSubContext(element.id, null, label, uiStartingState);
+				return subContext;;
 			}
 
 			if (typeof uiStartingState != "object") {
