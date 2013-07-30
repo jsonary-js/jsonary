@@ -111,11 +111,13 @@
 			var result = "";
 			var basicTypes = data.schemas().basicTypes();
 			var enums = data.schemas().enumValues();
+			result += '<span class="dialog-anchor">';
 			if (context.uiState.dialogOpen) {
-				result += '<div class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
-				result += context.actionHtml('close', "closeDialog");
+				result += context.actionHtml('<div class="dialog-overlay"></div>', "closeDialog");
+				result += '<div class="dialog-box">';
+				result += context.actionHtml('<div class="dialog-close">close</div>', "closeDialog");
 				if (basicTypes.length > 1) {
-					result += '<br>Select basic type:<ul>';
+					result += '<div class="dialog-title">Select basic type:</div>';
 					for (var i = 0; i < basicTypes.length; i++) {
 						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
 							continue;
@@ -128,12 +130,13 @@
 					}
 					result += '</ul>';
 				}
-				result += '</span></div>';
+				result += '</div>';
 			}
 			if (basicTypes.length > 1 && enums == null) {
 				result += context.actionHtml("<span class=\"json-select-type\">T</span>", "openDialog") + " ";
 			}
 			result += context.renderHtml(data, 'data');
+			result += '</span>';
 			return result;
 		},
 		action: function (context, actionName, basicType) {
