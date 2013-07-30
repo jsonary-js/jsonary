@@ -26,7 +26,7 @@ function createBundles() {
 			'../jsonary/schemaset.js',
 			'../jsonary/main.js',
 			'../jsonary/_footer.js',
-			'../plugins/jsonary.render-server.js',
+			'../plugins/jsonary.render.js',
 		])
 		.code('var Jsonary = this.Jsonary;')
 		.js([
