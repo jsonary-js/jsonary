@@ -542,7 +542,7 @@ Data.prototype = {
 	subPath: function (path) {
 		var parts = path.split("/");
 		if (parts[0] != "") {
-			throw new Error("Path must begin with / (or be empty)");
+			throw new Error("Path must begin with / (or be empty): " + path);
 		}
 		var result = this;
 		for (var i = 1; i < parts.length; i++) {
@@ -831,9 +831,16 @@ Document.prototype.deflate = function (canUseUrl) {
 	}
 	return result;
 };
-publicApi.inflate = function (deflated) {
+publicApi.inflate = function (deflated, callback) {
 	if (typeof deflated == "string") {
 		var request = requestJson(deflated).request;
+		if (callback) {
+			request.document.getRoot(function (root) {
+				root.whenSchemasStable(function () {
+					callback(null, request.document);
+				});
+			});
+		}
 		return request.document;
 	}
 	var data = publicApi.create(deflated.value, deflated.baseUrl, deflated.readOnly);
@@ -845,8 +852,12 @@ publicApi.inflate = function (deflated) {
 		data.addSchema(schema);
 	}
 	data.document.setRoot(deflated.root);
+	var result = data.document;
 	if (deflated.path) {
-		return data.document.raw.subPath(deflated.path);
+		result = data.document.raw.subPath(deflated.path);
 	}
-	return data.document;
+	if (callback) {
+		callback(null, result);
+	}
+	return result;
 };

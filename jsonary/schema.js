@@ -1,5 +1,6 @@
 function getSchema(url, callback) {
-	return publicApi.getData(url, function(data, fragmentRequest) {
+	// Use getRawResponse() instead of getRoot to avoid blocking on self-referential schemas
+	return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
 		var schema = data.asSchema();
 		if (callback != undefined) {
 			callback.call(schema, schema, fragmentRequest);

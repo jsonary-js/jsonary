@@ -255,7 +255,6 @@ publicApi.HttpError = HttpError;
 
 function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	executeImmediately(this);
-	this.circular = true;
 	url = Utils.resolveRelativeUri(url);
 
 	data = Utils.encodeData(data, encType);
@@ -281,7 +280,6 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
-	delete this.circular;
 	this.invalidate = function() {
 		if (method == "GET") {
 			this.fetchData(url, method, data, encType, hintSchema);
@@ -399,19 +397,15 @@ Request.prototype = {
 		}
 
 		thisRequest.checkForFullResponse();
-		if (!thisRequest.circular) {
-			thisRequest.document.raw.whenSchemasStable(function () {
-				var rootLink = thisRequest.document.raw.getLink("root");
-				if (rootLink != undefined) {
-					var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
-					thisRequest.document.setRoot(fragment);
-				} else {
-					thisRequest.document.setRoot("");
-				}
-			});
-		} else {
-			thisRequest.document.setRoot("");
-		}
+		thisRequest.document.raw.whenSchemasStable(function () {
+			var rootLink = thisRequest.document.raw.getLink("root");
+			if (rootLink != undefined) {
+				var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
+				thisRequest.document.setRoot(fragment);
+			} else {
+				thisRequest.document.setRoot("");
+			}
+		});
 	},
 	ajaxError: function (error, data) {
 		this.fetched = true;

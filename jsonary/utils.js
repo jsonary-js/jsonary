@@ -194,6 +194,8 @@ var Utils = {
 					} else {
 						result.push(key + "=false");
 					}
+				} else if (value === "") {
+					result.push(key);
 				} else {
 					result.push(key + "=" + encodeURIComponent(value));
 				}
@@ -232,6 +234,8 @@ var Utils = {
 					} else {
 						result.push(key + "=false");
 					}
+				} else if (value === "") {
+					result.push(key);
 				} else {
 					result.push(key + "=" + encodeURIComponent(value));
 				}
