@@ -397,7 +397,9 @@ Request.prototype = {
 		}
 
 		thisRequest.checkForFullResponse();
+		thisRequest.waitingForRoot = true;
 		thisRequest.document.raw.whenSchemasStable(function () {
+			delete thisRequest.waitingForRoot;
 			var rootLink = thisRequest.document.raw.getLink("root");
 			if (rootLink != undefined) {
 				var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));

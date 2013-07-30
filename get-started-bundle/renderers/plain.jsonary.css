@@ -88,13 +88,13 @@ textarea {
 	vertical-align: top;
 }
 
-.json-object-delete-container {
+.json-object-delete-container, .json-array-delete-container {
 	position: relative;
 	vertical-align: top;
 	padding-left: 1.2em;
 }
 
-.json-object-delete {
+.json-object-delete, .json-array-delete {
 	position: absolute;
 	left: 0;
 	top: 0;
@@ -182,15 +182,6 @@ textarea {
 	display: block;
 }
 
-.json-array-delete {
-	font-family: monospace;
-	font-style: normal;
-	font-weight: bold;
-	color: #F00;
-	text-decoration: none;
-	margin-right: 1em;
-}
-
 .json-array-add {
 	display: block;
 	padding-left: 2.2em;
@@ -229,6 +220,8 @@ textarea {
 	line-height: 1.2em;
 	min-width: 5em;
 	min-height: 1.2em;
+	max-height: 20em;
+	overflow: auto;
 	box-shadow: 0px 0px 2px rgba(0, 0, 0, 1);
 }
 

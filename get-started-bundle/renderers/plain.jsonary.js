@@ -46,8 +46,9 @@
 			}
 			var result = "";
 			if (showDelete) {
-				result += "<div class='json-object-delete-container'>";
-				result += context.actionHtml("<span class='json-object-delete'>X</span>", "remove") + " ";
+				var parentType = parent.basicType();
+				result += "<div class='json-" + parentType + "-delete-container'>";
+				result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
 				result += context.renderHtml(data, 'data');
 				result += '<div style="clear: both"></div></div>';
 			} else {
@@ -86,7 +87,7 @@
 			}
 		},
 		update: function (element, data, context, operation) {
-			return context.uiState.undefined;
+			return data.defined() == !!context.uiState.undefined;
 		},
 		filter: function (data) {
 			return !data.readOnly();
@@ -501,17 +502,6 @@
 		}
 	});
 
-	// Display string
-	Jsonary.render.register({
-		renderHtml: function (data, context) {
-			var date = new Date(data.value());
-			return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
-		},
-		filter: function (data, schemas) {
-			return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;
-		}
-	});
-	
 	function copyTextStyle(source, target) {
 		var style = getComputedStyle(source, null);
 		for (var key in style) {
@@ -568,6 +558,7 @@
 			}
 		}
 		result = result.replace("\r\n", "\n");
+		result = result.replace(/\n$/, "");
 		return result;
 	}
 

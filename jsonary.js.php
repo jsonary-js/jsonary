@@ -30,6 +30,8 @@
   foreach ($files as $filename) {
     $outputString .= file_get_contents(BASE_DIR.$filename)."\n";
   }
+  $outputString = str_replace("\r\n", "\n", $outputString);
+  $outputString = str_replace("\n", "\r\n", $outputString);
   echo($outputString);
   file_put_contents(TARGET_FILE, $outputString);
   ?>

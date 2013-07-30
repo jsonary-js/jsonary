@@ -1,6 +1,0 @@
-RewriteEngine On
-RewriteRule api/(.*) %{DOCUMENT_ROOT}/api.php/$1?
-
-<Limit POST PUT DELETE>
-Allow from all
-</Limit>

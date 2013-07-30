@@ -103,7 +103,8 @@
 		baseContext: null,
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
-				var dataUrl = data.referenceUrl();
+				var selfLink = data.getLink('self');
+				var dataUrl = selfLink ? selfLink.href : data.referenceUrl();
 				if (dataUrl) {
 					var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
 					var truncate = 0;
@@ -166,7 +167,10 @@
 				this.subContexts[labelKey] = this.oldSubContexts[labelKey];
 			}
 			if (this.subContexts[labelKey] != undefined) {
-				if (this.subContexts[labelKey].data != data) {
+				if (this.subContexts[labelKey].data === null) {
+					// null can be used as a placeholder, to get callbacks when rendering requests/urls
+					this.subContexts[labelKey].data = data;
+				} else if (this.subContexts[labelKey].data != data) {
 					delete this.subContexts[labelKey];
 					delete this.oldSubContexts[labelKey];
 					delete this.subContextSavedStates[labelKey];
@@ -218,7 +222,7 @@
 				this.clearOldSubContexts();
 			}
 		},
-		render: function (element, data, label, uiStartingState, contextCallback) {
+		render: function (element, data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
 				uiStartingState = label;
 				label = null;
@@ -229,10 +233,12 @@
 			}
 			if (data.getData != undefined) {
 				var thisContext = this;
-				data.getData(function (actualData) {
-					thisContext.render(element, actualData, label, uiStartingState, contextCallback);
+				element.innerHTML = '<div class="loading"></div>';
+				var subContext = this.getSubContext(element.id, null, label, uiStartingState);
+				var request = data.getData(function (actualData) {
+					thisContext.render(element, actualData, label, uiStartingState);
 				});
-				return;
+				return subContext;;
 			}
 
 			if (typeof uiStartingState != "object") {
@@ -272,9 +278,7 @@
 			} else {
 				element.innerHTML = "NO RENDERER FOUND";
 			}
-			if (contextCallback) {
-				contextCallback(subContext);
-			}
+			return subContext;
 		},
 		renderHtml: function (data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
@@ -294,7 +298,6 @@
 						data = actualData;
 					} else {
 						var element = document.getElementById(elementId);
-						element.className = "";
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
@@ -304,7 +307,7 @@
 				});
 				if (!rendered) {
 					rendered = true;
-					return '<span id="' + elementId + '" class="loading">Loading...</span>';
+					return '<span id="' + elementId + '"><div class="loading"></div></span>';
 				}
 			}
 			
@@ -544,17 +547,17 @@
 	setInterval(cleanup, 30000); // Every 30 seconds
 	Jsonary.cleanup = cleanup;
 
-	function render(element, data, uiStartingState, contextCallback) {
+	function render(element, data, uiStartingState) {
 		var innerElement = document.createElement('span');
 		element.innerHTML = "";
 		element.appendChild(innerElement);
-		var context = pageContext.render(innerElement, data, null, uiStartingState, contextCallback);
+		var context = pageContext.subContext(Math.random());
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
-		return context;
+		return context.render(innerElement, data, 'render', uiStartingState);
 	}
-	function renderHtml(data, uiStartingState, contextCallback) {
-		var result = pageContext.renderHtml(data, null, uiStartingState, contextCallback);
+	function renderHtml(data, uiStartingState) {
+		var result = pageContext.renderHtml(data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return result;

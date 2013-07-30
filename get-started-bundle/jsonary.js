@@ -530,7 +530,8 @@ if (typeof JSON !== 'object') {
 var publicApi = {
     "toString": function() {
         return "[JsonApi]";
-    }
+    },
+    plugins: {}
 };
 global.Jsonary = publicApi;
 
@@ -654,10 +655,8 @@ Uri.prototype = {
 };
 Uri.resolve = function(base, relative) {
 	if (relative == undefined) {
-		return base;
-		//  We used to resolve relative to window.location, but we want to be able to run outside the browser as well
-		//relative = base;
-		//base = window.location.toString();
+		relative = base;
+		base = window.location.toString();
 	}
 	if (base == undefined) {
 		return relative;
@@ -1070,50 +1069,63 @@ var Utils = {
 	lcm: function(a, b) {
 		return Math.abs(a*b/this.hcf(a, b));
 	},
-	encodeData: function (data, encType) {
+	encodeData: function (data, encType, variant) {
 		if (encType == undefined) {
 			encType = "application/x-www-form-urlencoded";
 		}
 		if (encType == "application/json") {
 			return JSON.stringify(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
-			return Utils.formEncode(data);
+			if (variant == "dotted") {
+				return Utils.formEncode(data, "", '.', '', '|');
+			} else {
+				return Utils.formEncode(data, "", '[', ']');
+			}
 		} else {
 			throw new Error("Unknown encoding type: " + this.encType);
 		}
 	},
-	decodeData: function (data, encType) {
+	decodeData: function (data, encType, variant) {
 		if (encType == undefined) {
 			encType = "application/x-www-form-urlencoded";
 		}
 		if (encType == "application/json") {
 			return JSON.parse(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
-			return Utils.formDecode(data);
+			if (variant == "dotted") {
+				return Utils.formDecode(data, '.', '', '|');
+			} else {
+				return Utils.formDecode(data, '[', ']');
+			}
 		} else {
 			throw new Error("Unknown encoding type: " + this.encType);
 		}
 	},
-	formEncode: function (data, prefix) {
+	formEncode: function (data, prefix, sepBefore, sepAfter, arrayJoin) {
 		if (prefix == undefined) {
 			prefix = "";
 		}
 		var result = [];
 		if (Array.isArray(data)) {
 			for (var i = 0; i < data.length; i++) {
-				var key = (prefix == "") ? i : prefix + encodeURIComponent("[]");
-				var complexKey = (prefix == "") ? i : prefix + encodeURIComponent("[" + i + "]");
+				var key = (prefix == "") ? i : prefix + encodeURIComponent(sepBefore + sepAfter);
+				var complexKey = (prefix == "") ? i : prefix + encodeURIComponent(sepBefore + i + sepAfter);
 				var value = data[i];
 				if (value == null) {
 					result.push(key + "=null");
 				} else if (typeof value == "object") {
-					result.push(Utils.formEncode(value, complexKey));
+					var subResult = Utils.formEncode(value, complexKey, sepBefore, sepAfter, arrayJoin);
+					if (subResult) {
+						result.push(subResult);
+					}
 				} else if (typeof value == "boolean") {
 					if (value) {
 						result.push(key + "=true");
 					} else {
 						result.push(key + "=false");
 					}
+				} else if (value === "") {
+					result.push(key);
 				} else {
 					result.push(key + "=" + encodeURIComponent(value));
 				}
@@ -1125,18 +1137,35 @@ var Utils = {
 				}
 				var value = data[key];
 				if (prefix != "") {
-					key = prefix + encodeURIComponent("[" + key + "]");
+					key = prefix + encodeURIComponent(sepBefore + key + sepAfter);
+				} else {
+					key = encodeURIComponent(key);
 				}
-				if (value == "null") {
+				if (value === undefined) {
+				} else if (value === null) {
 					result.push(key + "=null");
+				} else if (arrayJoin && Array.isArray(value)) {
+					if (value.length > 0) {
+						var arrayItems = [];
+						while (arrayItems.length < value.length) {
+							arrayItems[arrayItems.length] = encodeURIComponent(value[arrayItems.length]);
+						}
+						var joined = arrayJoin + arrayItems.join(arrayJoin);
+						result.push(key + "=" + joined);
+					}
 				} else if (typeof value == "object") {
-					result.push(Utils.formEncode(value, key));
+					var subResult = Utils.formEncode(value, key, sepBefore, sepAfter, arrayJoin);
+					if (subResult) {
+						result.push(subResult);
+					}
 				} else if (typeof value == "boolean") {
 					if (value) {
 						result.push(key + "=true");
 					} else {
 						result.push(key + "=false");
 					}
+				} else if (value === "") {
+					result.push(key);
 				} else {
 					result.push(key + "=" + encodeURIComponent(value));
 				}
@@ -1146,7 +1175,19 @@ var Utils = {
 		}
 		return result.join("&");
 	},
-	formDecode: function (data) {
+	formDecodeString: function (value) {
+		if (value == "true") {
+			value = true;
+		} else if (value == "false") {
+			value = false;
+		} else if (value == "null") {
+			value = null;
+		} else if (parseFloat(value) + "" == value) {
+			value = parseFloat(value);
+		}
+		return value;
+	},
+	formDecode: function (data, sepBefore, sepAfter, arrayJoin) {
 		var result = {};
 		var parts = data.split("&");
 		for (var partIndex = 0; partIndex < parts.length; partIndex++) {
@@ -1156,21 +1197,21 @@ var Utils = {
 			if (part.indexOf("=") >= 0) {
 				key = part.substring(0, part.indexOf("="));
 				value = decodeURIComponent(part.substring(part.indexOf("=") + 1));
-				if (value == "true") {
-					value = true;
-				} else if (value == "false") {
-					value = false;
-				} else if (value == "null") {
-					value = null;
-				} else if (parseFloat(value) + "" == value) {
-					value = parseFloat(value);
+				if (arrayJoin && value.charAt(0) == arrayJoin) {
+					value = value.split(arrayJoin);
+					value.shift();
+					for (var i = 0; i < value.length; i++) {
+						value[i] = Utils.formDecodeString(value[i]);
+					}
+				} else {
+					value = Utils.formDecodeString(value);
 				}
 			}
 			key = decodeURIComponent(key);
 			var subject = result;
-			var keyparts = key.split("[");
+			var keyparts = key.split(sepBefore);
 			for (var i = 1; i < keyparts.length; i++) {
-				keyparts[i] = keyparts[i].substring(0, keyparts[i].length - 1);
+				keyparts[i] = keyparts[i].substring(0, keyparts[i].length - sepAfter.length);
 			}
 			for (var i = 0; i < keyparts.length; i++) {
 				if (Array.isArray(subject) && keyparts[i] == "") {
@@ -1214,8 +1255,8 @@ var Utils = {
 	},
 	joinPointer: function (pointerComponents) {
 		var result = "";
-		for (var i = 0; i < parts.length; i++) {
-			result += "/" + Utils.encodePointerComponent(parts[i]);
+		for (var i = 0; i < pointerComponents.length; i++) {
+			result += "/" + Utils.encodePointerComponent(pointerComponents[i]);
 		}
 		return result;
 	}
@@ -1401,6 +1442,67 @@ if (typeof XMLHttpRequest == "undefined") {
 	};
 }
 
+publicApi.ajaxFunction = function (params, callback) {
+	var xhrUrl = params.url;
+	var xhrData = params.data;
+	var encType = params.encType;
+	
+	var xhr = new XMLHttpRequest();
+	xhr.onreadystatechange = function () {
+		if (xhr.readyState == 4) {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				var data = xhr.responseText || null;
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+					if (xhr.status !=204) {
+						thisRequest.ajaxError(e, data);
+						return;
+					} else {
+						data = null;
+					}
+				}
+				var headers = xhr.getAllResponseHeaders();
+				if (headers == "") {	// Firefox bug  >_>
+					headers = [];
+					var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
+					for (var i = 0; i < desiredHeaders.length; i++) {
+						var value = xhr.getResponseHeader(desiredHeaders[i]);
+						if (value != "" && value != null) {
+							headers.push(desiredHeaders[i] + ": " + value);
+						}
+					}
+					headers = headers.join("\n");
+				}
+				callback(null, data, headers);
+			} else {
+				var data = xhr.responseText || null;
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+				}
+				var headers = xhr.getAllResponseHeaders();
+				if (headers == "") {	// Firefox bug  >_>
+					headers = [];
+					var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
+					for (var i = 0; i < desiredHeaders.length; i++) {
+						var value = xhr.getResponseHeader(desiredHeaders[i]);
+						if (value != "" && value != null) {
+							headers.push(desiredHeaders[i] + ": " + value);
+						}
+					}
+					headers = headers.join("\n");
+				}
+				callback(new HttpError(xhr.status, xhr), data, headers);
+			}
+		}
+	};
+	xhr.open(method, xhrUrl, true);
+	xhr.setRequestHeader("Content-Type", encType);
+	xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
+	xhr.send(xhrData);
+};
+
 // Default cache
 (function () {
 	var cacheData = {};
@@ -1526,14 +1628,21 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 		var cacheKey = JSON.stringify(url) + ":" + JSON.stringify(data);
 		var result = cacheFunction(cacheKey);
 		if (result != undefined) {
-			return new FragmentRequest(result, fragment);
+			return {
+				request: result,
+				fragmentRequest: new FragmentRequest(result, fragment)
+			};
 		}
 	}
-	var request = new Request(url, method, data, encType, hintSchema);
-	if (cacheable) {
-		cacheFunction(cacheKey, request);
-	}
-	return new FragmentRequest(request, fragment);
+	var request = new Request(url, method, data, encType, hintSchema, function (request) {
+		if (cacheable) {
+			cacheFunction(cacheKey, request);
+		}
+	});
+	return {
+		request: request,
+		fragmentRequest: new FragmentRequest(request, fragment)
+	};
 }
 
 function addToCache(url, rawData, schemaUrl, cacheFunction) {
@@ -1550,7 +1659,7 @@ publicApi.getData = function(params, callback, hintSchema) {
 	if (typeof params == "string") {
 		params = {url: params};
 	}
-	var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema);
+	var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema).fragmentRequest;
 	if (callback != undefined) {
 		request.getData(callback);
 	}
@@ -1569,7 +1678,9 @@ function HttpError (code) {
 HttpError.prototype = new Error();
 publicApi.HttpError = HttpError;
 
-function Request(url, method, data, encType, hintSchema) {
+function Request(url, method, data, encType, hintSchema, executeImmediately) {
+	executeImmediately(this);
+	this.circular = true;
 	url = Utils.resolveRelativeUri(url);
 
 	data = Utils.encodeData(data, encType);
@@ -1595,6 +1706,7 @@ function Request(url, method, data, encType, hintSchema) {
 
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
+	delete this.circular;
 	this.invalidate = function() {
 		if (method == "GET") {
 			this.fetchData(url, method, data, encType, hintSchema);
@@ -1712,15 +1824,19 @@ Request.prototype = {
 		}
 
 		thisRequest.checkForFullResponse();
-		thisRequest.document.raw.whenSchemasStable(function () {
-			var rootLink = thisRequest.document.raw.getLink("root");
-			if (rootLink != undefined) {
-				var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
-				thisRequest.document.setRoot(fragment);
-			} else {
-				thisRequest.document.setRoot("");
-			}
-		});
+		if (!thisRequest.circular) {
+			thisRequest.document.raw.whenSchemasStable(function () {
+				var rootLink = thisRequest.document.raw.getLink("root");
+				if (rootLink != undefined) {
+					var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
+					thisRequest.document.setRoot(fragment);
+				} else {
+					thisRequest.document.setRoot("");
+				}
+			});
+		} else {
+			thisRequest.document.setRoot("");
+		}
 	},
 	ajaxError: function (error, data) {
 		this.fetched = true;
@@ -1737,44 +1853,6 @@ Request.prototype = {
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
 		var thisRequest = this;
-		var xhr = new XMLHttpRequest();
-		xhr.onreadystatechange = function () {
-			if (xhr.readyState == 4) {
-				if (xhr.status >= 200 && xhr.status < 300) {
-					var data = xhr.responseText || null;
-					try {
-						data = JSON.parse(data);
-					} catch (e) {
-						if (xhr.status !=204) {
-							thisRequest.ajaxError(e, data);
-							return;
-						} else {
-							data = null;
-						}
-					}
-					var headers = xhr.getAllResponseHeaders();
-					if (headers == "") {	// Firefox bug  >_>
-						headers = [];
-						var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
-						for (var i = 0; i < desiredHeaders.length; i++) {
-							var value = xhr.getResponseHeader(desiredHeaders[i]);
-							if (value != "" && value != null) {
-								headers.push(desiredHeaders[i] + ": " + value);
-							}
-						}
-						headers = headers.join("\n");
-					}
-					thisRequest.ajaxSuccess(data, headers, hintSchema);
-				} else {
-					var data = xhr.responseText || null;
-					try {
-						data = JSON.parse(data);
-					} catch (e) {
-					}
-					thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
-				}
-			}
-		};
 		var xhrUrl = url;
 		var xhrData = data;
 		if ((method == "GET" || method == "DELETE") && (xhrData != undefined && xhrData != "")) {
@@ -1794,10 +1872,19 @@ Request.prototype = {
 				xhrUrl += "&" + extra;
 			}
 		}
-		xhr.open(method, xhrUrl, true);
-		xhr.setRequestHeader("Content-Type", encType);
-		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
-		xhr.send(xhrData);
+		
+		var params = {
+			url: xhrUrl,
+			data: xhrData,
+			encType: encType
+		};
+		publicApi.ajaxFunction(params, function (error, data, headers) {
+			if (!error) {
+				thisRequest.ajaxSuccess(data, headers, hintSchema);
+			} else {
+				thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
+			}
+		});
 	}
 };
 
@@ -2954,8 +3041,15 @@ function Schema(data) {
 			potentialLinks[potentialLinks.length] = new PotentialLink(subData);
 		});
 	}
-	this.links = function () {
-		return potentialLinks.slice(0);
+	this.links = function (rel) {
+		var filtered = [];
+		for (var i = 0; i < potentialLinks.length; i++) {
+			var link = potentialLinks[i];
+			if (rel == undefined || link.rel == rel) {
+				filtered.push(link);
+			}
+		}
+		return filtered;
 	};
 	this.schemaTitle = this.title();	
 }
@@ -3061,6 +3155,13 @@ Schema.prototype = {
 			return new SchemaList([result]);
 		}
 		return new SchemaList();
+	},
+	tupleTyping: function () {
+		var items = this.data.property("items");
+		if (items.basicType() == "array") {
+			return items.length();
+		}
+		return 0;
 	},
 	andSchemas: function () {
 		var result = [];
@@ -4279,14 +4380,24 @@ SchemaList.prototype = {
 		}
 		return false;
 	},
-	links: function () {
+	links: function (rel) {
 		var result = [];
 		var i, schema;
 		for (i = 0; i < this.length; i++) {
-			schema = this[i];
+			var schema = this[i];
 			result = result.concat(schema.links());
 		}
-		return result;
+		this.links = function (rel) {
+			var filtered = [];
+			for (var i = 0; i < result.length; i++) {
+				var link = result[i];
+				if (rel == undefined || link.rel == rel) {
+					filtered.push(link);
+				}
+			}
+			return filtered;
+		};
+		return this.links(rel);
 	},
 	each: function (callback) {
 		for (var i = 0; i < this.length; i++) {
@@ -5010,6 +5121,13 @@ SchemaList.prototype = {
 		var result = new SchemaList();
 		for (var i = 0; i < this.length; i++) {
 			result = result.concat(this[i].indexSchemas(index));
+		}
+		return result;
+	},
+	tupleTyping: function () {
+		var result = 0;
+		for (var i = 0; i < this.length; i++) {
+			result = Math.max(result, this[i].tupleTyping());
 		}
 		return result;
 	},
@@ -5871,7 +5989,8 @@ publicApi.UriTemplate = UriTemplate;
 		baseContext: null,
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
-				var dataUrl = data.referenceUrl();
+				var selfLink = data.getLink('self');
+				var dataUrl = selfLink ? selfLink.href : data.referenceUrl();
 				if (dataUrl) {
 					var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
 					var truncate = 0;
@@ -5934,7 +6053,10 @@ publicApi.UriTemplate = UriTemplate;
 				this.subContexts[labelKey] = this.oldSubContexts[labelKey];
 			}
 			if (this.subContexts[labelKey] != undefined) {
-				if (this.subContexts[labelKey].data != data) {
+				if (this.subContexts[labelKey].data === null) {
+					// null can be used as a placeholder, to get callbacks when rendering requests/urls
+					this.subContexts[labelKey].data = data;
+				} else if (this.subContexts[labelKey].data != data) {
 					delete this.subContexts[labelKey];
 					delete this.oldSubContexts[labelKey];
 					delete this.subContextSavedStates[labelKey];
@@ -5986,7 +6108,7 @@ publicApi.UriTemplate = UriTemplate;
 				this.clearOldSubContexts();
 			}
 		},
-		render: function (element, data, label, uiStartingState, contextCallback) {
+		render: function (element, data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
 				uiStartingState = label;
 				label = null;
@@ -5997,10 +6119,12 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			if (data.getData != undefined) {
 				var thisContext = this;
-				data.getData(function (actualData) {
-					thisContext.render(element, actualData, label, uiStartingState, contextCallback);
+				element.innerHTML = '<div class="loading"></div>';
+				var subContext = this.getSubContext(element.id, null, label, uiStartingState);
+				var request = data.getData(function (actualData) {
+					thisContext.render(element, actualData, label, uiStartingState);
 				});
-				return;
+				return subContext;;
 			}
 
 			if (typeof uiStartingState != "object") {
@@ -6040,9 +6164,7 @@ publicApi.UriTemplate = UriTemplate;
 			} else {
 				element.innerHTML = "NO RENDERER FOUND";
 			}
-			if (contextCallback) {
-				contextCallback(subContext);
-			}
+			return subContext;
 		},
 		renderHtml: function (data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
@@ -6062,7 +6184,6 @@ publicApi.UriTemplate = UriTemplate;
 						data = actualData;
 					} else {
 						var element = document.getElementById(elementId);
-						element.className = "";
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
@@ -6072,7 +6193,7 @@ publicApi.UriTemplate = UriTemplate;
 				});
 				if (!rendered) {
 					rendered = true;
-					return '<span id="' + elementId + '" class="loading">Loading...</span>';
+					return '<span id="' + elementId + '"><div class="loading"></div></span>';
 				}
 			}
 			
@@ -6312,17 +6433,17 @@ publicApi.UriTemplate = UriTemplate;
 	setInterval(cleanup, 30000); // Every 30 seconds
 	Jsonary.cleanup = cleanup;
 
-	function render(element, data, uiStartingState, contextCallback) {
+	function render(element, data, uiStartingState) {
 		var innerElement = document.createElement('span');
 		element.innerHTML = "";
 		element.appendChild(innerElement);
-		var context = pageContext.render(innerElement, data, null, uiStartingState, contextCallback);
+		var context = pageContext.subContext(Math.random());
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
-		return context;
+		return context.render(innerElement, data, 'render', uiStartingState);
 	}
-	function renderHtml(data, uiStartingState, contextCallback) {
-		var result = pageContext.renderHtml(data, null, uiStartingState, contextCallback);
+	function renderHtml(data, uiStartingState) {
+		var result = pageContext.renderHtml(data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return result;

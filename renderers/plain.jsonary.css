@@ -88,13 +88,13 @@ textarea {
 	vertical-align: top;
 }
 
-.json-object-delete-container {
+.json-object-delete-container, .json-array-delete-container {
 	position: relative;
 	vertical-align: top;
 	padding-left: 1.2em;
 }
 
-.json-object-delete {
+.json-object-delete, .json-array-delete {
 	position: absolute;
 	left: 0;
 	top: 0;
@@ -180,15 +180,6 @@ textarea {
 
 .json-array-item {
 	display: block;
-}
-
-.json-array-delete {
-	font-family: monospace;
-	font-style: normal;
-	font-weight: bold;
-	color: #F00;
-	text-decoration: none;
-	margin-right: 1em;
 }
 
 .json-array-add {
