@@ -79,8 +79,29 @@
 			}
 		},
 		action: function (context, actionName) {
+			var thisRenderer = this;
+			console.log("Table action: " + actionName);
+			if (context.label.substring(0, 3) == "col" && !context.cellData) {
+				// Recover cellData when running server-side
+				var columnPath = context.label.substring(3);
+				var rowContext = context.parent;
+				var tableContext = rowContext.parent;
+				context.data.items(function (index, rowData) {
+					if (thisRenderer.rowContext(rowData, tableContext) == rowContext) {
+						var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
+						thisRenderer.cellContext(cellData, rowContext, columnPath); // Sets cellData on the appropriate context
+					}
+				});
+			} else if (context.label.substring(0, 3) == "row" && !context.rowData) {
+				// Recover rowData when running server-side
+				var tableContext = context.parent;
+				context.data.items(function (index, rowData) {
+					thisRenderer.rowContext(rowData, tableContext); // Sets rowData on the appropriate context
+				});
+			}
 			if (context.cellData) {
 				var columnPath = context.columnPath;
+
 				var cellAction = this.config.cellAction[columnPath];
 				var newArgs = [context.cellData];
 				while (newArgs.length <= arguments.length) {
@@ -102,7 +123,8 @@
 			return this.config.action.apply(this.config, newArgs);
 		},
 		rowContext: function (data, context) {
-			var subContext = context.subContext(data);
+			var rowLabel = "row" + context.labelForData(data);
+			var subContext = context.subContext(rowLabel);
 			subContext.rowData = data;
 			return subContext;
 		},
@@ -273,6 +295,11 @@
 		});
 		config.cellAction.remove = function (data, context, actionName) {
 			if (actionName == "remove") {
+				console.log({
+					value: data.value(),
+					pointerPath: data.pointerPath(),
+					parentKey: data.parentKey()
+				});
 				data.remove();
 				return false;
 			}
