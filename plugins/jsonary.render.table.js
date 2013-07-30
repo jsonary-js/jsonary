@@ -328,8 +328,10 @@
 					result += tableContext.actionHtml('<div class="json-array-table-move-select">move</div>', 'move-select', index);
 				} else if (tableContext.uiState.moveRow == index) {
 					result += tableContext.actionHtml('<div class="json-array-table-move-cancel">cancel</div>', 'move-cancel');
+				} else if (tableContext.uiState.moveRow > index) {
+					result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-up">to here</div>', 'move', tableContext.uiState.moveRow, index);
 				} else {
-					result += tableContext.actionHtml('<div class="json-array-table-move-to">to here</div>', 'move', tableContext.uiState.moveRow, index);
+					result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-down">to here</div>', 'move', tableContext.uiState.moveRow, index);
 				}
 			}
 			return result + '</td>';

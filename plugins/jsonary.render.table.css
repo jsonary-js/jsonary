@@ -92,8 +92,12 @@
 	background-image: url('images/move-cancel.png');
 }
 
-.json-array-table-move-to {
+.json-array-table-move-up {
 	background-image: url('images/move-up.png');
+}
+
+.json-array-table-move-down {
+	background-image: url('images/move-down.png');
 }
 
 /* Sorting */
