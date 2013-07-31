@@ -1,4 +1,6 @@
 var express = require('express');
+var http = require('http');
+var https = require('https');
 var bundle = require('./create-bundle.js');
 
 var app = express();
@@ -49,7 +51,9 @@ createBundles();
 var createJsonary = function () {
 	var Jsonary = jsonaryJsBundle()['Jsonary'];
 	Jsonary.setLogFunction(function (logLevel, message) {
-		console.log("Log level " + logLevel + ": " + message);
+		if (logLevel >= Jsonary.logLevel.WARNING) {
+			console.log("Log level " + logLevel + ": " + message);
+		}
 	});
 	var buttons = [];
 	Jsonary.render.actionHtml = function (elementId, linkUrl, innerHtml) {
@@ -63,35 +67,95 @@ var createJsonary = function () {
 		return result;
 	};
 	
+	var requestCount = 0;
+	var requestCompleteCallbacks = [];
+	Jsonary.whenRequestsComplete = function (callback) {
+		requestCompleteCallbacks.push(callback);
+		checkRequestsComplete();
+	};
+	function checkRequestsComplete() {
+		if (requestCount > 0) {
+			return;
+		}
+		while (requestCompleteCallbacks.length > 0) {
+			requestCompleteCallbacks.shift()();
+		}
+	}
+	
 	Jsonary.ajaxFunction = function (params, callback) {
-		setTimeout(function () {
-			callback(null, {
-				title: "Example JSON data",
-				links: [
-					{
-						href: "",
-						rel: "edit"
+		requestCount++;
+		console.log(params);
+		// Make an actual HTTP request, defaulting to the current server if just path is given
+		var uri = new Jsonary.Uri(params.url);
+		var httpModule = (uri.scheme == 'https') ? https : http;
+		var options = {};
+		if (uri.domain) {
+			options.domain = uri.domain;
+			options.host = options.domain;
+			options.path = params.url.split('://').slice(1).join('://');
+		} else {
+			options.domain = 'localhost';
+			options.port = SERVER_PORT;
+			options.path = params.url;
+		}
+		options.method = params.method;
+		options.headers = {
+			'content-type': params.encType
+		};
+		
+		var request = httpModule.request(options, function (response) {
+			var data;
+			response.setEncoding('utf8'); // Encoding is required
+			response.on('data', function (chunk) {
+				data = data ? data + chunk : chunk;
+			});
+			response.on('end', function () {
+				handleResponse(response, data);
+			});
+		}).on('error', function (e) {
+			callback(e, e, '');
+		});
+		if (params.data != undefined) {
+			request.write(params.data);
+		}
+		request.end();
+		
+		function handleResponse(response, data) {
+			requestCount--;
+			var headerText = [];
+			for (var key in response.headers) {
+				if (Array.isArray(response.headers[key])) {
+					for (var i = 0; i < respons.headers[key].length; i++) {
+						headerText.push(key + ": " + response.headers[key][i]);
 					}
-				],
-				array: [
-					{a: 1, b: 2},
-					{a: 1, b: 3},
-					{a: 2, b: 3}
-				],
-				properties: {
-					"array": {
-						type: "array",
-						items: {
-							type: "object",
-							properties: {
-								"a": {type: "integer"},
-								"b": {type: "integer"}
-							}
-						}
+				} else {
+					headerText.push(key + ": " + response.headers[key]);
+				}
+			}
+			headerText = headerText.join("\r\n");
+
+			if (response.statusCode >= 200 && response.statusCode < 300) {
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+					if (response.statusCode !=204) {
+						callback(e, data, headerText);
+						checkRequestsComplete();
+						return;
+					} else {
+						data = null;
 					}
 				}
-			}, "Content-Type: application/json; profile=/json/schema");
-		}, 0);
+				callback(null, data, headerText);
+			} else {
+				try {
+					data = JSON.parse(data);
+				} catch (e) {
+				}
+				callback(new Jsonary.HttpError(response.statusCode, response), data, headerText);
+			}
+			checkRequestsComplete();
+		}
 	};
 	Jsonary.render.footerHtml = function () {
 		result = "";
@@ -154,10 +218,12 @@ app.all('/', function (request, response) {
 					loaded.actions[key]();
 				}
 			}
-			renderContext.rerenderHtml(handleInnerHtml);
+			Jsonary.whenRequestsComplete(function () {
+				renderContext.asyncRerenderHtml(handleInnerHtml);
+			});
 		});
 	} else {
-		Jsonary.asyncRenderHtml("/json/data", {}, handleInnerHtml);
+		Jsonary.asyncRenderHtml("/json/data", request.query, handleInnerHtml);
 	}
 	
 	function handleInnerHtml(error, innerHtml, renderContext) {
@@ -167,16 +233,15 @@ app.all('/', function (request, response) {
 		html += '<form action="?' + Jsonary.encodeData(savedState, 'application/x-www-form-urlencoded') + '" method="POST">';
 		html += innerHtml;
 		html += Jsonary.render.footerHtml();
-		var renderState = JSON.stringify(renderContext.saveCompleteState());
+		var completeState = renderContext.saveCompleteState();
 		// Escape for single-quotes (more efficient for JSON)
-		var escapedRenderState = renderState.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+		var escapedRenderState = JSON.stringify(completeState).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 		html += '\n<input name="Jsonary.state" type="hidden" value=\'' + escapedRenderState + '\'></input>';
 		html += '</form>';
-		html += '<!--' + Math.random() + '-->';
 		
 		html += '<hr><div id="jsonary-target"></div>';
 		html += '<script src="bundle.js"></script>';
-		html += '<script>Jsonary.create({"test": "string"}).renderTo("jsonary-target");</script>';
+		html += '<script>Jsonary.render("jsonary-target", "json/data", ' + JSON.stringify(savedState) + ');</script>';
 
 		html += '<hr><pre>';
 		html += JSON.stringify(renderContext.saveCompleteState(), null, '\t');
@@ -185,6 +250,92 @@ app.all('/', function (request, response) {
 		response.end(html);
 	}
 });
+
+var exampleData = {
+	title: "Example JSON data",
+	"boolean": true,
+	array: [
+		{a: 1, b: 2},
+		{a: 1, b: 3},
+		{a: 2, b: 3}
+	]
+};
+function prettyJson(data) {
+	var json = JSON.stringify(data, null, "\t");
+	function compactJson(json) {
+		try {
+			var compact = JSON.stringify(JSON.parse(json));
+			var parts = compact.split('"');
+			for (var i = 0; i < parts.length; i++) {
+				var part = parts[i];
+				part = part.replace(/:/g, ': ');
+				part = part.replace(/,/g, ', ');
+				parts[i] = part;
+				i++;
+				while (i < parts.length && parts[i].charAt(parts[i].length - 1) == "\\") {
+					i++;
+				}
+			}
+			return parts.join('"');
+		} catch (e) {
+			return json;
+		}
+	}
+	
+	json = json.replace(/\{[^\{,}]*\}/g, compactJson); // Objects with a single simple property
+	json = json.replace(/\[[^\[,\]]*\]/g, compactJson); // Arrays with a single simple item
+	json = json.replace(/\[[^\{\[\}\]]*\]/g, compactJson); // Arrays containing only scalar items
+	return json;
+}
+app.use('/json/', function (request, response) {
+	response.setHeader('Content-Type', 'application/json');
+	var path = request.url.split('?')[0];
+	if (path == "/data") {
+		if (request.method == 'PUT') {
+			exampleData = request.body;
+		}
+		response.setHeader('Content-Type', 'application/json; profile=schema');
+		response.send(prettyJson(exampleData, null, "\t"));
+	} else if (path == "/schema") {
+		response.setHeader('Content-Type', 'application/json; profile=schema');
+		response.send(prettyJson({
+			title: "Example JSON Schema",
+			links: [
+				{
+					href: "",
+					rel: "edit"
+				}
+			],
+			type: "object",
+			properties: {
+				"title": {type: "string"},
+				"boolean": {type: "boolean"},
+				"array": {
+					type: "array",
+					items: {
+						type: "object",
+						properties: {
+							"a": {type: "integer"},
+							"b": {type: "integer"}
+						}
+					}
+				}
+			},
+			required: ["title", "array"]
+		}, null, "\t"));
+	} else {
+		response.statusCode = 404;
+		response.send(JSON.stringify({
+			statusCode: 404,
+			statusText: "Not Found",
+			message: "Resource not found: " + request.url,
+			data: {url: request.url}
+		}, null, "\t"));
+	}
+});
+
 app.use('/', express.static(__dirname));
-app.listen(8080);
+
+var SERVER_PORT = 8080;
+http.createServer(app).listen(SERVER_PORT);
 console.log('Listening on port 8080');

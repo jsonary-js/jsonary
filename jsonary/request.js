@@ -31,7 +31,7 @@ publicApi.ajaxFunction = function (params, callback) {
 					data = JSON.parse(data);
 				} catch (e) {
 					if (xhr.status !=204) {
-						thisRequest.ajaxError(e, data);
+						callback(e, data);
 						return;
 					} else {
 						data = null;
@@ -72,7 +72,7 @@ publicApi.ajaxFunction = function (params, callback) {
 			}
 		}
 	};
-	xhr.open(method, xhrUrl, true);
+	xhr.open(params.method, xhrUrl, true);
 	xhr.setRequestHeader("Content-Type", encType);
 	xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
 	xhr.send(xhrData);
@@ -447,11 +447,16 @@ Request.prototype = {
 		var params = {
 			url: xhrUrl,
 			data: xhrData,
-			encType: encType
+			encType: encType,
+			method: method
 		};
 		publicApi.ajaxFunction(params, function (error, data, headers) {
 			if (!error) {
 				thisRequest.ajaxSuccess(data, headers, hintSchema);
+				// Special RESTy knowledge
+				if (params.method == "PUT") {
+					publicApi.invalidate(params.url);
+				}			
 			} else {
 				thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
 			}

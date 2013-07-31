@@ -313,7 +313,7 @@
 					this.oldSubContexts = {};
 				}
 				Context.prototype = this.rootContext;
-				this.subContexts[labelKey] = new Context(this.rootContext, this, label, data, uiStartingState, usedComponents);
+				this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, usedComponents);
 			}
 			var subContext = this.subContexts[labelKey];
 			subContext.elementId = elementId;
@@ -334,7 +334,7 @@
 				this.clearOldSubContexts();
 			}
 		},
-		rerenderHtml: function (htmlCallback) {
+		asyncRerenderHtml: function (htmlCallback) {
 			var thisContext = this;
 			if (this.uiState == undefined) {
 				this.loadState(this.uiStartingState);
@@ -342,7 +342,6 @@
 			
 			var renderer = this.renderer;
 			var data = this.data;
-			var elementId = this.elementId;
 			
 			renderer.asyncRenderHtml(data, this, function (error, innerHtml) {
 				if (error) {
@@ -350,15 +349,7 @@
 				}
 				thisContext.clearOldSubContexts();
 
-				var uniqueId = data.uniqueId;
-				if (thisContext.elementLookup[uniqueId] == undefined) {
-					thisContext.elementLookup[uniqueId] = [];
-				}
-				if (thisContext.elementLookup[uniqueId].indexOf(elementId) == -1) {
-					thisContext.elementLookup[uniqueId].push(elementId);
-				}
-				thisContext.addEnhancement(elementId, thisContext);
-				htmlCallback(null, '<span id="' + elementId + '">' + innerHtml + '</span>', thisContext);
+				htmlCallback(null, innerHtml, thisContext);
 			});
 		},
 
@@ -420,7 +411,7 @@
 			}
 			return subContext;
 		},
-		renderHtml: function (data, label, uiStartingState, contextCallback) {
+		renderHtml: function (data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
 				uiStartingState = label;
 				label = null;
@@ -439,7 +430,7 @@
 					} else {
 						var element = document.getElementById(elementId);
 						if (element) {
-							thisContext.render(element, actualData, label, uiStartingState, contextCallback);
+							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
 							Jsonary.log(Jsonary.logLevel.WARNING, "Attempted delayed render to non-existent element: " + elementId);
 						}
@@ -475,9 +466,6 @@
 				this.elementLookup[uniqueId].push(elementId);
 			}
 			this.addEnhancement(elementId, subContext);
-			if (contextCallback) {
-				contextCallback(subContext);
-			}
 			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		asyncRenderHtml: function (data, label, uiStartingState, htmlCallback) {
@@ -493,9 +481,7 @@
 			if (data.getData != undefined) {
 				label = label || 'async' + Math.random();
 				var subContext = this.getSubContext(elementId, null, label, uiStartingState);
-				console.log("Fetching data");
 				data.getData(function (actualData) {
-					console.log("Fetched data");
 					thisContext.asyncRenderHtml(actualData, label, uiStartingState, htmlCallback);
 				});
 				return subContext;
@@ -517,15 +503,7 @@
 			
 			renderer.asyncRenderHtml(data, subContext, function (error, innerHtml) {
 				subContext.clearOldSubContexts();
-				var uniqueId = data.uniqueId;
-				if (thisContext.elementLookup[uniqueId] == undefined) {
-					thisContext.elementLookup[uniqueId] = [];
-				}
-				if (thisContext.elementLookup[uniqueId].indexOf(elementId) == -1) {
-					thisContext.elementLookup[uniqueId].push(elementId);
-				}
-				thisContext.addEnhancement(elementId, subContext);
-				htmlCallback(null, '<span id="' + elementId + '">' + innerHtml + '</span>', subContext);
+				htmlCallback(null, innerHtml, subContext);
 			});
 			return subContext;
 		},
@@ -832,6 +810,9 @@
 	}
 
 	function render(element, data, uiStartingState) {
+		if (typeof element == 'string') {
+			element = document.getElementById(element);
+		}
 		var innerElement = document.createElement('span');
 		element.innerHTML = "";
 		element.appendChild(innerElement);
@@ -880,7 +861,6 @@
 		return saveDataId;
 	};
 	render.loadData = function (saveDataId) {
-		console.log("Loading: " + saveDataId);
 		if (typeof localStorage == "undefined") {
 			return undefined;
 		}
@@ -960,10 +940,49 @@
 		},
 		asyncRenderHtml: function (data, context, htmlCallback) {
 			var innerHtml = "";
+			var subCounter = 1;
+			var subs = {};
 			if (this.renderHtmlFunction != undefined) {
-				innerHtml = this.renderHtmlFunction(data, context);
+				// Create a substitute context for this render
+				// uiState and other variables still point to the same place, but calls to renderHtml() are redirected to an async substitute
+				var substituteRenderHtml = function (data, label, uiState) {
+					var placeholderString = '<<ASYNC' + Math.random() + '>>';
+					var actualString = null;
+					subCounter++;
+					this.asyncRenderHtml(data, label, uiState, function (error, innerHtml) {
+						subs[placeholderString] = innerHtml;
+						actualString = innerHtml;
+						decrementSubRenderCount();
+					});
+					if (actualString !== null) {
+						delete subs[placeholderString];
+						return actualString;
+					}
+					return placeholderString;
+				};
+				function createAsyncContext(context) {
+					var asyncContext = Object.create(context);
+					asyncContext.renderHtml = substituteRenderHtml;
+					asyncContext.subContext = function () {
+						return createAsyncContext(context.subContext.apply(this, arguments));
+					};
+					return asyncContext;
+				}
+				// Render innerHtml with placeholders
+				innerHtml = this.renderHtmlFunction(data, createAsyncContext(context));
 			}
-			htmlCallback(null, innerHtml, context);
+			function decrementSubRenderCount() {
+				subCounter--;
+				if (subCounter > 0) {
+					return;
+				}
+				
+				for (var placeholder in subs) {
+					//innerHtml = innerHtml.replace(placeholder, subs[placeholder]);
+				}
+				htmlCallback(null, innerHtml, context);
+			}
+			decrementSubRenderCount();
 		},
 		enhance: function (element, data, context) {
 			if (this.renderFunction != null) {
