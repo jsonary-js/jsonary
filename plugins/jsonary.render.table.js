@@ -80,7 +80,6 @@
 		},
 		action: function (context, actionName) {
 			var thisRenderer = this;
-			console.log("Table action: " + actionName);
 			if (context.label.substring(0, 3) == "col" && !context.cellData) {
 				// Recover cellData when running server-side
 				var columnPath = context.label.substring(3);
