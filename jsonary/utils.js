@@ -329,6 +329,33 @@ var Utils = {
 			result += "/" + Utils.encodePointerComponent(pointerComponents[i]);
 		}
 		return result;
+	},
+	prettyJson: function (data) {
+		var json = JSON.stringify(data, null, "\t");
+		function compactJson(json) {
+			try {
+				var compact = JSON.stringify(JSON.parse(json));
+				var parts = compact.split('"');
+				for (var i = 0; i < parts.length; i++) {
+					var part = parts[i];
+					part = part.replace(/:/g, ': ');
+					part = part.replace(/,/g, ', ');
+					parts[i] = part;
+					i++;
+					while (i < parts.length && parts[i].charAt(parts[i].length - 1) == "\\") {
+						i++;
+					}
+				}
+				return parts.join('"');
+			} catch (e) {
+				return json;
+			}
+		}
+		
+		json = json.replace(/\{[^\{,}]*\}/g, compactJson); // Objects with a single simple property
+		json = json.replace(/\[[^\[,\]]*\]/g, compactJson); // Arrays with a single simple item
+		json = json.replace(/\[[^\{\[\}\]]*\]/g, compactJson); // Arrays containing only scalar items
+		return json;
 	}
 };
 (function () {
@@ -364,6 +391,7 @@ publicApi.decodePointerComponent = Utils.decodePointerComponent;
 publicApi.splitPointer = Utils.splitPointer;
 publicApi.joinPointer = Utils.joinPointer;
 publicApi.escapeHtml = Utils.escapeHtml;
+publicApi.prettyJson = Utils.prettyJson;
 
 publicApi.extend = function (obj) {
 	for (var key in obj) {
