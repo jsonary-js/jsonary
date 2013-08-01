@@ -147,9 +147,11 @@ var Utils = {
 			return JSON.stringify(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
 			if (variant == "dotted") {
-				return Utils.formEncode(data, "", '.', '', '|');
+				return Utils.formEncode(data, "", '.', '', '|').replace(/%20/g, '+').replace(/%2F/g, "/");
+			} else if (variant == 'pretty') {
+				return Utils.formEncode(data, "", '[', ']').replace(/%20/g, '+').replace(/%2F/g, "/").replace(/%5B/g, '[').replace(/%5D/g, ']').replace(/%7C/g, '|');
 			} else {
-				return Utils.formEncode(data, "", '[', ']');
+				return Utils.formEncode(data, "", '[', ']').replace(/%20/g, '+');
 			}
 		} else {
 			throw new Error("Unknown encoding type: " + this.encType);
@@ -162,8 +164,9 @@ var Utils = {
 		if (encType == "application/json") {
 			return JSON.parse(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
+			data = data.replace(/\+/g, '%20');
 			if (variant == "dotted") {
-				return Utils.formDecode(data, '.', '', '|');
+				return Utils.formDecode(data.replace(/%7C/g, '|'), '.', '', '|');
 			} else {
 				return Utils.formDecode(data, '[', ']');
 			}
