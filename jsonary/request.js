@@ -324,12 +324,16 @@ Request.prototype = {
 			// Some browsers have all parameters as lower-case, so we do this for compatability
 			//       (discovered using Dolphin Browser on an Android phone)
 			keyName = keyName.toLowerCase();
-			if (headers[keyName] == undefined) {
-				headers[keyName] = value;
-			} else if (typeof headers[keyName] == "object") {
-				headers[keyName].push(value);
-			} else {
-				headers[keyName] = [headers[keyName], value];
+			var values = value.split(', ');
+			for (var j = 0; j < values.length; j++) {
+				var value = values[j];
+				if (headers[keyName] == undefined) {
+					headers[keyName] = value;
+				} else if (typeof headers[keyName] == "object") {
+					headers[keyName].push(value);
+				} else {
+					headers[keyName] = [headers[keyName], value];
+				}
 			}
 		}
 		Utils.log(Utils.logLevel.DEBUG, "headers: " + JSON.stringify(headers, null, 4));
