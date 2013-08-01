@@ -1,4 +1,5 @@
 var express = require('express');
+var url = require('url');
 var http = require('http');
 var https = require('https');
 var bundle = require('./create-bundle.js');
@@ -38,6 +39,7 @@ function createBundles() {
 			'../renderers/string-formats.js'
 		])
 		// Extra plugins
+		.js('../plugins/jsonary.location.js')
 		.js('../plugins/jsonary.render.table.js')
 		.css('../plugins/jsonary.render.table.css')
 		.js('../plugins/jsonary.render.generate.js')
@@ -184,6 +186,7 @@ var createJsonary = function () {
 	return Jsonary;
 };
 
+var encodingVariant = "dotted";
 app.all('/', function (request, response) {
 	// Reset bundles on every request
 	createBundles();
@@ -223,14 +226,14 @@ app.all('/', function (request, response) {
 			});
 		});
 	} else {
-		Jsonary.asyncRenderHtml("/json/data", request.query, handleInnerHtml);
+		Jsonary.asyncRenderHtml("/json/data", Jsonary.decodeData(url.parse(request.url).query, 'application/x-www-form-urlencoded', encodingVariant), handleInnerHtml);
 	}
 	
 	function handleInnerHtml(error, innerHtml, renderContext) {
 		var html = '';
 		html += '<link rel="stylesheet" href="bundle.css">';
 		var savedState = renderContext.saveState();
-		html += '<form action="?' + Jsonary.encodeData(savedState, 'application/x-www-form-urlencoded') + '" method="POST">';
+		html += '<form action="?' + Jsonary.encodeData(savedState, 'application/x-www-form-urlencoded', encodingVariant) + '" method="POST">';
 		html += innerHtml;
 		html += Jsonary.render.footerHtml();
 		var completeState = renderContext.saveCompleteState();
@@ -241,7 +244,21 @@ app.all('/', function (request, response) {
 		
 		html += '<hr><div id="jsonary-target"></div>';
 		html += '<script src="bundle.js"></script>';
-		html += '<script>Jsonary.render("jsonary-target", "json/data", ' + JSON.stringify(savedState) + ');</script>';
+		html += '<script>';
+		html += 	'Jsonary.location.queryVariant = ' + JSON.stringify(encodingVariant) + ';';
+		html += 	'var renderContext = Jsonary.render("jsonary-target", "json/data", ' + JSON.stringify(savedState) + ');';
+		html += 	'var changeMonitor = Jsonary.location.onChange(function () {';
+		html += 		'renderContext = Jsonary.render("jsonary-target", "json/data", Jsonary.location.query.value());';
+		html += 	'}, false);';
+		html += 	'Jsonary.render.addActionHandler(function (context, data, actionName, historyPoint) {';
+		html += 		'if (historyPoint) {';
+		html += 			'Jsonary.location.addHistoryPoint();';
+		html += 		'}';
+		html += 		'changeMonitor.ignore(function () {';
+		html += 			'Jsonary.location.query.setValue(renderContext.saveState());';
+		html += 		'});';
+		html += 	'});';
+		html += '</script>';
 
 		html += '<hr><pre>';
 		html += JSON.stringify(renderContext.saveCompleteState(), null, '\t');
