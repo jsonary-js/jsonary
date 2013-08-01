@@ -1,7 +1,11 @@
 (function (global) {
+	if (typeof window == 'undefined') {
+		return;
+	}
+	
 	var api = {
 		query: Jsonary.create(null),
-		queryVariant: "dotted",
+		queryVariant: 'pretty',
 		useHistory: true
 	};
 	var changeListeners = [];
@@ -128,7 +132,7 @@
 	update();
 	
 	function updateLocation(notify) {
-		var queryString = Jsonary.encodeData(api.query.value(), "application/x-www-form-urlencoded", api.queryVariant).replace(/%2F/g, "/");
+		var queryString = Jsonary.encodeData(api.query.value(), "application/x-www-form-urlencoded", api.queryVariant);
 		var newHref = api.base + "?" + queryString;
 
 		api.replace(newHref, notify);
