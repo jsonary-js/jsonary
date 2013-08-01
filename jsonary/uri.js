@@ -199,6 +199,13 @@ function unpackQuery(queryString) {
 	for (var key in queryFunctions) {
 		pairs[key] = queryFunctions[key];
 	}
+	var oldJson = JSON.stringify(pairs);
+	pairs.toString = function () {
+		if (JSON.stringify(this) == oldJson) {
+			return queryString;
+		}
+		return queryFunctions.toString.call(this);
+	};
 	pairs.isQuery = true;
 	return pairs;
 };
