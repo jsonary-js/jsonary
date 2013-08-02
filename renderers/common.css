@@ -7,6 +7,35 @@
 	text-decoration: underline;
 }
 
+.jsonary-action, a.jsonary-action {
+	text-decoration: none;
+}
+
+.error, .warning {
+	border: 1px solid;
+	border-radius: 3px;
+	font-size: 0.8em;
+	padding: 0.3em;
+	padding-left: 25px;
+	padding-right: 0.5em;
+	background-position: 3px 50%;
+	background-repeat: no-repeat;
+}
+
+.warning {
+	border-color: #DBB;
+	background-color: #F8F8F0;
+	color: #820;
+	background-image: url('images/warning.png');
+}
+
+.error {
+	border-color: #DCB;
+	background-color: #F8F0F0;
+	color: #800;
+	background-image: url('images/error.png');
+}
+
 /****** Prompt *******/
 
 .prompt-outer {
@@ -133,39 +162,92 @@
 .dialog-close {
 	position: absolute;
 	display: block;
+	margin: 0;
 	top: 0;
-	left: 0.2em;
+	left: 0;
 	font-weight: normal;
 	font-size: 0.8em;
-	font-family: Verdana;
+}
+
+.dialog-close.button, .dialog-close .button {
+	margin: 0;
+	border-top-left-radius: 2px;
+	border-bottom-left-radius: 2px;
+}
+
+/************ Inputs *************/
+
+input[type=text] {
+	border: 1px solid;
+	background-color: #FFF;
+	border-radius: 3px;
+	border-color: #CCC;
+	border-top-color: #A6A6A6;
+	border-bottom-color: #DDD;
+}
+
+textarea, select, textarea:hover, select:hover {
+	border: 1px solid;
+	background-color: #FFF;
+	border-radius: 3px;
+	border-color: #BBB;
+	border-top-color: #AAA;
+	border-bottom-color: #CCC;
+	
+}
+
+select {
+	box-shadow: -1px -1px 0px rgba(0, 0, 0, 0.05), 1px 0px 0px rgba(0, 0, 0, 0.025), 0px 1px 0px rgba(255, 255, 255, 0.5), -1px 0px 0px rgba(255, 255, 255, 0.25);
+}
+
+select:hover {
+	box-shadow: -1px -1px 0px rgba(0, 0, 0, 0.1), 1px 0px 0px rgba(0, 0, 0, 0.05), 0px 1px 0px rgba(255, 255, 255, 0.5), -1px 0px 0px rgba(255, 255, 255, 0.5);
 }
 
 /************ Buttons *************/
 
 .button {
 	display: inline;
+	text-align: center; /* in case some other class combines to make it display:block */
 	color: #444;
 	font-weight: bold;
 	text-decoration: none;
 	margin-left: 0.5em;
 	margin-right: 0.5em;
-	padding-left: 0.5em;
-	padding-right: 0.5em;
-	border: 1px solid #888;
+	padding-left: 0.3em;
+	padding-right: 0.3em;
+
+	border: 1px solid;
 	border-radius: 3px;
-	background-color: #DDD;
-	background-image: URL('images/background-fade.png');
-	background-repeat: repeat-x;
-	background-position: top;
+	border-left-color: #BBB;
+	border-right-color: #DDD;
+	border-top-color: #F3F3F3;
+	border-bottom-color: #AAA;
+	box-shadow: 0px 0px 1px rgba(0, 0, 0, 0.9), 0px 2px 4px rgba(0, 0, 0, 0.05);
+
+	background: #E4E4E4;
+	font-family: "Trebuchet MS"; /* Relatively narrow font */
+	white-space: nowrap;
 }
 
 .button:hover {
 	color: #222;
-	background-image: URL('images/background-fade-bold.png');
+	background: #EEEEEE;
+	box-shadow: 0px 0px 1px rgba(0, 0, 0, 1), 0px 0px 4px rgba(255, 255, 255, 1), 0px 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.button:active {
+	background-color: #E0E0E0;
+	border-left-color: #C8C8C8;
+	border-right-color: #DDD;
+	border-top-color: #E8E8E8;
+	border-bottom-color: #BBB;
+	box-shadow: 0px 0px 1px rgba(0, 0, 0, 1), 0px 0px 4px rgba(255, 255, 255, 0.7), 0px 2px 3px rgba(0, 0, 0, 0.05);
 }
 
 .button.link {
 	color: #05C;
+	border-color: #F0F8FF;
 	background-color: #E0E8F0;
 	background-image: none;
 }
@@ -178,10 +260,10 @@
 
 .button.action {
 	color: #000;
+	border-color: #F8D8A8;
 	background-color: #F0B870;
 	background-image: none;
 	font-weight: bold;
-	border-width: 2px;
 }
 
 .button.action:hover {
@@ -189,8 +271,9 @@
 }
 
 .button.disabled, .button.disabled:hover {
-	border-color: #CCC;
+	border-color: #F8F8F8;
 	color: #888;
 	background-color: #EEE;
 	background-image: none;
+	cursor: default;
 }
