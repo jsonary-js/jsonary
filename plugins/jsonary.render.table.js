@@ -653,10 +653,10 @@
 		rowAction: function (data, context, actionName, arg1, arg2) {
 			delete context.parent.uiState.moveRow;
 			if (actionName == "expand") {
-				if (context.uiState.expand) {
-					delete context.uiState.expand;
-				} else {
-					context.uiState.expand = true;
+				if (context.uiState.expand && !arg1) {
+ 					delete context.uiState.expand;
+ 				} else {
+					context.uiState.expand = arg1 || true;
 				}
 				return true;
 			} else if (actionName == "link") {
