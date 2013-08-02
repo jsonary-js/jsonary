@@ -44,7 +44,7 @@
 			notify = true;
 		}
 
-		if (window.history && api.useHistory) {
+		if (api.useHistory && window.history && window.history.pushState && window.history.replaceState) {
 			if (addHistoryPoint) {
 				window.history.pushState({}, "", newHref);
 			} else {
