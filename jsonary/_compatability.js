@@ -2,6 +2,7 @@ if (typeof window != "undefined" && typeof localStorage == "undefined") {
 	window.localStorage = {};
 }
 
+
 // This is not a full ES5 shim - it just covers the functions that Jsonary uses.
 
 if (!Array.isArray) {
@@ -34,6 +35,21 @@ if (!String.prototype.trim) {
 	String.prototype.trim = function () {
 		return this.replace(/^\s+|\s+$/g,'');
 	};
+}
+
+// Polyfill from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create
+if (!Object.create) {
+	Object.create = (function(){
+		function F(){}
+
+		return function(o){
+			if (arguments.length != 1) {
+				throw new Error('Object.create implementation only accepts one parameter.');
+			}
+			F.prototype = o
+			return new F()
+		}
+	})()
 }
 
 // json2.js, from Douglas Crockford's GitHub repo
