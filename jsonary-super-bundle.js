@@ -1,0 +1,9607 @@
+/* Bundled on Fri Aug 02 2013 18:36:31 GMT+0100 (GMT Daylight Time)*/
+(function() {
+
+
+/**** ../jsonary/_compatability.js ****/
+
+	if (typeof window != "undefined" && typeof localStorage == "undefined") {
+		window.localStorage = {};
+	}
+	
+	
+	// This is not a full ES5 shim - it just covers the functions that Jsonary uses.
+	
+	if (!Array.isArray) {
+		Array.isArray = function (candidate) {
+			return Object.prototype.toString.apply(candidate) === '[object Array]';
+		};
+	}
+	if (!Array.prototype.indexOf) {
+		Array.prototype.indexOf = function (value, start) {
+			for (var i = start || 0; i < this.length; i++) {
+				if (this[i] === value) {
+					return i;
+				}
+			}
+			return -1;
+		};
+	}
+	if (!Object.keys) {
+		Object.keys = function (obj) {
+			var result = [];
+			for (var key in obj) {
+				if (obj.hasOwnProperty(key)) {
+					result.push(key);
+				}
+			}
+			return result;
+		};
+	}
+	if (!String.prototype.trim) {
+		String.prototype.trim = function () {
+			return this.replace(/^\s+|\s+$/g,'');
+		};
+	}
+	
+	// Polyfill from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create
+	if (!Object.create) {
+		Object.create = (function(){
+			function F(){}
+	
+			return function(o){
+				if (arguments.length != 1) {
+					throw new Error('Object.create implementation only accepts one parameter.');
+				}
+				F.prototype = o
+				return new F()
+			}
+		})()
+	}
+	
+	// json2.js, from Douglas Crockford's GitHub repo
+	
+	/*
+	    json2.js
+	    2012-10-08
+	
+	    Public Domain.
+	
+	    NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+	
+	    See http://www.JSON.org/js.html
+	
+	
+	    This code should be minified before deployment.
+	    See http://javascript.crockford.com/jsmin.html
+	
+	    USE YOUR OWN COPY. IT IS EXTREMELY UNWISE TO LOAD CODE FROM SERVERS YOU DO
+	    NOT CONTROL.
+	
+	
+	    This file creates a global JSON object containing two methods: stringify
+	    and parse.
+	
+	        JSON.stringify(value, replacer, space)
+	            value       any JavaScript value, usually an object or array.
+	
+	            replacer    an optional parameter that determines how object
+	                        values are stringified for objects. It can be a
+	                        function or an array of strings.
+	
+	            space       an optional parameter that specifies the indentation
+	                        of nested structures. If it is omitted, the text will
+	                        be packed without extra whitespace. If it is a number,
+	                        it will specify the number of spaces to indent at each
+	                        level. If it is a string (such as '\t' or '&nbsp;'),
+	                        it contains the characters used to indent at each level.
+	
+	            This method produces a JSON text from a JavaScript value.
+	
+	            When an object value is found, if the object contains a toJSON
+	            method, its toJSON method will be called and the result will be
+	            stringified. A toJSON method does not serialize: it returns the
+	            value represented by the name/value pair that should be serialized,
+	            or undefined if nothing should be serialized. The toJSON method
+	            will be passed the key associated with the value, and this will be
+	            bound to the value
+	
+	            For example, this would serialize Dates as ISO strings.
+	
+	                Date.prototype.toJSON = function (key) {
+	                    function f(n) {
+	                        // Format integers to have at least two digits.
+	                        return n < 10 ? '0' + n : n;
+	                    }
+	
+	                    return this.getUTCFullYear()   + '-' +
+	                         f(this.getUTCMonth() + 1) + '-' +
+	                         f(this.getUTCDate())      + 'T' +
+	                         f(this.getUTCHours())     + ':' +
+	                         f(this.getUTCMinutes())   + ':' +
+	                         f(this.getUTCSeconds())   + 'Z';
+	                };
+	
+	            You can provide an optional replacer method. It will be passed the
+	            key and value of each member, with this bound to the containing
+	            object. The value that is returned from your method will be
+	            serialized. If your method returns undefined, then the member will
+	            be excluded from the serialization.
+	
+	            If the replacer parameter is an array of strings, then it will be
+	            used to select the members to be serialized. It filters the results
+	            such that only members with keys listed in the replacer array are
+	            stringified.
+	
+	            Values that do not have JSON representations, such as undefined or
+	            functions, will not be serialized. Such values in objects will be
+	            dropped; in arrays they will be replaced with null. You can use
+	            a replacer function to replace those with JSON values.
+	            JSON.stringify(undefined) returns undefined.
+	
+	            The optional space parameter produces a stringification of the
+	            value that is filled with line breaks and indentation to make it
+	            easier to read.
+	
+	            If the space parameter is a non-empty string, then that string will
+	            be used for indentation. If the space parameter is a number, then
+	            the indentation will be that many spaces.
+	
+	            Example:
+	
+	            text = JSON.stringify(['e', {pluribus: 'unum'}]);
+	            // text is '["e",{"pluribus":"unum"}]'
+	
+	
+	            text = JSON.stringify(['e', {pluribus: 'unum'}], null, '\t');
+	            // text is '[\n\t"e",\n\t{\n\t\t"pluribus": "unum"\n\t}\n]'
+	
+	            text = JSON.stringify([new Date()], function (key, value) {
+	                return this[key] instanceof Date ?
+	                    'Date(' + this[key] + ')' : value;
+	            });
+	            // text is '["Date(---current time---)"]'
+	
+	
+	        JSON.parse(text, reviver)
+	            This method parses a JSON text to produce an object or array.
+	            It can throw a SyntaxError exception.
+	
+	            The optional reviver parameter is a function that can filter and
+	            transform the results. It receives each of the keys and values,
+	            and its return value is used instead of the original value.
+	            If it returns what it received, then the structure is not modified.
+	            If it returns undefined then the member is deleted.
+	
+	            Example:
+	
+	            // Parse the text. Values that look like ISO date strings will
+	            // be converted to Date objects.
+	
+	            myData = JSON.parse(text, function (key, value) {
+	                var a;
+	                if (typeof value === 'string') {
+	                    a =
+	/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/.exec(value);
+	                    if (a) {
+	                        return new Date(Date.UTC(+a[1], +a[2] - 1, +a[3], +a[4],
+	                            +a[5], +a[6]));
+	                    }
+	                }
+	                return value;
+	            });
+	
+	            myData = JSON.parse('["Date(09/09/2001)"]', function (key, value) {
+	                var d;
+	                if (typeof value === 'string' &&
+	                        value.slice(0, 5) === 'Date(' &&
+	                        value.slice(-1) === ')') {
+	                    d = new Date(value.slice(5, -1));
+	                    if (d) {
+	                        return d;
+	                    }
+	                }
+	                return value;
+	            });
+	
+	
+	    This is a reference implementation. You are free to copy, modify, or
+	    redistribute.
+	*/
+	
+	// Create a JSON object only if one does not already exist. We create the
+	// methods in a closure to avoid creating global variables.
+	
+	if (typeof JSON !== 'object') {
+	    JSON = {};
+	}
+	
+	(function () {
+	    'use strict';
+	
+	    function f(n) {
+	        // Format integers to have at least two digits.
+	        return n < 10 ? '0' + n : n;
+	    }
+	
+	    if (typeof Date.prototype.toJSON !== 'function') {
+	
+	        Date.prototype.toJSON = function (key) {
+	
+	            return isFinite(this.valueOf())
+	                ? this.getUTCFullYear()     + '-' +
+	                    f(this.getUTCMonth() + 1) + '-' +
+	                    f(this.getUTCDate())      + 'T' +
+	                    f(this.getUTCHours())     + ':' +
+	                    f(this.getUTCMinutes())   + ':' +
+	                    f(this.getUTCSeconds())   + 'Z'
+	                : null;
+	        };
+	
+	        String.prototype.toJSON      =
+	            Number.prototype.toJSON  =
+	            Boolean.prototype.toJSON = function (key) {
+	                return this.valueOf();
+	            };
+	    }
+	
+	    var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+	        escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+	        gap,
+	        indent,
+	        meta = {    // table of character substitutions
+	            '\b': '\\b',
+	            '\t': '\\t',
+	            '\n': '\\n',
+	            '\f': '\\f',
+	            '\r': '\\r',
+	            '"' : '\\"',
+	            '\\': '\\\\'
+	        },
+	        rep;
+	
+	
+	    function quote(string) {
+	
+	// If the string contains no control characters, no quote characters, and no
+	// backslash characters, then we can safely slap some quotes around it.
+	// Otherwise we must also replace the offending characters with safe escape
+	// sequences.
+	
+	        escapable.lastIndex = 0;
+	        return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+	            var c = meta[a];
+	            return typeof c === 'string'
+	                ? c
+	                : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+	        }) + '"' : '"' + string + '"';
+	    }
+	
+	
+	    function str(key, holder) {
+	
+	// Produce a string from holder[key].
+	
+	        var i,          // The loop counter.
+	            k,          // The member key.
+	            v,          // The member value.
+	            length,
+	            mind = gap,
+	            partial,
+	            value = holder[key];
+	
+	// If the value has a toJSON method, call it to obtain a replacement value.
+	
+	        if (value && typeof value === 'object' &&
+	                typeof value.toJSON === 'function') {
+	            value = value.toJSON(key);
+	        }
+	
+	// If we were called with a replacer function, then call the replacer to
+	// obtain a replacement value.
+	
+	        if (typeof rep === 'function') {
+	            value = rep.call(holder, key, value);
+	        }
+	
+	// What happens next depends on the value's type.
+	
+	        switch (typeof value) {
+	        case 'string':
+	            return quote(value);
+	
+	        case 'number':
+	
+	// JSON numbers must be finite. Encode non-finite numbers as null.
+	
+	            return isFinite(value) ? String(value) : 'null';
+	
+	        case 'boolean':
+	        case 'null':
+	
+	// If the value is a boolean or null, convert it to a string. Note:
+	// typeof null does not produce 'null'. The case is included here in
+	// the remote chance that this gets fixed someday.
+	
+	            return String(value);
+	
+	// If the type is 'object', we might be dealing with an object or an array or
+	// null.
+	
+	        case 'object':
+	
+	// Due to a specification blunder in ECMAScript, typeof null is 'object',
+	// so watch out for that case.
+	
+	            if (!value) {
+	                return 'null';
+	            }
+	
+	// Make an array to hold the partial results of stringifying this object value.
+	
+	            gap += indent;
+	            partial = [];
+	
+	// Is the value an array?
+	
+	            if (Object.prototype.toString.apply(value) === '[object Array]') {
+	
+	// The value is an array. Stringify every element. Use null as a placeholder
+	// for non-JSON values.
+	
+	                length = value.length;
+	                for (i = 0; i < length; i += 1) {
+	                    partial[i] = str(i, value) || 'null';
+	                }
+	
+	// Join all of the elements together, separated with commas, and wrap them in
+	// brackets.
+	
+	                v = partial.length === 0
+	                    ? '[]'
+	                    : gap
+	                    ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']'
+	                    : '[' + partial.join(',') + ']';
+	                gap = mind;
+	                return v;
+	            }
+	
+	// If the replacer is an array, use it to select the members to be stringified.
+	
+	            if (rep && typeof rep === 'object') {
+	                length = rep.length;
+	                for (i = 0; i < length; i += 1) {
+	                    if (typeof rep[i] === 'string') {
+	                        k = rep[i];
+	                        v = str(k, value);
+	                        if (v) {
+	                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+	                        }
+	                    }
+	                }
+	            } else {
+	
+	// Otherwise, iterate through all of the keys in the object.
+	
+	                for (k in value) {
+	                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+	                        v = str(k, value);
+	                        if (v) {
+	                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+	                        }
+	                    }
+	                }
+	            }
+	
+	// Join all of the member texts together, separated with commas,
+	// and wrap them in braces.
+	
+	            v = partial.length === 0
+	                ? '{}'
+	                : gap
+	                ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}'
+	                : '{' + partial.join(',') + '}';
+	            gap = mind;
+	            return v;
+	        }
+	    }
+	
+	// If the JSON object does not yet have a stringify method, give it one.
+	
+	    if (typeof JSON.stringify !== 'function') {
+	        JSON.stringify = function (value, replacer, space) {
+	
+	// The stringify method takes a value and an optional replacer, and an optional
+	// space parameter, and returns a JSON text. The replacer can be a function
+	// that can replace values, or an array of strings that will select the keys.
+	// A default replacer method can be provided. Use of the space parameter can
+	// produce text that is more easily readable.
+	
+	            var i;
+	            gap = '';
+	            indent = '';
+	
+	// If the space parameter is a number, make an indent string containing that
+	// many spaces.
+	
+	            if (typeof space === 'number') {
+	                for (i = 0; i < space; i += 1) {
+	                    indent += ' ';
+	                }
+	
+	// If the space parameter is a string, it will be used as the indent string.
+	
+	            } else if (typeof space === 'string') {
+	                indent = space;
+	            }
+	
+	// If there is a replacer, it must be a function or an array.
+	// Otherwise, throw an error.
+	
+	            rep = replacer;
+	            if (replacer && typeof replacer !== 'function' &&
+	                    (typeof replacer !== 'object' ||
+	                    typeof replacer.length !== 'number')) {
+	                throw new Error('JSON.stringify');
+	            }
+	
+	// Make a fake root object containing our value under the key of ''.
+	// Return the result of stringifying the value.
+	
+	            return str('', {'': value});
+	        };
+	    }
+	
+	
+	// If the JSON object does not yet have a parse method, give it one.
+	
+	    if (typeof JSON.parse !== 'function') {
+	        JSON.parse = function (text, reviver) {
+	
+	// The parse method takes a text and an optional reviver function, and returns
+	// a JavaScript value if the text is a valid JSON text.
+	
+	            var j;
+	
+	            function walk(holder, key) {
+	
+	// The walk method is used to recursively walk the resulting structure so
+	// that modifications can be made.
+	
+	                var k, v, value = holder[key];
+	                if (value && typeof value === 'object') {
+	                    for (k in value) {
+	                        if (Object.prototype.hasOwnProperty.call(value, k)) {
+	                            v = walk(value, k);
+	                            if (v !== undefined) {
+	                                value[k] = v;
+	                            } else {
+	                                delete value[k];
+	                            }
+	                        }
+	                    }
+	                }
+	                return reviver.call(holder, key, value);
+	            }
+	
+	
+	// Parsing happens in four stages. In the first stage, we replace certain
+	// Unicode characters with escape sequences. JavaScript handles many characters
+	// incorrectly, either silently deleting them, or treating them as line endings.
+	
+	            text = String(text);
+	            cx.lastIndex = 0;
+	            if (cx.test(text)) {
+	                text = text.replace(cx, function (a) {
+	                    return '\\u' +
+	                        ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+	                });
+	            }
+	
+	// In the second stage, we run the text against regular expressions that look
+	// for non-JSON patterns. We are especially concerned with '()' and 'new'
+	// because they can cause invocation, and '=' because it can cause mutation.
+	// But just to be safe, we want to reject all unexpected forms.
+	
+	// We split the second stage into 4 regexp operations in order to work around
+	// crippling inefficiencies in IE's and Safari's regexp engines. First we
+	// replace the JSON backslash pairs with '@' (a non-JSON character). Second, we
+	// replace all simple value tokens with ']' characters. Third, we delete all
+	// open brackets that follow a colon or comma or that begin the text. Finally,
+	// we look to see that the remaining characters are only whitespace or ']' or
+	// ',' or ':' or '{' or '}'. If that is so, then the text is safe for eval.
+	
+	            if (/^[\],:{}\s]*$/
+	                    .test(text.replace(/\\(?:["\\\/bfnrt]|u[0-9a-fA-F]{4})/g, '@')
+	                        .replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g, ']')
+	                        .replace(/(?:^|:|,)(?:\s*\[)+/g, ''))) {
+	
+	// In the third stage we use the eval function to compile the text into a
+	// JavaScript structure. The '{' operator is subject to a syntactic ambiguity
+	// in JavaScript: it can begin a block or an object literal. We wrap the text
+	// in parens to eliminate the ambiguity.
+	
+	                j = eval('(' + text + ')');
+	
+	// In the optional fourth stage, we recursively walk the new structure, passing
+	// each name/value pair to a reviver function for possible transformation.
+	
+	                return typeof reviver === 'function'
+	                    ? walk({'': j}, '')
+	                    : j;
+	            }
+	
+	// If the text is not JSON parseable, then a SyntaxError is thrown.
+	
+	            throw new SyntaxError('JSON.parse');
+	        };
+	    }
+	}());
+	
+
+/**** ../jsonary/_header.js ****/
+
+	(function(publicApi) { // Global wrapper
+		
+	publicApi.toString = function() {
+		return "<Jsonary>";
+	};
+	publicApi.plugins = {};
+	
+	function setTimeout(fn, t) {
+		throw new Error("setTimeout() should not be used");
+	}
+	
+	
+
+/**** ../jsonary/uri.js ****/
+
+	function Uri(str) {
+		var scheme = str.match(/^[a-zA-Z\-]+:/);
+		if (scheme != null && scheme.length > 0) {
+			this.scheme = scheme[0].substring(0, scheme[0].length - 1);
+			str = str.substring(scheme[0].length);
+		} else {
+			this.scheme = null;
+		}
+		
+		if (str.substring(0, 2) == "//") {
+			this.doubleSlash = true;
+			str = str.substring(2);
+		} else {
+			this.doubleSlash = false;
+		}
+	
+		var hashIndex = str.indexOf("#");
+		if (hashIndex >= 0) {
+			var fragmentString = str.substring(hashIndex + 1);
+			this.fragment = unpackFragment(fragmentString);
+			str = str.substring(0, hashIndex);
+		} else {
+			this.hash = null;
+		}
+		
+		var queryIndex = str.indexOf("?");
+		if (queryIndex >= 0) {
+			var queryString = str.substring(queryIndex + 1);
+			this.query = unpackQuery(queryString);
+			str = str.substring(0, queryIndex);
+		} else {
+			this.query = null;
+		}
+		
+		var atIndex = str.indexOf("@");
+		if (atIndex >= 0) {
+			var userCredentials = str.substring(0, atIndex);
+			var colonIndex = userCredentials.indexOf(":");
+			if (colonIndex == -1) {
+				this.username = userCredentials;
+				this.password = null;
+			} else {
+				this.username = userCredentials.substring(0, colonIndex);
+				this.password = userCredentials.substring(colonIndex + 1);
+			}
+			var str = str.substring(atIndex + 1);
+		} else {
+			this.username = null;
+			this.password = null;
+		}
+	
+		var slashIndex = 0;
+		if (this.scheme != null || this.doubleSlash) {
+			slashIndex = str.indexOf("/");
+		}
+		if (slashIndex >= 0) {
+			this.path = str.substring(slashIndex);
+			if (this.path == "") {
+				this.path = null;
+			}
+			str = str.substring(0, slashIndex);
+		} else {
+			this.path = null;
+		}
+		
+		var colonIndex = str.indexOf(":");
+		if (colonIndex >= 0) {
+			this.port = str.substring(colonIndex + 1);
+			str = str.substring(0, colonIndex);
+		} else {
+			this.port = null;
+		}
+		
+		if (str == "") {
+			this.domain = null;
+		} else {
+			this.domain = str;
+		}
+	}
+	Uri.prototype = {
+		toString: function() {
+			var result = "";
+			if (this.scheme != null) {
+				result += this.scheme + ":";
+			}
+			if (this.doubleSlash) {
+				result += "//";
+			}
+			if (this.username != null) {
+				result += this.username;
+				if (this.password != null) {
+					result += ":" + this.password;
+				}
+				result += "@";
+			}
+			if (this.domain != null) {
+				result += this.domain;
+			}
+			if (this.port != null) {
+				result += ":" + this.port;
+			}
+			if (this.path != null) {
+				result += this.path;
+			}
+			if (this.query != null) {
+				result += "?" + this.query;
+			}
+			if (this.fragment != null) {
+				result += "#" + this.fragment;
+			}
+			return result;
+		}
+	};
+	Uri.resolve = function(base, relative) {
+		if (relative == undefined) {
+			if (typeof window == 'undefined') {
+				return base;
+			}
+			relative = base;
+			base = window.location.toString();
+		}
+		if (base == undefined) {
+			return relative;
+		}
+		if (!(base instanceof Uri)) {
+			base = new Uri(base);
+		}
+		var result = new Uri(relative + "");
+		if (result.scheme == null) {
+			result.scheme = base.scheme;
+			result.doubleSlash = base.doubleSlash;
+			if (result.domain == null) {
+				result.domain = base.domain;
+				result.port = base.port;
+				result.username = base.username;
+				result.password = base.password;
+				if (result.path == null) {
+					result.path = base.path;
+					if (result.query == null) {
+						result.query = base.query;
+					}
+				} else if (result.path.charAt(0) != "/" && base.path != null) {
+					var precedingSlash = base.path.charAt(0) == "/";
+					var baseParts;
+					if (precedingSlash) {
+						baseParts = base.path.substring(1).split("/");
+					} else {
+						baseParts = base.path.split("/");
+					}
+					if (baseParts[baseParts.length - 1] == "..") {
+						baseParts.push("");
+					}
+					baseParts.pop();
+					for (var i = baseParts.length - 1; i >= 0; i--) {
+						if (baseParts[i] == ".") {
+							baseParts.slice(i, 1);
+						}
+					}
+					var resultParts = result.path.split("/");
+					for (var i = 0; i < resultParts.length; i++) {
+						var part = resultParts[i];
+						if (part == ".") {
+							continue;
+						} else if (part == "..") {
+							if (baseParts.length > 0 && baseParts[baseParts.length - 1] != "..") {
+								baseParts.pop();
+							} else if (!precedingSlash) {
+								baseParts = baseParts.concat(resultParts.slice(i));
+								break;
+							}
+						} else {
+							baseParts.push(part);
+						}
+					}
+					result.path = (precedingSlash ? "/" : "") + baseParts.join("/");
+				}
+			}
+		}
+		return result.toString();
+	};
+	Uri.parse = function(uri) {
+		return new Uri(uri);
+	}
+	
+	function unpackQuery(queryString) {
+		var parts = queryString.split("&");
+		var pairs = [];
+		for (var i = 0; i < parts.length; i++) {
+			var part = parts[i];
+			var index = part.indexOf("=");
+			if (index == -1) {
+				pairs.push({key: part});
+			} else {
+				var key = part.substring(0, index);
+				var value = part.substring(index + 1);
+				pairs.push({key:key, value:decodeURIComponent(value)});
+			}
+		}
+		for (var key in queryFunctions) {
+			pairs[key] = queryFunctions[key];
+		}
+		var oldJson = JSON.stringify(pairs);
+		pairs.toString = function () {
+			if (JSON.stringify(this) == oldJson) {
+				return queryString;
+			}
+			return queryFunctions.toString.call(this);
+		};
+		pairs.isQuery = true;
+		return pairs;
+	};
+	function unpackFragment(fragmentString) {
+		if (fragmentString.indexOf("?") != -1) {
+			fragmentString.isQuery = false;
+		} else {
+			return unpackQuery(fragmentString);
+		}
+	}
+	var queryFunctions = {
+		toString: function() {
+			var result = [];
+			for (var i = 0; i < this.length; i++) {
+				if (typeof this[i].value == "undefined") {
+					result.push(this[i].key);
+				} else {
+					result.push(this[i].key + "=" + encodeURIComponent(this[i].value));
+				}
+			}
+			return result.join("&");
+		},
+		get: function(key, defaultValue) {
+			for (var i = 0; i < this.length; i++) {
+				if (this[i].key == key) {
+					return this[i].value;
+				}
+			}
+			return defaultValue;
+		},
+		set: function(key, value) {
+			for (var i = 0; i < this.length; i++) {
+				if (this[i].key == key) {
+					this[i].value = value;
+					return;
+				}
+			}
+			this.push({key: key, value: value});
+		}
+	};
+	
+	publicApi.Uri = Uri;
+	
+
+/**** ../jsonary/uri-template.js ****/
+
+	var uriTemplateGlobalModifiers = {
+		"+": true,
+		"#": true,
+		".": true,
+		"/": true,
+		";": true,
+		"?": true,
+		"&": true
+	};
+	var uriTemplateSuffices = {
+		"*": true
+	};
+	
+	function uriTemplateSubstitution(spec) {
+		var modifier = "";
+		if (uriTemplateGlobalModifiers[spec.charAt(0)]) {
+			modifier = spec.charAt(0);
+			spec = spec.substring(1);
+		}
+		var separator = ",";
+		var prefix = "";
+		var shouldEscape = true;
+		var showVariables = false;
+		if (modifier == '+') {
+			shouldEscape = false;
+		} else if (modifier == ".") {
+			prefix = ".";
+			separator = ".";
+		} else if (modifier == "/") {
+			prefix = "/";
+			separator = "/";
+		} else if (modifier == '#') {
+			prefix = "#";
+			shouldEscape = false;
+		} else if (modifier == ';') {
+			prefix = ";";
+			separator = ";",
+			showVariables = true;
+		} else if (modifier == '?') {
+			prefix = "?";
+			separator = "&",
+			showVariables = true;
+		} else if (modifier == '&') {
+			prefix = "&";
+			separator = "&",
+			showVariables = true;
+		}
+	
+		var varNames = [];
+		var varList = spec.split(",");
+		var varSpecs = [];
+		for (var i = 0; i < varList.length; i++) {
+			var varSpec = varList[i];
+			var truncate = null;
+			if (varSpec.indexOf(":") != -1) {
+				var parts = varSpec.split(":");
+				varSpec = parts[0];
+				truncate = parseInt(parts[1]);
+			}
+			var suffices = {};
+			while (uriTemplateSuffices[varSpec.charAt(varSpec.length - 1)]) {
+				suffices[varSpec.charAt(varSpec.length - 1)] = true;
+				varSpec = varSpec.substring(0, varSpec.length - 1);
+			}
+			varSpecs.push({
+				truncate: truncate,
+				name: varSpec,
+				suffices: suffices
+			});
+			varNames.push(varSpec);
+		}
+		var resultFunction = function (valueFunction) {
+			var result = prefix;
+			for (var i = 0; i < varSpecs.length; i++) {
+				var varSpec = varSpecs[i];
+				if (i > 0) {
+					result += separator;
+				}
+				var value = valueFunction(varSpec.name);
+				if (Array.isArray(value)) {
+					if (showVariables) {
+						result += varSpec.name + "=";
+					}
+					for (var j = 0; j < value.length; j++) {
+						if (j > 0) {
+							result += varSpec.suffices['*'] ? separator : ",";
+							if (varSpec.suffices['*'] && showVariables) {
+								result += varSpec.name + "=";
+							}
+						}
+						result += shouldEscape ? encodeURIComponent(value[j]).replace("!", "%21"): encodeURI(value[j]).replace("%25", "%");
+					}
+				} else if (typeof value == "object") {
+					if (showVariables && !varSpec.suffices['*']) {
+						result += varSpec.name + "=";
+					}
+					var first = true;
+					for (var key in value) {
+						if (!first) {
+							result += varSpec.suffices['*'] ? separator : ",";
+						}
+						first = false;
+						result += shouldEscape ? encodeURIComponent(key).replace("!", "%21"): encodeURI(key).replace("%25", "%");
+						result += varSpec.suffices['*'] ? '=' : ",";
+						result += shouldEscape ? encodeURIComponent(value[key]).replace("!", "%21"): encodeURI(value[key]).replace("%25", "%");
+					}
+				} else {
+					if (showVariables) {
+						result += varSpec.name + "=";
+					}
+					if (varSpec.truncate != null) {
+						value = value.substring(0, varSpec.truncate);
+					}
+					result += shouldEscape ? encodeURIComponent(value).replace("!", "%21"): encodeURI(value).replace("%25", "%");
+				}
+			}
+			return result;
+		};
+		resultFunction.varNames = varNames;
+		return resultFunction;
+	}
+	
+	function UriTemplate(template) {
+		var parts = template.split("{");
+		var textParts = [parts.shift()];
+		var substitutions = [];
+		var varNames = [];
+		while (parts.length > 0) {
+			var part = parts.shift();
+			var spec = part.split("}")[0];
+			var remainder = part.substring(spec.length + 1);
+			var substitution = uriTemplateSubstitution(spec);
+			substitutions.push(substitution);
+			textParts.push(remainder);
+			varNames = varNames.concat(substitution.varNames);
+		}
+		this.fill = function (valueFunction) {
+			var result = textParts[0];
+			for (var i = 0; i < substitutions.length; i++) {
+				var substitution = substitutions[i];
+				result += substitution(valueFunction);
+				result += textParts[i + 1];
+			}
+			return result;
+		};
+		this.varNames = varNames;
+	}
+
+/**** ../jsonary/utils.js ****/
+
+	var Utils = {
+		guessBasicType: function (data, prevType) {
+			if (data === null) {
+				return "null";
+			} else if (Array.isArray(data)) {
+				return "array";
+			} else if (typeof data == "object") {
+				return "object";
+			} else if (typeof data == "string") {
+				return "string";
+			} else if (typeof data == "number") {
+				if (data % 1 == 0) { // we used to persist "number" if the previous type was "number", but that caused problems for no real benefit.
+					return "integer";
+				} else {
+					return "number";
+				}
+			} else if (typeof data == "boolean") {
+				return "boolean";
+			} else {
+				return undefined;
+			}
+		},
+		resolveRelativeUri: function (baseUrl, relativeUrl) {
+			return Uri.resolve(baseUrl, relativeUrl);
+		},
+		urlsEqual: function (url1, url2) {
+			//TODO:  better URL comparison
+			if (url1.charAt(url1.length - 1) == '#') {
+				url1 = url1.substring(0, url1.length - 1);
+			}
+			if (url2.charAt(url2.length - 1) == '#') {
+				url2 = url2.substring(0, url2.length - 1);
+			}
+			return url1 == url2;
+		},
+		linksEqual: function (linkList1, linkList2) {
+			if (linkList1 == undefined || linkList2 == undefined) {
+				return linkList1 == linkList2;
+			}
+			if (linkList1.length != linkList2.length) {
+				return false;
+			}
+			for (var i = 0; i < linkList1.length; i++) {
+				var link1 = linkList1[i];
+				var link2 = linkList2[i];
+				if (link1.href != link2.href || link1.rel != link2.rel) {
+					return false;
+				}
+				if (link1.method != link2.method || link1['enc-type'] != link2['enc-type']) {
+					return false;
+				}
+				if (link1.schema != link2.schema) {
+					return false;
+				}
+			}
+			return true;
+		},
+		log: function (level, message) {
+			try {
+				if (level >= Utils.logLevel.ERROR) {
+					window.alert("ERROR: " + message);
+					console.log("ERROR: " + message);
+					console.trace();
+				}
+				if (level >= Utils.logLevel.WARNING) {
+					console.log("WARNING: " + message);
+				}
+			} catch (e) {}
+		},
+		logLevel: {
+			DEBUG: -1,
+			STANDARD: 0,
+			WARNING: 1,
+			ERROR: 2
+		},
+		getKeyVariant: function (baseKey, variantName) {
+			if (variantName == undefined) {
+				variantName = Utils.getUniqueKey();
+			}
+			variantName += "";
+			if (variantName.indexOf('.') >= 0) {
+				throw new Error("variant name cannot contain a dot: " + variantName);
+			}
+			return baseKey + "." + variantName;
+		},
+		keyIsVariant: function (key, baseKey) {
+			key += "";
+			baseKey += "";
+			return key === baseKey || key.substring(0, baseKey.length + 1) === (baseKey + ".");
+		},
+		keyIsRoot: function (key) {
+			return (key.indexOf(".") == -1);
+		},
+		hcf: function(a, b) {
+			a = Math.abs(a);
+			b = Math.abs(b);
+			while (true) {
+				var newB = a % b;
+				if (newB == 0) {
+					return b;
+				} else if (isNaN(newB)) {
+					return NaN;
+				}
+				a = b;
+				b = newB;
+			}
+		},
+		recursiveCompare: function(a, b) {
+			if (Array.isArray(a)) {
+				if (!Array.isArray(b) || a.length != b.length) {
+					return false;
+				}
+				for (var i = 0; i < a.length; i++) {
+					if (!Utils.recursiveCompare(a[i], b[i])) {
+						return false;
+					}
+				}
+				return true;
+			} else if (typeof a == "object") {
+				for (var key in a) {
+					if (b[key] === undefined && a[key] !== undefined) {
+						return false;
+					}
+				}
+				for (var key in b) {
+					if (a[key] === undefined && a[key] !== undefined) {
+						return false;
+					}
+				}
+				for (var key in a) {
+					if (!Utils.recursiveCompare(a[key], b[key])) {
+						return false;
+					}
+				}
+				return true;
+			}
+			return a === b;
+		},
+		lcm: function(a, b) {
+			return Math.abs(a*b/this.hcf(a, b));
+		},
+		encodeData: function (data, encType, variant) {
+			if (encType == undefined) {
+				encType = "application/x-www-form-urlencoded";
+			}
+			if (encType == "application/json") {
+				return JSON.stringify(data);
+			} else if (encType == "application/x-www-form-urlencoded") {
+				if (variant == "dotted") {
+					return Utils.formEncode(data, "", '.', '', '|').replace(/%20/g, '+').replace(/%2F/g, "/");
+				} else if (variant == 'pretty') {
+					return Utils.formEncode(data, "", '[', ']').replace(/%20/g, '+').replace(/%2F/g, "/").replace(/%5B/g, '[').replace(/%5D/g, ']').replace(/%7C/g, '|');
+				} else {
+					return Utils.formEncode(data, "", '[', ']').replace(/%20/g, '+');
+				}
+			} else {
+				throw new Error("Unknown encoding type: " + this.encType);
+			}
+		},
+		decodeData: function (data, encType, variant) {
+			if (encType == undefined) {
+				encType = "application/x-www-form-urlencoded";
+			}
+			if (encType == "application/json") {
+				return JSON.parse(data);
+			} else if (encType == "application/x-www-form-urlencoded") {
+				data = data.replace(/\+/g, '%20');
+				if (variant == "dotted") {
+					return Utils.formDecode(data.replace(/%7C/g, '|'), '.', '', '|');
+				} else {
+					return Utils.formDecode(data, '[', ']');
+				}
+			} else {
+				throw new Error("Unknown encoding type: " + this.encType);
+			}
+		},
+		formEncode: function (data, prefix, sepBefore, sepAfter, arrayJoin) {
+			if (prefix == undefined) {
+				prefix = "";
+			}
+			var result = [];
+			if (Array.isArray(data)) {
+				for (var i = 0; i < data.length; i++) {
+					var key = (prefix == "") ? i : prefix + encodeURIComponent(sepBefore + sepAfter);
+					var complexKey = (prefix == "") ? i : prefix + encodeURIComponent(sepBefore + i + sepAfter);
+					var value = data[i];
+					if (value == null) {
+						result.push(key + "=null");
+					} else if (typeof value == "object") {
+						var subResult = Utils.formEncode(value, complexKey, sepBefore, sepAfter, arrayJoin);
+						if (subResult) {
+							result.push(subResult);
+						}
+					} else if (typeof value == "boolean") {
+						if (value) {
+							result.push(key + "=true");
+						} else {
+							result.push(key + "=false");
+						}
+					} else if (value === "") {
+						result.push(key);
+					} else {
+						result.push(key + "=" + encodeURIComponent(value));
+					}
+				}
+			} else if (typeof data == "object") {
+				for (var key in data) {
+					if (!data.hasOwnProperty(key)) {
+						continue;
+					}
+					var value = data[key];
+					if (prefix != "") {
+						key = prefix + encodeURIComponent(sepBefore + key + sepAfter);
+					} else {
+						key = encodeURIComponent(key);
+					}
+					if (value === undefined) {
+					} else if (value === null) {
+						result.push(key + "=null");
+					} else if (arrayJoin && Array.isArray(value)) {
+						if (value.length > 0) {
+							var arrayItems = [];
+							while (arrayItems.length < value.length) {
+								arrayItems[arrayItems.length] = encodeURIComponent(value[arrayItems.length]);
+							}
+							var joined = arrayJoin + arrayItems.join(arrayJoin);
+							result.push(key + "=" + joined);
+						}
+					} else if (typeof value == "object") {
+						var subResult = Utils.formEncode(value, key, sepBefore, sepAfter, arrayJoin);
+						if (subResult) {
+							result.push(subResult);
+						}
+					} else if (typeof value == "boolean") {
+						if (value) {
+							result.push(key + "=true");
+						} else {
+							result.push(key + "=false");
+						}
+					} else if (value === "") {
+						result.push(key);
+					} else {
+						result.push(key + "=" + encodeURIComponent(value));
+					}
+				}
+			} else {
+				result.push(encodeURIComponent(data));
+			}
+			return result.join("&");
+		},
+		formDecodeString: function (value) {
+			if (value == "true") {
+				value = true;
+			} else if (value == "false") {
+				value = false;
+			} else if (value == "null") {
+				value = null;
+			} else if (parseFloat(value) + "" == value) {
+				value = parseFloat(value);
+			}
+			return value;
+		},
+		formDecode: function (data, sepBefore, sepAfter, arrayJoin) {
+			var result = {};
+			var parts = data.split("&");
+			for (var partIndex = 0; partIndex < parts.length; partIndex++) {
+				var part = parts[partIndex];
+				var key = part;
+				var value = "";
+				if (part.indexOf("=") >= 0) {
+					key = part.substring(0, part.indexOf("="));
+					value = decodeURIComponent(part.substring(part.indexOf("=") + 1));
+					if (arrayJoin && value.charAt(0) == arrayJoin) {
+						value = value.split(arrayJoin);
+						value.shift();
+						for (var i = 0; i < value.length; i++) {
+							value[i] = Utils.formDecodeString(value[i]);
+						}
+					} else {
+						value = Utils.formDecodeString(value);
+					}
+				}
+				key = decodeURIComponent(key);
+				var subject = result;
+				var keyparts = key.split(sepBefore);
+				for (var i = 1; i < keyparts.length; i++) {
+					keyparts[i] = keyparts[i].substring(0, keyparts[i].length - sepAfter.length);
+				}
+				for (var i = 0; i < keyparts.length; i++) {
+					if (Array.isArray(subject) && keyparts[i] == "") {
+						keyparts[i] = subject.length;
+					}
+					if (i == keyparts.length - 1) {
+						subject[keyparts[i]] = value;
+					} else {
+						if (subject[keyparts[i]] == undefined) {
+							if (keyparts[i + 1] == "") {
+								subject[keyparts[i]] = [];
+							} else {
+								subject[keyparts[i]] = {};
+							}
+						}
+						subject = subject[keyparts[i]];
+					}
+				}
+			}
+			return result;
+		},
+		escapeHtml: function(text) {
+			text += "";
+			return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+		},
+		encodePointerComponent: function (component) {
+			return component.toString().replace("~", "~0").replace("/", "~1");
+		},
+		decodePointerComponent: function (component) {
+			return component.toString().replace("~1", "/").replace("~0", "~");
+		},
+		splitPointer: function (pointerString) {
+			var parts = pointerString.split("/");
+			if (parts[0] == "") {
+				parts.shift();
+			}
+			for (var i = 0; i < parts.length; i++) {
+				parts[i] = Utils.decodePointerComponent(parts[i]);
+			}
+			return parts;
+		},
+		joinPointer: function (pointerComponents) {
+			var result = "";
+			for (var i = 0; i < pointerComponents.length; i++) {
+				result += "/" + Utils.encodePointerComponent(pointerComponents[i]);
+			}
+			return result;
+		},
+		prettyJson: function (data) {
+			var json = JSON.stringify(data, null, "\t");
+			function compactJson(json) {
+				try {
+					var compact = JSON.stringify(JSON.parse(json));
+					var parts = compact.split('"');
+					for (var i = 0; i < parts.length; i++) {
+						var part = parts[i];
+						part = part.replace(/:/g, ': ');
+						part = part.replace(/,/g, ', ');
+						parts[i] = part;
+						i++;
+						while (i < parts.length && parts[i].charAt(parts[i].length - 1) == "\\") {
+							i++;
+						}
+					}
+					return parts.join('"');
+				} catch (e) {
+					return json;
+				}
+			}
+			
+			json = json.replace(/\{[^\{,}]*\}/g, compactJson); // Objects with a single simple property
+			json = json.replace(/\[[^\[,\]]*\]/g, compactJson); // Arrays with a single simple item
+			json = json.replace(/\[[^\{\[\}\]]*\]/g, compactJson); // Arrays containing only scalar items
+			return json;
+		}
+	};
+	(function () {
+		var counter = 0;
+		Utils.getUniqueKey = function () {
+			return counter++;
+		};
+	})();
+	
+	// Place relevant ones in the public API
+	
+	publicApi.getMonitorKey = Utils.getUniqueKey;
+	publicApi.getKeyVariant = function (baseKey, variantName) {
+		return Utils.getKeyVariant(baseKey, "~" + variantName);
+	};
+	publicApi.keyIsVariant = Utils.keyIsVariant;
+	publicApi.log = function (level, message) {
+		if (typeof level != "number") {
+			alert("First argument to log() must be a number (preferably enum value from .logLevel)");
+			throw new Error("First argument to log() must be a number (preferably enum value from .logLevel)");
+		} else {
+			Utils.log(level, message);
+		}
+	};
+	publicApi.setLogFunction = function (log) {
+		Utils.log = log;
+	};
+	publicApi.logLevel = Utils.logLevel;
+	publicApi.encodeData = Utils.encodeData;
+	publicApi.decodeData = Utils.decodeData;
+	publicApi.encodePointerComponent = Utils.encodePointerComponent;
+	publicApi.decodePointerComponent = Utils.decodePointerComponent;
+	publicApi.splitPointer = Utils.splitPointer;
+	publicApi.joinPointer = Utils.joinPointer;
+	publicApi.escapeHtml = Utils.escapeHtml;
+	publicApi.prettyJson = Utils.prettyJson;
+	
+	publicApi.extend = function (obj) {
+		for (var key in obj) {
+			if (publicApi[key] == undefined) {
+				publicApi[key] = obj[key];
+			}
+		}
+	};
+	
+	function cacheResult(targetObj, map) {
+		for (var key in map) {
+			(function (key, value) {
+				targetObj[key] = function () {
+					return value;
+				};
+			})(key, map[key]);
+		}
+	}
+	
+
+/**** ../jsonary/monitors.js ****/
+
+	function MonitorSet(context) {
+		this.contents = {};
+		this.keyOrder = [];
+		this.context = context;
+	}
+	MonitorSet.prototype = {
+		add: function (monitorKey, monitor) {
+			if (typeof monitorKey != "string" && typeof monitorKey != "number") {
+				throw new Error("First argument must be a monitorKey, obtained using getMonitorKey()");
+			}
+			this.contents[monitorKey] = monitor;
+			this.addKey(monitorKey);
+		},
+		addKey: function (monitorKey) {
+			var i;
+			for (i = 0; i < this.keyOrder.length; i++) {
+				var key = this.keyOrder[i];
+				if (key == monitorKey) {
+					return;
+				}
+				if (Utils.keyIsVariant(monitorKey, key)) {
+					this.keyOrder.splice(i, 0, monitorKey);
+					return;
+				}
+			}
+			this.keyOrder.push(monitorKey);
+		},
+		remove: function (monitorKey) {
+			delete this.contents[monitorKey];
+			this.removeKey(monitorKey);
+			var prefix = monitorKey + ".";
+			for (var key in this.contents) {
+				if (key.substring(0, prefix.length) == prefix) {
+					this.removeKey(key);
+					delete this.contents[key];
+				}
+			}
+		},
+		removeKey: function (monitorKey) {
+			var index = this.keyOrder.indexOf(monitorKey);
+			if (index >= 0) {
+				this.keyOrder.splice(index, 1);
+			}
+		},
+		notify: function () {
+			var notifyArgs = arguments;
+			for (var i = 0; i < this.keyOrder.length; i++) {
+				var key = this.keyOrder[i];
+				var monitor = this.contents[key];
+				monitor.apply(this.context, notifyArgs);
+			}
+		},
+		isEmpty: function () {
+			var key;
+			for (key in this.contents) {
+				if (this.contents[key].length !== 0) {
+					return false;
+				}
+			}
+			return true;
+		}
+	};
+	
+	function ListenerSet(context) {
+		this.listeners = [];
+		this.context = context;
+	}
+	ListenerSet.prototype = {
+		add: function (listener) {
+			this.listeners[this.listeners.length] = listener;
+		},
+		notify: function () {
+			var listenerArgs = arguments;
+			while (this.listeners.length > 0) {
+				var listener = this.listeners.shift();
+				listener.apply(this.context, listenerArgs);
+			}
+		},
+		isEmpty: function () {
+			return this.listeners.length === 0;
+		}
+	};
+	
+	// DelayedCallbacks is used for notifications that might be external to the library
+	// The callbacks are still executed synchronously - however, they are not executed while the system is in a transitional state.
+	var DelayedCallbacks = {
+		depth: 0,
+		callbacks: [],
+		increment: function () {
+			this.depth++;
+		},
+		decrement: function () {
+			this.depth--;
+			if (this.depth < 0) {
+				throw new Error("DelayedCallbacks.depth cannot be < 0");
+			}
+			while (this.depth == 0 && this.callbacks.length > 0) {
+				var callback = this.callbacks.shift();
+				this.depth++;
+				callback();
+				this.depth--
+			}
+		},
+		add: function (callback) {
+			this.depth++;
+			this.callbacks.push(callback);
+			this.decrement();
+		}
+	};
+	
+
+/**** ../jsonary/request.js ****/
+
+	if (typeof XMLHttpRequest == "undefined") {
+		XMLHttpRequest = function () {
+			try {
+				return new ActiveXObject("Msxml2.XMLHTTP.6.0");
+			} catch (e) {
+			}
+			try {
+				return new ActiveXObject("Msxml2.XMLHTTP.3.0");
+			} catch (e) {
+			}
+			try {
+				return new ActiveXObject("Microsoft.XMLHTTP");
+			} catch (e) {
+			}
+			//Microsoft.XMLHTTP points to Msxml2.XMLHTTP and is redundanat
+			throw new Error("This browser does not support XMLHttpRequest.");
+		};
+	}
+	
+	publicApi.ajaxFunction = function (params, callback) {
+		var xhrUrl = params.url;
+		var xhrData = params.data;
+		var encType = params.encType;
+		
+		var xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = function () {
+			if (xhr.readyState == 4) {
+				if (xhr.status >= 200 && xhr.status < 300) {
+					var data = xhr.responseText || null;
+					try {
+						data = JSON.parse(data);
+					} catch (e) {
+						if (xhr.status !=204) {
+							callback(e, data);
+							return;
+						} else {
+							data = null;
+						}
+					}
+					var headers = xhr.getAllResponseHeaders();
+					if (headers == "") {	// Firefox bug  >_>
+						headers = [];
+						var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
+						for (var i = 0; i < desiredHeaders.length; i++) {
+							var value = xhr.getResponseHeader(desiredHeaders[i]);
+							if (value != "" && value != null) {
+								headers.push(desiredHeaders[i] + ": " + value);
+							}
+						}
+						headers = headers.join("\n");
+					}
+					callback(null, data, headers);
+				} else {
+					var data = xhr.responseText || null;
+					try {
+						data = JSON.parse(data);
+					} catch (e) {
+					}
+					var headers = xhr.getAllResponseHeaders();
+					if (headers == "") {	// Firefox bug  >_>
+						headers = [];
+						var desiredHeaders = ["Cache-Control", "Content-Language", "Content-Type", "Expires", "Last-Modified", "Pragma"];
+						for (var i = 0; i < desiredHeaders.length; i++) {
+							var value = xhr.getResponseHeader(desiredHeaders[i]);
+							if (value != "" && value != null) {
+								headers.push(desiredHeaders[i] + ": " + value);
+							}
+						}
+						headers = headers.join("\n");
+					}
+					callback(new HttpError(xhr.status, xhr), data, headers);
+				}
+			}
+		};
+		xhr.open(params.method, xhrUrl, true);
+		xhr.setRequestHeader("Content-Type", encType);
+		xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
+		xhr.send(xhrData);
+	};
+	
+	// Default cache
+	(function () {
+		var cacheData = {};
+		var cacheTimes = {};
+		var emptyTimeout = setInterval(function () {
+			defaultCache.empty();
+		}, 10*1000);
+	
+		var defaultCache = function (cacheKey, insertData) {
+			if (insertData !== undefined) {
+				cacheData[cacheKey] = insertData;
+				cacheTimes[cacheKey] = (new Date()).getTime();
+				return;
+			}
+			return cacheData[cacheKey];
+		};
+		defaultCache.cacheSeconds = 10;
+		defaultCache.empty = function (timeLimit) {
+			// TODO: figure out what to do here
+			return;
+			if (timeLimit == undefined) {
+				timeLimit = (new Date()).getTime() - defaultCache.cacheSeconds * 1000;
+			}
+			for (var key in cacheTimes) {
+				if (cacheTimes[key] <= timeLimit) {
+					var request = cacheData[key];
+					delete cacheData[key];
+					delete cacheTimes[key];
+				}
+			}
+		};
+		defaultCache.invalidate = function (urlPattern) {
+			if (typeof urlPattern == "string") {
+				urlPattern = Utils.resolveRelativeUri(urlPattern);
+			}
+			for (var key in cacheData) {
+				var request = cacheData[key];
+				var url = request.url;
+				if (typeof urlPattern == "string") {
+					if (url.indexOf(urlPattern) != -1) {
+						request.invalidate();
+					}
+				} else {
+					if (urlPattern.test(url)) {
+						request.invalidate();
+					}
+				}
+			}
+		};
+		publicApi.defaultCache = defaultCache;
+		publicApi.invalidate = defaultCache.invalidate;
+	})();
+	
+	function FragmentRequest(request, fragment) {
+		var thisFragmentRequest = this;
+		
+		this.baseUrl = request.url;
+		this.fragment = fragment;
+		if (fragment == null) {
+			fragment = "";
+		}
+		this.url = this.baseUrl + "#" + encodeURI(fragment);
+	
+		this.getRoot = function (callback) {
+			request.getRoot(function(data) {
+				callback.call(data, data, thisFragmentRequest);
+			});
+		};
+		this.getData = function (callback) {
+			if (fragment == null || fragment == "") {
+				request.document.getRoot(function(data) {
+					callback.call(data, data, thisFragmentRequest);
+				});
+			} else {
+				request.document.getFragment(fragment, function(data) {
+					callback.call(data, data, thisFragmentRequest);
+				});
+			}
+		};
+		this.getRawResponse = function (callback) {
+			request.getResponse(function(data) {
+				callback.call(data, data, thisFragmentRequest);
+			});
+		};
+	}
+	FragmentRequest.prototype = {
+	}
+	
+	function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
+		if (url == undefined) {
+			throw new Error("URL cannot be undefined");
+		}
+		url = Utils.resolveRelativeUri(url);
+		if (method == undefined) {
+			method = "GET";
+		}
+		if (data === undefined) {
+			data = {};
+		}
+		var fragment = null;
+		var index = url.indexOf("#");
+		if (index >= 0) {
+			fragment = decodeURI(url.substring(index + 1));
+			url = url.substring(0, index);
+		}
+	
+		// TODO: think about implementing Rails-style _method=put/delete
+		if (encType == undefined) {
+			if (method == "GET") {
+				encType = "application/x-www-form-urlencoded";
+			} else if (method == "POST" || method == "PUT") {
+				encType = "application/json";
+			} else {
+				encType = "application/x-www-form-urlencoded";
+			}
+		}
+		if (cacheFunction == undefined) {
+			cacheFunction = publicApi.defaultCache;
+		}
+	
+		var cacheable = (cacheFunction && method == "GET" && encType == "application/x-www-form-urlencoded");
+		if (cacheable) {
+			var cacheKey = JSON.stringify(url) + ":" + JSON.stringify(data);
+			var result = cacheFunction(cacheKey);
+			if (result != undefined) {
+				return {
+					request: result,
+					fragmentRequest: new FragmentRequest(result, fragment)
+				};
+			}
+		}
+		var request = new Request(url, method, data, encType, hintSchema, function (request) {
+			if (cacheable) {
+				cacheFunction(cacheKey, request);
+			}
+		});
+		return {
+			request: request,
+			fragmentRequest: new FragmentRequest(request, fragment)
+		};
+	}
+	
+	function addToCache(url, rawData, schemaUrl, cacheFunction) {
+		url = Utils.resolveRelativeUri(url);
+		if (cacheFunction == undefined) {
+			cacheFunction = publicApi.defaultCache;
+		}
+		var data = {};
+		var cacheKey = JSON.stringify(url) + ":" + JSON.stringify(data);
+		var request = new RequestFake(url, rawData, schemaUrl, cacheFunction, cacheKey);
+	}
+	publicApi.addToCache = addToCache;
+	publicApi.getData = function(params, callback, hintSchema) {
+		if (typeof params == "string") {
+			params = {url: params};
+		}
+		var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema).fragmentRequest;
+		if (callback != undefined) {
+			request.getData(callback);
+		}
+		return request;
+	};
+	publicApi.isRequest = function (obj) {
+		return (obj instanceof Request) || (obj instanceof FragmentRequest);
+	}
+	
+	var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
+	
+	function HttpError (code) {
+		this.httpCode = code;
+		this.message = "HTTP Status: " + code;
+	}
+	HttpError.prototype = new Error();
+	publicApi.HttpError = HttpError;
+	
+	function Request(url, method, data, encType, hintSchema, executeImmediately) {
+		executeImmediately(this);
+		url = Utils.resolveRelativeUri(url);
+	
+		data = Utils.encodeData(data, encType);
+		if (method == "GET" && data != "") {
+			if (url.indexOf("?") == -1) {
+				url += "?";
+			} else {
+				url += "&";
+			}
+			url += data;
+			data = "";
+		}
+	
+		Utils.log(Utils.logLevel.STANDARD, "Sending request for: " + url);
+		var thisRequest = this;
+		this.successful = undefined;
+		this.error = null;
+		this.url = url;
+	
+		var isDefinitive = (data == undefined) || (data == "");
+		this.responseListeners = new ListenerSet(this);
+		this.document = new Document(url, isDefinitive, true);
+	
+		this.fetched = false;
+		this.fetchData(url, method, data, encType, hintSchema);
+		this.invalidate = function() {
+			if (method == "GET") {
+				this.fetchData(url, method, data, encType, hintSchema);
+			}
+		};
+	}
+	Request.prototype = {
+		beingUsed: function() {
+			if (this.baseContext == undefined) {
+				Utils.log(Utils.logLevel.DEBUG, "No base context: " + this.url);
+				return true;
+			}
+			return this.baseContext.retainCount() > 0;
+		},
+		getResponse: function (listener) {
+			this.responseListeners.add(listener);
+			this.checkForFullResponse();
+		},
+		checkForFullResponse: function () {
+			if (this.document.raw.defined()) {
+				this.responseListeners.notify(this.document.raw, this);
+			}
+		},
+		ajaxSuccess: function (data, headerText, hintSchema) {
+			this.fetched = true;
+			var thisRequest = this;
+			thisRequest.successful = true;
+			Utils.log(Utils.logLevel.STANDARD, "Request success: " + this.url);
+			var lines = headerText.replace(/\r\n/g, "\n").split("\n");
+			var headers = {};
+			var contentType = null;
+			var contentTypeParameters = {};
+			for (var i = 0; i < lines.length; i++) {
+				var keyName = lines[i].split(": ")[0];
+				if (keyName == "") {
+					continue;
+				}
+				var value = lines[i].substring(keyName.length + 2);
+				if (value[value.length - 1] == "\r") {
+					value = value.substring(0, value.length - 1);
+				}
+				// Some browsers have all parameters as lower-case, so we do this for compatability
+				//       (discovered using Dolphin Browser on an Android phone)
+				keyName = keyName.toLowerCase();
+				var values = value.split(', ');
+				for (var j = 0; j < values.length; j++) {
+					var value = values[j];
+					if (headers[keyName] == undefined) {
+						headers[keyName] = value;
+					} else if (typeof headers[keyName] == "object") {
+						headers[keyName].push(value);
+					} else {
+						headers[keyName] = [headers[keyName], value];
+					}
+				}
+			}
+			Utils.log(Utils.logLevel.DEBUG, "headers: " + JSON.stringify(headers, null, 4));
+			var contentType = headers["content-type"].split(";")[0];
+			var profileParts = headers["content-type"].substring(contentType.length + 1).split(",");
+			for (var i = 0; i < profileParts.length; i++) {
+				var partName = profileParts[i].split("=")[0];
+				var partValue = profileParts[i].substring(partName.length + 1);
+				partName = partName.trim();
+				if (partName == "") {
+					continue;
+				}
+				contentTypeParameters[partName] = partValue;
+			}
+	
+			thisRequest.headers = headers;
+			thisRequest.contentType = contentType;
+			thisRequest.contentTypeParameters = contentTypeParameters;
+	
+			thisRequest.document.setRaw(data);
+			thisRequest.profileUrl = null;
+			thisRequest.document.raw.removeSchema(PROFILE_SCHEMA_KEY);
+			if (contentTypeParameters["profile"] != undefined) {
+				var schemaUrl = contentTypeParameters["profile"];
+				schemaUrl = Utils.resolveRelativeUri(thisRequest.url, schemaUrl);
+				thisRequest.profileUrl = schemaUrl;
+				thisRequest.document.raw.addSchema(schemaUrl, PROFILE_SCHEMA_KEY);
+			} else if (hintSchema != undefined) {
+				thisRequest.document.raw.addSchema(hintSchema, PROFILE_SCHEMA_KEY);
+			}
+			if (contentTypeParameters["root"] != undefined) {
+				var link = {
+					"href": contentTypeParameters["root"],
+					"rel": "root"
+				};
+				thisRequest.document.raw.addLink(link);
+			}
+			
+			// Links
+			if (headers["link"]) {
+				var links = (typeof headers["link"] == "object") ? headers['link'] : [headers['link']];
+				for (var i = 0; i < links.length; i++) {
+					var link = links[i];
+					var parts = link.trim().split(";");
+					var url = parts.shift().trim();
+					url = url.substring(1, url.length - 1);
+					var linkObj = {
+						"href": url
+					};
+					for (var j = 0; j < parts.length; j++) {
+						var part = parts[j];
+						var key = part.substring(0, part.indexOf("="));
+						var value = part.substring(key.length + 1);
+						key = key.trim();
+						if (value.charAt(0) == '"') {
+							value = JSON.parse(value);
+						}
+						if (key == "type") {
+							key = "mediaType";
+						}
+						linkObj[key] = value;
+					}
+					thisRequest.document.raw.addLink(linkObj);
+				}
+			}
+	
+			thisRequest.checkForFullResponse();
+			thisRequest.waitingForRoot = true;
+			thisRequest.document.raw.whenSchemasStable(function () {
+				delete thisRequest.waitingForRoot;
+				var rootLink = thisRequest.document.raw.getLink("root");
+				if (rootLink != undefined) {
+					var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
+					thisRequest.document.setRoot(fragment);
+				} else {
+					thisRequest.document.setRoot("");
+				}
+			});
+		},
+		ajaxError: function (error, data) {
+			this.fetched = true;
+			var thisRequest = this;
+			thisRequest.successful = false;
+			thisRequest.error = error;
+			Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + error.message + ")");
+			thisRequest.document.error = error;
+			thisRequest.document.setRaw(data);
+			thisRequest.document.raw.whenSchemasStable(function () {
+				thisRequest.checkForFullResponse();
+				thisRequest.document.setRoot("");
+			});
+		},
+		fetchData: function(url, method, data, encType, hintSchema) {
+			var thisRequest = this;
+			var xhrUrl = url;
+			var xhrData = data;
+			if ((method == "GET" || method == "DELETE") && (xhrData != undefined && xhrData != "")) {
+				if (xhrUrl.indexOf("?") == -1) {
+					xhrUrl += "?";
+				} else {
+					xhrUrl += "&";
+				}
+				xhrUrl += xhrData;
+				xhrData = undefined;
+			}
+			if (publicApi.config.antiCacheUrls) {
+				var extra = "_=" + Math.random();
+				if (xhrUrl.indexOf("?") == -1) {
+					xhrUrl += "?" + extra;
+				} else {
+					xhrUrl += "&" + extra;
+				}
+			}
+			
+			var params = {
+				url: xhrUrl,
+				data: xhrData,
+				encType: encType,
+				method: method
+			};
+			publicApi.ajaxFunction(params, function (error, data, headers) {
+				if (!error) {
+					thisRequest.ajaxSuccess(data, headers, hintSchema);
+					// Special RESTy knowledge
+					if (params.method == "PUT") {
+						publicApi.invalidate(params.url);
+					}			
+				} else {
+					thisRequest.ajaxError(error, data);
+				}
+			});
+		}
+	};
+	
+	function RequestFake(url, rawData, schemaUrl, cacheFunction, cacheKey) {
+		cacheFunction(cacheKey, this);
+	
+		var thisRequest = this;
+		this.url = url;
+		
+		this.responseListeners = new ListenerSet(this);
+		this.document = new Document(url, true, true);
+		this.document.setRaw(rawData);
+		this.profileUrl = schemaUrl;
+		if (schemaUrl != undefined) {
+			this.document.raw.addSchema(schemaUrl);
+		}
+		if (url == schemaUrl) {
+			this.document.setRoot("");
+		} else {
+			this.document.raw.whenSchemasStable(function () {
+				var rootLink = thisRequest.document.raw.getLink("root");
+				if (rootLink != undefined) {
+					var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
+					thisRequest.document.setRoot(fragment);
+				} else {
+					thisRequest.document.setRoot("");
+				}
+			});
+		}
+		this.successful = true;
+		this.error = null;
+	
+		this.fetched = false;
+		this.invalidate = function() {
+			this.fetchData(url, "GET", undefined, "application/x-www-form-urlencoded", schemaUrl);
+		};
+	}
+	RequestFake.prototype = Request.prototype;
+	
+	
+
+/**** ../jsonary/patch.js ****/
+
+	function Patch(prefix) {
+		this.operations = [];
+		if (prefix == undefined) {
+			prefix = "";
+		}
+		this.prefix = prefix;
+	}
+	Patch.prototype = {
+		isEmpty: function () {
+			return this.operations.length == 0;
+		},
+		each: function (callback) {
+			for (var i = 0; i < this.operations.length; i++) {
+				callback.call(this, i, this.operations[i]);
+			}
+			return this;
+		},
+		plain: function () {
+			var result = [];
+			for (var i = 0; i < this.operations.length; i++) {
+				result[i] = this.operations[i].plain();
+			}
+			return result;
+		},
+		condense: function () {
+			// Replace operations with shorter sequence, if possible
+			return;
+		},
+		filterImmediate: function () {
+			var subPatch = new Patch(this.prefix);
+			for (var i = 0; i < this.operations.length; i++) {
+				var operation = this.operations[i];
+				if (operation.immediateChild(this.prefix)) {
+					subPatch.operations.push(operation);
+				}
+			}
+			return subPatch;
+		},
+		filter: function (prefix) {
+			prefix = this.prefix + prefix;
+			var subPatch = new Patch(prefix);
+			for (var i = 0; i < this.operations.length; i++) {
+				var operation = this.operations[i];
+				if (operation.hasPrefix(prefix)) {
+					subPatch.operations.push(operation);
+				}
+			}
+			return subPatch;
+		},
+		filterRemainder: function (prefix) {
+			prefix = this.prefix + prefix;
+			var subPatch = new Patch(this.prefix);
+			for (var i = 0; i < this.operations.length; i++) {
+				var operation = this.operations[i];
+				if (!operation.hasPrefix(prefix)) {
+					subPatch.operations.push(operation);
+				}
+			}
+			return subPatch;
+		},
+		replace: function (path, value) {
+			var operation = new PatchOperation("replace", path, value);
+			this.operations.push(operation);
+			return this;
+		},
+		add: function (path, value) {
+			var operation = new PatchOperation("add", path, value);
+			this.operations.push(operation);
+			return this;
+		},
+		remove: function (path) {
+			var operation = new PatchOperation("remove", path);
+			this.operations.push(operation);
+			return this;
+		},
+		move: function (path, target) {
+			var operation = new PatchOperation("move", path, target);
+			this.operations.push(operation);
+			return this;
+		},
+		inverse: function () {
+			var result = new Patch(this.prefix);
+			for (var i = 0; i < this.operations.length; i++) {
+				result.operations[i] = this.operations[i].inverse();
+			}
+			result.operations.reverse();
+			return result;
+		}
+	};
+	
+	function PatchOperation(patchType, subject, value) {
+		this._patchType = patchType;
+		this._subject = subject;
+		this._subjectValue = undefined;
+		if (patchType == "move") {
+			this._target = value;
+		} else {
+			this._value = value;
+		}
+	}
+	PatchOperation.prototype = {
+		action: function () {
+			return this._patchType;
+		},
+		value: function () {
+			return this._value;
+		},
+		subject: function () {
+			return this._subject;	
+		},
+		setSubjectValue: function (value) {
+			this._subjectValue = value;
+			return this;
+		},
+		subjectValue: function () {
+			return this._subjectValue;
+		},
+		inverse: function () {
+			switch (this._patchType) {
+				case "replace":
+					return new PatchOperation("replace", this._subject, this._subjectValue);
+				case "add":
+					return (new PatchOperation("remove", this._subject)).setSubjectValue(this._value);
+				case "remove":
+					return (new PatchOperation("add", this._subject, this._subjectValue));
+				case "move":
+					return (new PatchOperation("move", this._target, this._subject));
+				default:
+					throw new Error("Unrecognised patch type for inverse: " + this._patchType);
+			}
+		},
+		depthFrom: function (path) {
+			if (typeof path == "object") {
+				path = path.pointerPath();
+			}
+			var minDepth = NaN;
+			if (this._subject.substring(0, path.length) == path) {
+				var remainder = this._subject.substring(path.length);
+				if (remainder.length == 0) {
+					minDepth = 0;
+				} else if (remainder.charAt(0) == "/") {
+					minDepth = remainder.split("/").length;
+				}
+			}
+			if (this._target != undefined) {
+				if (this._target.substring(0, path.length) == path) {
+					var targetDepth;
+					var remainder = this._target.substring(path.length);
+					if (remainder.length == 0) {
+						targetDepth = 0;
+					} else if (remainder.charAt(0) == "/") {
+						targetDepth = remainder.split("/").length;
+					}
+					if (!isNaN(targetDepth) && targetDepth < minDepth) {
+						minDepth = targetDepth;
+					}
+				}
+			}
+			return minDepth;
+		},
+		subjectEquals: function (path) {
+			return this._subject == path;
+		},
+		subjectChild: function (path) {
+			path += "/";
+			if (this._subject.substring(0, path.length) == path) {
+				var remainder = this._subject.substring(path.length);
+				if (remainder.indexOf("/") == -1) {
+					return Utils.decodePointerComponent(remainder);
+				}
+			}
+			return false;
+		},
+		subjectRelative: function (path) {
+			path += "/";
+			if (this._subject.substring(0, path.length) == path) {
+				return this._subject.substring(path.length - 1);
+			}
+			return false;
+		},
+		target: function () {
+			return this._target;
+		},
+		targetEquals: function (path) {
+			return this._target == path;
+		},
+		targetChild: function (path) {
+			if (this._target == undefined) {
+				return;
+			}
+			path += "/";
+			if (this._target.substring(0, path.length) == path) {
+				var remainder = this._target.substring(path.length);
+				if (remainder.indexOf("/") == -1) {
+					return Utils.decodePointerComponent(remainder);
+				}
+			}
+			return false;
+		},
+		targetRelative: function (path) {
+			path += "/";
+			if (this._target.substring(0, path.length) == path) {
+				return this._target.substring(path.length - 1);
+			}
+			return false;
+		},
+		plain: function () {
+			var result = {};
+			result[this._patchType] = this._subject;
+			if (this._patchType == "remove") {
+			} else if (this._patchType == "move") {
+				result.to = this._target;
+			} else {
+				result.value = this._value;
+			}
+			return result;
+		},
+		matches: function (prefix) {
+			if (this._subject == prefix) {
+				return true;
+			} else if (this._patchType == "move" && this._target == prefix) {
+				return true;
+			}
+			return false;
+		},
+		hasPrefix: function (prefix) {
+			if (typeof prefix == "object") {
+				prefix = prefix.pointerPath();
+			}
+			if (this.matches(prefix)) {
+				return true;
+			}
+			prefix += "/";
+			if (this._subject.substring(0, prefix.length) == prefix) {
+				return true;
+			} else if (this._patchType == "move" && this._target.substring(0, prefix.length) == prefix) {
+				return true;
+			}
+			return false;
+		}
+	};
+	
+	
+	
+
+/**** ../jsonary/data.js ****/
+
+	var changeListeners = [];
+	publicApi.registerChangeListener = function (listener) {
+		changeListeners.push(listener);
+	};
+	
+	var batchChanges = false;
+	var batchChangeDocuments = [];
+	publicApi.batch = function (batchFunc) {
+		if (batchFunc != undefined) {
+			publicApi.batch();
+			batchFunc();
+			publicApi.batchDone();
+			return this;
+		}
+		batchChanges = true;
+		return this;
+	};
+	publicApi.batchDone = function () {
+		batchChanges = false;
+		while (batchChangeDocuments.length > 0) {
+			var document = batchChangeDocuments.shift();
+			var patch = document.batchPatch;
+			delete document.batchPatch;
+			document.patch(patch);
+		}
+		return this;
+	};
+	
+	function Document(url, isDefinitive, readOnly) {
+		var thisDocument = this;
+		this.readOnly = !!readOnly;
+		this.isDefinitive = !!isDefinitive;
+		this.url = url;
+		this.error = null;
+	
+		var rootPath = null;
+		this.rootPath = function () {
+			return rootPath;
+		};
+		var rawSecrets = {};
+		this.raw = new Data(this, rawSecrets);
+		this.uniqueId = this.raw.uniqueId;
+		this.root = null;
+		
+		var documentChangeListeners = [];
+		this.registerChangeListener = function (listener) {
+			documentChangeListeners.push(listener);
+		};
+		
+		function notifyChangeListeners(patch) {
+			DelayedCallbacks.increment();
+			var listeners = changeListeners.concat(documentChangeListeners);
+			DelayedCallbacks.add(function () {
+				for (var i = 0; i < listeners.length; i++) {
+					listeners[i].call(thisDocument, patch, thisDocument);
+				}
+			});
+			DelayedCallbacks.decrement();
+		}
+	
+		this.setRaw = function (value) {
+			var needsFakePatch = this.raw.defined();
+			rawSecrets.setValue(value);
+			// It's an update to a read-only document
+			if (needsFakePatch) {
+				rawSecrets.setValue(value);
+				var patch = new Patch();
+				patch.replace(this.raw.pointerPath(), value);
+				notifyChangeListeners(patch);
+			}
+		};
+		var rootListeners = new ListenerSet(this);
+		this.getRoot = function (callback) {
+			if (this.root == null) {
+				rootListeners.add(callback);
+			} else {
+				callback.call(this, this.root);
+			}
+		};
+		this.setRoot = function (newRootPath) {
+			rootPath = newRootPath;
+			this.root = this.raw.subPath(newRootPath);
+			rootListeners.notify(this.root);
+		};
+		this.patch = function (patch) {
+			if (this.readOnly) {
+				throw new Error("Cannot update read-only document");
+			}
+			if (batchChanges) {
+				if (this.batchPatch == undefined) {
+					this.batchPatch = new Patch();
+					batchChangeDocuments.push(this);
+				}
+				this.batchPatch.operations = this.batchPatch.operations.concat(patch.operations);
+				return;
+			}
+			DelayedCallbacks.increment();
+			var rawPatch = patch.filter("?");
+			var rootPatch = patch.filterRemainder("?");
+			this.raw.patch(rawPatch);
+			this.root.patch(rootPatch);
+			notifyChangeListeners(patch);
+			DelayedCallbacks.decrement();
+		};
+		this.affectedData = function (operation) {
+			var subject = operation.subject();
+			var subjectData = null;
+			if (subject == "?" || subject.substring(0, 2) == "?/") {
+				subjectData = this.raw.subPath(subject.substring(1));
+			} else {
+				subjectData = this.root.subPath(subject);
+			}
+			var result = [];
+			while (subjectData != undefined) {
+				result.push(subjectData);
+				subjectData = subjectData.parent();
+			}
+			if (operation.action() == "move") {
+				var target = operation.target();
+				var targetData = null;
+				if (target == "?" || target.substring(0, 2) == "?/") {
+					targetData = this.raw.subPath(target.substring(1));
+				} else {
+					targetData = this.root.subPath(target);
+				}
+				result.push();
+				while (targetData != undefined) {
+					result.push(targetData);
+					targetData = targetData.parent();
+				}
+			}
+			return result;
+		}
+	}
+	
+	Document.prototype = {
+		resolveUrl: function (url) {
+			return Uri.resolve(this.url, url);
+		},
+		getFragment: function (fragment, callback) {
+			this.getRoot(function (data) {
+				if (fragment == "") {
+					callback.call(this, data);
+				} else {
+					var fragmentData = data.subPath(fragment);
+					callback.call(this, fragmentData);
+				}
+			});
+		},
+		get: function (path) {
+			return this.root.get(path);
+		},
+		set: function (path, value) {
+			this.root.set(path, value);
+			return this;
+		},
+		move: function (source, target) {
+			var patch = new Patch();
+			patch.move(source, target);
+			this.patch(patch);
+			return this;
+		}
+	}
+	
+	var INDEX_REGEX = /^(0|[1-9]\d*)$/
+	function isIndex(value) {
+		return INDEX_REGEX.test(value);
+	}
+	
+	var uniqueIdCounter = 0;
+	function Data(document, secrets, parent, parentKey) {
+		this.uniqueId = uniqueIdCounter++;
+		this.document = document;
+		this.readOnly = function (includeSchemas) {
+			if (includeSchemas || includeSchemas === undefined) {
+				return document.readOnly
+					|| this.schemas().readOnly()
+					|| (parent != undefined && parent.readOnly(true));
+			} else {
+				return document.readOnly;
+			}
+		};
+		
+		var value = undefined;
+		var basicType = undefined;
+		var length = 0;
+		var keys = [];
+		var propertyData = {};
+		var propertyDataSecrets = {};
+		this.property = function (key) {
+			if (propertyData[key] == undefined) {
+				propertyDataSecrets[key] = {};
+				propertyData[key] = new Data(this.document, propertyDataSecrets[key], this, key);
+				if (basicType == "object") {
+					propertyDataSecrets[key].setValue(value[key]);
+					if (value[key] !== undefined) {
+						secrets.schemas.addSchemasForProperty(key, propertyData[key]);
+					}
+				}
+			}
+			return propertyData[key];
+		};
+		var indexData = {};
+		var indexDataSecrets = {};
+		this.item = function (index) {
+			if (!isIndex(index)) {
+				throw new Error("Index must be a positive integer (or integer-value string)");
+			}
+			if (indexData[index] == undefined) {
+				indexDataSecrets[index] = {};
+				indexData[index] = new Data(this.document, indexDataSecrets[index], this, index);
+				if (basicType == "array") {
+					indexDataSecrets[index].setValue(value[index]);
+					if (value[index] !== undefined) {
+						secrets.schemas.addSchemasForIndex(index, indexData[index]);
+					}
+				}
+			}
+			return indexData[index];
+		}
+		
+		this.parent = function() {
+			return parent;
+		};
+		this.parentKey = function () {
+			return parentKey;
+		};
+		this.pointerPath = function () {
+			if (this.document.root == this) {
+				return "";
+			} else if (parent != undefined) {
+				return parent.pointerPath() + "/" + Utils.encodePointerComponent(parentKey);
+			} else {
+				return "?";
+			}
+		};
+		
+		this.basicType = function() {
+			return basicType;
+		};
+		this.value = function() {
+			if (basicType == "object") {
+				var result = {};
+				for (var i = 0; i < keys.length; i++) {
+					var key = keys[i];
+					if (propertyData[key] != undefined) {
+						result[key] = propertyData[key].value();
+					} else {
+						result[key] = value[key];
+					}
+				}
+				return result;
+			} else if (basicType == "array") {
+				var result = [];
+				for (var i = 0; i < length; i++) {
+					if (indexData[i] != undefined) {
+						result[i] = indexData[i].value();
+					} else {
+						result[i] = value[i];
+					}
+				}
+				return result;
+			} else {
+				return value;
+			}
+		};
+		this.keys = function () {
+			return keys.slice(0);
+		};
+		this.length = function () {
+			return length;
+		};
+		
+		this.patch = function (patch) {
+			var thisData = this;
+			var thisPath = this.pointerPath();
+			var updateKeys = {};
+			patch.each(function (i, operation) {
+				if (operation.subjectEquals(thisPath)) {
+					if (operation.action() == "replace" || operation.action() == "add") {
+						operation.setSubjectValue(thisData.value());
+						secrets.setValue(operation.value());
+						if (basicType == "object") {
+							
+						}
+					} else if (operation.action() == "remove") {
+					} else if (operation.action() == "move") {
+					} else {
+						throw new Error("Unrecognised patch operation: " + operation.action());
+					}
+				} else if (operation.targetEquals(thisPath)) {
+					if (operation.action() == "move") {
+						secrets.setValue(operation.subjectValue());
+					}
+				} else {
+					var child = operation.subjectChild(thisPath);
+					if (typeof child == "string") {
+						updateKeys[child] = true;
+						if (basicType == "object") {
+							if (operation.action() == "add") {
+								var keyIndex = keys.indexOf(child);
+								if (keyIndex != -1) {
+									throw new Error("Cannot add existing key: " + child);
+								}
+								keys.push(child);
+								value[child] = operation.value();
+								if (propertyData[child] != undefined) {
+									propertyDataSecrets[child].setValue(operation.value());
+									secrets.schemas.addSchemasForProperty(child, propertyData[child]);
+								}
+							} else if (operation.action() == "remove" || operation.action() == "move") {
+								var keyIndex = keys.indexOf(child);
+								if (keyIndex == -1) {
+									throw new Error("Cannot delete missing key: " + child);
+								}
+								operation.setSubjectValue(thisData.propertyValue(child));
+								keys.splice(keyIndex, 1);
+								if (propertyDataSecrets[child] != undefined) {
+									propertyDataSecrets[child].setValue(undefined);
+								}
+								delete value[child];
+							} else if (operation.action() == "replace") {
+							} else {
+								throw new Error("Unrecognised patch operation: " + operation.action());
+							}
+						} else if (basicType == "array") {
+							if (!isIndex(child)) {
+								throw new Error("Cannot patch non-numeric index: " + child);
+							}
+							var index = parseInt(child);
+							if (operation.action() == "add") {
+								if (index > length) {
+									throw new Error("Cannot add past the end of the list");
+								}
+								for (var j = length - 1; j >= index; j--) {
+									if (indexDataSecrets[j + 1] == undefined) {
+										continue;
+									}
+									if (indexData[j] == undefined) {
+										indexDataSecrets[j + 1].setValue(value[j]);
+									} else {
+										indexDataSecrets[j + 1].setValue(indexData[j].value());
+									}
+								}
+								value.splice(index, 0, operation.value());
+								length++;
+								if (indexData[value.length - 1] != undefined) {
+									secrets.schemas.addSchemasForIndex(value.length - 1, indexData[value.length - 1]);
+								}
+							} else if (operation.action() == "remove" || operation.action() == "move") {
+								if (index >= length) {
+									throw new Error("Cannot remove a non-existent index");
+								}
+								operation.setSubjectValue(thisData.itemValue(index));
+								for (var j = index; j < length - 1; j++) {
+									if (indexDataSecrets[j] == undefined) {
+										continue;
+									}
+									if (indexData[j + 1] == undefined) {
+										indexDataSecrets[j].setValue(value[j + 1]);
+									} else {
+										indexDataSecrets[j].setValue(indexData[j + 1].value());
+									}
+								}
+								if (indexDataSecrets[length - 1] != undefined) {
+									indexDataSecrets[length - 1].setValue(undefined);
+								}
+								length--;
+								value.splice(index, 1);
+							} else if (operation.action() == "replace") {
+							} else {
+								throw new Error("Unrecognised patch operation: " + operation.action());
+							}
+						}
+					}
+					var targetChild = operation.targetChild(thisPath);
+					if (typeof targetChild == "string") {
+						updateKeys[targetChild] = true;
+						if (basicType == "object") {
+							if (operation.action() == "move") {
+								var keyIndex = keys.indexOf(targetChild);
+								if (keyIndex != -1) {
+									throw new Error("Cannot move to existing key: " + targetChild);
+								}
+								keys.push(targetChild);
+								value[targetChild] = operation.subjectValue();
+								if (propertyData[targetChild] != undefined) {
+									secrets.schemas.addSchemasForProperty(targetChild, propertyData[targetChild]);
+								}
+							}
+						} else if (basicType == "array") {
+							if (!isIndex(targetChild)) {
+								throw new Error("Cannot patch non-numeric index: " + targetChild);
+							}
+							var index = parseInt(targetChild);
+							if (operation.action() == "move") {
+								if (index > length) {
+									throw new Error("Cannot add past the end of the list");
+								}
+								for (var j = length - 1; j >= index; j--) {
+									if (indexDataSecrets[j + 1] == undefined) {
+										continue;
+									}
+									if (indexData[j] == undefined) {
+										indexDataSecrets[j + 1].setValue(value[j]);
+									} else {
+										indexDataSecrets[j + 1].setValue(indexData[j].value());
+									}
+								}
+								value.splice(index, 0, operation.subjectValue());
+								length++;
+								if (indexData[value.length - 1] != undefined) {
+									secrets.schemas.addSchemasForIndex(value.length - 1, indexData[value.length - 1]);
+								}
+							}
+						}
+					}
+				}
+			});
+			if (basicType == "object") {
+				for (var i = 0; i < keys.length; i++) {
+					var key = keys[i];
+					var subPatch = patch.filter("/" + Utils.encodePointerComponent(key));
+					if (!subPatch.isEmpty()) {
+						this.property(key).patch(subPatch);
+					}
+				}
+			} else if (basicType == "array") {
+				for (var i = 0; i < length; i++) {
+					var subPatch = patch.filter("/" + Utils.encodePointerComponent(i));
+					if (!subPatch.isEmpty()) {
+						this.index(i).patch(subPatch);
+					}
+				}
+			} else {
+				// TODO: throw a wobbly
+			}
+			for (var key in updateKeys) {
+				secrets.schemas.update(key);
+			}
+		};
+		
+		secrets.setValue = function (newValue) {
+			var newBasicType = Utils.guessBasicType(newValue, basicType);
+			var oldValue = value;
+			value = newValue;
+			if (newBasicType != basicType) {
+				if (basicType == "object") {
+					for (var key in propertyData) {
+						propertyDataSecrets[key].setValue(undefined);
+					}
+				} else if (basicType == "array") {
+					for (var index in indexData) {
+						indexDataSecrets[index].setValue(undefined);
+					}
+				}
+				basicType = newBasicType;
+			}
+			if (newBasicType == "object") {
+				for (var key in propertyData) {
+					if (newValue.hasOwnProperty(key)) {
+						if (!propertyData[key].defined()) {
+							secrets.schemas.addSchemasForProperty(key, propertyData[key]);
+						}
+						propertyDataSecrets[key].setValue(newValue[key]);
+					} else {
+						propertyDataSecrets[key].setValue(undefined);
+					}
+				}
+				keys = Object.keys(newValue);
+				length = 0;
+			} else if (newBasicType == "array") {
+				for (var index in indexData) {
+					if (index < newValue.length) {
+						if (!indexData[index].defined()) {
+							secrets.schemas.addSchemasForIndex(index, indexData[index]);
+						}
+						indexDataSecrets[index].setValue(newValue[index]);
+					} else {
+						indexDataSecrets[index].setValue(undefined);
+					}
+				}
+				keys = [];
+				length = newValue.length;
+			} else {
+				keys = [];
+				length = 0;
+			}
+			if (newValue === undefined) {
+				if (oldValue !== undefined) {
+					// we check oldValue, so we don't get a "schema changed" callback when we access an undefined property/index.
+					secrets.schemas.clear();
+				}
+			} else {
+				secrets.schemas.update(null);
+			}
+		};
+		
+		secrets.schemas = new SchemaSet(this);
+		this.schemas = function () {
+			return secrets.schemas.getSchemas();
+		};
+		this.whenSchemasStable = function(callback) {
+			secrets.schemas.whenSchemasStable(callback);
+			return this;
+		};
+		this.links = function (rel) {
+			return secrets.schemas.getLinks(rel);
+		};
+		this.addLink = function (rawLink) {
+			secrets.schemas.addLink(rawLink);
+			return this;
+		};
+		this.addSchema = function (schema, schemaKey) {
+			var thisData = this;
+			if (schema instanceof SchemaList) {
+				schema.each(function (index, schema) {
+					thisData.addSchema(schema, schemaKey);
+				});
+			} else {
+				secrets.schemas.addSchema(schema, schemaKey);
+			}
+			return this;
+		};
+		this.removeSchema = function ( schemaKey) {
+			secrets.schemas.removeSchema(schemaKey);
+			return this;
+		};
+		this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+			return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately, impatientCallbacks);
+		};
+	}
+	Data.prototype = {
+		referenceUrl: function () {
+			if (this.document.isDefinitive) {
+				var pointerPath = this.pointerPath();
+				if (pointerPath == "" || pointerPath.charAt(0) == "/") {
+					return this.document.url + "#" + encodeURI(this.pointerPath());
+				}
+			}
+		},
+		subPath: function (path) {
+			var parts = path.split("/");
+			if (parts[0] != "") {
+				throw new Error("Path must begin with / (or be empty): " + path);
+			}
+			var result = this;
+			for (var i = 1; i < parts.length; i++) {
+				parts[i] = Utils.decodePointerComponent(parts[i]);
+				if (result.basicType() == "array") {
+					result = result.index(parts[i]);
+				} else {
+					result = result.property(parts[i]);
+				}
+			}
+			return result;
+		},
+		defined: function () {
+			return this.basicType() != undefined;
+		},
+		setValue: function (newValue) {
+			if (typeof newValue == "undefined") {
+				return this.remove();
+			}
+			if (this.basicType() != "object" && this.basicType() != "array" && this.value() === newValue) {
+				return this;
+			}
+			var patch = new Patch();
+			if (this.defined()) {
+				patch.replace(this.pointerPath(), newValue);
+			} else {
+				patch.add(this.pointerPath(), newValue);
+			}
+			this.document.patch(patch, this);
+			return this;
+		},
+		remove: function () {
+			var patch = new Patch();
+			patch.remove(this.pointerPath());
+			this.document.patch(patch, this);
+			return this;
+		},
+		itemValue: function (index) {
+			return this.index(index).value();
+		},
+		removeItem: function (index) {
+			this.index(index).remove();
+			return this;
+		},
+		insertItem: function (index, value) {
+			if (this.basicType() != "array") {
+				throw Error("cannot insert into a non-array");
+			}
+			var patch = new Patch();
+			patch.add(this.item(index).pointerPath(), value);
+			this.document.patch(patch, this);
+			return this;
+		},
+		push: function (value) {
+			if (this.basicType() == "array") {
+				this.index(this.length()).setValue(value);
+			} else {
+				throw new Error("Can only push() on an array");
+			}
+			return this;
+		},
+		propertyValue: function (key) {
+			return this.property(key).value();
+		},
+		removeProperty: function (key) {
+			this.property(key).remove();
+			return this;
+		},
+		moveTo: function (target) {
+			if (typeof target == "object") {
+				if (target.document != this.document) {
+					var value = this.value();
+					this.remove();
+					target.setValue(value);
+					return target;
+				}
+				target = target.pointerPath();
+			}
+			var patch = new Patch();
+			var pointerPath = this.pointerPath();
+			if (target == pointerPath) {
+				return;
+			}
+			patch.move(pointerPath, target);
+			this.document.patch(patch, this);
+			return this.document.root.subPath(target);
+		},
+		getLink: function (rel) {
+			var links = this.links(rel);
+			return links[0];
+		},
+		equals: function (otherData) {
+			var i;
+			var basicType = this.basicType();
+			if (basicType != otherData.basicType()) {
+				return false;
+			}
+			if (basicType == "array") {
+				if (this.length() !== otherData.length()) {
+					return false;
+				}
+				for (i = 0; i < this.length(); i++) {
+					if (!this.index(i).equals(otherData.index(i))) {
+						return false;
+					}
+				}
+				return true;
+			} else if (basicType == "object") {
+				var i;
+				var keys = this.keys();
+				var otherKeys = otherData.keys();
+				if (keys.length != otherKeys.length) {
+					return false;
+				}
+				keys.sort();
+				otherKeys.sort();
+				for (i = 0; i < keys.length; i++) {
+					if (keys[i] !== otherKeys[i]) {
+						return false;
+					}
+				}
+				for (i = 0; i < keys.length; i++) {
+					var key = keys[i];
+					if (!this.property(key).equals(otherData.property(key))) {
+						return false;
+					}
+				}
+				return true;
+			} else {
+				return this.value() === otherData.value();
+			}
+		},
+		readOnlyCopy: function () {
+			if (this.readOnly(false)) {
+				return this;
+			}
+			var copy = publicApi.create(this.value(), this.document.url + "#:copy", true);
+			this.schemas().each(function (index, schema) {
+				copy.addSchema(schema);
+			});
+			return copy;
+		},
+		editableCopy: function () {
+			var copy = publicApi.create(this.value(), this.document.url + "#:copy", false);
+			var schemaKey = Utils.getUniqueKey();
+			this.schemas().fixed().each(function (index, schema) {
+				copy.addSchema(schema, schemaKey);
+			});
+			return copy;
+		},
+		asSchema: function () {
+			var schema = new Schema(this.readOnlyCopy());
+			if (this.readOnly(false)) {
+				cacheResult(this, {asSchema: schema});
+			}
+			return schema;
+		},
+		asLink: function (targetData) {
+			var readOnlyCopy = this.readOnlyCopy();
+			var linkDefinition = new PotentialLink(readOnlyCopy);
+			var result;
+			if (targetData == undefined) {
+				result = linkDefinition.linkForData(this);
+			} else {
+				result = linkDefinition.linkForData(targetData);
+			}
+			if (this.readOnly(false)) {
+				cacheResult(this, {asLink: result});
+			}
+			return result;
+		},
+		items: function (callback) {
+			for (var i = 0; i < this.length(); i++) {
+				var subData = this.index(i);
+				callback.call(subData, i, subData);
+			}
+			return this;
+		},
+		properties: function (keys, callback, additionalCallback) {
+			var dataKeys;
+			if (typeof keys == 'function') {
+				callback = keys;
+				keys = this.keys();
+			}
+			if (callback) {
+				for (var i = 0; i < keys.length; i++) {
+					var subData = this.property(keys[i]);
+					callback.call(subData, keys[i], subData);
+				}
+			}
+			if (additionalCallback) {
+				if (typeof additionalCallback != 'function') {
+					additionalCallback = callback;
+				}
+				var dataKeys = this.keys();
+				for (var i = 0; i < dataKeys.length; i++) {
+					if (keys.indexOf(dataKeys[i]) == -1) {
+						var subData = this.property(dataKeys[i]);
+						additionalCallback.call(subData, dataKeys[i], subData);
+					}
+				}
+			}
+			return this;
+		},
+		resolveUrl: function (url) {
+			var data = this;
+			while (data) {
+				var selfLink = data.getLink("self");
+				if (selfLink) {
+					return Uri.resolve(selfLink.href, url);
+				}
+				data = data.parent();
+			}
+			return this.document.resolveUrl(url);
+		},
+		get: function (path) {
+			return this.subPath(path).value();
+		},
+		set: function (path, value) {
+			this.subPath(path).setValue(value);
+			return this;
+		},
+		json: function () {
+			return JSON.stringify(this.value());
+		}
+	};
+	Data.prototype.indices = Data.prototype.items;
+	Data.prototype.indexValue = Data.prototype.itemValue;
+	Data.prototype.removeIndex = Data.prototype.removeItem;
+	Data.prototype.index = function (index) {
+		return this.item(index);
+	};
+	
+	publicApi.extendData = function (obj) {
+		for (var key in obj) {
+			if (Data.prototype[key] == undefined) {
+				Data.prototype[key] = obj[key];
+			}
+		}
+	};
+	
+	
+	publicApi.create = function (rawData, baseUrl, readOnly) {
+		var rawData = (typeof rawData == "object") ? JSON.parse(JSON.stringify(rawData)) : rawData; // Hacky recursive copy
+		var definitive = baseUrl != undefined && readOnly;
+		if (baseUrl != undefined && baseUrl.indexOf("#") != -1) {
+			var remainder = baseUrl.substring(baseUrl.indexOf("#") + 1);
+			if (remainder != "") {
+				definitive = false;
+			}
+			baseUrl = baseUrl.substring(0, baseUrl.indexOf("#"));
+		}
+		var document = new Document(baseUrl, definitive, readOnly);
+		document.setRaw(rawData);
+		document.setRoot("");
+		return document.root;
+	};
+	publicApi.isData = function (obj) {
+		return obj instanceof Data;
+	};
+	
+	Data.prototype.deflate = function () {
+		var result = this.document.deflate();
+		result.path = this.pointerPath();
+		return result;
+	};
+	Document.prototype.deflate = function (canUseUrl) {
+		if (this.isDefinitive) {
+			return this.url;
+		}
+		var rawData = this.raw;
+		var schemas = [];
+		rawData.schemas().each(function (index, schema) {
+			if (schema.referenceUrl() != undefined) {
+				schemas.push(schema.referenceUrl());
+			} else {
+				schemas.push(schema.data.deflate());
+			}
+		});
+		var result = {
+			baseUrl: this.url,
+			readOnly: this.readOnly,
+			value: rawData.value(),
+			schemas: schemas,
+			root: this.rootPath()
+		}
+		return result;
+	};
+	publicApi.inflate = function (deflated, callback) {
+		if (typeof deflated == "string") {
+			var request = requestJson(deflated).request;
+			if (callback) {
+				request.document.getRoot(function (root) {
+					root.whenSchemasStable(function () {
+						callback(null, request.document);
+					});
+				});
+			}
+			return request.document;
+		}
+		var data = publicApi.create(deflated.value, deflated.baseUrl, deflated.readOnly);
+		for (var i = 0; i < deflated.schemas.length; i++) {
+			var schema = deflated.schemas[i];
+			if (typeof schema == "object") {
+				var schema = publicApi.inflate(schema).asSchema();
+			}
+			data.addSchema(schema);
+		}
+		data.document.setRoot(deflated.root);
+		var result = data.document;
+		if (deflated.path) {
+			result = data.document.raw.subPath(deflated.path);
+		}
+		if (callback) {
+			callback(null, result);
+		}
+		return result;
+	};
+	
+
+/**** ../jsonary/schema.js ****/
+
+	function getSchema(url, callback) {
+		// Use getRawResponse() instead of getRoot to avoid blocking on self-referential schemas
+		return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
+			if (fragmentRequest.fragment) {
+				data = data.subPath(fragmentRequest.fragment);
+			}
+			var schema = data.asSchema();
+			schema.referenceUrl = function () {
+				return fragmentRequest.url;
+			};
+			if (callback != undefined) {
+				callback.call(schema, schema, fragmentRequest);
+			}
+		});
+	}
+	publicApi.createSchema = function (rawData, baseUrl) {
+		var data = publicApi.create(rawData, baseUrl, true);
+		return data.asSchema();
+	};
+	publicApi.isSchema = function (obj) {
+		return obj instanceof Schema;
+	};
+	
+	publicApi.getSchema = getSchema;
+	
+	var ALL_TYPES = ["null", "boolean", "integer", "number", "string", "array", "object"];
+	var TYPE_SCHEMAS = {};
+	function getTypeSchema(basicType) {
+		if (TYPE_SCHEMAS[basicType] == undefined) {
+			TYPE_SCHEMAS[basicType] = publicApi.createSchema({"type": basicType});
+		}
+		return TYPE_SCHEMAS[basicType];
+	}
+	
+	function Schema(data) {
+		this.data = data;
+		var referenceUrl = data.referenceUrl();
+		var id = data.propertyValue("id");
+		// TODO: if id is set, then cache it somehow, so we can find it again?
+	
+		var potentialLinks = [];
+		var i, linkData;
+		var linkDefinitions = data.property("links");
+		if (linkDefinitions !== undefined) {
+			linkDefinitions.indices(function (index, subData) {
+				potentialLinks[potentialLinks.length] = new PotentialLink(subData);
+			});
+		}
+		this.links = function (rel) {
+			var filtered = [];
+			for (var i = 0; i < potentialLinks.length; i++) {
+				var link = potentialLinks[i];
+				if (rel == undefined || link.rel == rel) {
+					filtered.push(link);
+				}
+			}
+			return filtered;
+		};
+		this.schemaTitle = this.title();	
+	}
+	Schema.prototype = {
+		"toString": function () {
+			return "<Schema " + this.data + ">";
+		},
+		referenceUrl: function () {
+			return this.data.referenceUrl();
+		},
+		isFull: function () {
+			var refUrl = this.data.propertyValue("$ref");
+			return refUrl === undefined;
+		},
+		getFull: function (callback) {
+			var refUrl = this.data.propertyValue("$ref");
+			if (refUrl === undefined) {
+				if (callback) {
+					callback.call(this, this, undefined);
+				}
+				return this;
+			}
+			refUrl = this.data.resolveUrl(refUrl);
+			if (refUrl.charAt(0) == "#" && (refUrl.length == 1 || refUrl.charAt(1) == "/")) {
+				var documentRoot = this.data.document.root;
+				var pointerPath = decodeURIComponent(refUrl.substring(1));
+				var schema = documentRoot.subPath(pointerPath).asSchema();
+				if (callback) {
+					callback.call(schema, schema, null);
+				} else {
+					return schema;
+				}
+			} else if (callback) {
+				getSchema(refUrl, callback);
+			}
+			return this;
+		},
+		title: function () {
+			var title = this.data.propertyValue("title");
+			if (title == undefined) {
+				title = null;
+			}
+			return title;
+		},
+		hasDefault: function() {
+			return this.data.property("default").defined();
+		},
+		defaultValue: function() {
+			return this.data.propertyValue("default");
+		},
+		propertySchemas: function (key) {
+			var schemas = [];
+			var subSchema = this.data.property("properties").property(key);
+			if (subSchema.defined()) {
+				schemas.push(subSchema.asSchema());
+			}
+			this.data.property("patternProperties").properties(function (patternKey, subData) {
+				var regEx = new RegExp(patternKey);
+				if (regEx.test(key)) {
+					schemas.push(subData.asSchema());
+				}
+			});
+			if (schemas.length == 0) {
+				subSchema = this.data.property("additionalProperties");
+				if (subSchema.defined()) {
+					schemas.push(subSchema.asSchema());
+				}
+			}
+			return new SchemaList(schemas);
+		},
+		propertyDependencies: function (key) {
+			var dependencies = this.data.property("dependencies");
+			if (dependencies.defined()) {
+				var dependency = dependencies.property(key);
+				if (dependency.defined()) {
+					if (dependency.basicType() == "string") {
+						return [dependency.value()];
+					} else if (dependency.basicType() == "array") {
+						return dependency.value();
+					} else {
+						return [dependency.asSchema()];
+					}
+				}
+			}
+			return [];
+		},
+		indexSchemas: function (i) {
+			var items = this.data.property("items");
+			var subSchema;
+			if (!items.defined()) {
+				return new SchemaList();
+			}
+			if (items.basicType() == "array") {
+				subSchema = items.index(i);
+				if (!subSchema.defined()) {
+					subSchema = this.data.property("additionalItems");
+				}
+			} else {
+				subSchema = items;
+			}
+			if (subSchema.defined()) {
+				var result = subSchema.asSchema();
+				return new SchemaList([result]);
+			}
+			return new SchemaList();
+		},
+		tupleTyping: function () {
+			var items = this.data.property("items");
+			if (items.basicType() == "array") {
+				return items.length();
+			}
+			return 0;
+		},
+		andSchemas: function () {
+			var result = [];
+			var extData = this.data.property("extends");
+			if (extData.defined()) {
+				if (extData.basicType() == "array") {
+					extData.indices(function (i, e) {
+						result.push(e.asSchema());
+					});
+				} else {
+					result.push(extData.asSchema());
+				}
+			}
+			this.data.property("allOf").items(function (index, data) {
+				result.push(data.asSchema());
+			});
+			return new SchemaList(result);
+		},
+		notSchemas: function () {
+			var result = [];
+			var disallowData = this.data.property("disallow");
+			if (disallowData.defined()) {
+				if (disallowData.basicType() == "array") {
+					disallowData.indices(function (i, e) {
+						if (e.basicType() == "string") {
+							result.push(publicApi.createSchema({type: e.value()}));
+						} else {
+							result.push(e.asSchema());
+						}
+					});
+				} else if (disallowData.basicType() == "string") {
+					result.push(publicApi.createSchema({type: disallowData.value()}));
+				} else {
+					result.push(disallowData.asSchema());
+				}
+			}
+			if (this.data.property("not").defined()) {
+				result.push(this.data.property("not").asSchema());
+			}
+			return result;
+		},
+		types: function () {
+			var typeData = this.data.property("type");
+			if (typeData.defined()) {
+				if (typeData.basicType() === "string") {
+					if (typeData.value() == "all") {
+						return ALL_TYPES.slice(0);
+					}
+					return [typeData.value()];
+				} else {
+					var types = [];
+					for (var i = 0; i < typeData.length(); i++) {
+						if (typeData.item(i).basicType() == "string") {
+							if (typeData.item(i).value() == "all") {
+								return ALL_TYPES.slice(0);
+							}
+							types.push(typeData.item(i).value());
+						} else {
+							return ALL_TYPES.slice(0);
+						}
+					}
+					if (types.indexOf("number") != -1 && types.indexOf("integer") == -1) {
+						types.push("integer");
+					}
+					return types;
+				}
+			}
+			return ALL_TYPES.slice(0);
+		},
+		xorSchemas: function () {
+			var result = [];
+			var typeData = this.data.property("type");
+			if (typeData.defined()) {
+				for (var i = 0; i < typeData.length(); i++) {
+					if (typeData.item(i).basicType() != "string") {
+						var xorGroup = [];
+						typeData.items(function (index, subData) {
+							if (subData.basicType() == "string") {
+								xorGroup.push(getTypeSchema(subData.value()));
+							} else {
+								xorGroup.push(subData.asSchema());
+							}
+						});
+						result.push(xorGroup);
+						break;
+					}
+				}
+			}
+			if (this.data.property("oneOf").defined()) {
+				var xorGroup = [];
+				this.data.property("oneOf").items(function (index, subData) {
+					xorGroup.push(subData.asSchema());
+				});
+				result.push(xorGroup);
+			}
+			return result;
+		},
+		orSchemas: function () {
+			var result = [];
+			var typeData = this.data.property("type");
+			if (this.data.property("anyOf").defined()) {
+				var orGroup = [];
+				this.data.property("anyOf").items(function (index, subData) {
+					orGroup.push(subData.asSchema());
+				});
+				result.push(orGroup);
+			}
+			return result;
+		},
+		equals: function (otherSchema, resolveRef) {
+			var thisSchema = this;
+			if (resolveRef) {
+				otherSchema = otherSchema.getFull();
+				thisSchema = this.getFull();
+			}
+			if (thisSchema === otherSchema) {
+				return true;
+			}
+			var thisRefUrl = thisSchema.referenceUrl();
+			var otherRefUrl = otherSchema.referenceUrl();
+			if (resolveRef && !thisSchema.isFull()) {
+				thisRefUrl = thisSchema.data.resolveUrl(this.data.propertyValue("$ref"));
+			}
+			if (resolveRef && !otherSchema.isFull()) {
+				otherRefUrl = otherSchema.data.resolveUrl(otherSchema.data.propertyValue("$ref"));
+			}
+			if (thisRefUrl !== undefined && otherRefUrl !== undefined) {
+				return Utils.urlsEqual(thisRefUrl, otherRefUrl);
+			}
+			return this.data.equals(otherSchema.data);
+		},
+		readOnly: function () {
+			return !!(this.data.propertyValue("readOnly") || this.data.propertyValue("readonly"));
+		},
+		enumValues: function () {
+			return this.data.propertyValue("enum");
+		},
+		enumData: function () {
+			return this.data.property("enum");
+		},
+		minItems: function () {
+			var result = this.data.propertyValue("minItems");
+			if (result == undefined) {
+				return 0;
+			}
+			return result;
+		},
+		maxItems: function () {
+			return this.data.propertyValue("maxItems");
+		},
+		tupleTypingLength: function () {
+			if (this.data.property("items").basicType() != "array") {
+				return 0;
+			}
+			return this.data.property("items").length();
+		},
+		minLength: function () {
+			var result = this.data.propertyValue("minLength");
+			if (result == undefined) {
+				return 0;
+			}
+			return result;
+		},
+		maxLength: function () {
+			return this.data.propertyValue("maxLength");
+		},
+		numberInterval: function() {
+			return this.data.propertyValue("divisibleBy");
+		},
+		minimum: function () {
+			return this.data.propertyValue("minimum");
+		},
+		exclusiveMinimum: function () {
+			return !!this.data.propertyValue("exclusiveMinimum");
+		},
+		maximum: function () {
+			return this.data.propertyValue("maximum");
+		},
+		exclusiveMaximum: function () {
+			return !!this.data.propertyValue("exclusiveMaximum");
+		},
+		minProperties: function () {
+			var result = this.data.propertyValue("minProperties");
+			if (result == undefined) {
+				return 0;
+			}
+			return result;
+		},
+		maxProperties: function () {
+			return this.data.propertyValue("maxProperties");
+		},
+		definedProperties: function(ignoreList) {
+			if (ignoreList) {
+				this.definedProperties(); // created cached function
+				return this.definedProperties(ignoreList);
+			}
+			var keys = this.data.property("properties").keys();
+			this.definedProperties = function (ignoreList) {
+				ignoreList = ignoreList || [];
+				var result = [];
+				for (var i = 0; i < keys.length; i++) {
+					if (ignoreList.indexOf(keys[i]) == -1) {
+						result.push(keys[i]);
+					}
+				}
+				return result;
+			};
+			return keys.slice(0);
+		},
+		knownProperties: function(ignoreList) {
+			if (ignoreList) {
+				this.knownProperties(); // created cached function
+				return this.knownProperties(ignoreList);
+			}
+			var result = {};
+			this.data.property("properties").properties(function (key, subData) {
+				result[key] = true;
+			});
+			var required = this.requiredProperties();
+			for (var i = 0; i < required.length; i++) {
+				result[required[i]] = true;
+			}
+			var keys = Object.keys(result);
+			this.knownProperties = function (ignoreList) {
+				ignoreList = ignoreList || [];
+				var result = [];
+				for (var i = 0; i < keys.length; i++) {
+					if (ignoreList.indexOf(keys[i]) == -1) {
+						result.push(keys[i]);
+					}
+				}
+				return result;
+			};
+			return keys.slice(0);
+		},
+		requiredProperties: function () {
+			var requiredKeys = this.data.propertyValue("required");
+			if (typeof requiredKeys != "object") {
+				requiredKeys = [];
+			}
+			var properties = this.data.property("properties");
+			if (properties != undefined) {
+				properties.properties(function (key, subData) {
+					var required = subData.property("required");
+					if (required != undefined && required.basicType() == "boolean" && required.value()) {
+						requiredKeys.push(key);
+					}
+				});
+			}
+			return requiredKeys;
+		},
+		allowedAdditionalProperties: function () {
+			return !(this.data.propertyValue("additionalProperties") === false);
+		},
+		getLink: function (rel) {
+			var links = this.links();
+			for (var i = 0; i < links.length; i++) {
+				if (links[i].rel() == rel) {
+					return links[i];
+				}
+			}
+		},
+		asList: function () {
+			return new SchemaList([this]);
+		},
+		format: function () {
+			return this.data.propertyValue("format");
+		}
+	};
+	Schema.prototype.basicTypes = Schema.prototype.types;
+	Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
+	Schema.prototype.isComplete = Schema.prototype.isFull;
+	
+	publicApi.extendSchema = function (obj) {
+		for (var key in obj) {
+			if (Schema.prototype[key] == undefined) {
+				Schema.prototype[key] = obj[key];
+			}
+		}
+	};
+	
+	var extraEscaping = {
+		"!": "%21",
+		"'": "%27",
+		"(": "%28",
+		")": "%29",
+		"*": "%2A"
+	};
+	function preProcessUriTemplate(template) {
+		if (template == "{@}") {
+			return "{+%73elf}";
+		}
+		var newTemplate = [];
+		var curlyBrackets = false;
+		var roundBrackets = false;
+		for (var i = 0; i < template.length; i++) {
+			var tChar = template.charAt(i);
+			if (!curlyBrackets) {
+				if (tChar == "{") {
+					curlyBrackets = true;
+				}
+				newTemplate.push(tChar);
+			} else if (!roundBrackets) {
+				if (tChar == "$") {
+					newTemplate.push("%73elf");
+					continue;
+				} else if (tChar == "(") {
+					if (template.charAt(i + 1) == ")") {
+						newTemplate.push("%65mpty");
+						i++;
+					} else {
+						roundBrackets = true;
+					}
+					continue;
+				} else if (tChar == "}") {
+					curlyBrackets = false;
+				}
+				newTemplate.push(tChar);
+			} else {
+				if (tChar == ")") {
+					if (template.charAt(i + 1) == ")") {
+						newTemplate.push(extraEscaping[")"]);
+						i++;
+					} else {
+						roundBrackets = false;
+					}
+					continue;
+				}
+				if (extraEscaping[tChar] != undefined) {
+					newTemplate.push(extraEscaping[tChar])
+				} else {
+					newTemplate.push(encodeURIComponent(tChar));
+				}
+			}
+		}
+		return newTemplate.join("");
+	}
+	
+	function PotentialLink(linkData) {
+		this.data = linkData;
+		
+		this.uriTemplate = new UriTemplate(preProcessUriTemplate(linkData.propertyValue("href")));
+		this.dataParts = [];
+		for (var i = 0; i < this.uriTemplate.varNames.length; i++) {
+			this.dataParts.push(translateUriTemplateName(this.uriTemplate.varNames[i]));
+		}
+		
+		var schemaData = linkData.property("schema");
+		if (schemaData.defined()) {
+			var schema = schemaData.asSchema();
+			this.submissionSchemas = new SchemaList([schema]);
+		} else {
+			this.submissionSchemas = new SchemaList();
+		}
+		var targetSchemaData = linkData.property("targetSchema");
+		if (targetSchemaData.defined()) {
+			this.targetSchema = targetSchemaData.asSchema();
+		}
+		
+		this.handlers = [];
+		this.preHandlers = [];
+	}
+	function translateUriTemplateName(varName) {
+		if (varName == "%65mpty") {
+			return "";
+		} else if (varName == "%73elf") {
+			return null;
+		}
+		return decodeURIComponent(varName);
+	}
+	PotentialLink.prototype = {
+		addHandler: function(handler) {
+			this.handlers.unshift(handler);
+			return this;
+		},
+		addPreHandler: function(handler) {
+			this.preHandlers.push(handler);
+			return this;
+		},
+		canApplyTo: function (candidateData) {
+			var i, key, subData = null, basicType;
+			for (i = 0; i < this.dataParts.length; i++) {
+				key = this.dataParts[i];
+				if (key === null) {
+					subData = candidateData;
+				} else if (candidateData.basicType() == "object") {
+					subData = candidateData.property(key);
+				} else if (candidateData.basicType() == "array" && isIndex(key)) {
+					subData = candidateData.index(key);
+				}
+				if (subData == undefined || !subData.defined()) {
+					return false;
+				}
+				if (subData.basicType() == "null") {
+					return false;
+				}
+			}
+			return true;
+		},
+		linkForData: function (publicData) {
+			var rawLink = this.data.value();
+			var href = this.uriTemplate.fill(function (varName) {
+				varName = translateUriTemplateName(varName);
+				if (varName == null) {
+					return publicData.value();
+				}
+				if (publicData.basicType() == "array") {
+					return publicData.itemValue(varName);
+				} else {
+					return publicData.propertyValue(varName);
+				}
+			});
+			rawLink.href = publicData.resolveUrl(href);
+			rawLink.rel = rawLink.rel.toLowerCase();
+			rawLink.title = rawLink.title;
+			return new ActiveLink(rawLink, this, publicData);
+		},
+		usesKey: function (key) {
+			var i;
+			for (i = 0; i < this.dataParts.length; i++) {
+				if (this.dataParts[i] === key || this.dataParts[i] === null) {
+					return true;
+				}
+			}
+			return false;
+		},
+		rel: function () {
+			return this.data.propertyValue("rel").toLowerCase();
+		}
+	};
+	
+	var defaultLinkHandlers = [];
+	var defaultLinkPreHandlers = [];
+	publicApi.addLinkHandler = function(handler) {
+		defaultLinkHandlers.unshift(handler);
+	};
+	publicApi.addLinkPreHandler = function(handler) {
+		defaultLinkPreHandlers.push(handler);
+	};
+	
+	function ActiveLink(rawLink, potentialLink, data) {
+		this.rawLink = rawLink;
+		this.definition = potentialLink;
+		this.subjectData = data;
+	
+		this.href = rawLink.href;
+		var hashIndex = this.href.indexOf('#');
+		if (hashIndex >= 0) {
+			this.hrefBase = this.href.substring(0, hashIndex);
+			this.hrefFragment = this.href.substring(hashIndex + 1);
+		} else {
+			this.hrefBase = this.href;
+			this.hrefFragment = "";
+		}
+	
+		this.rel = rawLink.rel;
+		this.title = rawLink.title;
+		if (rawLink.method != undefined) {
+			this.method = rawLink.method;
+		} else if (rawLink.rel == "edit") {
+			this.method = "PUT"
+		} else if (rawLink.rel == "create") {
+			this.method = "POST"
+		} else if (rawLink.rel == "delete") {
+			this.method = "DELETE"
+		} else {
+			this.method = "GET";
+		}
+		if (rawLink.enctype != undefined) {
+			rawLink.encType = rawLink.enctype;
+			delete rawLink.enctype;
+		}
+		if (rawLink.encType == undefined) {
+			if (this.method == "GET") {
+				this.encType = "application/x-www-form-urlencoded";
+			} else if (this.method == "POST" || this.method == "PUT") {
+				this.encType = "application/json";
+			} else {
+				this.encType = "application/x-www-form-urlencoded";
+			}
+		} else {
+			this.encType = rawLink.encType;
+		}
+		if (this.definition != null) {
+			this.submissionSchemas = this.definition.submissionSchemas;
+			this.targetSchema = this.definition.targetSchema;
+		}
+	}
+	var ACTIVE_LINK_SCHEMA_KEY = Utils.getUniqueKey();
+	ActiveLink.prototype = {
+		toString: function() {
+			return this.href;
+		},
+		createSubmissionData: function(callback) {
+			var hrefBase = this.hrefBase;
+			var submissionSchemas = this.submissionSchemas;
+			if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
+				Jsonary.getData(this.href, function (data) {
+					callback(data.editableCopy());
+				})
+				return this;
+			}
+			if (callback != undefined) {
+				submissionSchemas.createValue(function (value) {
+					var data = publicApi.create(value, hrefBase);
+					for (var i = 0; i < submissionSchemas.length; i++) {
+						data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
+					}
+					callback(data);
+				});
+			} else {
+				var value = submissionSchemas.createValue();
+				var data = publicApi.create(value, hrefBase);
+				for (var i = 0; i < submissionSchemas.length; i++) {
+					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
+				}
+				return data;
+			}
+		},
+		follow: function(submissionData, extraHandler) {
+			if (typeof submissionData == 'function') {
+				extraHandler = submissionData;
+				submissionData = undefined;
+			}
+			if (submissionData !== undefined) {
+				if (!(submissionData instanceof Data)) {
+					submissionData = publicApi.create(submissionData);
+				}
+			} else {
+				submissionData = publicApi.create(undefined);
+			}
+			var preHandlers = defaultLinkPreHandlers.concat(this.definition.preHandlers);
+			for (var i = 0; i < preHandlers.length; i++) {
+				var handler = preHandlers[i];
+				if (handler.call(this, this, submissionData) === false) {
+					Utils.log(Utils.logLevel.DEBUG, "Link cancelled: " + this.href);
+					return null;
+				}
+			}
+			var value = submissionData.value();
+			
+			var request = publicApi.getData({
+				url:this.href,
+				method:this.method,
+				data:value,
+				encType:this.encType
+			}, null, this.targetSchema);
+			submissionData = submissionData.readOnlyCopy();
+			var handlers = this.definition.handlers.concat(defaultLinkHandlers);
+			if (extraHandler !== undefined) {
+				handlers.unshift(extraHandler);
+			}
+			for (var i = 0; i < handlers.length; i++) {
+				var handler = handlers[i];
+				if (typeof handler !== 'function') {
+					if (handler) {
+						continue;
+					} else {
+						break;
+					}
+				}
+				if (handler.call(this, this, submissionData, request) === false) {
+					break;
+				}
+			}
+			return request;
+		}
+	};
+	
+	
+
+/**** ../jsonary/schemamatch.js ****/
+
+	function SchemaMatch(monitorKey, data, schema, impatientCallbacks) {
+		var thisSchemaMatch = this;
+		this.monitorKey = monitorKey;
+		this.match = false;
+		this.matchFailReason = new SchemaMatchFailReason("initial failure", null);
+		this.monitors = new MonitorSet(schema);
+		this.impatientCallbacks = impatientCallbacks;
+		
+		this.propertyMatches = {};
+		this.indexMatches = {};
+	
+		this.dependencies = {};
+		this.dependencyKeys = {};
+	
+		this.schemaLoaded = false;
+		this.data = data;
+		schema.getFull(function (schema) {
+			thisSchemaMatch.schemaLoaded = true;
+			thisSchemaMatch.schema = schema;
+	
+			thisSchemaMatch.basicTypes = schema.basicTypes();
+			thisSchemaMatch.setupXorSelectors();
+			thisSchemaMatch.setupOrSelectors();
+			thisSchemaMatch.setupAndMatches();
+			thisSchemaMatch.setupNotMatches();
+			thisSchemaMatch.dataUpdated();
+		});
+	}
+	SchemaMatch.prototype = {
+		setupXorSelectors: function () {
+			var thisSchemaMatch = this;
+			this.xorSelectors = {};
+			var xorSchemas = this.schema.xorSchemas();
+			for (var i = 0; i < xorSchemas.length; i++) {
+				var xorSelector = new XorSelector(Utils.getKeyVariant(this.monitorKey, "xor" + i), xorSchemas[i], this.data);
+				this.xorSelectors[i] = xorSelector;
+				xorSelector.onMatchChange(function (selectedOption) {
+					thisSchemaMatch.update();
+				}, false);
+			}
+		},
+		setupOrSelectors: function () {
+			var thisSchemaMatch = this;
+			this.orSelectors = {};
+			var orSchemas = this.schema.orSchemas();
+			for (var i = 0; i < orSchemas.length; i++) {
+				var orSelector = new OrSelector(Utils.getKeyVariant(this.monitorKey, "or" + i), orSchemas[i], this.data);
+				this.orSelectors[i] = orSelector;
+				orSelector.onMatchChange(function (selectedOptions) {
+					thisSchemaMatch.update();
+				}, false);
+			}
+		},
+		setupAndMatches: function () {
+			var thisSchemaMatch = this;
+			this.andMatches = [];
+			var andSchemas = this.schema.andSchemas();
+			andSchemas.each(function (index, subSchema) {
+				var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "and" + index);
+				var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
+					thisSchemaMatch.update();
+				}, false, true);
+				thisSchemaMatch.andMatches.push(subMatch);
+			});
+		},
+		setupNotMatches: function () {
+			var thisSchemaMatch = this;
+			this.notMatches = [];
+			var notSchemas = this.schema.notSchemas();
+			for (var i = 0; i < notSchemas.length; i++) {
+				(function (index, subSchema) {
+					var keyVariant = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "not" + index);
+					var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(keyVariant, subSchema, function () {
+						thisSchemaMatch.update();
+					}, false, true);
+					thisSchemaMatch.notMatches.push(subMatch);
+				})(i, notSchemas[i]);
+			}
+		},
+		addMonitor: function (monitor, executeImmediately) {
+			// TODO: make a monitor set that doesn't require keys.  The keyed one could use it!
+			this.monitors.add(this.monitorKey, monitor);
+			if (executeImmediately !== false) {
+				monitor.call(this.schema, this.match, this.matchFailReason);
+			}
+			return this;
+		},
+		dataUpdated: function (key) {
+			if (!this.schemaLoaded) {
+				return;
+			}
+			var thisSchemaMatch = this;
+			if (this.data.basicType() == "object") {
+				this.indexMatches = {};
+				this.data.properties(function (key, subData) {
+					if (thisSchemaMatch.propertyMatches[key] == undefined) {
+						var matches = [];
+						var subSchemas = thisSchemaMatch.schema.propertySchemas(key);
+						subSchemas.each(function (i, subSchema) {
+							var subMatch = subData.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchemas[i], function () {
+								thisSchemaMatch.subMatchUpdated(key, subMatch);
+							}, false, true);
+							matches.push(subMatch);
+						});
+						thisSchemaMatch.propertyMatches[key] = matches;
+						thisSchemaMatch.addDependencies(key);
+					}
+				});
+				var keysToRemove = [];
+				for (var key in this.propertyMatches) {
+					if (!this.data.property(key).defined()) {
+						keysToRemove.push(key);
+					}
+				};
+				for (var i = 0; i < keysToRemove.length; i++) {
+					var key = keysToRemove[i];
+					delete this.propertyMatches[key];
+					if (this.dependencyKeys[key] != undefined) {
+						this.data.removeSchema(this.dependencyKeys[key]);
+						delete this.dependencies[key];
+						delete this.dependencyKeys[key];
+					}
+				}
+			} else if (this.data.basicType() == "array") {
+				this.propertyMatches = {};
+				this.data.indices(function (index, subData) {
+					if (thisSchemaMatch.indexMatches[index] == undefined) {
+						var matches = [];
+						var subSchemas = thisSchemaMatch.schema.indexSchemas(index);
+						subSchemas.each(function (i, subSchema) {
+							var subMatch = subData.addSchemaMatchMonitor(thisSchemaMatch.monitorKey, subSchemas[i], function () {
+								thisSchemaMatch.subMatchUpdated(key, subMatch);
+							}, false, true);
+							matches.push(subMatch);
+						});
+						thisSchemaMatch.indexMatches[index] = matches;
+					}
+				});
+				var keysToRemove = [];
+				for (var key in this.indexMatches) {
+					if (this.data.length() <= key) {
+						keysToRemove.push(key);
+					}
+				};
+				for (var i = 0; i < keysToRemove.length; i++) {
+					delete this.indexMatches[keysToRemove[i]];
+				}
+			} else {
+				this.propertyMatches = {};
+				this.indexMatches = {};
+			}
+			this.update();
+		},
+		addDependencies: function (key) {
+			var thisSchemaMatch = this;
+			var dependencies = this.schema.propertyDependencies(key);
+			this.dependencies[key] = [];
+			this.dependencyKeys[key] = [];
+			for (var i = 0; i < dependencies.length; i++) {
+				var dependency = dependencies[i];
+				if (typeof (dependency) == "string") {
+					this.dependencies[key].push(dependency);
+				} else {
+					(function (index) {
+						var subMonitorKey = Utils.getKeyVariant(thisSchemaMatch.monitorKey, "dep:" + key + ":" + index);
+						thisSchemaMatch.dependencyKeys[key].push(subMonitorKey);
+						var subMatch = thisSchemaMatch.data.addSchemaMatchMonitor(subMonitorKey, dependency, function () {
+							thisSchemaMatch.dependencyUpdated(key, index);
+						}, false, true);
+						thisSchemaMatch.dependencies[key].push(subMatch);
+					})(i);
+				}
+			}
+		},
+		notify: function () {
+			this.monitors.notify(this.match, this.matchFailReason);
+		},
+		setMatch: function (match, failReason) {
+			var thisMatch = this;
+			var oldMatch = this.match;
+			var oldFailReason = this.matchFailReason;
+			
+			this.match = match;
+			if (!match) {
+				this.matchFailReason = failReason;
+			} else {
+				this.matchFailReason = null;
+			}
+			if (this.impatientCallbacks) {
+				return this.notify();
+			}
+			
+			if (this.pendingNotify) {
+				return;
+			}
+			this.pendingNotify = true;
+			DelayedCallbacks.add(function () {
+				thisMatch.pendingNotify = false;
+				if (thisMatch.match && oldMatch) {
+					// Still matches - no problem
+					return;
+				}
+				if (!thisMatch.match && !oldMatch && thisMatch.matchFailReason.equals(oldFailReason)) {
+					// Still failing for the same reason
+					return;
+				}
+				thisMatch.notify();
+			});
+		},	subMatchUpdated: function (indexKey, subMatch) {
+			this.update();
+		},
+		subMatchRemoved: function (indexKey, subMatch) {
+			this.update();
+		},
+		dependencyUpdated: function (key, index) {
+			this.update();
+		},
+		update: function () {
+			try {
+				this.matchAgainstBasicTypes();
+				this.matchAgainstSubMatches();
+				this.matchAgainstImmediateConstraints();
+				this.setMatch(true);
+			} catch (exception) {
+				if (exception instanceof SchemaMatchFailReason) {
+					this.setMatch(false, exception);
+				} else {
+					throw exception;
+				}
+			}
+		},
+		matchAgainstBasicTypes: function () {
+			var basicType = this.data.basicType();
+			for (var i = 0; i < this.basicTypes.length; i++) {
+				if (this.basicTypes[i] == basicType || basicType == "integer" && this.basicTypes[i] == "number") {
+					return;
+				}
+			}
+			throw new SchemaMatchFailReason("Data does not match any of the basic types: " + this.basicTypes, this.schema);
+		},
+		matchAgainstSubMatches: function () {
+			for (var i = 0; i < this.andMatches.length; i++) {
+				var andMatch = this.andMatches[i];
+				if (!andMatch.match) {
+					var message = "extended schema #" + i + ": " + andMatch.message;
+					throw new SchemaMatchFailReason(message, this.schema, andMatch.failReason);
+				}
+			}
+			for (var i = 0; i < this.notMatches.length; i++) {
+				var notMatch = this.notMatches[i];
+				if (notMatch.match) {
+					var message = "\"not\" schema #" + i + " matches";
+					throw new SchemaMatchFailReason(message, this.schema);
+				}
+			}
+			for (var key in this.xorSelectors) {
+				var selector = this.xorSelectors[key];
+				if (selector.selectedOption == null) {
+					var message = "XOR #" + key + ": " + selector.failReason.message;
+					throw new SchemaMatchFailReason(message, this.schema, selector.failReason);
+				}
+			}
+			for (var key in this.orSelectors) {
+				var selector = this.orSelectors[key];
+				if (selector.selectedOptions.length == 0) {
+					var message = "OR #" + key + ": no matches";
+					throw new SchemaMatchFailReason(message, this.schema);
+				}
+			}
+			for (var key in this.propertyMatches) {
+				var subMatchList = this.propertyMatches[key];
+				for (var i = 0; i < subMatchList.length; i++) {
+					var subMatch = subMatchList[i];
+					if (!subMatch.match) {
+						var message = key + ": " + subMatch.matchFailReason.message;
+						throw new SchemaMatchFailReason(message, this.schema, subMatch.matchFailReason);
+					}
+				}
+			}
+			for (var key in this.indexMatches) {
+				var subMatchList = this.indexMatches[key];
+				for (var i = 0; i < subMatchList.length; i++) {
+					var subMatch = subMatchList[i];
+					if (!subMatch.match) {
+						var message = key + ": " + subMatch.matchFailReason.message;
+						throw new SchemaMatchFailReason(message, this.schema, subMatch.matchFailReason);
+					}
+				}
+			}
+		},
+		matchAgainstImmediateConstraints: function () {
+			this.matchAgainstEnums();
+			this.matchAgainstNumberConstraints();
+			this.matchAgainstArrayConstraints();
+			this.matchAgainstObjectConstraints();
+		},
+		matchAgainstEnums: function () {
+			var enumList = this.schema.enumData();
+			if (enumList.defined()) {
+				for (var i = 0; i < enumList.length(); i++) {
+					var enumValue = enumList.index(i);
+					if (enumValue.equals(this.data)) {
+						return;
+					}
+				}
+				throw new SchemaMatchFailReason("Data does not match enum: " + JSON.stringify(enumList.value()) + " (" + JSON.stringify(this.data.value()) + ")", this.schema);
+			}
+		},
+		matchAgainstNumberConstraints: function () {
+			if (this.data.basicType() != "number" && this.data.basicType() != "integer") {
+				return;
+			}
+			var value = this.data.value();
+			var interval = this.schema.numberInterval();
+			if (interval != undefined) {
+				if (value%interval != 0) {
+					throw new SchemaMatchFailReason("Number must be divisible by " + interval);
+				}
+			}
+			var minimum = this.schema.minimum();
+			if (minimum !== undefined) {
+				if (this.schema.exclusiveMinimum()) {
+					if (value <= minimum) {
+						throw new SchemaMatchFailReason("Number must be > " + minimum);
+					}
+				} else if (value < minimum) {
+					throw new SchemaMatchFailReason("Number must be >= " + minimum);
+				}
+			}
+			var maximum = this.schema.maximum();
+			if (maximum != undefined) {
+				if (this.schema.exclusiveMaximum()) {
+					if (value >= maximum) {
+						throw new SchemaMatchFailReason("Number must be < " + maximum);
+					}
+				} else if (value > maximum) {
+					throw new SchemaMatchFailReason("Number must be <= " + maximum);
+				}
+			}
+		},
+		matchAgainstArrayConstraints: function () {
+			if (this.data.basicType() != "array") {
+				return;
+			}
+			var minItems = this.schema.minItems();
+			if (minItems !== undefined && minItems > this.data.length()) {
+				throw new SchemaMatchFailReason("Data is not long enough - minimum length is " + minItems, this.schema);
+			}
+			var maxItems = this.schema.maxItems();
+			if (maxItems !== undefined && maxItems < this.data.length()) {
+				throw new SchemaMatchFailReason("Data is too long - maximum length is " + maxItems, this.schema);
+			}
+		},
+		matchAgainstObjectConstraints: function () {
+			if (this.data.basicType() != "object") {
+				return;
+			}
+			var required = this.schema.requiredProperties();
+			for (var i = 0; i < required.length; i++) {
+				var key = required[i];
+				if (!this.data.property(key).defined()) {
+					throw new SchemaMatchFailReason("Missing key " + JSON.stringify(key), this.schema);
+				}
+			}
+			if (this.schema.allowedAdditionalProperties() == false) {
+				var definedKeys = this.schema.definedProperties();
+				var dataKeys = this.data.keys();
+				for (var i = 0; i < dataKeys.length; i++) {
+					if (definedKeys.indexOf(dataKeys[i]) == -1) {
+						throw new SchemaMatchFailReason("Not allowed additional property: " + JSON.stringify(key), this.schema);
+					}
+				}
+			}
+			this.matchAgainstDependencies();
+		},
+		matchAgainstDependencies: function () {
+			for (var key in this.dependencies) {
+				if (this.data.property(key) == undefined) {
+					continue;
+				}
+				var dependencyList = this.dependencies[key];
+				for (var i = 0; i < dependencyList.length; i++) {
+					var dependency = dependencyList[i];
+					if (typeof dependency == "string") {
+						if (!this.data.property(dependency).defined()) {
+							throw new SchemaMatchFailReason("Dependency - property " + JSON.stringify(key) + " requires property " + JSON.stringify(dependency), this.schema);
+						}
+					} else {
+						if (!dependency.match) {
+							throw new SchemaMatchFailReason("Dependency for " + key, this.schema, dependency.matchFailReason);
+						}
+					}
+				}
+			}
+		}
+	};
+	
+	function SchemaMatchFailReason(message, schema, subMatchFailReason) {
+		this.message = message;
+		this.schema = schema;
+		this.subMatchFailReason = subMatchFailReason;
+	}
+	SchemaMatchFailReason.prototype = new Error();
+	SchemaMatchFailReason.prototype.toString = function () {
+		return this.message + " in " + this.schema.title();
+	};
+	SchemaMatchFailReason.prototype.equals = function (other) {
+		if (!(other instanceof SchemaMatchFailReason)) {
+			return false;
+		}
+		if (this.subMatchFailReason == null) {
+			if (other.subMatchFailReason != null) {
+				return false;
+			}
+		} else if (other.subMatchFailReason == null || !this.subMatchFailReason.equals(other.subMatchFailReason)) {
+			return false;
+		}
+		return this.message == other.message && (this.schema == null && other.schema == null || this.schema != null && other.schema != null && this.schema.equals(other.schema));
+	};
+	
+	function XorSelector(schemaKey, options, dataObj) {
+		var thisXorSelector = this;
+		this.options = options;
+		this.matchCallback = null;
+		this.selectedOption = null;
+		this.data = dataObj;
+		
+		this.subMatches = [];
+		this.subSchemaKeys = [];
+		var pendingUpdate = false;
+		for (var i = 0; i < options.length; i++) {
+			this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
+			this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
+				thisXorSelector.update();
+			}, false, true);
+		}
+		this.update();
+	}
+	XorSelector.prototype = {
+		onMatchChange: function (callback, executeImmediately) {
+			this.matchCallback = callback;
+			if (executeImmediately !== false) {
+				callback.call(this, this.selectedOption);
+			}
+			return this;
+		},
+		update: function () {
+			var nextOption = null;
+			var failReason = "No matches";
+			for (var i = 0; i < this.subMatches.length; i++) {
+				if (this.subMatches[i].match) {
+					if (nextOption == null) {
+						nextOption = this.options[i];
+						failReason = null;
+					} else {
+						failReason = "multiple matches";
+						nextOption = null;
+						break;
+					}
+				}
+			}
+			this.failReason = new SchemaMatchFailReason(failReason);
+			if (this.selectedOption != nextOption) {
+				this.selectedOption = nextOption;
+				if (this.matchCallback != undefined) {
+					this.matchCallback.call(this, this.selectedOption);
+				}
+			}
+		}
+	};
+	
+	function OrSelector(schemaKey, options, dataObj) {
+		var thisOrSelector = this;
+		this.options = options;
+		this.matchCallback = null;
+		this.selectedOptions = [];
+		this.data = dataObj;
+		
+		this.subMatches = [];
+		this.subSchemaKeys = [];
+		var pendingUpdate = false;
+		for (var i = 0; i < options.length; i++) {
+			this.subSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "option" + i);
+			this.subMatches[i] = dataObj.addSchemaMatchMonitor(this.subSchemaKeys[i], options[i], function () {
+				thisOrSelector.update();
+			}, false, true);
+		}
+		this.update();
+	}
+	OrSelector.prototype = {
+		onMatchChange: function (callback, executeImmediately) {
+			this.matchCallback = callback;
+			if (executeImmediately !== false) {
+				callback.call(this, this.selectedOptions);
+			}
+			return this;
+		},
+		update: function () {
+			var nextOptions = [];
+			var failReason = "No matches";
+			for (var i = 0; i < this.subMatches.length; i++) {
+				if (this.subMatches[i].match) {
+					nextOptions.push(this.options[i]);
+				}
+			}
+			var difference = false;
+			if (nextOptions.length != this.selectedOptions.length) {
+				difference = true;
+			} else {
+				for (var i = 0; i < nextOptions.length; i++) {
+					if (nextOptions[i] != this.selectedOptions[i]) {
+						difference = true;
+						break;
+					}
+				}
+			}
+			if (difference) {
+				this.selectedOptions = nextOptions;
+				if (this.matchCallback != undefined) {
+					this.matchCallback.call(this, this.selectedOptions);
+				}
+			}
+		}
+	};
+	
+
+/**** ../jsonary/schemaset.js ****/
+
+	var schemaChangeListeners = [];
+	publicApi.registerSchemaChangeListener = function (listener) {
+		schemaChangeListeners.push(listener);
+	};
+	var schemaChanges = {
+	};
+	var schemaNotifyPending = false;
+	function notifyAllSchemaChanges() {
+		schemaNotifyPending = false;
+		var dataEntries = [];
+		for (var uniqueId in schemaChanges) {
+			var data = schemaChanges[uniqueId];
+			dataEntries.push({
+				data: data,
+				pointerPath: data.pointerPath()
+			});
+		}
+		schemaChanges = {};
+		dataEntries.sort(function (a, b) {
+			return a.pointerPath.length - b.pointerPath.length;
+		});
+		var dataObjects = [];
+		for (var i = 0; i < dataEntries.length; i++) {
+			dataObjects[i] = dataEntries[i].data;
+		}
+		for (var i = 0; i < schemaChangeListeners.length; i++) {
+			schemaChangeListeners[i].call(null, dataObjects);
+		}
+	}
+	function notifySchemaChangeListeners(data) {
+		schemaChanges[data.uniqueId] = data;
+		if (!schemaNotifyPending) {
+			schemaNotifyPending = true;
+			DelayedCallbacks.add(notifyAllSchemaChanges);
+		}
+	}
+	
+	function LinkList(linkList) {
+		for (var i = 0; i < linkList.length; i++) {
+			this[i] = linkList[i];
+		}
+		this.length = linkList.length;
+	}
+	LinkList.prototype = {
+		rel: function(rel) {
+			if (rel == undefined) {
+				return this;
+			}
+			var result = [];
+			var i;
+			for (i = 0; i < this.length; i++) {
+				if (this[i].rel === rel) {
+					result[result.length] = this[i];
+				}
+			}
+			return new LinkList(result);
+		}
+	};
+	
+	// TODO: see how many calls to dataObj can be changed to just use this object
+	function SchemaList(schemaList, fixedList) {
+		if (schemaList == undefined) {
+			this.length = 0;
+			return;
+		}
+		if (fixedList == undefined) {
+			fixedList = schemaList;
+		}
+		this.fixed = function () {
+			var fixedSchemaList = (fixedList.length < schemaList.length) ? new SchemaList(fixedList) : this;
+			this.fixed = function () {
+				return fixedSchemaList;
+			};
+			return fixedSchemaList;
+		};
+		var i;
+		for (i = 0; i < schemaList.length; i++) {
+			this[i] = schemaList[i];
+		}
+		this.length = schemaList.length;
+	}
+	var ALL_TYPES_DICT = {
+		"null": true,
+		"boolean": true,
+		"integer": true,
+		"number": true,
+		"string": true,
+		"array": true,
+		"object": true
+	};
+	SchemaList.prototype = {
+		indexOf: function (schema, resolveRef) {
+			var i = this.length - 1;
+			while (i >= 0) {
+				if (schema.equals(this[i], resolveRef)) {
+					return i;
+				}
+				i--;
+			}
+			return i;
+		},
+		containsUrl: function(url) {
+			if (url instanceof RegExp) {
+				for (var i = 0; i < this.length; i++) {
+					var schema = this[i];
+					if (url.test(schema.referenceUrl())) {
+						return true;
+					}
+				}
+			} else {
+				if (url.indexOf('#') < 0) {
+					url += "#";
+				}
+				for (var i = 0; i < this.length; i++) {
+					var schema = this[i];
+					var referenceUrl = schema.referenceUrl();
+					if (referenceUrl != null && referenceUrl.substring(referenceUrl.length - url.length) == url) {
+						return true;
+					}
+				}
+			}
+			return false;
+		},
+		links: function (rel) {
+			var result = [];
+			var i, schema;
+			for (i = 0; i < this.length; i++) {
+				var schema = this[i];
+				result = result.concat(schema.links());
+			}
+			this.links = function (rel) {
+				var filtered = [];
+				for (var i = 0; i < result.length; i++) {
+					var link = result[i];
+					if (rel == undefined || link.rel == rel) {
+						filtered.push(link);
+					}
+				}
+				return filtered;
+			};
+			return this.links(rel);
+		},
+		each: function (callback) {
+			for (var i = 0; i < this.length; i++) {
+				callback.call(this, i, this[i]);
+			}
+			return this;
+		},
+		concat: function(other) {
+			var newList = [];
+			for (var i = 0; i < this.length; i++) {
+				newList.push(this[i]);
+			}
+			for (var i = 0; i < other.length; i++) {
+				newList.push(other[i]);
+			}
+			return new SchemaList(newList);
+		},
+		title: function () {
+			var titles = [];
+			for (var i = 0; i < this.length; i++) {
+				var title = this[i].title();
+				if (title) {
+					titles.push(title);
+				}
+			}
+			return titles.join(' - ');
+		},
+		definedProperties: function (ignoreList) {
+			if (ignoreList) {
+				this.definedProperties(); // create cached function
+				return this.definedProperties(ignoreList);
+			}
+			var additionalProperties = true;
+			var definedKeys = {};
+			this.each(function (index, schema) {
+				if (additionalProperties) {
+					if (!schema.allowedAdditionalProperties()) {
+						additionalProperties = false;
+						definedKeys = {};
+					}
+					var definedProperties = schema.definedProperties();
+					for (var i = 0; i < definedProperties.length; i++) {
+						definedKeys[definedProperties[i]] = true;
+					}
+				} else {
+					if (!schema.allowedAdditionalProperties()) {
+						additionalProperties = false;
+						var newKeys = {};
+						var definedProperties = schema.definedProperties();
+						for (var i = 0; i < definedProperties.length; i++) {
+							if (definedKeys[definedProperties[i]]) {
+								newKeys[definedProperties[i]] = true;
+							}
+						}
+						definedKeys = newKeys;
+					}
+				}
+			});
+			var result = Object.keys(definedKeys);
+			cacheResult(this, {
+				allowedAdditionalProperties: additionalProperties
+			});
+			this.definedProperties = function (ignoreList) {
+				ignoreList = ignoreList || [];
+				var newList = [];
+				for (var i = 0; i < result.length; i++) {
+					if (ignoreList.indexOf(result[i]) == -1) {
+						newList.push(result[i]);
+					}
+				}
+				return newList;
+			};
+			return result;
+		},
+		knownProperties: function (ignoreList) {
+			if (ignoreList) {
+				this.knownProperties(); // create cached function
+				return this.knownProperties(ignoreList);
+			}
+			var result;
+			if (this.allowedAdditionalProperties()) {
+				result = this.definedProperties().slice(0);
+				var requiredProperties = this.requiredProperties();
+				for (var i = 0; i < requiredProperties.length; i++) {
+					if (result.indexOf(requiredProperties[i]) == -1) {
+						result.push(requiredProperties[i]);
+					}
+				}
+			} else {
+				var result = this.definedProperties();
+			}
+			this.knownProperties = function (ignoreList) {
+				ignoreList = ignoreList || [];
+				var newList = [];
+				for (var i = 0; i < result.length; i++) {
+					if (ignoreList.indexOf(result[i]) == -1) {
+						newList.push(result[i]);
+					}
+				}
+				return newList;
+			};
+			return result.slice(0);
+		},
+		allowedAdditionalProperties: function () {
+			var additionalProperties = true;
+			this.each(function (index, schema) {
+				additionalProperties = (additionalProperties && schema.allowedAdditionalProperties());
+			});
+			cacheResult(this, {
+				additionalProperties: additionalProperties
+			});
+			return additionalProperties;
+		},
+		minProperties: function () {
+			var minProperties = 0;
+			for (var i = 0; i < this.length; i++) {
+				var otherMinProperties = this[i].minProperties();
+				if (otherMinProperties > minProperties) {
+					minProperties = otherMinProperties;
+				}
+			}
+			return minProperties;
+		},
+		maxProperties: function () {
+			var maxProperties = undefined;
+			for (var i = 0; i < this.length; i++) {
+				var otherMaxProperties = this[i].maxProperties();
+				if (!(otherMaxProperties > maxProperties)) {
+					maxProperties = otherMaxProperties;
+				}
+			}
+			return maxProperties;
+		},
+		types: function () {
+			var basicTypes = ALL_TYPES_DICT;
+			for (var i = 0; i < this.length; i++) {
+				var otherBasicTypes = this[i].basicTypes();
+				var newBasicTypes = {};
+				for (var j = 0; j < otherBasicTypes.length; j++) {
+					var type = otherBasicTypes[j];
+					if (basicTypes[type]) {
+						newBasicTypes[type] = true;
+					}
+				}
+				basicTypes = newBasicTypes;
+			}
+			return Object.keys(basicTypes);
+		},
+		numberInterval: function() {
+			var candidate = undefined;
+			for (var i = 0; i < this.length; i++) {
+				var interval = this[i].numberInterval();
+				if (interval == undefined) {
+					continue;
+				}
+				if (candidate == undefined) {
+					candidate = interval;
+				} else {
+					candidate = Utils.lcm(candidate, interval);
+				}
+			}
+			for (var i = 0; i < this.length; i++) {
+				var basicTypes = this[i].basicTypes();
+				var hasInteger = false;
+				for (var j = 0; j < basicTypes.length; j++) {
+					if (basicTypes[j] == "number") {
+						hasInteger = false;
+						break;
+					} else if (basicTypes[j] == "integer") {
+						hasInteger = true;
+					}
+				}
+				if (hasInteger) {
+					if (candidate == undefined) {
+						return 1;
+					} else {
+						return Utils.lcm(candidate, 1);
+					}
+				}
+			}
+			cacheResult(this, {
+				numberInterval: candidate
+			});
+			return candidate;
+		},
+		minimum: function () {
+			var minimum = undefined;
+			var exclusive = false;
+			for (var i = 0; i < this.length; i++) {
+				var otherMinimum = this[i].minimum();
+				if (otherMinimum != undefined) {
+					if (minimum == undefined || minimum < otherMinimum) {
+						minimum = otherMinimum;
+						exclusive = this[i].exclusiveMinimum();
+					}
+				}
+			}
+			cacheResult(this, {
+				minimum: minimum,
+				exclusiveMinimum: exclusive
+			});
+			return minimum;
+		},
+		exclusiveMinimum: function () {
+			this.minimum();
+			return this.exclusiveMinimum();
+		},
+		maximum: function () {
+			var maximum = undefined;
+			var exclusive = false;
+			for (var i = 0; i < this.length; i++) {
+				var otherMaximum = this[i].maximum();
+				if (otherMaximum != undefined) {
+					if (maximum == undefined || maximum > otherMaximum) {
+						maximum = otherMaximum;
+						exclusive = this[i].exclusiveMaximum();
+					}
+				}
+			}
+			cacheResult(this, {
+				maximum: maximum,
+				exclusiveMaximum: exclusive
+			});
+			return maximum;
+		},
+		exclusiveMaximum: function () {
+			this.minimum();
+			return this.exclusiveMinimum();
+		},
+		minLength: function () {
+			var minLength = 0;
+			for (var i = 0; i < this.length; i++) {
+				var otherMinLength = this[i].minLength();
+				if (otherMinLength > minLength) {
+					minLength = otherMinLength;
+				}
+			}
+			cacheResult(this, {
+				minLength: minLength
+			});
+			return minLength;
+		},
+		maxLength: function () {
+			var maxLength = undefined;
+			for (var i = 0; i < this.length; i++) {
+				var otherMaxLength = this[i].maxLength();
+				if (!(otherMaxLength > maxLength)) {
+					maxLength = otherMaxLength;
+				}
+			}
+			cacheResult(this, {
+				maxLength: maxLength
+			});
+			return maxLength;
+		},
+		minItems: function () {
+			var minItems = 0;
+			for (var i = 0; i < this.length; i++) {
+				var otherMinItems = this[i].minItems();
+				if (otherMinItems > minItems) {
+					minItems = otherMinItems;
+				}
+			}
+			cacheResult(this, {
+				minItems: minItems
+			});
+			return minItems;
+		},
+		maxItems: function () {
+			var maxItems = undefined;
+			for (var i = 0; i < this.length; i++) {
+				var otherMaxItems = this[i].maxItems();
+				if (!(otherMaxItems > maxItems)) {
+					maxItems = otherMaxItems;
+				}
+			}
+			cacheResult(this, {
+				maxItems: maxItems
+			});
+			return maxItems;
+		},
+		tupleTypingLength: function () {
+			var maxTuple = 0;
+			for (var i = 0; i < this.length; i++) {
+				var otherTuple = this[i].tupleTypingLength();
+				if (otherTuple > maxTuple) {
+					maxTuple = otherTuple;
+				}
+			}
+			return maxTuple;
+		},
+		requiredProperties: function () {
+			var required = {};
+			var requiredList = [];
+			for (var i = 0; i < this.length; i++) {
+				var requiredProperties = this[i].requiredProperties();
+				for (var j = 0; j < requiredProperties.length; j++) {
+					var key = requiredProperties[j];
+					if (!required[key]) {
+						required[key] = true;
+						requiredList.push(key);
+					}
+				}
+			}
+			return requiredList;
+		},
+		readOnly: function () {
+			var readOnly = false;
+			for (var i = 0; i < this.length; i++) {
+				if (this[i].readOnly()) {
+					readOnly = true;
+					break;
+				}
+			}
+			this.readOnly = function () {
+				return readOnly;
+			}
+			return readOnly;
+		},
+		enumValues: function () {
+			var enums = undefined;
+			for (var i = 0; i < this.length; i++) {
+				var enumData = this[i].enumData();
+				if (enumData.defined()) {
+					if (enums == undefined) {
+						enums = [];
+						enumData.indices(function (index, subData) {
+							enums[index] = subData;
+						});
+					} else {
+						var newEnums = [];
+						enumData.indices(function (index, subData) {
+							for (var i = 0; i < enums.length; i++) {
+								if (enums[i].equals(subData)) {
+									newEnums.push(subData);
+								}
+							}
+						});
+						enums = newEnums;
+					}
+				}
+			}
+			if (enums != undefined) {
+				var values = [];
+				for (var i = 0; i < enums.length; i++) {
+					values[i] = enums[i].value();
+				}
+				return values;
+			}
+		},
+		allCombinations: function (callback) {
+			if (callback && !this.isFull()) {
+				this.getFull(function (full) {
+					full.allCombinations(callback);
+				});
+				return [];
+			}
+			var thisSchemaSet = this;
+			// This is a little inefficient
+			var xorSchemas = this.xorSchemas();
+			for (var i = 0; i < xorSchemas.length; i++) {
+				var found = false;
+				for (var optionNum = 0; optionNum < xorSchemas[i].length; optionNum++) {
+					var option = xorSchemas[i][optionNum];
+					if (this.indexOf(option, !!callback) >= 0) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					var result = [];
+					var pending = 1;
+					var gotResult = function() {
+						pending--;
+						if (pending <= 0) {
+							callback(result);
+						}
+					};
+					for (var optionNum = 0; optionNum < xorSchemas[i].length; optionNum++) {
+						var option = xorSchemas[i][optionNum];
+						if (callback) {
+							pending++;
+							this.concat([option]).allCombinations(function (subCombos) {
+								result = result.concat(subCombos);
+								gotResult();
+							});
+						} else {
+							var subCombos = this.concat([option]).allCombinations();
+							result = result.concat(subCombos);
+						}
+					}
+					if (callback) {
+						gotResult();
+					}
+					return result;
+				}
+			}
+			
+			var orSchemas = this.orSchemas();
+			var totalCombos = null;
+			var orSelectionOptionSets = [];
+			var orPending = 1;
+			function gotOrResult() {
+				orPending--;
+				if (orPending <= 0) {
+					var totalCombos = [new SchemaList([])];
+					for (var optionSetIndex = 0; optionSetIndex < orSelectionOptionSets.length; optionSetIndex++) {
+						var optionSet = orSelectionOptionSets[optionSetIndex];
+						var newTotalCombos = [];
+						for (var optionIndex = 0; optionIndex < optionSet.length; optionIndex++) {
+							for (var comboIndex = 0; comboIndex < totalCombos.length; comboIndex++) {
+								newTotalCombos.push(totalCombos[comboIndex].concat(optionSet[optionIndex]));
+							}
+						}
+						totalCombos = newTotalCombos;
+					}
+					for (var i = 0; i < totalCombos.length; i++) {
+						totalCombos[i] = thisSchemaSet.concat(totalCombos[i]);
+					}
+					
+					callback(totalCombos);
+				}
+			};
+			for (var i = 0; i < orSchemas.length; i++) {
+				(function (i) {
+					var remaining = [];
+					var found = false;
+					for (var optionNum = 0; optionNum < orSchemas[i].length; optionNum++) {
+						var option = orSchemas[i][optionNum];
+						if (thisSchemaSet.indexOf(option, !!callback) == -1) {
+							remaining.push(option);
+						} else {
+							found = true;
+						}
+					}
+					if (remaining.length > 0) {
+						var orSelections = [[]];
+						for (var remNum = 0; remNum < remaining.length; remNum++) {
+							var newCombos = [];
+							for (var combNum = 0; combNum < orSelections.length; combNum++) {
+								newCombos.push(orSelections[combNum]);
+								newCombos.push(orSelections[combNum].concat([remaining[remNum]]));
+							}
+							orSelections = newCombos;
+						} 
+						if (!found) {
+							orSelections.shift();
+						}
+						if (callback) {
+							orSelectionOptionSets[i] = [];
+							for (var j = 0; j < orSelections.length; j++) {
+								var orSelectionSet = new SchemaList(orSelections[j]);
+								orPending++;
+								orSelectionSet.allCombinations(function (subCombos) {
+									orSelectionOptionSets[i] = orSelectionOptionSets[i].concat(subCombos);
+									gotOrResult();
+								});
+							}
+						} else {
+							orSelectionOptionSets[i] = orSelections;
+						}
+					}
+				})(i);
+			}
+			
+			var totalCombos = [new SchemaList([])];
+			for (var optionSetIndex = 0; optionSetIndex < orSelectionOptionSets.length; optionSetIndex++) {
+				var optionSet = orSelectionOptionSets[optionSetIndex];
+				var newTotalCombos = [];
+				for (var optionIndex = 0; optionIndex < optionSet.length; optionIndex++) {
+					for (var comboIndex = 0; comboIndex < totalCombos.length; comboIndex++) {
+						newTotalCombos.push(totalCombos[comboIndex].concat(optionSet[optionIndex]));
+					}
+				}
+				totalCombos = newTotalCombos;
+			}
+			for (var i = 0; i < totalCombos.length; i++) {
+				totalCombos[i] = this.concat(totalCombos[i]);
+			}
+			
+			if (callback) {
+				gotOrResult();
+			}
+			return totalCombos;
+		},
+		createValue: function(callback, ignoreChoices) {
+			if (!ignoreChoices) {
+				if (callback != null) {
+					this.allCombinations(function (allCombinations) {
+						function nextOption(index) {
+							if (index >= allCombinations.length) {
+								return callback(undefined);
+							}
+							allCombinations[index].createValue(function (value) {
+								if (value !== undefined) {
+									callback(value);
+								} else {
+									nextOption(index + 1);
+								}
+							}, true);
+						}
+						nextOption(0);
+					});
+					return;
+				}
+				// Synchronous version
+				var allCombinations = this.allCombinations();
+				for (var i = 0; i < allCombinations.length; i++) {
+					var value = allCombinations[i].createValue(null, true);
+					if (value !== undefined) {
+						return value;
+					}
+				}
+				return;
+			}
+	
+			var basicTypes = this.basicTypes();
+			var pending = 1;
+			var chosenCandidate = undefined;
+			function gotCandidate(candidate) {
+				if (candidate !== undefined) {
+					var newBasicType = Utils.guessBasicType(candidate);
+					if (basicTypes.indexOf(newBasicType) == -1 && (newBasicType != "integer" || basicTypes.indexOf("number") == -1)) {
+						candidate = undefined;
+					}
+				}
+				if (candidate !== undefined && chosenCandidate === undefined) {
+					chosenCandidate = candidate;
+				}
+				pending--;
+				if (callback && pending <= 0) {
+					callback(chosenCandidate);
+				}
+				if (pending <= 0) {
+					return chosenCandidate;
+				}
+			}
+	
+			for (var i = 0; i < this.length; i++) {
+				if (this[i].hasDefault()) {
+					pending++;
+					if (gotCandidate(this[i].defaultValue())) {
+						return chosenCandidate;
+					}
+				}
+			}
+			
+			var enumValues = this.enumValues();
+			if (enumValues != undefined) {
+				pending += enumValues.length;
+				for (var i = 0; i < enumValues.length; i++) {
+					if (gotCandidate(enumValues[i])) {
+						return chosenCandidate;
+					}
+				}
+			} else {
+				pending += basicTypes.length;
+				for (var i = 0; i < basicTypes.length; i++) {
+					var basicType = basicTypes[i];
+					if (basicType == "null") {
+						if (gotCandidate(null)) {
+							return chosenCandidate;
+						}
+					} else if (basicType == "boolean") {
+						if (gotCandidate(true)) {
+							return true;
+						}
+					} else if (basicType == "integer" || basicType == "number") {
+						var candidate = this.createValueNumber();
+						if (gotCandidate(candidate)) {
+							return chosenCandidate;
+						}
+					} else if (basicType == "string") {
+						var candidate = this.createValueString();
+						if (gotCandidate(candidate)) {
+							return chosenCandidate;
+						}
+					} else if (basicType == "array") {
+						if (callback) {
+							this.createValueArray(function (candidate) {
+								gotCandidate(candidate);
+							});
+						} else {
+							var candidate = this.createValueArray();
+							if (gotCandidate(candidate)) {
+								return chosenCandidate;
+							}
+						}
+					} else if (basicType == "object") {
+						if (callback) {
+							var candidate = this.createValueObject(function (candidate) {
+								gotCandidate(candidate);
+							});
+						} else {
+							var candidate = this.createValueObject();
+							if (gotCandidate(candidate)) {
+								return chosenCandidate;
+							}
+						}
+					}
+				}
+			}
+			return gotCandidate(chosenCandidate);
+		},
+		createValueNumber: function () {
+			var exclusiveMinimum = this.exclusiveMinimum();
+			var minimum = this.minimum();
+			var maximum = this.maximum();
+			var exclusiveMaximum = this.exclusiveMaximum();
+			var interval = this.numberInterval();
+			var candidate = undefined;
+			if (minimum != undefined && maximum != undefined) {
+				if (minimum > maximum || (minimum == maximum && (exclusiveMinimum || exclusiveMaximum))) {
+					return;
+				}
+				if (interval != undefined) {
+					candidate = Math.ceil(minimum/interval)*interval;
+					if (exclusiveMinimum && candidate == minimum) {
+						candidate += interval;
+					}
+					if (candidate > maximum || (candidate == maximum && exclusiveMaximum)) {
+						return;
+					}
+				} else {
+					candidate = (minimum + maximum)*0.5;
+				}
+			} else if (minimum != undefined) {
+				candidate = minimum;
+				if (interval != undefined) {
+					candidate = Math.ceil(candidate/interval)*interval;
+				}
+				if (exclusiveMinimum && candidate == minimum) {
+					if (interval != undefined) {
+						candidate += interval;
+					} else {
+						candidate++;
+					}
+				}
+			} else if (maximum != undefined) {
+				candidate = maximum;
+				if (interval != undefined) {
+					candidate = Math.floor(candidate/interval)*interval;
+				}
+				if (exclusiveMaximum && candidate == maximum) {
+					if (interval != undefined) {
+						candidate -= interval;
+					} else {
+						candidate--;
+					}
+				}
+			} else {
+				candidate = 0;
+			}
+			return candidate;
+		},
+		createValueString: function () {
+			var candidate = "";
+			return candidate;
+		},
+		createValueArray: function (callback) {
+			var thisSchemaSet = this;
+			var candidate = [];
+			var minItems = this.minItems();
+			if (!minItems) {
+				if (callback) {
+					callback(candidate);
+				}
+				return candidate;
+			}
+			var pending = minItems;
+			for (var i = 0; i < minItems; i++) {
+				(function (i) {
+					if (callback) {
+						thisSchemaSet.createValueForIndex(i, function (value) {
+							candidate[i] = value;
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						});
+					} else {
+						candidate[i] = thisSchemaSet.createValueForIndex(i);
+					}
+				})(i);
+			}
+			return candidate;
+		},
+		createValueObject: function (callback) {
+			var thisSchemaSet = this;
+			var candidate = {};
+			var requiredProperties = this.requiredProperties();
+			if (requiredProperties.length == 0) {
+				if (callback) {
+					callback(candidate);
+				}
+				return candidate;
+			}
+			var pending = requiredProperties.length;
+			for (var i = 0; i < requiredProperties.length; i++) {
+				(function (key) {
+					if (callback) {
+						thisSchemaSet.createValueForProperty(key, function (value) {
+							candidate[key] = value;
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						});
+					} else {
+						candidate[key] = thisSchemaSet.createValueForProperty(key);
+					}
+				})(requiredProperties[i]);
+			}
+			return candidate;
+		},
+		createValueForIndex: function(index, callback) {
+			var indexSchemas = this.indexSchemas(index);
+			return indexSchemas.createValue(callback);
+		},
+		indexSchemas: function(index) {
+			var result = new SchemaList();
+			for (var i = 0; i < this.length; i++) {
+				result = result.concat(this[i].indexSchemas(index));
+			}
+			return result;
+		},
+		tupleTyping: function () {
+			var result = 0;
+			for (var i = 0; i < this.length; i++) {
+				result = Math.max(result, this[i].tupleTyping());
+			}
+			return result;
+		},
+		createValueForProperty: function(key, callback) {
+			var propertySchemas = this.propertySchemas(key);
+			return propertySchemas.createValue(callback);
+		},
+		propertySchemas: function(key) {
+			var result = new SchemaList();
+			for (var i = 0; i < this.length; i++) {
+				result = result.concat(this[i].propertySchemas(key));
+			}
+			return result;
+		},
+		propertyDependencies: function(key) {
+			var result = [];
+			var stringDeps = {};
+			for (var i = 0; i < this.length; i++) {
+				var deps = this[i].propertyDependencies(key);
+				for (var j = 0; j < deps.length; j++) {
+					if (typeof deps[j] == "string") {
+						if (!stringDeps[deps[j]]) {
+							stringDeps[deps[j]] = true;
+							result.push(deps[j]);
+						}
+					} else {
+						result.push(deps[j]);
+					}
+				}
+			}
+			return result;
+		},
+		isFull: function () {
+			for (var i = 0; i < this.length; i++) {
+				if (!this[i].isFull()) {
+					return false;
+				}
+				var andSchemas = this[i].andSchemas();
+				for (var j = 0; j < andSchemas.length; j++) {
+					if (this.indexOf(andSchemas[j], true) == -1) {
+						return false;
+					}
+				}
+			}
+			return true;
+		},
+		getFull: function(callback) {
+			if (!callback) {
+				var result = this;
+				this.getFull(function (fullResult) {
+					result = fullResult;
+				});
+				return result;
+			}
+			if (this.length == 0) {
+				callback.call(this, this);
+				return this;
+			}
+			var pending = 0;
+			var result = [];
+			var fixedList = this.fixed();
+			function addAll(list) {
+				pending += list.length;
+				for (var i = 0; i < list.length; i++) {
+					list[i].getFull(function(schema) {
+						for (var i = 0; i < result.length; i++) {
+							if (schema.equals(result[i])) {
+								pending--;
+								if (pending == 0) {
+									var fullList = new SchemaList(result, fixedList);
+									callback.call(fullList, fullList);
+								}
+								return;
+							}
+						}
+						result.push(schema);
+						var extendSchemas = schema.extendSchemas();
+						addAll(extendSchemas);
+						pending--;
+						if (pending == 0) {
+							var fullList = new SchemaList(result, fixedList);
+							callback.call(fullList, fullList);
+						}
+					});
+				}
+			}
+			addAll(this);
+			return this;
+		},
+		formats: function () {
+			var result = [];
+			for (var i = 0; i < this.length; i++) {
+				var format = this[i].format();
+				if (format != null) {
+					result.push(format);
+				}
+			}
+			return result;
+		},
+		xorSchemas: function () {
+			var result = [];
+			for (var i = 0; i < this.length; i++) {
+				result = result.concat(this[i].xorSchemas());
+			}
+			return result;
+		},
+		orSchemas: function () {
+			var result = [];
+			for (var i = 0; i < this.length; i++) {
+				result = result.concat(this[i].orSchemas());
+			}
+			return result;
+		}
+	};
+	SchemaList.prototype.basicTypes = SchemaList.prototype.types;
+	SchemaList.prototype.potentialLinks = SchemaList.prototype.links;
+	
+	publicApi.extendSchemaList = function (obj) {
+		for (var key in obj) {
+			if (SchemaList.prototype[key] == undefined) {
+				SchemaList.prototype[key] = obj[key];
+			}
+		}
+	};
+	
+	publicApi.createSchemaList = function (schemas) {
+		if (!Array.isArray(schemas)) {
+			schemas = [schemas];
+		}
+		return new SchemaList(schemas);
+	};
+	
+	var SCHEMA_SET_UPDATE_KEY = Utils.getUniqueKey();
+	
+	function SchemaSet(dataObj) {
+		var thisSchemaSet = this;
+		this.dataObj = dataObj;
+	
+		this.schemas = {};
+		this.schemasFixed = {};
+		this.links = {};
+		this.matches = {};
+		this.xorSelectors = {};
+		this.orSelectors = {};
+		this.dependencySelectors = {};
+		this.schemaFlux = 0;
+		this.schemasStable = true;
+	
+		this.schemasStableListeners = new ListenerSet(dataObj);
+		this.pendingNotify = false;
+	
+		this.cachedSchemaList = null;
+		this.cachedLinkList = null;
+	}
+	var counter = 0;
+	SchemaSet.prototype = {
+		update: function (key) {
+			this.updateLinksWithKey(key);
+			this.updateDependenciesWithKey(key);
+			this.updateMatchesWithKey(key);
+		},
+		updateFromSelfLink: function () {
+			this.cachedLinkList = null;
+			var activeSelfLinks = [];
+			// Disable all "self" links
+			for (var schemaKey in this.links) {
+				var linkList = this.links[schemaKey];
+				for (i = 0; i < linkList.length; i++) {
+					var linkInstance = linkList[i];
+					if (linkInstance.rel() == "self") {
+						linkInstance.active = false;
+					}
+				}
+			}
+			// Recalculate all "self" links, keeping them disabled
+			for (var schemaKey in this.links) {
+				var linkList = this.links[schemaKey];
+				for (i = 0; i < linkList.length; i++) {
+					var linkInstance = linkList[i];
+					if (linkInstance.rel() == "self") {
+						linkInstance.update();
+						if (linkInstance.active) {
+							activeSelfLinks.push(linkInstance);
+							linkInstance.active = false;
+							// Reset cache again
+							this.cachedLinkList = null;
+						}
+					}
+				}
+			}
+			// Re-enable all self links that should be active
+			for (var i = 0; i < activeSelfLinks.length; i++) {
+				activeSelfLinks[i].active = true;
+			}
+	
+			// Update everything except the self links
+			for (var schemaKey in this.links) {
+				var linkList = this.links[schemaKey];
+				for (i = 0; i < linkList.length; i++) {
+					var linkInstance = linkList[i];
+					if (linkInstance.rel() != "self") {
+						linkInstance.update();
+					}
+				}
+			}
+			this.dataObj.properties(function (key, child) {
+				child.addLink(null);
+			});
+			this.dataObj.items(function (index, child) {
+				child.addLink(null);
+			});
+		},
+		updateLinksWithKey: function (key) {
+			var schemaKey, i, linkList, linkInstance;
+			var linksToUpdate = [];
+			for (schemaKey in this.links) {
+				linkList = this.links[schemaKey];
+				for (i = 0; i < linkList.length; i++) {
+					linkInstance = linkList[i];
+					if (linkInstance.usesKey(key) || key == null) {
+						linksToUpdate.push(linkInstance);
+					}
+				}
+			}
+			if (linksToUpdate.length > 0) {
+				var updatedSelfLink = null;
+				for (i = 0; i < linksToUpdate.length; i++) {
+					linkInstance = linksToUpdate[i];
+					var oldHref = linkInstance.active ? linkInstance.rawLink.rawLink.href : null;
+					linkInstance.update();
+					var newHref = linkInstance.active ? linkInstance.rawLink.rawLink.href : null;
+					if (newHref != oldHref && linkInstance.rel() == "self") {
+						updatedSelfLink = linkInstance;
+						break;
+					}
+				}
+				if (updatedSelfLink != null) {
+					this.updateFromSelfLink(updatedSelfLink);
+				}
+				// TODO: have separate "link" listeners?
+				this.invalidateSchemaState();
+			}
+		},
+		updateMatchesWithKey: function (key) {
+			// TODO: maintain a list of sorted keys, instead of sorting them each time
+			var schemaKeys = [];
+			for (schemaKey in this.matches) {
+				schemaKeys.push(schemaKey);
+			}
+			schemaKeys.sort();
+			schemaKeys.reverse();
+			for (var j = 0; j < schemaKeys.length; j++) {
+				var matchList = this.matches[schemaKeys[j]];
+				if (matchList != undefined) {
+					for (var i = 0; i < matchList.length; i++) {
+						matchList[i].dataUpdated(key);
+					}
+				}
+			}
+		},
+		updateDependenciesWithKey: function (key) {
+			// TODO: maintain a list of sorted keys, instead of sorting them each time
+			var schemaKeys = [];		
+			for (schemaKey in this.dependencySelectors) {
+				schemaKeys.push(schemaKey);
+			}
+			schemaKeys.sort();
+			schemaKeys.reverse();
+			for (var j = 0; j < schemaKeys.length; j++) {
+				var dependencyList = this.dependencySelectors[schemaKeys[j]];
+				for (var i = 0; i < dependencyList.length; i++) {
+					dependencyList[i].dataUpdated(key);
+				}
+			}
+		},
+		alreadyContainsSchema: function (schema, schemaKeyHistory) {
+			for (var j = 0; j < schemaKeyHistory.length; j++) {
+				var schemaKeyItem = schemaKeyHistory[j];
+				if (this.schemas[schemaKeyItem] == undefined) {
+					continue;
+				}
+				for (var i = 0; i < this.schemas[schemaKeyItem].length; i++) {
+					var s = this.schemas[schemaKeyItem][i];
+					if (schema.equals(s)) {
+						return true;
+					}
+				}
+			}
+			return false;
+		},
+		addSchema: function (schema, schemaKey, schemaKeyHistory, fixed) {
+			var thisSchemaSet = this;
+			if (schemaKey == undefined) {
+				schemaKey = Utils.getUniqueKey();
+				counter = 0;
+			}
+			if (fixed == undefined) {
+				fixed = true;
+			}
+			if (schemaKeyHistory == undefined) {
+				schemaKeyHistory = [schemaKey];
+			} else {
+				schemaKeyHistory[schemaKeyHistory.length] = schemaKey;
+			}
+			if (this.schemas[schemaKey] == undefined) {
+				this.schemas[schemaKey] = [];
+			}
+			this.schemaFlux++;
+			if (typeof schema == "string") {
+				schema = publicApi.createSchema({"$ref": schema});
+			}
+			schema.getFull(function (schema, req) {
+				if (thisSchemaSet.alreadyContainsSchema(schema, schemaKeyHistory)) {
+					thisSchemaSet.schemaFlux--;
+					thisSchemaSet.checkForSchemasStable();
+					return;
+				}
+				DelayedCallbacks.increment();
+	
+				thisSchemaSet.schemas[schemaKey].push(schema);
+				thisSchemaSet.schemasFixed[schemaKey] = thisSchemaSet.schemasFixed[schemaKey] || fixed;
+	
+				// TODO: this actually forces us to walk the entire data tree, as far as it is defined by the schemas
+				//       Do we really want to do this?  I mean, it's necessary if we ever want to catch the "self" links, but if not then it's not that helpful.
+				thisSchemaSet.dataObj.properties(function (key, child) {
+					var subSchemaKey = Utils.getKeyVariant(schemaKey, "prop");
+					var subSchemas = schema.propertySchemas(key);
+					for (var i = 0; i < subSchemas.length; i++) {
+						child.addSchema(subSchemas[i], subSchemaKey, schemaKeyHistory);
+					}
+				});
+				thisSchemaSet.dataObj.indices(function (i, child) {
+					var subSchemaKey = Utils.getKeyVariant(schemaKey, "idx");
+					var subSchemas = schema.indexSchemas(i);
+					for (var i = 0; i < subSchemas.length; i++) {
+						child.addSchema(subSchemas[i], schemaKey, schemaKeyHistory);
+					}
+				});
+	
+				var ext = schema.extendSchemas();
+				for (var i = 0; i < ext.length; i++) {
+					thisSchemaSet.addSchema(ext[i], schemaKey, schemaKeyHistory, fixed);
+				}
+	
+				thisSchemaSet.addLinks(schema.links(), schemaKey, schemaKeyHistory);
+				thisSchemaSet.addXorSelectors(schema, schemaKey, schemaKeyHistory);
+				thisSchemaSet.addOrSelectors(schema, schemaKey, schemaKeyHistory);
+				thisSchemaSet.addDependencySelector(schema, schemaKey, schemaKeyHistory);
+	
+				thisSchemaSet.schemaFlux--;
+				thisSchemaSet.invalidateSchemaState();
+				DelayedCallbacks.decrement();
+			});
+		},
+		addLinks: function (potentialLinks, schemaKey, schemaKeyHistory) {
+			var i, linkInstance;
+			if (this.links[schemaKey] == undefined) {
+				this.links[schemaKey] = [];
+			}
+			var selfLink = null;
+			for (i = 0; i < potentialLinks.length; i++) {
+				linkInstance = new LinkInstance(this.dataObj, potentialLinks[i]);
+				this.links[schemaKey].push(linkInstance);
+				this.addMonitorForLink(linkInstance, schemaKey, schemaKeyHistory);
+				linkInstance.update();
+				if (linkInstance.active && linkInstance.rawLink.rawLink.rel == "self") {
+					selfLink = linkInstance;
+				}
+			}
+			if (selfLink != null) {
+				this.updateFromSelfLink(selfLink);
+			}
+			this.invalidateSchemaState();
+		},
+		addXorSelectors: function (schema, schemaKey, schemaKeyHistory) {
+			var xorSchemas = schema.xorSchemas();
+			var selectors = [];
+			for (var i = 0; i < xorSchemas.length; i++) {
+				var selector = new XorSchemaApplier(xorSchemas[i], Utils.getKeyVariant(schemaKey, "xor" + i), schemaKeyHistory, this);
+				selectors.push(selector);
+			}
+			if (this.xorSelectors[schemaKey] == undefined) {
+				this.xorSelectors[schemaKey] = selectors;
+			} else {
+				this.xorSelectors[schemaKey] = this.xorSelectors[schemaKey].concat(selectors);
+			}
+		},
+		addOrSelectors: function (schema, schemaKey, schemaKeyHistory) {
+			var orSchemas = schema.orSchemas();
+			var selectors = [];
+			for (var i = 0; i < orSchemas.length; i++) {
+				var selector = new OrSchemaApplier(orSchemas[i], Utils.getKeyVariant(schemaKey, "or" + i), schemaKeyHistory, this);
+				selectors.push(selector);
+			}
+			if (this.orSelectors[schemaKey] == undefined) {
+				this.orSelectors[schemaKey] = selectors;
+			} else {
+				this.orSelectors[schemaKey] = this.orSelectors[schemaKey].concat(selectors);
+			}
+		},
+		addDependencySelector: function (schema, schemaKey, schemaKeyHistory) {
+			var selector = new DependencyApplier(schema, Utils.getKeyVariant(schemaKey, "dep"), schemaKeyHistory, this);
+			var selectors = [selector];
+			if (this.dependencySelectors[schemaKey] == undefined) {
+				this.dependencySelectors[schemaKey] = selectors;
+			} else {
+				this.dependencySelectors[schemaKey] = this.dependencySelectors[schemaKey].concat(selectors);
+			}
+		},
+		addLink: function (rawLink) {
+			if (rawLink == null) {
+				this.updateFromSelfLink();
+				this.invalidateSchemaState();
+				return;
+			}
+			if (rawLink.rel == "invalidate" || rawLink.rel == "invalidates") {
+				var invalidateUrl = this.dataObj.resolveUrl(rawLink.href);
+				publicApi.invalidate(invalidateUrl);
+				return;
+			}
+			var schemaKey = Utils.getUniqueKey();
+			var linkData = publicApi.create(rawLink);
+			var potentialLink = new PotentialLink(linkData);
+			this.addLinks([potentialLink], schemaKey);
+		},
+		addMonitorForLink: function (linkInstance, schemaKey, schemaKeyHistory) {
+			var thisSchemaSet = this;
+			var rel = linkInstance.rel();
+			if (rel === "describedby") {
+				var subSchemaKey = Utils.getKeyVariant(schemaKey);
+				linkInstance.addMonitor(subSchemaKey, function (active) {
+					thisSchemaSet.removeSchema(subSchemaKey);
+					if (active) {
+						var rawLink = linkInstance.rawLink;
+						var schema = publicApi.createSchema({
+							"$ref": rawLink.href
+						});
+						thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, false);
+					}
+				});
+			}
+		},
+		addSchemaMatchMonitor: function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+			var schemaMatch = new SchemaMatch(monitorKey, this.dataObj, schema, impatientCallbacks);
+			if (this.matches[monitorKey] == undefined) {
+				this.matches[monitorKey] = [];
+			}
+			this.matches[monitorKey].push(schemaMatch);
+			schemaMatch.addMonitor(monitor, executeImmediately);
+			return schemaMatch;
+		},
+		removeSchema: function (schemaKey) {
+			//Utils.log(Utils.logLevel.DEBUG, "Actually removing schema:" + schemaKey);
+			DelayedCallbacks.increment();
+	
+			this.dataObj.indices(function (i, subData) {
+				subData.removeSchema(schemaKey);
+			});
+			this.dataObj.properties(function (i, subData) {
+				subData.removeSchema(schemaKey);
+			});
+	
+			var key, i, j;
+			var keysToRemove = [];
+			for (key in this.schemas) {
+				if (Utils.keyIsVariant(key, schemaKey)) {
+					keysToRemove.push(key);
+				}
+			}
+			for (key in this.links) {
+				if (Utils.keyIsVariant(key, schemaKey)) {
+					keysToRemove.push(key);
+				}
+			}
+			for (key in this.matches) {
+				if (Utils.keyIsVariant(key, schemaKey)) {
+					keysToRemove.push(key);
+				}
+			}
+			for (i = 0; i < keysToRemove.length; i++) {
+				key = keysToRemove[i];
+				delete this.schemas[key];
+				delete this.links[key];
+				delete this.matches[key];
+				delete this.xorSelectors[key];
+				delete this.orSelectors[key];
+				delete this.dependencySelectors[key];
+			}
+	
+			if (keysToRemove.length > 0) {
+				this.invalidateSchemaState();
+			}
+			DelayedCallbacks.decrement();
+		},
+		clear: function () {
+			this.schemas = {};
+			this.links = {};
+			this.matches = {};
+			this.invalidateSchemaState();
+		},
+		getSchemas: function () {
+			if (this.cachedSchemaList !== null) {
+				return this.cachedSchemaList;
+			}
+			var schemaResult = [];
+			var fixedSchemas = {};
+	
+			var i, j, key, schemaList, schema, alreadyExists;
+			for (key in this.schemas) {
+				schemaList = this.schemas[key];
+				var fixed = this.schemasFixed[key];
+				for (i = 0; i < schemaList.length; i++) {
+					schema = schemaList[i];
+					if (fixed) {
+						fixedSchemas[schema.data.uniqueId] = schema;
+					}
+					alreadyExists = false;
+					for (j = 0; j < schemaResult.length; j++) {
+						if (schema.equals(schemaResult[j])) {
+							alreadyExists = true;
+							break;
+						}
+					}
+					if (!alreadyExists) {
+						schemaResult.push(schema);
+					}
+				}
+			}
+			var schemaFixedResult = [];
+			for (var key in fixedSchemas) {
+				schemaFixedResult.push(fixedSchemas[key]);
+			}
+			this.cachedSchemaList = new SchemaList(schemaResult, schemaFixedResult);
+			return this.cachedSchemaList;
+		},
+		getLinks: function(rel) {
+			var key, i, keyInstance, keyList;
+			if (this.cachedLinkList !== null) {
+				return this.cachedLinkList.rel(rel);
+			}
+			var linkResult = [];
+			for (key in this.links) {
+				keyList = this.links[key];
+				for (i = 0; i < keyList.length; i++) {
+					keyInstance = keyList[i];
+					if (keyInstance.active) {
+						linkResult.push(keyInstance.rawLink);
+					}
+				}
+			}
+			this.cachedLinkList = new LinkList(linkResult);
+			return this.cachedLinkList.rel(rel);
+		},
+		invalidateSchemaState: function () {
+			this.cachedSchemaList = null;
+			this.cachedLinkList = null;
+			this.schemasStable = false;
+			this.checkForSchemasStable();
+		},
+		checkForSchemasStable: function () {
+			if (this.schemaFlux > 0) {
+				// We're in the middle of adding schemas
+				// We don't need to mark it as unstable, because if we're
+				//  adding or removing schemas or links it will be explicitly invalidated
+				return false;
+			}
+			var i, key, schemaList, schema;
+			for (key in this.schemas) {
+				schemaList = this.schemas[key];
+				for (i = 0; i < schemaList.length; i++) {
+					schema = schemaList[i];
+					if (!schema.isComplete()) {
+						this.schemasStable = false;
+						return false;
+					}
+				}
+			}
+			
+			var thisSchemaSet = this;
+			if (!thisSchemaSet.schemasStable) {
+				thisSchemaSet.schemasStable = true;
+				notifySchemaChangeListeners(thisSchemaSet.dataObj);
+			}
+			thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+			return true;
+		},
+		addSchemasForProperty: function (key, subData) {
+			for (var schemaKey in this.schemas) {
+				var subSchemaKey = Utils.getKeyVariant(schemaKey, "prop");
+				for (var i = 0; i < this.schemas[schemaKey].length; i++) {
+					var schema = this.schemas[schemaKey][i];
+					var subSchemas = schema.propertySchemas(key);
+					for (var j = 0; j < subSchemas.length; j++) {
+						subData.addSchema(subSchemas[j], subSchemaKey);
+					}
+				}
+			}
+		},
+		addSchemasForIndex: function (index, subData) {
+			for (var schemaKey in this.schemas) {
+				var subSchemaKey = Utils.getKeyVariant(schemaKey, "idx");
+				for (var i = 0; i < this.schemas[schemaKey].length; i++) {
+					var schema = this.schemas[schemaKey][i];
+					var subSchemas = schema.indexSchemas(index);
+					for (var j = 0; j < subSchemas.length; j++) {
+						subData.addSchema(subSchemas[j], subSchemaKey);
+					}
+				}
+			}
+		},
+		removeSubSchemas: function (subData) {
+			//    throw new Error("This should be using more than this.schemas");
+			for (var schemaKey in this.schemas) {
+				subData.removeSchema(schemaKey);
+			}
+		},
+		whenSchemasStable: function (handlerFunction) {
+			this.schemasStableListeners.add(handlerFunction);
+			this.checkForSchemasStable();
+		}
+	};
+	
+	function LinkInstance(dataObj, potentialLink) {
+		this.dataObj = dataObj;
+		this.potentialLink = potentialLink;
+		this.active = false;
+		this.rawLink = null;
+		this.updateMonitors = new MonitorSet(dataObj);
+	}
+	LinkInstance.prototype = {
+		update: function (key) {
+			var active = this.potentialLink.canApplyTo(this.dataObj);
+			if (active) {
+				this.rawLink = this.potentialLink.linkForData(this.dataObj);
+			} else {
+				this.rawLink = null;
+			}
+			this.active = active;
+			this.updateMonitors.notify(this.active);
+		},
+		rel: function () {
+			return this.potentialLink.rel();
+		},
+		usesKey: function (key) {
+			return this.potentialLink.usesKey(key);
+		},
+		addMonitor: function (schemaKey, monitor) {
+			this.updateMonitors.add(schemaKey, monitor);
+		}
+	};
+	
+	function XorSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
+		var inferredSchemaKey = Utils.getKeyVariant(schemaKey, "$");
+		this.xorSelector = new XorSelector(schemaKey, options, schemaSet.dataObj);
+		this.xorSelector.onMatchChange(function (selectedOption) {
+			schemaSet.removeSchema(inferredSchemaKey);
+			if (selectedOption != null) {
+				schemaSet.addSchema(selectedOption, inferredSchemaKey, schemaKeyHistory, false);
+			} else if (options.length > 0) {
+				schemaSet.addSchema(options[0], inferredSchemaKey, schemaKeyHistory, false);
+			}
+		});
+	}
+	
+	function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
+		var inferredSchemaKeys = [];
+		var optionsApplied = [];
+		for (var i = 0; i < options.length; i++) {
+			inferredSchemaKeys[i] = Utils.getKeyVariant(schemaKey, "$" + i);
+			optionsApplied[i] = false;
+		}
+		this.orSelector = new OrSelector(schemaKey, options, schemaSet.dataObj);
+		this.orSelector.onMatchChange(function (selectedOptions) {
+			for (var i = 0; i < options.length; i++) {
+				var found = false;
+				for (var j = 0; j < selectedOptions.length; j++) {
+					if (options[i] == selectedOptions[j]) {
+						found = true;
+						break;
+					}
+				}
+				if (found && !optionsApplied[i]) {
+					schemaSet.addSchema(options[i], inferredSchemaKeys[i], schemaKeyHistory, false);
+				} else if (!found && optionsApplied[i]) {
+					schemaSet.removeSchema(inferredSchemaKeys[i]);
+				}
+				optionsApplied[i] = found;
+			}
+			if (selectedOptions.length == 0 && options.length > 0) {
+				schemaSet.addSchema(options[0], inferredSchemaKeys[0], schemaKeyHistory, false);
+			}
+		});
+	}
+	
+	function DependencyApplier(schema, schemaKey, schemaKeyHistory, schemaSet) {
+		this.inferredSchemaKeys = {};
+		this.applied = {};
+		this.schema = schema;
+		this.schemaKeyHistory = schemaKeyHistory;
+		this.schemaSet = schemaSet;
+	
+		var keys = this.schema.data.property("dependencies").keys();
+		for (var i = 0; i < keys.length; i++) {
+			var key = keys[i];
+			this.inferredSchemaKeys[key] = Utils.getKeyVariant(schemaKey, "$" + i);
+			this.dataUpdated(key);
+		}
+		return;
+	}
+	DependencyApplier.prototype = {
+		dataUpdated: function (key) {
+			if (key == null) {
+				var keys = this.schema.data.property("dependencies").keys();
+				for (var i = 0; i < keys.length; i++) {
+					var key = keys[i];
+					this.dataUpdated(key);
+				}
+				return;
+			}
+			if (this.schemaSet.dataObj.property(key).defined()) {
+				var depList = this.schema.propertyDependencies(key);
+				for (var i = 0; i < depList.length; i++) {
+					var dep = depList[i];
+					if (typeof dep != "string") {
+						this.schemaSet.addSchema(dep, this.inferredSchemaKeys[key], this.schemaKeyHistory, false);
+					}
+				}
+			} else {
+				this.schemaSet.removeSchema(this.inferredSchemaKeys[key]);
+			}
+		}
+	};
+	
+
+/**** ../jsonary/main.js ****/
+
+	//Tidying
+	// TODO: check all " == undefined", in case they should be " === undefined" instead (null-safety)
+	// TODO: profile memory consumption - you're throwing closures around the place, it might go wrong
+	// TODO: try/catch clauses for all listeners/monitors
+	// TODO: document everything
+	// TODO: does the assigned baseUrl/fragment of data change when it's removed or assigned?
+	// TODO: various things are indexed by keys, and might have multiple entries - if we allow an entry to have more than one key, we need to do fewer calculations, and there is less duplication.  This will also help speed up schema matching, as we won't have any duplicates.
+	
+	//Features:
+	// TODO: Speculative schema matching (independent of applied schemas)
+	// TODO: something about types - list of uniqueIds for the data object defining the type?
+	// TODO: as long as we keep a request in the cache, keep a map of all custom-defined fragments
+	// TODO: have monitors return boolean, saying whether they are interested in future updates (undefined means true)
+	// TODO: re-structure monitor keys
+	// TODO: separate schema monitors from type monitors?
+	
+	publicApi.config = {
+		antiCacheUrls: false
+	}
+
+/**** ../jsonary/_footer.js ****/
+
+	publicApi.UriTemplate = UriTemplate;
+	
+	// Puts it in "exports" if it exists, otherwise create this.Jsonary (this == window, probably)
+	})((typeof module !== 'undefined' && module.exports) ? exports : (this.Jsonary = {}, this.Jsonary));
+	
+
+/**** ../plugins/jsonary.render.js ****/
+
+	(function (global) {
+		var Jsonary = global.Jsonary;
+	
+		function copyValue(value) {
+			return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
+		}
+		var randomChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+		function randomId(length) {
+			length = length || 10;
+			var result = "";
+			while (result.length < length) {
+				result += randomChars.charAt(Math.floor(Math.random()*randomChars.length));
+			}
+			return result;
+		}
+	
+		function htmlEscapeSingleQuote (str) {
+			return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
+		}
+	
+		var prefixPrefix = "Jsonary";
+		var prefixCounter = 0;
+	
+		var componentNames = {
+			ADD_REMOVE: "ADD_REMOVE",
+			TYPE_SELECTOR: "TYPE_SELECTOR",
+			RENDERER: "DATA_RENDERER",
+			add: function (newName, beforeName) {
+				if (this[newName] != undefined) {
+					return;
+				}
+				this[newName] = newName;
+				if (componentList.indexOf(beforeName) != -1) {
+					componentList.splice(componentList.indexOf(beforeName), 0, this[newName]);
+				} else {
+					componentList.splice(componentList.length - 1, 0, this[newName]);
+				}
+			}
+		};	
+		var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
+		
+		var contextIdCounter = 0;
+		function RenderContext(elementIdPrefix) {
+			this.uniqueId = contextIdCounter++;
+			var thisContext = this;
+			this.elementLookup = {};
+	
+			if (elementIdPrefix == undefined) {
+				elementIdPrefix = prefixPrefix + "." + (prefixCounter++) + randomId(4) + ".";
+			}
+			var elementIdCounter = 0;
+			this.getElementId = function () {
+				return elementIdPrefix + (elementIdCounter++);
+			};
+	
+			var renderDepth = 0;
+			this.enhancementContexts = {};
+			this.enhancementActions = {};
+			this.enhancementInputs = {};
+	
+			if (typeof document != 'undefined') {
+				Jsonary.registerChangeListener(function (patch, document) {
+					patch.each(function (index, operation) {
+						var dataObjects = document.affectedData(operation);
+						for (var i = 0; i < dataObjects.length; i++) {
+							thisContext.update(dataObjects[i], operation);
+						}
+					});
+				});
+				Jsonary.registerSchemaChangeListener(function (dataObjects) {
+					var elementIdLookup = {};
+					for (var i = 0; i < dataObjects.length; i++) {
+						var data = dataObjects[i];
+						var uniqueId = data.uniqueId;
+						var elementIds = thisContext.elementLookup[uniqueId];
+						if (elementIds == undefined || elementIds.length == 0) {
+							return;
+						}
+						elementIdLookup[uniqueId] = elementIds.slice(0);
+					}
+					for (var j = 0; j < dataObjects.length; j++) {
+						var data = dataObjects[j];
+						var uniqueId = data.uniqueId;
+						var elementIds = elementIdLookup[uniqueId];
+						for (var i = 0; i < elementIds.length; i++) {
+							var element = document.getElementById(elementIds[i]);
+							if (element == undefined) {
+								continue;
+							}
+							var prevContext = element.jsonaryContext;
+							var prevUiState = copyValue(this.uiStartingState);
+							var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+							if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+								renderer.render(element, data, prevContext);
+							} else {
+								prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+							}
+						}
+					}
+				});
+			}
+			this.rootContext = this;
+			this.subContexts = {};
+			this.oldSubContexts = {};
+		}
+		RenderContext.prototype = {
+			usedComponents: [],
+			rootContext: null,
+			baseContext: null,
+			labelForData: function (data) {
+				if (this.data && data.document.isDefinitive) {
+					var selfLink = data.getLink('self');
+					// Use "self" link for better persistence when data changes
+					var dataUrl = selfLink ? selfLink.href : data.referenceUrl();
+					if (dataUrl) {
+						var baseUrl = this.data.referenceUrl() || this.data.resolveUrl('');
+						var truncate = 0;
+						while (dataUrl.substring(0, baseUrl.length - truncate) != baseUrl.substring(0, baseUrl.length - truncate)) {
+							truncate++;
+						}
+						var remainder = dataUrl.substring(baseUrl.length - truncate);
+						if (truncate) {
+							return truncate + "!" + remainder;
+						} else {
+							return "!" + remainder;
+						}
+					}
+				} else if (this.data && this.data.document == data.document) {
+					var basePointer = this.data.pointerPath();
+					var dataPointer = data.pointerPath();
+					var truncate = 0;
+					while (dataPointer.substring(0, basePointer.length - truncate) != basePointer.substring(0, basePointer.length - truncate)) {
+						truncate++;
+					}
+					var remainder = dataPointer.substring(basePointer.length - truncate);
+					if (truncate) {
+						return truncate + "!" + remainder;
+					} else {
+						return "!" + remainder;
+					}
+				}
+				if (this.renderer) {
+					// This is bad because it makes the UI state less transferable
+					Jsonary.log(Jsonary.logLevel.WARNING, "No label supplied for data in renderer " + JSON.stringify(this.renderer.name));
+				}
+				
+				return "$" + data.uniqueId;
+			},
+			subContext: function (label, uiState) {
+	 			if (Jsonary.isData(label)) {
+					label = this.labelForData(label);
+				}
+				uiState = uiState || {};
+				var subContext = this.getSubContext(false, this.data, label, uiState);
+				subContext.renderer = this.renderer;
+				if (!subContext.uiState) {
+					subContext.loadState(subContext.uiStartingState);
+				}
+				return subContext;
+			},
+			subContextSavedStates: {},
+			saveState: function () {
+				var subStates = {};
+				for (var key in this.subContexts) {
+					subStates[key] = this.subContexts[key].saveState();
+				}
+				for (var key in this.oldSubContexts) {
+					subStates[key] = this.oldSubContexts[key].saveState();
+				}
+				
+				var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
+				return saveStateFunction.call(this.renderer, this.uiState, subStates, this.data);
+			},
+			loadState: function (savedState) {
+				var loadStateFunction = this.renderer ? this.renderer.loadState : Renderer.prototype.loadState;
+				var result = loadStateFunction.call(this.renderer, savedState);
+				this.uiState = result[0];
+				this.subContextSavedStates = result[1];
+			},
+			saveCompleteState: function (skipEnhancements) {
+				var state = {};
+				state.rendererId = this.renderer ? this.renderer.uniqueId : null;
+				state.sub = {};
+	
+				var result = {
+					actions: {},
+					inputs: {},
+					rootContext: this.uniqueId,
+					contexts: {},
+					documents: {}
+				};
+				result.contexts[this.uniqueId] = state;
+				for (var key in this.subContexts) {
+					var subContext = this.subContexts[key];
+					state.sub[key] = subContext.uniqueId;
+					var subResult = subContext.saveCompleteState(true);
+					for (var subKey in subResult.contexts) {
+						result.contexts[subKey] = subResult.contexts[subKey];
+					}
+					for (var subKey in subResult.documents) {
+						result.documents[subKey] = subResult.documents[subKey];
+					}
+				}
+				for (var key in this.oldSubContexts) {
+					var subContext = this.oldSubContexts[key];
+					state.sub[key] = subContext.uniqueId;
+					var subResult = subContext.saveCompleteState(true);
+					for (var subKey in subResult.contexts) {
+						result.contexts[subKey] = subResult.contexts[subKey];
+					}
+					for (var subKey in subResult.documents) {
+						result.documents[subKey] = subResult.documents[subKey];
+					}
+				}
+	
+				if (!this.data) {
+					state.data = null;
+				} else {
+					state.data = {
+						path: this.data.pointerPath(),
+						document: this.data.document.uniqueId
+					};
+					if (!result.documents[this.data.document.uniqueId]) {
+						result.documents[this.data.document.uniqueId] = this.data.document.deflate(true);
+					}
+				}
+				
+				if (!skipEnhancements) {
+					for (var key in this.enhancementActions) {
+						var enhancement = this.enhancementActions[key];
+						result.actions[key] = {
+							context: enhancement.context.uniqueId,
+							name: enhancement.actionName,
+							params: enhancement.params
+						};
+						var c = enhancement.context;
+						while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
+							result.contexts[c.uniqueId].keep = true;
+							c = c.baseContext;
+						}
+					}
+					for (var key in this.enhancementInputs) {
+						var enhancement = this.enhancementInputs[key];
+						result.inputs[key] = {
+							context: enhancement.context.uniqueId,
+							name: enhancement.actionName,
+							params: enhancement.params
+						};
+						var c = enhancement.context;
+						while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
+							result.contexts[c.uniqueId].keep = true;
+							c = c.baseContext;
+						}
+					}
+					var newContexts = {};
+					for (var key in result.contexts) {
+						if (result.contexts[key].keep) {
+							newContexts[key] = result.contexts[key];
+							delete newContexts[key].keep;
+						}
+					}
+					result.contexts = newContexts;
+					result.uiState = this.saveState();
+				}
+				return result;
+			},
+			getSubContext: function (elementId, data, label, uiStartingState) {
+				if (typeof label == "object" && label != null) {
+					throw new Error('Label cannot be an object');
+				}
+				if (label || label === "") {
+					var labelKey = label;
+				} else {
+					var labelKey = this.labelForData(data);
+				}
+				if (this.oldSubContexts[labelKey] != undefined) {
+					this.subContexts[labelKey] = this.oldSubContexts[labelKey];
+				}
+				if (this.subContexts[labelKey] != undefined) {
+					if (this.subContexts[labelKey].data === null) {
+						// null can be used as a placeholder, to get callbacks when rendering requests/urls
+						this.subContexts[labelKey].data = data;
+					} else if (this.subContexts[labelKey].data != data) {
+						delete this.subContexts[labelKey];
+						delete this.oldSubContexts[labelKey];
+						delete this.subContextSavedStates[labelKey];
+					}
+				}
+				if (this.subContextSavedStates[labelKey]) {
+					uiStartingState = this.subContextSavedStates[labelKey];
+					delete this.subContextSavedStates[labelKey];
+				}
+				if (this.subContexts[labelKey] == undefined) {
+					var usedComponents = [];
+					if (this.data == data) {
+						usedComponents = this.usedComponents.slice(0);
+						if (this.renderer != undefined) {
+							usedComponents = usedComponents.concat(this.renderer.component);
+						}
+					}
+					if (typeof elementId == "object") {
+						elementId = elementId.id;
+					}
+					function Context(rootContext, baseContext, label, data, uiState, usedComponents) {
+						this.uniqueId = contextIdCounter++;
+						this.rootContext = rootContext;
+						this.baseContext = baseContext;
+						this.label = label;
+						this.data = data;
+						this.uiStartingState = copyValue(uiState || {});
+						this.usedComponents = usedComponents;
+						this.subContexts = {};
+						this.oldSubContexts = {};
+					}
+					Context.prototype = this.rootContext;
+					this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, usedComponents);
+				}
+				var subContext = this.subContexts[labelKey];
+				subContext.elementId = elementId;
+				subContext.parent = this;
+				return subContext;
+			},
+			clearOldSubContexts: function () {
+				this.oldSubContexts = this.subContexts;
+				this.subContexts = {};
+			},
+			rerender: function () {
+				if (this.parent && !this.elementId) {
+					return this.parent.rerender();
+				}
+				var element = document.getElementById(this.elementId);
+				if (element != null) {
+					this.renderer.render(element, this.data, this);
+					this.clearOldSubContexts();
+				}
+			},
+			asyncRerenderHtml: function (htmlCallback) {
+				var thisContext = this;
+				if (this.uiState == undefined) {
+					this.loadState(this.uiStartingState);
+				}
+				
+				var renderer = this.renderer;
+				var data = this.data;
+				
+				renderer.asyncRenderHtml(data, this, function (error, innerHtml) {
+					if (error) {
+						return htmlCallback(error, innerHtml, thisContext);
+					}
+					thisContext.clearOldSubContexts();
+	
+					htmlCallback(null, innerHtml, thisContext);
+				});
+			},
+	
+			render: function (element, data, label, uiStartingState) {
+				if (uiStartingState == undefined && typeof label == "object") {
+					uiStartingState = label;
+					label = null;
+				}
+				// If data is a URL, then fetch it and call back
+				if (typeof data == "string") {
+					data = Jsonary.getData(data);
+				}
+				if (data.getData != undefined) {
+					var thisContext = this;
+					element.innerHTML = '<div class="loading"></div>';
+					var subContext = this.getSubContext(element.id, null, label, uiStartingState);
+					var request = data.getData(function (actualData) {
+						thisContext.render(element, actualData, label, uiStartingState);
+					});
+					return subContext;;
+				}
+	
+				if (typeof uiStartingState != "object") {
+					uiStartingState = {};
+				}
+				if (element.id == undefined || element.id == "") {
+					element.id = this.getElementId();
+				}
+	
+				var previousContext = element.jsonaryContext;
+				var subContext = this.getSubContext(element.id, data, label, uiStartingState);
+				element.jsonaryContext = subContext;
+	
+				if (previousContext) {
+					// Something was rendered here before - remove this element from the lookup list for that data ID
+					var previousId = previousContext.data.uniqueId;
+					var index = this.elementLookup[previousId].indexOf(element.id);
+					if (index >= 0) {
+						this.elementLookup[previousId].splice(index, 1);
+					}
+				}
+				var uniqueId = data.uniqueId;
+				if (this.elementLookup[uniqueId] == undefined) {
+					this.elementLookup[uniqueId] = [];
+				}
+				if (this.elementLookup[uniqueId].indexOf(element.id) == -1) {
+					this.elementLookup[uniqueId].push(element.id);
+				}
+				var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+				if (renderer != undefined) {
+					subContext.renderer = renderer;
+					if (subContext.uiState == undefined) {
+						subContext.loadState(subContext.uiStartingState);
+					}
+					renderer.render(element, data, subContext);
+					subContext.clearOldSubContexts();
+				} else {
+					element.innerHTML = "NO RENDERER FOUND";
+				}
+				return subContext;
+			},
+			renderHtml: function (data, label, uiStartingState) {
+				if (uiStartingState == undefined && typeof label == "object") {
+					uiStartingState = label;
+					label = null;
+				}
+				var elementId = this.getElementId();
+				if (typeof data == "string") {
+					data = Jsonary.getData(data);
+				}
+				if (data.getData != undefined) {
+					var thisContext = this;
+					var rendered = false;
+					data.getData(function (actualData) {
+						if (!rendered) {
+							rendered = true;
+							data = actualData;
+						} else {
+							var element = document.getElementById(elementId);
+							if (element) {
+								thisContext.render(element, actualData, label, uiStartingState);
+							} else {
+								Jsonary.log(Jsonary.logLevel.WARNING, "Attempted delayed render to non-existent element: " + elementId);
+							}
+						}
+					});
+					if (!rendered) {
+						rendered = true;
+						return '<span id="' + elementId + '"><div class="loading"></div></span>';
+					}
+				}
+				
+				if (uiStartingState === true) {
+					uiStartingState = this.uiStartingState;
+				}
+				if (typeof uiStartingState != "object") {
+					uiStartingState = {};
+				}
+				var subContext = this.getSubContext(elementId, data, label, uiStartingState);
+	
+				var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+				subContext.renderer = renderer;
+				if (subContext.uiState == undefined) {
+					subContext.loadState(subContext.uiStartingState);
+				}
+				
+				var innerHtml = renderer.renderHtml(data, subContext);
+				subContext.clearOldSubContexts();
+				var uniqueId = data.uniqueId;
+				if (this.elementLookup[uniqueId] == undefined) {
+					this.elementLookup[uniqueId] = [];
+				}
+				if (this.elementLookup[uniqueId].indexOf(elementId) == -1) {
+					this.elementLookup[uniqueId].push(elementId);
+				}
+				this.addEnhancement(elementId, subContext);
+				return '<span id="' + elementId + '">' + innerHtml + '</span>';
+			},
+			asyncRenderHtml: function (data, label, uiStartingState, htmlCallback) {
+				var thisContext = this;
+				if (uiStartingState == undefined && typeof label == "object") {
+					uiStartingState = label;
+					label = null;
+				}
+				var elementId = this.getElementId();
+				if (typeof data == "string") {
+					data = Jsonary.getData(data);
+				}
+				if (data.getData != undefined) {
+					label = label || 'async' + Math.random();
+					var subContext = this.getSubContext(elementId, null, label, uiStartingState);
+					data.getData(function (actualData) {
+						thisContext.asyncRenderHtml(actualData, label, uiStartingState, htmlCallback);
+					});
+					return subContext;
+				}
+				
+				if (uiStartingState === true) {
+					uiStartingState = this.uiStartingState;
+				}
+				if (typeof uiStartingState != "object") {
+					uiStartingState = {};
+				}
+				var subContext = this.getSubContext(elementId, data, label, uiStartingState);
+	
+				var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+				subContext.renderer = renderer;
+				if (subContext.uiState == undefined) {
+					subContext.loadState(subContext.uiStartingState);
+				}
+				
+				renderer.asyncRenderHtml(data, subContext, function (error, innerHtml) {
+					subContext.clearOldSubContexts();
+					htmlCallback(null, innerHtml, subContext);
+				});
+				return subContext;
+			},
+			update: function (data, operation) {
+				var uniqueId = data.uniqueId;
+				var elementIds = this.elementLookup[uniqueId];
+				if (elementIds == undefined || elementIds.length == 0) {
+					return;
+				}
+				var elementIds = elementIds.slice(0);
+				for (var i = 0; i < elementIds.length; i++) {
+					var element = document.getElementById(elementIds[i]);
+					if (element == undefined) {
+						continue;
+					}
+					// If the element doesn't have a context, but update is being called, then it's probably (inadvisedly) trying to change something during its initial render.
+					// If so, check the enhancement contexts.
+					var prevContext = element.jsonaryContext || this.enhancementContexts[elementIds[i]];
+					var prevUiState = copyValue(this.uiStartingState);
+					var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+					if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+						renderer.update(element, data, prevContext, operation);
+					} else {
+						prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+					}
+				}
+			},
+			actionHtml: function(innerHtml, actionName) {
+				var startingIndex = 2;
+				var historyChange = false;
+				var linkUrl = Jsonary.render.actionUrl(this, actionName);
+				if (typeof actionName == "boolean") {
+					historyChange = arguments[1];
+					linkUrl = arguments[2] || linkUrl;
+					actionName = arguments[3];
+					startingIndex += 2;
+				}
+				var params = [];
+				for (var i = startingIndex; i < arguments.length; i++) {
+					params.push(arguments[i]);
+				}
+				var elementId = this.getElementId();
+				this.addEnhancementAction(elementId, actionName, this, params, historyChange);
+				return Jsonary.render.actionHtml(elementId, linkUrl, innerHtml);
+			},
+			inputNameForAction: function (actionName) {
+				var historyChange = false;
+				var startIndex = 1;
+				if (typeof actionName == "boolean") {
+					historyChange = actionName;
+					actionName = arguments[1];
+					startIndex++;
+				}
+				var params = [];
+				for (var i = startIndex; i < arguments.length; i++) {
+					params.push(arguments[i]);
+				}
+				var name = this.getElementId();
+				this.enhancementInputs[name] = {
+					inputName: name,
+					actionName: actionName,
+					context: this,
+					params: params,
+					historyChange: historyChange
+				};
+				return name;
+			},
+			addEnhancement: function(elementId, context) {
+				this.enhancementContexts[elementId] = context;
+			},
+			addEnhancementAction: function (elementId, actionName, context, params, historyChange) {
+				if (params == null) {
+					params = [];
+				}
+				this.enhancementActions[elementId] = {
+					actionName: actionName,
+					context: context,
+					params: params,
+					historyChange: historyChange
+				};
+			},
+			enhanceElement: function (element) {
+				var rootElement = element;
+				// Perform post-order depth-first walk of tree, calling enhanceElementSingle() on each element
+				// Post-order reduces orphaned enhancements by enhancing all children before the parent
+				while (element) {
+					if (element.firstChild) {
+						element = element.firstChild;
+						continue;
+					}
+					while (!element.nextSibling && element != rootElement) {
+						if (element.nodeType == 1) {
+							this.enhanceElementSingle(element);
+						}
+						element = element.parentNode;
+					}
+					if (element.nodeType == 1) {
+						this.enhanceElementSingle(element);
+					}
+					if (element == rootElement) {
+						break;
+					}
+					element = element.nextSibling;
+				}
+			},
+			enhanceElementSingle: function (element) {
+				var elementId = element.id;
+				var context = this.enhancementContexts[elementId];
+				if (context != undefined) {
+					element.jsonaryContext = context;
+					delete this.enhancementContexts[elementId];
+					var renderer = context.renderer;
+					if (renderer != undefined) {
+						renderer.enhance(element, context.data, context);
+					}
+				}
+				var action = this.enhancementActions[element.id];
+				if (action != undefined) {
+					delete this.enhancementActions[element.id];
+					element.onclick = function () {
+						var redrawElementId = action.context.elementId;
+						var actionContext = action.context;
+						var args = [actionContext, action.actionName].concat(action.params);
+						if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
+							// Action returned positive - we should force a re-render
+							actionContext.rerender();
+						}
+						notifyActionHandlers(actionContext.data, actionContext, action.actionName, action.historyChange);
+						return false;
+					};
+				}
+				var inputAction = this.enhancementInputs[element.name];
+				if (inputAction != undefined) {
+					delete this.enhancementInputs[element.name];
+					element.onchange = function () {
+						var value = this.value;
+						if (this.getAttribute("type") == "checkbox") {
+							value = this.checked;
+						}
+						if (this.tagName.toLowerCase() == "select" && this.getAttribute("multiple") != null) {
+							value = [];
+							for (var i = 0; i < this.options.length; i++) {
+								var option = this.options[i];
+								if (option.selected) {
+									value.push(option.value);
+								}
+							}						
+						}
+						var redrawElementId = inputAction.context.elementId;
+						var inputContext = inputAction.context;
+						var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
+						if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
+							inputContext.rerender();
+						}
+						notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
+					};
+				}
+				element = null;
+			}
+		};
+		var pageContext = new RenderContext();
+		render.loadDocumentsFromState = function (saved, callback) {
+			var documents = {};
+			var counter = 0;
+			var error = null;
+			for (var key in saved.documents) {
+				counter++;
+				documents[key] = Jsonary.inflate(saved.documents[key], function (err, document) {
+					error = error || err;
+					counter--;
+					if (counter == 0 && callback) {
+						callback(error, documents);
+					}
+				});
+			}
+			saved.parsedDocuments = function () {
+				return documents;
+			};
+			return documents;
+		};
+		render.loadCompleteState = function (saved) {
+			var contexts = {};
+			if (!saved.parsedDocuments) {
+				render.loadDocumentsFromState(saved);
+			}
+			var documents = saved.parsedDocuments();
+			
+			function contextData(id) {
+				var state = saved.contexts[id];
+				if (state.data) {
+					var document = documents[state.data.document];
+					return document.root.subPath(state.data.path);
+				}
+				return null;
+			}
+			
+			function loadContext(context, id) {
+				var state = saved.contexts[id];
+				contexts[id] = context;
+				
+				var renderer = rendererLookup[state.rendererId];
+				context.renderer = renderer;
+				context.loadState(context.uiStartingState);
+				if (state.sub) {
+					for (var key in state.sub) {
+						var savedId = state.sub[key];
+						if (contexts[savedId] || !saved.contexts[savedId]) {
+							continue;
+						}
+						var data = contextData(savedId);
+						var subContext = context.getSubContext("", data, key);
+						loadContext(subContext, savedId);
+					}
+				}
+			}
+			var rootContextId = saved.rootContext;
+			var rootData = contextData(rootContextId);
+			var rootContext = pageContext.getSubContext('', rootData, null, saved.uiState);
+			loadContext(rootContext, rootContextId);
+	
+			var actions = {};		
+			for (var key in saved.actions) {
+				(function (key, action) {
+					var action = saved.actions[key];
+					var actionContext = contexts[action.context];
+					actions[key] = function () {
+						var args = [actionContext, action.name].concat(action.params || []);
+						return actionContext.renderer.action.apply(actionContext.renderer, args);
+					};
+				})(key, saved.actions[key]);
+			}
+			var inputs = {};
+			for (var key in saved.inputs) {
+				(function (key, input) {
+					var input = saved.inputs[key];
+					var inputContext = contexts[input.context];
+					inputs[key] = function (value) {
+						var args = [inputContext, input.name, value].concat(input.params || []);
+						return inputContext.renderer.action.apply(inputContext.renderer, args);
+					};
+				})(key, saved.inputs[key]);
+			}
+	
+			return {
+				context: rootContext,
+				actions: actions,
+				inputs: inputs
+			};
+		};
+		
+		function cleanup() {
+			// Clean-up sweep of pageContext's element lookup
+			var keysToRemove = [];
+			for (var key in pageContext.elementLookup) {
+				var elementIds = pageContext.elementLookup[key];
+				var found = false;
+				for (var i = 0; i < elementIds.length; i++) {
+					var element = document.getElementById(elementIds[i]);
+					if (element) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					keysToRemove.push(key);
+				}
+			}
+			for (var i = 0; i < keysToRemove.length; i++) {
+				delete pageContext.elementLookup[keysToRemove[i]];
+			}
+			for (var key in pageContext.enhancementContexts) {
+				if (pageContext.enhancementContexts[key]) {
+					var context = pageContext.enhancementContexts[key];
+					Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned context for element: ' + JSON.stringify(key)
+						+ '\ncomponents:' + context.renderer.component.join(", ")
+						+ '\ndata: ' + context.data.json());
+					pageContext.enhancementContexts[key] = null;
+				}
+			}
+			for (var key in pageContext.enhancementActions) {
+				if (pageContext.enhancementActions[key]) {
+					var context = pageContext.enhancementActions[key].context;
+					Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for element: ' + JSON.stringify(key)
+						+ '\ncomponents:' + context.renderer.component.join(", ")
+						+ '\ndata: ' + context.data.json());
+					pageContext.enhancementActions[key] = null;
+				}
+			}
+			for (var key in pageContext.enhancementInputs) {
+				if (pageContext.enhancementInputs[key]) {
+					var context = pageContext.enhancementInputs[key].context;
+					Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for input: ' + JSON.stringify(key)
+						+ '\ncomponents:' + context.renderer.component.join(", ")
+						+ '\ndata: ' + context.data.json());
+					pageContext.enhancementInputs[key] = null;
+				}
+			}
+		}
+		if (typeof document != 'undefined') {
+			setInterval(cleanup, 30000); // Every 30 seconds
+		}
+		if (typeof document != 'undefined') {
+			Jsonary.cleanup = cleanup;
+		}
+	
+		function render(element, data, uiStartingState) {
+			if (typeof element == 'string') {
+				element = document.getElementById(element);
+			}
+			var innerElement = document.createElement('span');
+			element.innerHTML = "";
+			element.appendChild(innerElement);
+			var context = pageContext.subContext(Math.random());
+			pageContext.oldSubContexts = {};
+			pageContext.subContexts = {};
+			return context.render(innerElement, data, 'render', uiStartingState);
+		}
+		function renderHtml(data, uiStartingState) {
+			var result = pageContext.renderHtml(data, null, uiStartingState);
+			pageContext.oldSubContexts = {};
+			pageContext.subContexts = {};
+			return result;
+		}
+		function asyncRenderHtml(data, uiStartingState, htmlCallback) {
+			return pageContext.asyncRenderHtml(data, null, uiStartingState, htmlCallback);
+		}
+	
+		if (global.jQuery != undefined) {
+			render.empty = function (element) {
+				global.jQuery(element).empty();
+			};
+		} else {
+			render.empty = function (element) {
+				element.innerHTML = "";
+			};
+		}
+		render.Components = componentNames;
+		render.actionUrl = function (context, actionName) {
+			return "javascript:void(0)";
+		};
+		render.actionHtml = function (elementId, linkUrl, innerHtml) {
+			return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
+		};
+		
+		/**********/
+		
+		render.saveData = function (data, saveDataId) {
+			if (typeof localStorage == 'undefined') {
+				return "LOCALSTORAGE_MISSING";
+			}
+			localStorage[data.saveStateId] = JSON.stringify({
+				accessed: (new Date).getTime(),
+				data: data.deflate()
+			});
+			return saveDataId;
+		};
+		render.loadData = function (saveDataId) {
+			if (typeof localStorage == "undefined") {
+				return undefined;
+			}
+			var stored = localStorage[saveDataId];
+			if (!stored) {
+				return undefined;
+			}
+			stored = JSON.parse(stored);
+			return Jsonary.inflate(stored.data);
+		}
+	
+		var rendererIdCounter = 0;
+		
+		function Renderer(sourceObj) {
+			this.renderFunction = sourceObj.render || sourceObj.enhance;
+			this.renderHtmlFunction = sourceObj.renderHtml;
+			this.updateFunction = sourceObj.update;
+			this.filterFunction = sourceObj.filter;
+			this.actionFunction = sourceObj.action;
+			for (var key in sourceObj) {
+				if (this[key] == undefined) {
+					this[key] = sourceObj[key];
+				}
+			}
+			this.uniqueId = rendererIdCounter++;
+			this.name = sourceObj.name || ("#" + this.uniqueId);
+			this.component = (sourceObj.component != undefined) ? sourceObj.component : componentList[componentList.length - 1];
+			if (typeof this.component == "string") {
+				this.component = [this.component];
+			}
+			if (sourceObj.saveState) {
+				this.saveState = sourceObj.saveState;
+			}
+			if (sourceObj.loadState) {
+				this.loadState = sourceObj.loadState;
+			}
+		}
+		Renderer.prototype = {
+			updateAll: function () {
+				var elementIds = [];
+				for (var uniqueId in pageContext.elementLookup) {
+					elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
+				}
+				for (var i = 0; i < elementIds.length; i++) {
+					var element = document.getElementById(elementIds[i]);
+					if (element == undefined) {
+						continue;
+					}
+					var context = element.jsonaryContext;
+					if (context.renderer.uniqueId = this.uniqueId) {
+						context.rerender();
+					}
+				}
+			},
+			render: function (element, data, context) {
+				if (element == null) {
+					Jsonary.log(Jsonary.logLevel.WARNING, "Attempted to render to non-existent element.\n\tData path: " + data.pointerPath() + "\n\tDocument: " + data.document.url);
+					return this;
+				}
+				if (element[0] != undefined) {
+					element = element[0];
+				}
+				render.empty(element);
+				element.innerHTML = this.renderHtml(data, context);
+				if (this.renderFunction != null) {
+					this.renderFunction(element, data, context);
+				}
+				context.enhanceElement(element);
+				return this;
+			},
+			renderHtml: function (data, context) {
+				var innerHtml = "";
+				if (this.renderHtmlFunction != undefined) {
+					innerHtml = this.renderHtmlFunction(data, context);
+				}
+				return innerHtml;
+			},
+			asyncRenderHtml: function (data, context, htmlCallback) {
+				var innerHtml = "";
+				var subCounter = 1;
+				var subs = {};
+				if (this.renderHtmlFunction != undefined) {
+					// Create a substitute context for this render
+					// uiState and other variables still point to the same place, but calls to renderHtml() are redirected to an async substitute
+					var substituteRenderHtml = function (data, label, uiState) {
+						var placeholderString = '<<ASYNC' + Math.random() + '>>';
+						var actualString = null;
+						subCounter++;
+						this.asyncRenderHtml(data, label, uiState, function (error, innerHtml) {
+							subs[placeholderString] = innerHtml;
+							actualString = innerHtml;
+							decrementSubRenderCount();
+						});
+						if (actualString !== null) {
+							delete subs[placeholderString];
+							return actualString;
+						}
+						return placeholderString;
+					};
+					function createAsyncContext(context) {
+						var asyncContext = Object.create(context);
+						asyncContext.renderHtml = substituteRenderHtml;
+						asyncContext.subContext = function () {
+							return createAsyncContext(context.subContext.apply(this, arguments));
+						};
+						return asyncContext;
+					}
+					// Render innerHtml with placeholders
+					innerHtml = this.renderHtmlFunction(data, createAsyncContext(context));
+				}
+				function decrementSubRenderCount() {
+					subCounter--;
+					if (subCounter > 0) {
+						return;
+					}
+					
+					for (var placeholder in subs) {
+						//innerHtml = innerHtml.replace(placeholder, subs[placeholder]);
+					}
+					htmlCallback(null, innerHtml, context);
+				}
+				decrementSubRenderCount();
+			},
+			enhance: function (element, data, context) {
+				if (this.renderFunction != null) {
+					this.renderFunction(element, data, context);
+				}
+				return this;
+			},
+			update: function (element, data, context, operation) {
+				var redraw;
+				if (this.updateFunction != undefined) {
+					redraw = this.updateFunction(element, data, context, operation);
+				} else {
+					redraw = this.defaultUpdate(element, data, context, operation);
+				}
+				if (redraw) {
+					this.render(element, data, context);
+				}
+				return this;
+			},
+			action: function (context, actionName) {
+				var result = this.actionFunction.apply(this, arguments);
+				return result;
+			},
+			canRender: function (data, schemas, uiState) {
+				if (this.filterFunction != undefined) {
+					return this.filterFunction(data, schemas, uiState);
+				}
+				return true;
+			},
+			defaultUpdate: function (element, data, context, operation) {
+				var redraw = false;
+				var checkChildren = operation.action() != "replace";
+				var pointerPath = data.pointerPath();
+				if (operation.subjectEquals(pointerPath) || (checkChildren && operation.subjectChild(pointerPath) !== false)) {
+					redraw = true;
+				} else if (operation.target() != undefined) {
+					if (operation.targetEquals(pointerPath) || (checkChildren && operation.targetChild(pointerPath) !== false)) {
+						redraw = true;
+					}
+				}
+				return redraw;
+			},
+			saveState: function (uiState, subStates, data) {
+				var result = {};
+				for (key in uiState) {
+					result[key] = uiState[key];
+				}
+				for (var label in subStates) {
+					for (var subKey in subStates[label]) {
+						result[label + "-" + subKey] = subStates[label][subKey];
+					}
+				}
+				for (key in result) {
+					if (Jsonary.isData(result[key])) {
+						result[key] = this.saveStateData(result[key]);
+					} else {
+					}
+				}
+				return result;
+			},
+			saveStateData: function (data) {
+				if (!data) {
+					return undefined;
+				}
+				if (data.document.isDefinitive) {
+					return "url:" + data.referenceUrl();
+				}
+				data.saveStateId = data.saveStateId || randomId();
+				return render.saveData(data, data.saveStateId) || data.saveStateId;
+			},
+			loadState: function (savedState) {
+				var uiState = {};
+				var subStates = {};
+				for (var key in savedState) {
+					if (key.indexOf("-") != -1) {
+						var parts = key.split('-');
+						var subKey = parts.shift();
+						var remainderKey = parts.join('-');
+						if (!subStates[subKey]) {
+							subStates[subKey] = {};
+						}
+						subStates[subKey][remainderKey] = savedState[key];
+					} else {
+						uiState[key] = this.loadStateData(savedState[key]) || savedState[key];
+						if (Jsonary.isRequest(uiState[key])) {
+							(function (key) {
+								uiState[key].getData(function (data) {
+									uiState[key] = data;
+								});
+							})(key);
+						}
+					}
+				}
+				return [
+					uiState,
+					subStates
+				]
+			},
+			loadStateData: function (savedState) {
+				if (!savedState || typeof savedState != "string") {
+					return undefined;
+				}
+				if (savedState.substring(0, 4) == "url:") {
+					var url = savedState.substring(4);
+					var data = null;
+					var request = Jsonary.getData(url, function (urlData) {
+						data = urlData;
+					});
+					return data || request;
+				}
+				
+				var data = render.loadData(savedState);
+				if (data) {
+					data.saveStateId = savedState;
+				}
+				return data;
+			}
+		}
+		Renderer.prototype.super_ = Renderer.prototype;
+	
+		var rendererLookup = {};
+		var rendererList = [];
+		function register(obj) {
+			var renderer = new Renderer(obj);
+			rendererLookup[renderer.uniqueId] = renderer;
+			rendererList.push(renderer);
+			return renderer;
+		}
+		function deregister(rendererId) {
+			if (typeof rendererId == "object") {
+				rendererId = rendererId.uniqueId;
+			}
+			delete rendererLookup[rendererId];
+			for (var i = 0; i < rendererList.length; i++) {
+				if (rendererList[i].uniqueId == rendererId) {
+					rendererList.splice(i, 1);
+					i--;
+				}
+			}
+		}
+		render.register = register;
+		render.deregister = deregister;
+		
+		var actionHandlers = [];
+		render.addActionHandler = function (callback) {
+			actionHandlers.push(callback);
+		};
+		function notifyActionHandlers(data, context, actionName, historyChange) {
+			historyChange = !!historyChange || (historyChange == undefined);
+			for (var i = 0; i < actionHandlers.length; i++) {
+				var callback = actionHandlers[i];
+				var result = callback(data, context, actionName, historyChange);
+				if (result === false) {
+					break;
+				}
+			}
+		};
+		
+		function lookupRenderer(rendererId) {
+			return rendererLookup[rendererId];
+		}
+	
+		function selectRenderer(data, uiStartingState, usedComponents) {
+			var schemas = data.schemas();
+			for (var j = 0; j < componentList.length; j++) {
+				if (usedComponents.indexOf(componentList[j]) == -1) {
+					var component = componentList[j];
+					for (var i = rendererList.length - 1; i >= 0; i--) {
+						var renderer = rendererList[i];
+						if (renderer.component.indexOf(component) == -1) {
+							continue;
+						}
+						if (renderer.canRender(data, schemas, uiStartingState)) {
+							return renderer;
+						}
+					}
+				}
+			}
+		}
+	
+		if (typeof global.jQuery != "undefined") {
+			var jQueryRender = function (data, uiStartingState) {
+				var element = this[0];
+				if (element != undefined) {
+					render(element, data, uiStartingState);
+				}
+				return this;
+			};
+			Jsonary.extendData({
+				$renderTo: function (query, uiState) {
+					if (typeof query == "string") {
+						query = jQuery(query);
+					}
+					var element = query[0];
+					if (element != undefined) {
+						render(element, this, uiState);
+					}
+				}
+			});
+			jQueryRender.register = function (jQueryObj) {
+				if (jQueryObj.render != undefined) {
+					var oldRender = jQueryObj.render;
+					jQueryObj.render = function (element, data) {
+						var query = $(element);
+						oldRender.call(this, query, data);
+					}
+				}
+				if (jQueryObj.update != undefined) {
+					var oldUpdate = jQueryObj.update;
+					jQueryObj.update = function (element, data, operation) {
+						var query = $(element);
+						oldUpdate.call(this, query, data, operation);
+					}
+				}
+				render.register(jQueryObj);
+			};
+			jQueryRender.empty = function (query) {
+				query.each(function (index, element) {
+					render.empty(element);
+				});
+			};
+			jQuery.fn.extend({renderJson: jQueryRender});
+			jQuery.extend({renderJson: jQueryRender});
+		}
+	
+		Jsonary.extend({
+			render: render,
+			renderHtml: renderHtml,
+			asyncRenderHtml: asyncRenderHtml
+		});
+		Jsonary.extendData({
+			renderTo: function (element, uiState) {
+				if (typeof element == "string") {
+					element = document.getElementById(element);
+				}
+				render(element, this, uiState);
+			}
+		});
+	})(this);
+	var Jsonary = this.Jsonary;
+
+/**** ../plugins/jsonary.location.js ****/
+
+	(function (global) {
+		if (typeof window == 'undefined') {
+			return;
+		}
+		
+		var api = {
+			query: Jsonary.create(null),
+			queryVariant: 'pretty',
+			useHistory: true
+		};
+		var changeListeners = [];
+		api.onChange = function (callbackFunction, immediate) {
+			var disableCount = 0;
+			var callback = function () {
+				if (disableCount <= 0) {
+					callbackFunction.apply(this, arguments);
+				}
+			};
+			changeListeners.push(callback);
+			if (immediate || immediate == undefined) {
+				callback.call(api, api, api.query);
+			}
+			return {
+				ignore: function (action) {
+					this.disable();
+					action();
+					this.enable();
+				},
+				enable: function () {
+					disableCount--;
+				},
+				disable: function () {
+					disableCount++;
+				}
+			};
+		};
+		var addHistoryPoint = false;
+		api.addHistoryPoint = function () {
+			addHistoryPoint = true;
+		};
+		api.replace = function (newHref, notify) {
+			var oldHref = window.location.href;
+			if (notify == undefined) {
+				notify = true;
+			}
+	
+			if (api.useHistory && window.history && window.history.pushState && window.history.replaceState) {
+				if (addHistoryPoint) {
+					window.history.pushState({}, "", newHref);
+				} else {
+					window.history.replaceState({}, "", newHref);
+				}
+			} else {
+				// Using fragment - figure out shorter version if possible
+				var withoutHash = newHref.split('#')[0];
+				var withoutHashCurrent = window.location.href.split('#')[0];
+				if (withoutHash == withoutHashCurrent) {
+					newHref = '';
+				} else if (withoutHash.split('?')[0] == withoutHashCurrent.split('?')[0]) {
+					newHref = '?' + newHref.split('?').slice(1).join('?');
+				} else if (newHref.split('/').slice(0, 3).join('/') == window.location.href.split('/').slice(0, 3).join('/')) {
+					newHref = '/' + newHref.split('/').slice(3).join('/');
+				}
+				if (addHistoryPoint) {
+					window.location.href = '#' + newHref.replace(/%23/g, '#');
+				} else {
+					window.location.replace('#' + newHref.replace(/%23/g, '#'));
+				}
+			}
+			if (newHref != oldHref) {
+				addHistoryPoint = false;
+			}
+			if (notify) {
+				for (var i = 0; i < changeListeners.length; i++) {
+					changeListeners[i].call(api, api, api.query);
+				}
+			}
+		}
+	
+		var ignoreUpdate = false;
+		var lastHref = null;
+		function update() {
+			if (window.location.href == lastHref) {
+				return;
+			}
+			lastHref = window.location.href;
+			var fragment = lastHref.split('#').slice(1).join('#');
+			var resolved = Jsonary.Uri.resolve(lastHref.split('#')[0], fragment);
+			api.resolved = resolved;
+	
+			ignoreUpdate = true;
+			api.base = resolved.split('?')[0];
+			var queryString = resolved.split('?').slice(1).join('?');
+			if (queryString) {
+				api.query.setValue(Jsonary.decodeData(queryString, 'application/x-www-form-urlencoded', api.queryVariant));
+			} else {
+				api.query.setValue({});
+			}
+			ignoreUpdate = false;
+	
+			if (window.history && api.useHistory && window.location.href !== resolved) {
+				updateLocation(false);
+			}
+	
+			for (var i = 0; i < changeListeners.length; i++) {
+				changeListeners[i].call(api, api, api.query);
+			}
+		}
+		api.parse = function (uri) {
+			var result = {};
+			var fragment = uri.split('#').slice(1).join('#');
+			var resolved = Jsonary.Uri.resolve(uri.split('#')[0], fragment);
+			result.resolved = resolved;
+	
+			result.base = resolved.split('?')[0];
+			var queryString = resolved.split('?').slice(1).join('?');
+			if (queryString) {
+				result.query = Jsonary.create(Jsonary.decodeData(queryString, 'application/x-www-form-urlencoded', api.queryVariant));
+			} else {
+				result.query = Jsonary.create({});
+			}
+			return result;
+		}
+		
+		if ("onhashchange" in window) {
+			window.onhashchange = update;
+		}
+		if ("onpopstate" in window) {
+			window.onpopstate = update;
+		}
+		setInterval(update, 100);
+		update();
+		
+		function updateLocation(notify) {
+			var queryString = Jsonary.encodeData(api.query.value(), "application/x-www-form-urlencoded", api.queryVariant);
+			var newHref = api.base + "?" + queryString;
+	
+			api.replace(newHref, notify);
+			lastHref = window.location.href;
+		}
+		api.query.document.registerChangeListener(function () {
+			if (ignoreUpdate) {
+				return;
+			}
+			updateLocation(true);
+		});
+	
+		Jsonary.extend({
+			location: api
+		});	
+	})(this);
+	
+
+/**** ../plugins/jsonary.undo.js ****/
+
+	(function () {
+		if (typeof window == 'undefined') {
+			return;
+		}
+		
+		var modKeyDown = false;
+		var shiftKeyDown = false;
+		var otherKeys = {};
+	
+		// Register key down/up listeners to catch undo/redo key combos
+		document.onkeydown = function (e) {
+			var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
+			if (keyCode == 17) {
+				modKeyDown = true;
+			} else if (keyCode == 16) {
+				shiftKeyDown = true;
+			} else {
+				otherKeys[keyCode] = true;
+			}
+			var otherKeyCount = 0;
+			for (var otherKeyCode in otherKeys) {
+				if (otherKeyCode != 90 && otherKeyCode != 89) {
+					otherKeyCount++;
+				}
+			}
+			if (otherKeyCount == 0) {
+				if (keyCode == 90) {	// Z
+					if (modKeyDown) {
+						if (shiftKeyDown) {
+							Jsonary.redo();
+						} else {
+							Jsonary.undo();
+						}
+					}
+				} else if (keyCode == 89) {	// Y
+					if (modKeyDown && !shiftKeyDown) {
+						Jsonary.redo();
+					}
+				}
+			}
+		};
+		document.onkeyup = function (e) {
+			var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
+			if (keyCode == 17) {
+				modKeyDown = false;
+			} else if (keyCode == 16) {
+				shiftKeyDown = false;
+			} else {
+				delete otherKeys[keyCode];
+			}
+		};
+		
+		var undoList = [];
+		var redoList = [];
+		var ignoreChanges = 0;
+		
+		Jsonary.registerChangeListener(function (patch, document) {
+			if (ignoreChanges > 0) {
+				ignoreChanges--;
+				return;
+			}
+			undoList.push({patch: patch, document: document});
+			while (undoList.length > Jsonary.undo.historyLength) {
+				undoList.shift();
+			}
+			if (redoList.length > 0) {
+				redoList = [];
+			}
+		});
+		
+		Jsonary.extend({
+			undo: function () {
+				var lastChange = undoList.pop();
+				if (lastChange != undefined) {
+					ignoreChanges++;
+					redoList.push(lastChange);
+					lastChange.document.patch(lastChange.patch.inverse());
+				}
+			},
+			redo: function () {
+				var nextChange = redoList.pop();
+				if (nextChange != undefined) {
+					ignoreChanges++;
+					undoList.push(nextChange);
+					nextChange.document.patch(nextChange.patch);
+				}
+			}
+		});
+		Jsonary.undo.historyLength = 10;
+	})();
+	
+
+/**** ../plugins/jsonary.jstl.js ****/
+
+	(function (publicApi) {
+		var templateMap = {};
+		var loadedUrls = {};
+		function loadTemplates(url) {
+			if (url == undefined) {
+				if (typeof document == "undefined") {
+					return;
+				}
+				var scripts = document.getElementsByTagName("script");
+				var lastScript = scripts[scripts.length - 1];
+				url = lastScript.getAttribute("src");
+			}
+			if (loadedUrls[url]) {
+				return;
+			}
+			loadedUrls[url] = true;
+	
+			var code = "";
+			if (typeof XMLHttpRequest != 'undefined') {
+				// In browser
+				var xhr = new XMLHttpRequest();
+				xhr.open("GET", url, false);
+				xhr.send();
+				code = xhr.responseText;
+			} else if (typeof require != 'undefined') {
+				// Server-side
+				var fs = require('fs');
+				code = fs.readFileSync(url).toString();
+			}
+	
+			var parts = (" " + code).split(/\/\*\s*[Tt]emplate:/);
+			parts.shift();
+			for (var i = 0; i < parts.length; i++) {
+				var part = parts[i];
+				part = part.substring(0, part.indexOf("*/"));
+				var endOfLine = part.indexOf("\n");
+				var key = part.substring(0, endOfLine).trim();
+				var template = part.substring(endOfLine + 1);
+				templateMap[key] = template;
+			}
+		}
+		function getTemplate(key) {
+			loadTemplates();
+			var rawCode = templateMap[key];
+			if (rawCode) {
+				return create(rawCode);
+			}
+			return null;
+		}
+		function create(rawCode) {
+			return {
+				toString: function () {return this.code;},
+				code: rawCode,
+				compile: function (directEvalFunction, constFunctions, additionalParams) {
+					return compile(this.code, directEvalFunction, constFunctions, additionalParams);
+				}
+			};
+		}
+	
+		function compile(template, directEvalFunction, headerText, additionalParams) {
+			if (directEvalFunction == undefined) {
+				directEvalFunction = publicApi.defaultFunction;
+			}
+			if (headerText == undefined) {
+				headerText = publicApi.defaultHeaderCode;
+			}
+			if (additionalParams == undefined) {
+				additionalParams = {};
+			}
+			var constants = [];
+			var variables = [];
+			
+			var substitutionFunctionName = "subFunc" + Math.floor(Math.random()*1000000000);
+			var jscode = '(function () {\n';
+			
+			var directFunctions = [];
+			var directFunctionVarNames = [];
+			for (var key in additionalParams) {
+				if (additionalParams[key]) {
+					directFunctionVarNames.push(key);
+					directFunctions.push(additionalParams[key]);
+				}
+			}
+			var parts = (" " + template).split(/<\?js|<\?|<%/g);
+			var initialString = parts.shift().substring(1);
+			if (headerText) {
+				jscode += "\n" + headerText + "\n";
+			}
+			jscode += '	var _arguments = arguments;\n';
+			if (additionalParams['echo'] !== undefined) {
+				jscode += '	echo(' + JSON.stringify(initialString) + ');\n';
+			} else {
+				var resultVariableName = "result" + Math.floor(Math.random()*1000000000);
+				jscode += '	var ' + resultVariableName + ' = ' + JSON.stringify(initialString) + ';\n';
+				jscode += '	var echo = function (str) {' + resultVariableName + ' += str;};\n';
+			}
+			while (parts.length > 0) {
+				var part = parts.shift();
+				var endIndex = part.match(/\?>|%>/).index;
+				var embeddedCode = part.substring(0, endIndex);
+				var constant = part.substring(endIndex + 2);
+				
+				if (/\s/.test(embeddedCode.charAt(0))) {
+					jscode += "\n" + embeddedCode + "\n";
+				} else {
+					var directFunction = directEvalFunction(embeddedCode) || defaultFunction(embeddedCode);
+					if (typeof directFunction == "string") {
+						jscode += "\n\t	echo(" + directFunction + ");\n";
+					} else {
+						directFunctions.push(directFunction);
+						var argName = "fn" + Math.floor(Math.random()*10000000000);
+						directFunctionVarNames.push(argName);
+						jscode += "\n	echo(" + argName + ".apply(this, _arguments));\n";
+					}
+				}
+				
+				jscode += '	echo(' + JSON.stringify(constant) + ');\n';
+			}
+			if (additionalParams['echo'] !== undefined) {
+				jscode += '\n	return "";\n})';
+			} else {
+				jscode += '\n	return ' + resultVariableName + ';\n})';
+			}
+			
+			//console.log("\n\n" + jscode + "\n\n");
+			
+			var f = Function.apply(null, directFunctionVarNames.concat(["return " + jscode]));
+			return f.apply(null, directFunctions);
+		}
+		
+		function defaultFunction(varName) {
+			return function (data) {
+				var string = "" + data[varName];
+				return string.replace("&", "&amp;").replace("<", "&lt;").replace(">", "gt;").replace('"', "&quot;").replace("'", "&#39;");
+			};
+		};
+		
+		publicApi.loadTemplates = loadTemplates;
+		publicApi.getTemplate = getTemplate;
+		publicApi.create = create;
+		publicApi.defaultFunction = defaultFunction;
+		publicApi.defaultHeaderCode = "var value = arguments[0];";
+	})((typeof module !== 'undefined' && module.exports) ? exports : (this.jstl = {}, this.jstl));
+	
+	// Jsonary plugin
+	(function (Jsonary) {
+	
+		/* Template: jsonary-template-header-code
+		var data = arguments[0], context = arguments[1];
+		function want(path) {
+			var subData = data.subPath(path);
+			return subData.defined() || !subData.readOnly();
+		};
+		function action(html, actionName) {
+			echo(context.actionHtml.apply(context, arguments));
+		};
+		function render(subData, label) {
+			echo(context.renderHtml(subData, label));
+		};
+		*/
+		var headerCode = jstl.getTemplate('jsonary-template-header-code').code;
+		var substitutionFunction = function (path) {
+			if (path == "$") {
+				return function (data, context) {
+					return context.renderHtml(data);
+				};
+			} else if (path.charAt(0) == "/") {
+				return function (data, context) {
+					return context.renderHtml(data.subPath(path));
+				};
+			} else if (path.charAt(0) == "=") {
+				return 'window.escapeHtml(' + path.substring(1) + ')';
+			} else {
+				return function (data, context) {
+					var string = "" + data.propertyValue(path);
+					return string.replace("&", "&amp;").replace("<", "&lt;").replace(">", "gt;").replace('"', "&quot;").replace("'", "&#39;");
+				}
+			}
+		};
+		
+		Jsonary.extend({
+			template: function (key) {
+				var template = jstl.getTemplate(key);
+				if (template == null) {
+					throw new Exception("Could not locate template: " + key);
+				}
+				return template.compile(substitutionFunction, headerCode);
+			},
+			loadTemplates: function () {
+				jstl.loadTemplates();
+			}
+		});
+	})(Jsonary);
+	
+
+/**** ../plugins/jsonary.render.table.js ****/
+
+	(function (Jsonary) {
+	
+		function TableRenderer (config) {
+			if (!(this instanceof TableRenderer)) {
+				return new TableRenderer(config);
+			}
+			var thisRenderer = this;
+			
+			config = config || {};
+			this.config = config;
+			
+			for (var key in TableRenderer.defaults) {
+				if (!config[key]) {
+					if (typeof TableRenderer.defaults[key] == "function") {
+						config[key] = TableRenderer.defaults[key];
+					} else {
+						config[key] = JSON.parse(JSON.stringify(TableRenderer.defaults[key]));
+					}
+				}
+			}
+			
+			for (var i = 0; i < config.columns.length; i++) {
+				var columnPath = config.columns[i];
+				config.cellRenderHtml[key] = config.cellRenderHtml[key] || config.defaultCellRenderHtml;
+				config.titleHtml[key] = config.titleHtml[key] || config.defaultTitleHtml;
+			}
+			
+			config.rowRenderHtml = this.wrapRowFunction(config, config.rowRenderHtml);
+			for (var key in config.cellRenderHtml) {
+				config.cellRenderHtml[key] = this.wrapCellFunction(config, config.cellRenderHtml[key], key);
+			}
+			for (var key in config.titleHtml) {
+				config.titleHtml[key] = this.wrapTitleFunction(config, config.titleHtml[key], key);
+			}
+	
+			if (config.filter) {
+				this.filter = function (data, schemas) {
+					return config.filter(data, schemas);
+				};
+			}
+			
+			this.addColumn = function (key, title, renderHtml) {
+				config.columns.push(key);
+				if (typeof title == 'function') {
+					config.titleHtml[key] = thisRenderer.wrapTitleFunction(config, title, key);
+				} else {
+					if (title != undefined) {
+						config.titles[key] = title;
+					}
+					config.titleHtml[key] = thisRenderer.wrapTitleFunction(config, config.defaultTitleHtml, key);
+				}
+				renderHtml = renderHtml || config.defaultCellRenderHtml;
+				config.cellRenderHtml[key] = thisRenderer.wrapCellFunction(config, renderHtml, key);
+				return this;
+			}
+			
+			this.component = config.component;
+		};
+		TableRenderer.prototype = {
+			wrapRowFunction: function (functionThis, original) {
+				var thisRenderer = this;
+				return function (rowData, context) {
+					var rowContext = thisRenderer.rowContext(rowData, context);
+					return original.call(functionThis, rowData, rowContext);
+				};
+			},
+			wrapTitleFunction: function (functionThis, original, columnKey) {
+				var thisRenderer = this;
+				return function (cellData, context) {
+					var titleContext = context;
+					return original.call(functionThis, cellData, titleContext, columnKey);
+				}
+			},
+			wrapCellFunction: function (functionThis, original, columnKey) {
+				var thisRenderer = this;
+				return function (cellData, context) {
+					var cellContext = thisRenderer.cellContext(cellData, context, columnKey);
+					return original.call(functionThis, cellData, cellContext);
+				}
+			},
+			action: function (context, actionName) {
+				if (context.cellData) {
+					var columnPath = context.columnPath;
+					var cellAction = this.config.cellAction[columnPath];
+					var newArgs = [context.cellData];
+					while (newArgs.length <= arguments.length) {
+						newArgs.push(arguments[newArgs.length - 1]);
+					}
+					return cellAction.apply(this.config, newArgs);
+				} else if (context.rowData) {
+					var rowAction = this.config.rowAction;
+					var newArgs = [context.rowData];
+					while (newArgs.length <= arguments.length) {
+						newArgs.push(arguments[newArgs.length - 1]);
+					}
+					return rowAction.apply(this.config, newArgs);
+				}
+				var newArgs = [context.data];
+				while (newArgs.length <= arguments.length) {
+					newArgs.push(arguments[newArgs.length - 1]);
+				}
+				return this.config.action.apply(this.config, newArgs);
+			},
+			rowContext: function (data, context) {
+				var subContext = context.subContext(data);
+				subContext.rowData = data;
+				return subContext;
+			},
+			cellContext: function (data, context, columnPath) {
+				var subContext = context.subContext('col' + columnPath);
+				subContext.columnPath = columnPath;
+				subContext.cellData = data;
+				return subContext;
+			},
+			renderHtml: function (data, context) {
+				return this.config.tableRenderHtml(data, context);
+			},
+			rowRenderHtml: function (data, context) {
+				var config = this.config;
+				return config.rowRenderHtml(data, context);
+			},
+			enhance: function (element, data, context) {
+				if (this.config.enhance) {
+					return this.config.enhance(element, data, context);
+				} else if (this.config.render) {
+					return this.config.render(element, data, context);
+				}
+			},
+			register: function(filterFunction) {
+				if (filterFunction) {
+					this.filter = filterFunction;
+				}
+				return Jsonary.render.register(this);
+			}
+		};
+		TableRenderer.defaults = {
+			columns: [],
+			titles: {},
+			titleHtml: {},
+			defaultTitleHtml:  function (data, context, columnPath) {
+				return '<th>' + Jsonary.escapeHtml(this.titles[columnPath] != undefined ? this.titles[columnPath] : columnPath) + '</th>';
+			},
+			cellRenderHtml: {},
+			defaultCellRenderHtml: function (cellData, context, columnPath) {
+				return '<td>' + context.renderHtml(cellData) + '</td>';
+			},
+			cellAction: {},
+			rowRenderHtml: function (rowData, context) {
+				var result = "<tr>";
+				for (var i = 0; i < this.columns.length; i++) {
+					var columnPath = this.columns[i];
+					var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
+					var cellRenderHtml = this.cellRenderHtml[columnPath];
+					result += this.cellRenderHtml[columnPath](cellData, context);
+				}
+				result += '</tr>';
+				return result;
+			},
+			rowAction: function (data, context, actionName) {
+				throw new Error("Unknown row action: " + actionName);
+			},
+			tableRenderHtml: function (data, context) {
+				var result = '';
+				result += '<table class="json-array-table">';
+				result += this.tableHeadRenderHtml(data, context);
+				result += this.tableBodyRenderHtml(data, context);
+				result += '</table>';
+				return result;
+			},
+			tableHeadRenderHtml: function (data, context) {
+				var result = '<thead><tr>';
+				for (var i = 0; i < this.columns.length; i++) {
+					var columnPath = this.columns[i];
+					result += this.titleHtml[columnPath](data, context);
+				}
+				return result + '</tr></thead>';
+			},
+			rowOrder: function (data, context) {
+				var result = [];
+				var length = data.length;
+				while (result.length < length) {
+					result[result.length] = result.length;
+				}
+				return result;
+			},
+			tableBodyRenderHtml: function (data, context) {
+				var config = this.config;
+				var result = '<tbody>';
+				
+				var rowOrder = this.rowOrder(data, context);
+				for (var i = 0; i < rowOrder.length; i++) {
+					var rowData = data.item(currentPage[i]);
+					result += this.rowRenderHtml(rowData, context);
+				}
+				
+				if (!data.readOnly()) {
+					if (data.schemas().maxItems() == null || data.schemas().maxItems() > data.length()) {
+						result += '<tr><td colspan="' + this.columns.length + '" class="json-array-table-add">';
+						result += context.actionHtml('+ add', 'add');
+						result += '</td></tr>';
+					}
+				}
+				return result + '</tbody>';
+			},
+			action: function (data, context, actionName) {
+				if (actionName == "add") {
+					var index = data.length();
+					var schemas = data.schemas().indexSchemas(index);
+					schemas.createValue(function (value) {
+						data.push(value);
+					});
+					return false;
+				}
+			}
+		};
+		
+		/** Fancy tables with sorting and links **/
+		function FancyTableRenderer(config) {
+			if (!(this instanceof FancyTableRenderer)) {
+				return new FancyTableRenderer(config);
+			}
+			config = config || {};
+	
+			for (var key in FancyTableRenderer.defaults) {
+				if (!config[key]) {
+					if (typeof FancyTableRenderer.defaults[key] == "function") {
+						config[key] = FancyTableRenderer.defaults[key];
+					} else {
+						config[key] = JSON.parse(JSON.stringify(FancyTableRenderer.defaults[key]));
+					}
+				}
+			}
+			
+			for (var key in config.sort) {
+				if (typeof config.sort[key] !== 'function') {
+					config.sort[key] = config.defaultSort;
+				}
+			}
+	
+			TableRenderer.call(this, config);
+			
+			var prevAddColumn = this.addColumn;
+			this.addColumn = function (key, title, renderHtml, sorting) {
+				if (sorting) {
+					config.sort[key] = (typeof sorting == 'function') ? sorting : config.defaultSort;
+				}
+				return prevAddColumn.call(this, key, title, renderHtml);
+			};
+		}
+		FancyTableRenderer.prototype = Object.create(TableRenderer.prototype);
+		FancyTableRenderer.prototype.addLinkColumn = function (linkRel, title, linkHtml, activeHtml, isConfirm) {
+			if (typeof linkRel == "string") {
+				var columnName = "link$" + linkRel;
+				
+				this.addColumn(columnName, title, function (data, context) {
+					if (!context.data.readOnly()) {
+						return '<td></td>';
+					}
+					var result = '<td>';
+					if (!context.parent.uiState.linkRel) {
+						var link = data.links(linkRel)[0];
+						if (link) {
+							result += context.parent.actionHtml(linkHtml, 'link', linkRel);
+						}
+					} else if (activeHtml) {
+						var activeLink = data.links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
+						if (activeLink.rel == linkRel) {
+							if (isConfirm) {
+								result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex);
+							} else {
+								result += context.parent.actionHtml(activeHtml, 'link-cancel');
+							}
+						}
+					}
+					return result + '</td>';
+				});
+			} else {
+				var linkDefinition = linkRel;
+				linkRel = linkDefinition.rel();
+				var columnName = "link$" + linkRel + "$" + linkHtml;
+				this.addColumn(columnName, title, function (data, context) {
+					var result = '<td>';
+					if (!context.parent.uiState.linkRel) {
+						var links = data.links(linkRel);
+						for (var i = 0; i < links.length; i++) {
+							var link = links[i];
+							if (link.definition = linkDefinition) {
+								result += context.parent.actionHtml(linkHtml, 'link', linkRel, i);
+							}
+						}
+					} else if (activeHtml) {
+						var activeLink = data.links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
+						if (activeLink.definition == linkDefinition) {
+							if (isConfirm) {
+								result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex);
+							} else {
+								result += context.parent.actionHtml(activeHtml, 'link-cancel');
+							}
+						}
+					}
+					return result + '</td>';
+				});
+			}
+			return this;
+		};
+	
+		FancyTableRenderer.defaults = {
+			sort: {},
+			defaultSort: function (a, b) {
+				if (a == null) {
+					return (b == null) ? 0 : -1;
+				} else if (b == null || a > b) {
+					return 1;
+				} else if (a < b) {
+					return -1;
+				}
+				return 0;
+			},
+			rowOrder: function (data, context) {
+				var thisConfig = this;
+				var sortFunctions = [];
+				context.uiState.sort = context.uiState.sort || [];
+				
+				function addSortFunction(sortIndex, sortKey) {
+					var direction = sortKey.split('/')[0];
+					var path = sortKey.substring(direction.length);
+					var multiplier = (direction == "desc") ? -1 : 1;
+					sortFunctions.push(function (a, b) {
+						var valueA = a.get(path);
+						var valueB = b.get(path);
+						var comparison = (typeof thisConfig.sort[path] == 'function') ? thisConfig.sort[path](valueA, valueB) : thisConfig.defaultSort(valueA, valueB);
+						return multiplier*comparison;
+					});
+				}
+				for (var i = 0; i < context.uiState.sort.length; i++) {
+					addSortFunction(i, context.uiState.sort[i]);
+				}
+				var indices = [];
+				var length = data.length();
+				while (indices.length < length) {
+					indices[indices.length] = indices.length;
+				}
+				var maxSortIndex = -1;
+				indices.sort(function (a, b) {
+					for (var i = 0; i < sortFunctions.length; i++) {
+						var comparison = sortFunctions[i](data.item(a), data.item(b));
+						if (comparison != 0) {
+							maxSortIndex = Math.max(maxSortIndex, i);
+							return comparison;
+						}
+					}
+					maxSortIndex = sortFunctions.length;
+					return a - b;
+				});
+				// Trim sort conditions list, for smaller UI state
+				context.uiState.sort = context.uiState.sort.slice(0, maxSortIndex + 1);
+				return indices;
+			},
+			rowsPerPage: null,
+			pages: function (rowOrder) {
+				if (this.rowsPerPage == null) {
+					return [rowOrder];
+				}
+				var pages = [];
+				while (rowOrder.length) {
+					pages.push(rowOrder.splice(0, this.rowsPerPage));
+				}
+				return pages;
+			},
+			tableHeadRenderHtml: function (data, context) {
+				var result = '<thead>';
+				var rowOrder = this.rowOrder(data, context);
+				var pages = this.pages(rowOrder);
+				if (pages.length > 1) {
+					var page = context.uiState.page || 0;
+					result += '<tr><th colspan="' + this.columns.length + '" class="json-array-table-pages">';
+					if (page > 0) {
+						result += context.actionHtml('<span class="button">&lt;&lt;</span>', 'page', 0);
+						result += context.actionHtml('<span class="button">&lt;</span>', 'page', page - 1);
+					} else {
+						result += '<span class="button disabled">&lt;&lt;</span>';
+						result += '<span class="button disabled">&lt;</span>';
+					}
+					result += 'page <select name="' + context.inputNameForAction('page') + '">';
+					for (var i = 0; i < pages.length; i++) {
+						if (i == page) {
+							result += '<option value="' + i + '" selected>' + i + '</option>';
+						} else {
+							result += '<option value="' + i + '">' + i + '</option>';
+						}
+					}
+					result += '</select>';
+					if (page < pages.length - 1) {
+						result += context.actionHtml('<span class="button">&gt;</span>', 'page', page + 1);
+						result += context.actionHtml('<span class="button">&gt;&gt;</span>', 'page', pages.length - 1);
+					} else {
+						result += '<span class="button disabled">&gt;</span>';
+						result += '<span class="button disabled">&gt;&gt;</span>';
+					}
+					result += '</tr>';
+				}
+				result += '<tr>';
+				for (var i = 0; i < this.columns.length; i++) {
+					var columnKey = this.columns[i];
+					result += this.titleHtml[columnKey](data, context);
+				}
+				result += '</tr>';
+				return result + '</thead>';
+			},
+			tableBodyRenderHtml: function (data, context) {
+				var config = this.config;
+				var result = '<tbody>';
+				var rowOrder = this.rowOrder(data, context);
+	
+				var pages = this.pages(rowOrder);
+				if (!pages.length) {
+					pages = [[]];
+				}
+				var page = context.uiState.page || 0;
+				var pageRows = pages[page];
+				if (!pageRows) {
+					pageRows = pages[0] || [];
+					context.uiState.page = 0;
+				}
+				for (var i = 0; i < pageRows.length; i++) {
+					var rowData = data.item(pageRows[i]);
+					result += this.rowRenderHtml(rowData, context);
+				}
+				if (page == pages.length - 1 && !data.readOnly()) {
+					if (data.schemas().maxItems() == null || data.schemas().maxItems() > data.length()) {
+						result += '<tr><td colspan="' + this.columns.length + '" class="json-array-table-add">';
+						result += context.actionHtml('+ add', 'add');
+						result += '</td></tr>';
+					}
+				}
+				return result + '</tbody>';
+			},
+			action: function (data, context, actionName, arg1) {
+				if (actionName == "sort") {
+					delete context.uiState.page;
+					var columnKey = arg1;
+					context.uiState.sort = context.uiState.sort || [];
+					if (context.uiState.sort[0] == "asc" + columnKey) {
+						context.uiState.sort[0] = "desc" + arg1;
+					} else {
+						if (context.uiState.sort.indexOf("desc" + columnKey) != -1) {
+							context.uiState.sort.splice(context.uiState.sort.indexOf("desc" + columnKey), 1);
+						} else if (context.uiState.sort.indexOf("asc" + columnKey) != -1) {
+							context.uiState.sort.splice(context.uiState.sort.indexOf("asc" + columnKey), 1);
+						}
+						context.uiState.sort.unshift("asc" + arg1);
+					}
+					return true;
+				} else if (actionName == "page") {
+					context.uiState.page = parseInt(arg1);
+					return true;
+				}
+				return TableRenderer.defaults.action.apply(this, arguments);
+			},
+			defaultTitleHtml: function (data, context, columnKey) {
+				if (data.readOnly() && columnKey.charAt(0) == "/" && this.sort[columnKey]) {
+					var result = '<th>';
+					context.uiState.sort = context.uiState.sort || [];
+					if (context.uiState.sort[0] == "asc" + columnKey) {
+						result += '<div class="json-array-table-sort-asc">';
+						result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+						result += '<span class="json-array-table-sort-text">up</span>';
+						result += '</div>';
+					} else if (context.uiState.sort[0] == "desc" + columnKey) {
+						result += '<div class="json-array-table-sort-desc">';
+						result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+						result += '<span class="json-array-table-sort-text">down</span>';
+						result += '</div>';
+					} else {
+						result += '<div class="json-array-table-sort">';
+						result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+						result += '</div>';
+					}
+					return result + '</th>'
+				}
+				return TableRenderer.defaults.defaultTitleHtml.call(this, data, context, columnKey);
+			},
+			rowRenderHtml: function (data, context) {
+				var result = '';
+				if (context.uiState.linkRel) {
+					var link = data.links(context.uiState.linkRel)[context.uiState.linkIndex || 0];
+					if (context.uiState.linkData) {
+						if (link.rel == "edit" && link.submissionSchemas.length == 0) {
+							result += TableRenderer.defaults.rowRenderHtml.call(this, context.uiState.linkData, context);
+						} else {
+							result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
+							result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
+							result += '<div class="json-array-table-full-title">' + Jsonary.escapeHtml(link.title || link.rel) + '</div>';
+							result += '<div class="json-array-table-full-buttons">';
+							result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex);
+							result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
+							result += '</div>';
+							result += context.renderHtml(context.uiState.linkData);
+							result += '</td>';
+						}
+					} else {
+						result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
+						result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
+						result += '<div class="json-array-table-full-title">' + Jsonary.escapeHtml(link.title || link.rel) + '</div>';
+							result += '<div class="json-array-table-full-buttons">';
+						result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex);
+						result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
+							result += '</div>';
+						result += '</td>';
+					}
+				} else {
+					result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
+				}
+				if (context.uiState.expand) {
+					result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
+					if (context.uiState.expand === true) {
+						result += context.renderHtml(data);
+					} else {
+						result += context.renderHtml(context.uiState.expand);
+					}
+					result += '</td>';
+				}
+				return result;
+			},
+			rowAction: function (data, context, actionName, arg1, arg2) {
+				if (actionName == "expand") {
+					if (context.uiState.expand && !arg1) {
+						delete context.uiState.expand;
+					} else {
+						context.uiState.expand = arg1 || true;
+					}
+					return true;
+				} else if (actionName == "link") {
+					var linkRel = arg1, linkIndex = arg2
+					var link = data.links(linkRel)[linkIndex || 0];
+					if (link.submissionSchemas.length) {
+						context.uiState.linkRel = linkRel;
+						context.uiState.linkIndex = linkIndex;
+						var linkData = Jsonary.create();
+						linkData.addSchema(link.submissionSchemas);
+						context.uiState.linkData = linkData;
+						link.submissionSchemas.createValue(function (value) {
+							linkData.setValue(value);
+						});
+						delete context.uiState.expand;
+					} else if (link.rel == "edit") {
+						context.uiState.linkRel = linkRel;
+						context.uiState.linkIndex = linkIndex;
+						context.uiState.linkData = data.editableCopy();
+						delete context.uiState.expand;
+					} else if (link.method != "GET") {
+						context.uiState.linkRel = linkRel;
+						context.uiState.linkIndex = linkIndex;
+						delete context.uiState.linkData;
+						delete context.uiState.expand;
+					} else {
+						var targetExpand = (link.rel == "self") ? true : link.href;
+						if (context.uiState.expand == targetExpand) {
+							delete context.uiState.expand;
+						} else {
+							context.uiState.expand = targetExpand;
+						}
+					}
+					return true;
+				} else if (actionName == "link-confirm") {
+					var linkRel = arg1, linkIndex = arg2
+					var link = data.links(linkRel)[linkIndex || 0];
+					if (link) {
+						link.follow(context.uiState.linkData, this.linkHandler);
+					}
+					delete context.uiState.linkRel;
+					delete context.uiState.linkIndex;
+					delete context.uiState.linkData;
+					delete context.uiState.expand;
+					return true;
+				} else if (actionName == "link-cancel") {
+					delete context.uiState.linkRel;
+					delete context.uiState.linkIndex;
+					delete context.uiState.linkData;
+					delete context.uiState.expand;
+					return true;
+				}
+				return TableRenderer.defaults.rowAction.apply(this, arguments);
+			},
+			linkHandler: function () {}
+		};
+		
+		Jsonary.plugins = Jsonary.plugins || {};
+		Jsonary.plugins.TableRenderer = TableRenderer;
+		Jsonary.plugins.FancyTableRenderer = FancyTableRenderer;
+	})(Jsonary);
+
+/**** ../plugins/jsonary.render.generate.js ****/
+
+	(function (Jsonary) {
+	
+		Jsonary.plugins.Generator = function (obj) {
+			if (!obj.rendererForData) {
+				throw "Generator must have method rendererForData";
+			}
+		
+			obj.renderHtml = function (data, context) {
+				context.generatedRenderer = context.generatedRenderer || obj.rendererForData(data);
+				return context.generatedRenderer.renderHtml(data, context);
+			};
+			obj.enhance = function (element, data, context) {
+				context.generatedRenderer = context.generatedRenderer || obj.rendererForData(data);
+				if (context.generatedRenderer.enhance) {
+					return context.generatedRenderer.enhance(element, data, context);
+				} else if (context.generatedRenderer.render) {
+					return context.generatedRenderer.render(element, data, context);
+				}
+			};
+			obj.action = function (context) {
+				context.generatedRenderer = context.generatedRenderer || obj.rendererForData(context.data);
+				return context.generatedRenderer.action.apply(context.generatedRenderer, arguments);
+			};
+			obj.update = function (element, data, context) {
+				context.generatedRenderer = context.generatedRenderer || obj.rendererForData(context.data);
+				context.generatedRenderer.defaultUpdate = this.defaultUpdate;
+				if (context.generatedRenderer.update) {
+					return context.generatedRenderer.update.apply(context.generatedRenderer, arguments);
+				} else {
+					return this.defaultUpdate.apply(this, arguments);
+				}
+			};
+	
+			return obj;
+		};	
+	
+	})(Jsonary);
+
+/**** ../renderers/list-links.js ****/
+
+	(function (Jsonary) {
+	
+		Jsonary.render.Components.add("LIST_LINKS");
+		
+		Jsonary.render.register({
+			name: "Jsonary list links with prompt",
+			component: Jsonary.render.Components.LIST_LINKS,
+			update: function (element, data, context, operation) {
+				// We don't care about data changes - when the links change, a re-render is forced anyway.
+				return false;
+			},
+			renderHtml: function (data, context) {
+				if (!data.readOnly()) {
+					return context.renderHtml(data);
+				}
+				var result = "";
+				if (context.uiState.editInPlace) {
+					var html = '<span class="button action">save</span>';
+					result += context.actionHtml(html, "submit");
+					var html = '<span class="button action">cancel</span>';
+					result += context.actionHtml(html, "cancel");
+					result += context.renderHtml(context.uiState.submissionData, '~linkData');
+					return result;
+				}
+				
+				var links = data.links();
+				if (links.length) {
+					result += '<span class="link-list">';
+					for (var i = 0; i < links.length; i++) {
+						var link = links[i];
+						if (link.rel == "self") {
+							continue;
+						}
+						var html = '<span class="button link">' + Jsonary.escapeHtml(link.title || link.rel) + '</span>';
+						result += context.actionHtml(html, 'follow-link', i);
+					}
+					result += '</span>';
+				}
+	
+				if (context.uiState.submitLink != undefined) {
+					var link = data.links()[context.uiState.submitLink];
+					result += '<div class="prompt-outer"><div class="prompt-inner">';
+					result += context.actionHtml('<div class="prompt-overlay"></div>', 'cancel');
+					result += '<div class="prompt-box"><h1>' + Jsonary.escapeHtml(link.title || link.rel) + '</h1><h2>' + Jsonary.escapeHtml(link.method) + " " + Jsonary.escapeHtml(link.href) + '</h2>';
+					result += '<div>' + context.renderHtml(context.uiState.submissionData, '~linkData') + '</div>';
+					result += '</div>';
+					result += '<div class="prompt-buttons">';
+					result += context.actionHtml('<span class="button">Submit</span>', 'submit');
+					result += context.actionHtml('<span class="button">cancel</span>', 'cancel');
+					result += '</div>';
+					result += '</div></div>';
+				}
+				
+				result += context.renderHtml(data, "data");
+				return result;
+			},
+			action: function (context, actionName, arg1) {
+				if (actionName == "follow-link") {
+					var link = context.data.links()[arg1];
+					if (link.method == "GET" && link.submissionSchemas.length == 0) {
+						// There's no data to prompt for, and GET links are safe, so we don't put up a dialog
+						link.follow();
+						return false;
+					}
+					context.uiState.submitLink = arg1;
+					if (link.method == "PUT" && link.submissionSchemas.length == 0) {
+						context.uiState.editing = context.data.editableCopy();
+						context.uiState.submissionData = context.data.editableCopy();
+					} else {
+						context.uiState.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
+						link.submissionSchemas.createValue(function (submissionValue) {
+							context.uiState.submissionData.setValue(submissionValue);
+						});
+					}
+					if (link.method == "PUT") {
+						context.uiState.editInPlace = true;
+					}
+					return true;
+				} else if (actionName == "submit") {
+					var link = context.data.links()[context.uiState.submitLink];
+					link.follow(context.uiState.submissionData);
+					delete context.uiState.submitLink;
+					delete context.uiState.editInPlace;
+					delete context.uiState.submissionData;
+					return true;
+				} else {
+					delete context.uiState.submitLink;
+					delete context.uiState.editInPlace;
+					delete context.uiState.submissionData;
+					return true;
+				}
+			},
+			filter: function () {
+				return true;
+			},
+			saveState: function (uiState, subStates) {
+				var result = {};
+				for (var key in subStates.data) {
+					result[key] = subStates.data[key];
+				}
+				if (result.link != undefined || result.inPlace != undefined || result.linkData != undefined || result[""] != undefined) {
+					var newResult = {"":"-"};
+					for (var key in result) {
+						newResult["-" + key] = result[key];
+					}
+					result = newResult;
+				}
+				if (uiState.submitLink !== undefined) {
+					var parts = [uiState.submitLink];
+					parts.push(uiState.editInPlace ? 1 : 0);
+					parts.push(this.saveStateData(uiState.submissionData));
+					result['link'] = parts.join("-");
+				}
+				return result;
+			},
+			loadState: function (savedState) {
+				var uiState = {};
+				if (savedState['link'] != undefined) {
+					var parts = savedState['link'].split("-");
+					uiState.submitLink = parseInt(parts.shift()) || 0;
+					if (parseInt(parts.shift())) {
+						uiState.editInPlace = true
+					}
+					uiState.submissionData = this.loadStateData(parts.join("-"));
+					delete savedState['link'];
+					if (!uiState.submissionData) {
+						uiState = {};
+					}
+				}
+				if (savedState[""] != undefined) {
+					delete savedState[""];
+					var newSavedState = {};
+					for (var key in savedState) {
+						newSavedState[key.substring(1)] = savedState[key];
+					}
+					savedState = newSavedState;
+				}
+				return [
+					uiState,
+					{data: savedState}
+				];
+			}
+		});
+	
+	})(Jsonary);
+	
+
+/**** ../renderers/plain.jsonary.js ****/
+
+	(function (global) {
+		var escapeHtml = Jsonary.escapeHtml;
+		if (global.escapeHtml == undefined) {
+			global.escapeHtml = escapeHtml;
+		}
+	
+		Jsonary.render.register({
+			name: "Jsonary plain add/remove",
+			component: Jsonary.render.Components.ADD_REMOVE,
+			renderHtml: function (data, context) {
+				if (!data.defined()) {
+					context.uiState.undefined = true;
+					var title = "add";
+					var parent = data.parent();
+					if (parent && parent.basicType() == 'array') {
+						var schemas = parent.schemas().indexSchemas(data.parentKey());
+						schemas.getFull(function (s) {
+							schemas = s;
+						});
+						title = schemas.title() || title;
+					} else if (parent && parent.basicType() == 'object') {
+						var schemas = parent.schemas().propertySchemas(data.parentKey());
+						schemas.getFull(function (s) {
+							schemas = s;
+						});
+						title = schemas.title() || data.parentKey() || title;
+					}
+					return context.actionHtml('<span class="json-undefined-create">+ ' + Jsonary.escapeHtml(title) + '</span>', "create");
+				}
+				delete context.uiState.undefined;
+				var showDelete = false;
+				if (data.parent() != null) {
+					var parent = data.parent();
+					if (parent.basicType() == "object") {
+						var required = parent.schemas().requiredProperties();
+						var minProperties = parent.schemas().minProperties();
+						showDelete = required.indexOf(data.parentKey()) == -1 && parent.keys().length > minProperties;
+					} else if (parent.basicType() == "array") {
+						var tupleTypingLength = parent.schemas().tupleTypingLength();
+						var minItems = parent.schemas().minItems();
+						var index = parseInt(data.parentKey());
+						if ((index >= tupleTypingLength || index == parent.length() - 1)
+							&& parent.length() > minItems) {
+							showDelete = true;
+						}
+					}
+				}
+				var result = "";
+				if (showDelete) {
+					var parentType = parent.basicType();
+					result += "<div class='json-" + parentType + "-delete-container'>";
+					result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
+					result += context.renderHtml(data, 'data');
+					result += '<div style="clear: both"></div></div>';
+				} else {
+					result += context.renderHtml(data, 'data');
+				}
+				return result;
+			},
+			action: function (context, actionName) {
+				if (actionName == "create") {
+					var data = context.data;
+					var parent = data.parent();
+					var finalComponent = data.parentKey();
+					if (parent != undefined) {
+						var parentSchemas = parent.schemas();
+						if (parent.basicType() == "array") {
+							parentSchemas.createValueForIndex(finalComponent, function (newValue) {
+								parent.index(finalComponent).setValue(newValue);
+							});
+						} else {
+							if (parent.basicType() != "object") {
+								parent.setValue({});
+							}
+							parentSchemas.createValueForProperty(finalComponent, function (newValue) {
+								parent.property(finalComponent).setValue(newValue);
+							});
+						}
+					} else {
+						data.schemas().createValue(function (newValue) {
+							data.setValue(newValue);
+						});
+					}
+				} else if (actionName == "remove") {
+					context.data.remove();
+				} else {
+					alert("Unkown action: " + actionName);
+				}
+			},
+			update: function (element, data, context, operation) {
+				return data.defined() == !!context.uiState.undefined;
+			},
+			filter: function (data) {
+				return !data.readOnly();
+			},
+			saveState: function (uiState, subStates) {
+				return subStates.data;
+			},
+			loadState: function (savedState) {
+				return [
+					{},
+					{data: savedState}
+				];
+			}
+		});
+		
+		Jsonary.render.register({
+			name: "Jsonary plain type-selector",
+			component: Jsonary.render.Components.TYPE_SELECTOR,
+			renderHtml: function (data, context) {
+				var result = "";
+				var basicTypes = data.schemas().basicTypes();
+				var enums = data.schemas().enumValues();
+				if (context.uiState.dialogOpen) {
+					result += context.actionHtml('<div class="dialog-overlay"></div>', "closeDialog");
+					result += '<div class="dialog-box">';
+					result += context.actionHtml('<div class="dialog-close button">close</div>', "closeDialog");
+					if (basicTypes.length > 1) {
+						result += '<div class="dialog-title">Select basic type:</div>';
+						for (var i = 0; i < basicTypes.length; i++) {
+							if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
+								continue;
+							}
+							if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
+								result += '<li>' + basicTypes[i];
+							} else {
+								result += '<li>' + context.actionHtml(basicTypes[i], 'select-basic-type', basicTypes[i]);
+							}
+						}
+						result += '</ul>';
+					}
+					result += '</div>';
+				}
+				result += context.renderHtml(data, 'data');
+				if (basicTypes.length > 1 && enums == null) {
+					result = '<span class="dialog-anchor">'
+						+ context.actionHtml("<span class=\"json-select-type button\">T</span>", "openDialog") + " "
+						+ result
+						+ '</span>';
+				}
+				return result;
+			},
+			action: function (context, actionName, basicType) {
+				if (actionName == "closeDialog") {
+					context.uiState.dialogOpen = false;
+					return true;
+				} else if (actionName == "openDialog") {
+					context.uiState.dialogOpen = true;
+					return true;
+				} else if (actionName == "select-basic-type") {
+					context.uiState.dialogOpen = false;
+					var schemas = context.data.schemas().concat([Jsonary.createSchema({type: basicType})]);
+					schemas.createValue(function (newValue) {
+						context.data.setValue(newValue);
+					});
+					return true;
+				} else {
+					alert("Unkown action: " + actionName);
+				}
+			},
+			update: function (element, data, context, operation) {
+				return false;
+			},
+			filter: function (data) {
+				return !data.readOnly();
+			},
+			saveState: function (uiState, subStates) {
+				var result = {};
+				if (uiState.dialogOpen) {
+					result.dialogOpen = true;
+				}
+				if (subStates.data && (subStates.data._ != undefined || subStates.data.dialogOpen != undefined)) {
+					result._ = subStates['data'];
+				} else {
+					for (var key in subStates.data) {
+						result[key] = subStates.data[key];
+					}
+				}
+				return result;
+			},
+			loadState: function (savedState) {
+				var uiState = savedState;
+				var subState = {};
+				if (savedState._ != undefined) {
+					var subState = savedState._;
+					delete savedState._;
+				} else {
+					var uiState = {};
+					if (savedState.dialogOpen) {
+						uiState.dialogOpen = true;
+					}
+					delete savedState.dialogOpen;
+					subState = savedState;
+				}
+				return [
+					uiState,
+					{data: subState}
+				];
+			}
+		});
+	
+		// Display schema switcher
+		Jsonary.render.Components.add("SCHEMA_SWITCHER");
+		Jsonary.render.register({
+			name: "Jsonary plain schema-switcher",
+			component: Jsonary.render.Components.SCHEMA_SWITCHER,
+			renderHtml: function (data, context) {
+				var result = "";
+				var fixedSchemas = data.schemas().fixed();
+	
+				var singleOption = false;
+				var xorSchemas;
+				var orSchemas = fixedSchemas.orSchemas();
+				if (orSchemas.length == 0) {
+					xorSchemas = fixedSchemas.xorSchemas();
+					if (xorSchemas.length == 1) {
+						singleOption = true;
+					}
+				}
+				
+				if (singleOption) {
+					context.uiState.xorSelected = [];
+					context.uiState.orSelected = [];
+					for (var i = 0; i < xorSchemas.length; i++) {
+						var options = xorSchemas[i];
+						var inputName = context.inputNameForAction('selectXorSchema', i);
+						result += '<select name="' + inputName + '">';
+						for (var j = 0; j < options.length; j++) {
+							var schema = options[j];
+							schema.getFull(function (s) {schema = s;});
+							var selected = "";
+							if (data.schemas().indexOf(schema) != -1) {
+								context.uiState.xorSelected[i] = j;
+								selected = " selected";
+							}
+							result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+						}
+						result += '</select>';
+					}
+				}
+				
+				if (context.uiState.dialogOpen) {
+					result += '<div class="json-select-type-dialog-outer"><span class="json-select-type-dialog">';
+					result += context.actionHtml('close', "closeDialog");
+					xorSchemas = xorSchemas || fixedSchemas.xorSchemas();
+					for (var i = 0; i < xorSchemas.length; i++) {
+						var options = xorSchemas[i];
+						var inputName = context.inputNameForAction('selectXorSchema', i);
+						result += '<br><select name="' + inputName + '">';
+						for (var j = 0; j < options.length; j++) {
+							var schema = options[j];
+							schema.getFull(function (s) {schema = s;});
+							var selected = "";
+							if (data.schemas().indexOf(schema) != -1) {
+								context.uiState.xorSelected[i] = j;
+								selected = " selected";
+							}
+							result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+						}
+						result += '</select>';
+					}
+					for (var i = 0; i < orSchemas.length; i++) {
+						var options = orSchemas[i];
+						var inputName = context.inputNameForAction('selectOrSchema', i);
+						result += '<br><select name="' + inputName + '" multiple size="' + options.length + '">';
+						context.uiState.orSelected[i] = [];
+						for (var j = 0; j < options.length; j++) {
+							var schema = options[j];
+							schema.getFull(function (s) {schema = s;});
+							var selected = "";
+							if (data.schemas().indexOf(schema) != -1) {
+								context.uiState.orSelected[i][j] = true;
+								selected = " selected";
+							} else {
+								context.uiState.orSelected[i][j] = false;
+							}
+							result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+						}
+						result += '</select>';
+					}
+					result += '</span></div>';
+				}
+				if (!singleOption && fixedSchemas.length < data.schemas().length) {
+					result += context.actionHtml("<span class=\"json-select-type\">S</span>", "openDialog") + " ";
+				}
+				result += context.renderHtml(data, 'data');
+				return result;
+			},
+			createValue: function (context) {
+				var data = context.data;
+				var newSchemas = context.data.schemas().fixed();
+				var xorSchemas = context.data.schemas().fixed().xorSchemas();
+				for (var i = 0; i < xorSchemas.length; i++) {
+					newSchemas = newSchemas.concat([xorSchemas[i][context.uiState.xorSelected[i]]]);
+				}
+				var orSchemas = context.data.schemas().fixed().orSchemas();
+				for (var i = 0; i < orSchemas.length; i++) {
+					var options = orSchemas[i];
+					for (var j = 0; j < options.length; j++) {
+						if (context.uiState.orSelected[i][j]) {
+							newSchemas = newSchemas.concat([options[j]]);
+						}
+					}
+				}
+				newSchemas.getFull(function (sl) {newSchemas = sl;});
+				data.setValue(newSchemas.createValue());
+				newSchemas.createValue(function (value) {
+					data.setValue(value);
+				})
+			},
+			action: function (context, actionName, value, arg1) {
+				if (actionName == "closeDialog") {
+					context.uiState.dialogOpen = false;
+					return true;
+				} else if (actionName == "openDialog") {
+					context.uiState.dialogOpen = true;
+					return true;
+				} else if (actionName == "selectXorSchema") {
+					context.uiState.xorSelected[arg1] = value;
+					this.createValue(context);
+					return true;
+				} else if (actionName == "selectOrSchema") {
+					context.uiState.orSelected[arg1] = [];
+					for (var i = 0; i < value.length; i++) {
+						context.uiState.orSelected[arg1][value[i]] = true;
+					}
+					this.createValue(context);
+					return true;
+				} else {
+					alert("Unkown action: " + actionName);
+				}
+			},
+			update: function (element, data, context, operation) {
+				return false;
+			},
+			filter: function (data) {
+				return !data.readOnly();
+			},
+			saveState: function (uiState, subStates) {
+				var result = {};
+				if (uiState.dialogOpen) {
+					result.dialogOpen = true;
+				}
+				if (subStates.data._ != undefined || subStates.data.dialogOpen != undefined) {
+					result._ = subStates['data'];
+				} else {
+					for (var key in subStates.data) {
+						result[key] = subStates.data[key];
+					}
+				}
+				return result;
+			},
+			loadState: function (savedState) {
+				var uiState = savedState;
+				var subState = {};
+				if (savedState._ != undefined) {
+					var subState = savedState._;
+					delete savedState._;
+				} else {
+					var uiState = {};
+					if (savedState.dialogOpen) {
+						uiState.dialogOpen = true;
+					}
+					delete savedState.dialogOpen;
+					subState = savedState;
+				}
+				return [
+					uiState,
+					{data: subState}
+				];
+			}
+		});
+	
+		// Display raw JSON
+		Jsonary.render.register({
+			name: "Jsonary plain raw JSON display",
+			renderHtml: function (data, context) {
+				if (!data.defined()) {
+					return "";
+				}
+				return '<span class="json-raw">' + escapeHtml(JSON.stringify(data.value())) + '</span>';
+			},
+			filter: function (data) {
+				return true;
+			}
+		});
+			
+		function updateTextAreaSize(textarea) {
+			var lines = textarea.value.split("\n");
+			var maxWidth = 4;
+			for (var i = 0; i < lines.length; i++) {
+				if (maxWidth < lines[i].length) {
+					maxWidth = lines[i].length;
+				}
+			}
+			textarea.setAttribute("cols", maxWidth + 1);
+			textarea.setAttribute("rows", lines.length);
+		}
+	
+		// Display/edit objects
+		Jsonary.render.register({	
+			name: "Jsonary plain objects",
+			renderHtml: function (data, context) {
+				var uiState = context.uiState;
+				var result = "";
+				result += '<fieldset class="json-object-outer">';
+				var title = data.schemas().title();
+				if (title) {
+					result += '<legend class="json-object-title">' + Jsonary.escapeHtml(title) + '</legend>';
+				}
+				result += '<table class="json-object"><tbody>';
+				var drawProperty = function (key, subData) {
+					result += '<tr class="json-object-pair">';
+					if (subData.defined()) {
+						var title = subData.schemas().title();
+					} else {
+						var title = subData.parent().schemas().propertySchemas(subData.parentKey()).title();
+					}
+					if (title == "") {
+						result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div></td>';
+					} else {
+						result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div><div class="json-object-key-text">' + escapeHtml(title) + '</div></td>';
+					}
+					result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
+					result += '</tr>';
+				}
+				if (!data.readOnly()) {
+					var schemas = data.schemas();
+					var definedProperties = schemas.definedProperties();
+					var maxProperties = schemas.maxProperties();
+					var canAdd = (maxProperties == null || maxProperties > schemas.keys().length);
+					data.properties(definedProperties, function (key, subData) {
+						if (canAdd || subData.defined()) {
+							drawProperty(key, subData);
+						}
+					}, drawProperty);
+	
+					if (canAdd && schemas.allowedAdditionalProperties()) {
+						if (context.uiState.addInput) {
+							result += '<tr class="json-object-pair"><td class="json-object-key"><div class="json-object-key-text">';
+							result += context.actionHtml('<span class="button">add</span>', "add-confirm");
+							result += '<br>';
+							result += '</div></td><td>';
+							result += '<input type="text" class="json-object-add-input" name="' + context.inputNameForAction("add-input") + '" value="' + Jsonary.escapeHtml(context.uiState.addInputValue) + '"></input>';
+							result += context.actionHtml('<span class="button">cancel</span>', "add-cancel");
+							if (data.property(context.uiState.addInputValue).defined()) {
+								result += '<span class="warning"><code>' + Jsonary.escapeHtml(context.uiState.addInputValue) + '</code> already exists</span>';
+							}
+							result += '</td></tr>';
+						} else {
+							result += '<tr class="json-object-pair"><td class="json-object-key"><div class="json-object-key-text">';
+							result += context.actionHtml('<span class="button">add</span>', "add-input");
+							result += '</div></td><td></td></tr>';
+						}
+					}
+				} else {
+					var definedProperties = data.schemas().definedProperties();
+					data.properties(definedProperties, function (key, subData) {
+						if (subData.defined()) {
+							drawProperty(key, subData);
+						}
+					}, true);
+				}
+				result += '</table>';
+				result += '</fieldset>';
+				return result;
+			},
+			action: function (context, actionName, arg1) {
+				var data = context.data;
+				if (actionName == "add-named") {
+					var key = arg1;
+					data.schemas().createValueForProperty(key, function (newValue) {
+						data.property(key).setValue(newValue);
+					});
+				} else if (actionName == "add-input") {
+					context.uiState.addInput = true;
+					context.uiState.addInputValue = (arg1 == undefined) ? "key" : arg1;
+					return true;
+				} else if (actionName == "add-cancel") {
+					delete context.uiState.addInput;
+					delete context.uiState.addInputValue;
+					return true;
+				} else if (actionName == "add-confirm") {
+					var key = context.uiState.addInputValue;
+					if (key != null && !data.property(key).defined()) {
+						delete context.uiState.addInput;
+						delete context.uiState.addInputValue;
+						data.schemas().createValueForProperty(key, function (newValue) {
+							data.property(key).setValue(newValue);
+						});
+					}
+				}
+			},
+			filter: function (data) {
+				return data.basicType() == "object";
+			}
+		});
+	
+		// Display/edit arrays
+		Jsonary.render.register({
+			name: "Jsonary plain arrays",
+			renderHtml: function (data, context) {
+				var tupleTypingLength = data.schemas().tupleTypingLength();
+				var maxItems = data.schemas().maxItems();
+				var result = "";
+				data.indices(function (index, subData) {
+					result += '<div class="json-array-item">';
+					result += '<span class="json-array-value">' + context.renderHtml(subData) + '</span>';
+					result += '</div>';
+				});
+				if (!data.readOnly()) {
+					if (maxItems == null || data.length() < maxItems) {
+						var addHtml = '<span class="json-array-add">+ add</span>';
+						result += context.actionHtml(addHtml, "add");
+					}
+				}
+				return result;
+			},
+			action: function (context, actionName) {
+				var data = context.data;
+				if (actionName == "add") {
+					var index = data.length();
+					data.schemas().createValueForIndex(index, function (newValue) {
+						data.index(index).setValue(newValue);
+					});
+				}
+			},
+			filter: function (data) {
+				return data.basicType() == "array";
+			}
+		});
+		
+		// Display string
+		Jsonary.render.register({
+			name: "Jsonary plain display string",
+			renderHtml: function (data, context) {
+				return '<span class="json-string">' + escapeHtml(data.value()) + '</span>';
+			},
+			filter: function (data) {
+				return data.basicType() == "string" && data.readOnly();
+			}
+		});
+	
+		function copyTextStyle(source, target) {
+			var style = getComputedStyle(source, null);
+			for (var key in style) {
+				if (key.substring(0, 4) == "font" || key.substring(0, 4) == "text") {
+					target.style[key] = style[key];
+				}
+			}
+		}
+		function updateTextareaSize(textarea, sizeMatchBox, suffix) {
+			sizeMatchBox.innerHTML = "";
+			sizeMatchBox.appendChild(document.createTextNode(textarea.value + suffix));
+			var style = getComputedStyle(sizeMatchBox, null);
+			textarea.style.width = parseInt(style.width.substring(0, style.width.length - 2)) + 4 + "px";
+			textarea.style.height = parseInt(style.height.substring(0, style.height.length - 2)) + 4 + "px";
+		}
+		
+		function getText(element) {
+			var result = "";
+			for (var i = 0; i < element.childNodes.length; i++) {
+				var child = element.childNodes[i];
+				if (child.nodeType == 1) {
+					var tagName = child.tagName.toLowerCase();
+					if (tagName == "br") {
+						result += "\n";
+						continue;
+					}
+					if (child.tagName == "li") {
+						result += "\n*\t";
+					}
+					if (tagName == "p"
+						|| /^h[0-6]$/.test(tagName)
+						|| tagName == "header"
+						|| tagName == "aside"
+						|| tagName == "blockquote"
+						|| tagName == "footer"
+						|| tagName == "div"
+						|| tagName == "table"
+						|| tagName == "hr") {
+						if (result != "") {
+							result += "\n";
+						}
+					}
+					if (tagName == "td" || tagName == "th") {
+						result += "\t";
+					}
+					
+					result += getText(child);
+					
+					if (tagName == "tr") {
+						result += "\n";
+					}
+				} else if (child.nodeType == 3) {
+					result += child.nodeValue;
+				}
+			}
+			result = result.replace("\r\n", "\n");
+			result = result.replace(/\n$/, "");
+			return result;
+		}
+	
+		// Edit string
+		Jsonary.render.register({
+			name: "Jsonary plain edit string",
+			renderHtml: function (data, context) {
+				var maxLength = data.schemas().maxLength();
+				var inputName = context.inputNameForAction('new-value');
+				var valueHtml = escapeHtml(data.value()).replace('"', '&quot;');
+				var style = "";
+				style += "width: 90%";
+				return '<textarea class="json-string" name="' + inputName + '" style="' + style + '">'
+					+ valueHtml
+					+ '</textarea>';
+			},
+			action: function (context, actionName, arg1) {
+				if (actionName == 'new-value') {
+					context.data.setValue(arg1);
+				}
+			},
+			render: function (element, data, context) {
+				//Use contentEditable
+				if (element.contentEditable !== null) {
+					element.innerHTML = '<div class="json-string json-string-content-editable">' + escapeHtml(data.value()).replace(/\n/g, "<br>") + '</div>';
+					var valueSpan = element.childNodes[0];
+					valueSpan.contentEditable = "true";
+					valueSpan.onblur = function () {
+						var newString = getText(valueSpan);
+						data.setValue(newString);
+					};
+					return;
+				}
+				
+				if (typeof window.getComputedStyle != "function") {
+					return;
+				}
+				// min/max length
+				var minLength = data.schemas().minLength();
+				var maxLength = data.schemas().maxLength();
+				var noticeBox = document.createElement("span");
+				noticeBox.className="json-string-notice";
+				function updateNoticeBox(stringValue) {
+					if (stringValue.length < minLength) {
+						noticeBox.innerHTML = 'Too short (minimum ' + minLength + ' characters)';
+					} else if (maxLength != null && stringValue.length > maxLength) {
+						noticeBox.innerHTML = 'Too long (+' + (stringValue.length - maxLength) + ' characters)';
+					} else if (maxLength != null) {
+						noticeBox.innerHTML = (maxLength - stringValue.length) + ' characters left';
+					} else {
+						noticeBox.innerHTML = "";
+					}
+				}
+				
+				// size match
+				var sizeMatchBox = document.createElement("div");
+				
+				var textarea = null;
+				for (var i = 0; i < element.childNodes.length; i++) {
+					if (element.childNodes[i].nodeType == 1) {
+						textarea = element.childNodes[i];
+						break;
+					}
+				}
+				element.insertBefore(sizeMatchBox, textarea);
+				copyTextStyle(textarea, sizeMatchBox);
+				sizeMatchBox.style.display = "inline";
+				sizeMatchBox.style.position = "absolute";
+				sizeMatchBox.style.width = "auto";
+				sizeMatchBox.style.height = "auto";
+				sizeMatchBox.style.left = "-100000px";
+				sizeMatchBox.style.top = "0px";
+				sizeMatchBox.style.whiteSpace = "pre";
+				sizeMatchBox.style.zIndex = -10000;
+				var suffix = "MMMMM";
+				updateTextareaSize(textarea, sizeMatchBox, suffix);		
+				
+				textarea.value = data.value();
+				textarea.onkeyup = function () {
+					updateNoticeBox(this.value);
+					updateTextareaSize(this, sizeMatchBox, suffix);
+				};
+				textarea.onfocus = function () {
+					updateNoticeBox(data.value());
+					suffix = "MMMMM\nMMM";
+					updateTextareaSize(this, sizeMatchBox, suffix);
+				};
+				textarea.onblur = function () {
+					data.setValue(this.value);
+					noticeBox.innerHTML = "";
+					suffix = "MMMMM";
+					updateTextareaSize(this, sizeMatchBox, suffix);
+				};
+				element.appendChild(noticeBox);
+				textarea = null;
+				element = null;
+			},
+			update: function (element, data, context, operation) {
+				if (element.contentEditable !== null) {
+					var valueSpan = element.childNodes[0];
+					valueSpan.innerHTML = escapeHtml(data.value()).replace(/\n/g, "<br>");
+					return false;
+				};
+				if (operation.action() == "replace") {
+					var textarea = null;
+					for (var i = 0; i < element.childNodes.length; i++) {
+						if (element.childNodes[i].tagName.toLowerCase() == "textarea") {
+							textarea = element.childNodes[i];
+							break;
+						}
+					}				
+					textarea.value = data.value();
+					textarea.onkeyup();
+					return false;
+				} else {
+					return true;
+				}
+			},
+			filter: function (data) {
+				return data.basicType() == "string" && !data.readOnly();
+			}
+		});
+	
+		// Display/edit boolean	
+		Jsonary.render.register({
+			name: "Jsonary plain booleans",
+			renderHtml: function (data, context) {
+				if (data.readOnly()) {
+					if (data.value()) {
+						return '<span class="json-boolean-true">yes</span>';
+					} else {
+						return '<span class="json-boolean-false">no</span>';
+					}
+				}
+				var result = "";
+				var inputName = context.inputNameForAction('switch');
+				return '<input type="checkbox" class="json-boolean" name="' + inputName + '" value="1" ' + (data.value() ? 'checked' : '' ) + '></input>';
+			},
+			action: function (context, actionName, arg1) {
+				if (actionName == "switch") {
+					context.data.setValue(!!arg1);
+				}
+			},
+			filter: function (data) {
+				return data.basicType() == "boolean";
+			}
+		});
+		
+		// Edit number
+		Jsonary.render.register({
+			name: "Jsonary plain edit number",
+			renderHtml: function (data, context) {
+				var style = "";
+				if (data.value().toString().length > 3) {
+					var width = data.value().toString().length;
+					style = 'style="width: ' + width + 'em;"';
+				}
+				var result = '<input class="json-number" type="text" value="' + data.value() + '" name="' + context.inputNameForAction('input') + '" ' + style + '></input>';
+				
+				var interval = data.schemas().numberInterval();
+				if (interval != undefined) {
+					var minimum = data.schemas().minimum();
+					if (minimum == null || data.value() > minimum + interval || data.value() == (minimum + interval) && !data.schemas().exclusiveMinimum()) {
+						result = context.actionHtml('<span class="json-number-decrement button">-</span>', 'decrement') + result;
+					} else {
+						result = '<span class="json-number-decrement button disabled" onmousedown="event.preventDefault();">-</span>' + result;
+					}
+					
+					var maximum = data.schemas().maximum();
+					if (maximum == null || data.value() < maximum - interval || data.value() == (maximum - interval) && !data.schemas().exclusiveMaximum()) {
+						result += context.actionHtml('<span class="json-number-increment button">+</span>', 'increment');
+					} else {
+						result += '<span class="json-number-increment button disabled" onmousedown="event.preventDefault;">+</span>';
+					}
+				}
+				return result;
+			},
+			action: function (context, actionName, arg1) {
+				var data = context.data;
+				var interval = data.schemas().numberInterval();
+				if (actionName == "increment") {
+					var value = data.value() + interval;
+					var valid = true;
+					var maximum = data.schemas().maximum();
+					if (maximum != undefined) {
+						if (value > maximum || (value == maximum && data.schemas().exclusiveMaximum())) {
+							valid = false;
+						}
+					}
+					if (valid) {
+						data.setValue(value);
+					}
+				} else if (actionName == "decrement") {
+					var value = data.value() - interval;
+					var valid = true;
+					var minimum = data.schemas().minimum();
+					if (minimum != undefined) {
+						if (value < minimum || (value == minimum && data.schemas().exclusiveMinimum())) {
+							valid = false;
+						}
+					}
+					if (valid) {
+						data.setValue(value);
+					}
+				} else if (actionName == "input") {
+					var newValueString = arg1
+					var value = parseFloat(newValueString);
+					if (!isNaN(value)) {
+						if (interval != undefined) {
+							value = Math.round(value/interval)*interval;
+						}
+						var valid = true;
+						var minimum = data.schemas().minimum();
+						if (minimum != undefined) {
+							if (value < minimum || (value == minimum && data.schemas().exclusiveMinimum())) {
+								valid = false;
+							}
+						}
+						var maximum = data.schemas().maximum();
+						if (maximum != undefined) {
+							if (value > maximum || (value == maximum && data.schemas().exclusiveMaximum())) {
+								valid = false;
+							}
+						}
+						if (!valid) {
+							value = data.schemas().createValueNumber();
+						}
+						data.setValue(value);
+					}
+				}
+			},
+			filter: function (data) {
+				return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
+			}
+		});
+	
+		// Edit enums
+		Jsonary.render.register({
+			name: "Jsonary plain enums",
+			render: function (element, data, context) {
+				var enumValues = data.schemas().enumValues();
+				if (enumValues.length == 0) {
+					element.innerHTML = '<span class="json-enum-invalid">invalid</span>';
+					return;
+				} else if (enumValues.length == 1) {
+					if (typeof enumValues[0] == "string") {
+						element.innerHTML = '<span class="json-string">' + escapeHtml(enumValues[0]) + '</span>';
+					} else if (typeof enumValues[0] == "number") {
+						element.innerHTML = '<span class="json-number">' + enumValues[0] + '</span>';
+					} else if (typeof enumValues[0] == "boolean") {
+						var text = (enumValues[0] ? "true" : "false");
+						element.innerHTML = '<span class="json-boolean-' + text + '">' + text + '</span>';
+					} else {
+						element.innerHTML = '<span class="json-raw">' + escapeHtml(JSON.stringify(enumValues[0])) + '</span>';
+					}
+					return;
+				}
+				var select = document.createElement("select");
+				for (var i = 0; i < enumValues.length; i++) {
+					var option = document.createElement("option");
+					option.setAttribute("value", i);
+					if (data.equals(Jsonary.create(enumValues[i]))) {
+						option.selected = true;
+					}
+					option.appendChild(document.createTextNode(enumValues[i]));
+					select.appendChild(option);
+				}
+				select.onchange = function () {
+					var index = this.value;
+					data.setValue(enumValues[index]);
+				}
+				element.appendChild(select);
+				element = select = option = null;
+			},
+			filter: function (data) {
+				return !data.readOnly() && data.schemas().enumValues() != null;
+			}
+		});
+	
+	})(this);
+	
+
+/**** ../renderers/string-formats.js ****/
+
+	(function () {
+		// Display string
+		Jsonary.render.register({
+			renderHtml: function (data, context) {
+				var date = new Date(data.value());
+				if (isNaN(date.getTime())) {
+					return '<span class="json-string json-string-date">' + Jsonary.escapeHtml(data.value()) + '</span>';
+				} else {
+					return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
+				}
+			},
+			filter: function (data, schemas) {
+				return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;
+			}
+		});
+		
+		// Display string
+		Jsonary.render.register({
+			renderHtml: function (data, context) {
+				if (data.readOnly()) {
+					if (context.uiState.showPassword) {
+						return Jsonary.escapeHtml(data.value());
+					} else {
+						return context.actionHtml('(show password)', 'show-password');
+					}
+				} else {
+					var inputName = context.inputNameForAction('update');
+					return '<input type="password" name="' + inputName + '" value="' + Jsonary.escapeHtml(data.value()) + '"></input>';
+				}
+			},
+			action: function (context, actionName, arg1) {
+				if (actionName == "show-password") {
+					context.uiState.showPassword = true;
+					return true;
+				} else if (actionName == "update") {
+					context.data.setValue(arg1);
+				}
+			},
+			filter: function (data, schemas) {
+				return data.basicType() == "string" && schemas.formats().indexOf("password") != -1;
+			}
+		});
+	})();
+	
+
+/**** ../renderers/contributed/full-preview.js ****/
+
+	Jsonary.render.register({
+		component: [Jsonary.render.Components.RENDERER, Jsonary.render.Components.LIST_LINKS],
+		renderHtml: function (data, context) {
+			var previewLink = data.getLink('full-preview');
+			var innerHtml = context.renderHtml(previewLink.follow(null, false));
+			return context.actionHtml(innerHtml, 'full');
+		},
+		action: function (context, actionName) {
+			var data = context.data;
+			if (actionName == 'full') {
+				var fullLink = data.getLink('full');
+				fullLink.follow();
+			}
+		},
+		filter: function (data, schemas) {
+			return data.getLink('full') && data.getLink('full-preview');
+		}
+	});
+
+/**** ../renderers/contributed/adaptive-table.js ****/
+
+	// Generic renderer for arrays
+	// Requires "render.table" and "render.generator" plugins
+	Jsonary.render.register(Jsonary.plugins.Generator({
+		// Part of the generator plugin - this function returns a renderer based on the data/schema requirements
+		rendererForData: function (data) {
+			var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
+			var renderer = new FancyTableRenderer({
+				sort: {},
+				rowsPerPage: 15
+			});
+			var columnsObj = {};
+	
+			function addColumnsFromSchemas(schemas, pathPrefix) {
+				schemas = schemas.getFull();
+	
+				pathPrefix = pathPrefix || "";
+				var basicTypes = schemas.basicTypes();
+	
+				// If the data might not be an object, add a column for it
+				if (basicTypes.length != 1 || basicTypes[0] != "object") {
+					var column = pathPrefix;
+					if (!columnsObj[column]) {
+						columnsObj[column] = true;
+						renderer.addColumn(column, schemas.title() || column, function (data, context) {
+							if (data.basicType() == "object") {
+								return '<td></td>';
+							} else {
+								return this.defaultCellRenderHtml(data, context);
+							}
+						});
+						// add sorting
+						renderer.config.sort[column] = true;
+					}
+				}
+	
+				// If the data might be an object, add columns for its links/properties
+				if (basicTypes.indexOf('object') != -1) {
+					if (data.readOnly()) {
+						var links = schemas.links();
+						for (var i = 0; i < links.length; i++) {
+							var link = links[i];
+							addColumnsFromLink(link, i);
+						}
+					}
+					var knownProperties = schemas.knownProperties();
+					// Sort object properties by displayOrder
+					var knownPropertyOrder = {};
+					for (var i = 0; i < knownProperties.length; i++) {
+						var key = knownProperties[i];
+						knownPropertyOrder[key] = schemas.propertySchemas(key).displayOrder();
+					}
+					knownProperties.sort(function (keyA, keyB) {
+						if (knownPropertyOrder[keyA] == null) {
+							if (knownPropertyOrder[keyB] == null) {
+								return (keyA > keyB) ? 1 : ((keyA < keyB) ? -1 : 0);
+							}
+							return 1;
+						} else if (knownPropertyOrder[keyB] == null) {
+							return -1;
+						}
+						return knownPropertyOrder[keyA] = knownPropertyOrder[keyB];
+					});
+					// Iterate over the potential properties
+					for (var i = 0; i < knownProperties.length; i++) {
+						var key = knownProperties[i];
+						addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]));
+					}
+				}
+			}
+	
+			function addColumnsFromLink(linkDefinition, index) {
+				var columnName = "link$" + index + "$" + linkDefinition.rel();
+	
+				var columnTitle = Jsonary.escapeHtml(linkDefinition.title || linkDefinition.rel());
+				var linkText = columnTitle;
+				var activeText = null, isConfirm = true;
+				if (linkDefinition.rel() == 'edit') {
+					activeText = 'save';
+				}
+	
+				renderer.addLinkColumn(linkDefinition, columnTitle, linkText, activeText, isConfirm);
+			}
+	
+			var itemSchemas = data.schemas().indexSchemas(0).getFull();
+			addColumnsFromSchemas(itemSchemas);
+			return renderer;
+		},
+		filter: function (data, schemas) {
+			if (data.basicType() == "array") {
+				if (schemas.displayAsTable()) {
+					return true;
+				}
+				// Array full of objects
+				if (!schemas.tupleTyping()) {
+					var indexSchemas = schemas.indexSchemas(0).getFull();
+					var itemTypes = indexSchemas.basicTypes();
+					if (itemTypes.length == 1 && itemTypes[0] == "object") {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+	}));
+	
+	// Display-order extension (non-standard keyword)
+	Jsonary.extendSchema({
+		displayOrder: function () {
+			return this.data.propertyValue("displayOrder");
+		}
+	});
+	Jsonary.extendSchemaList({
+		displayOrder: function () {
+			var displayOrder = null;
+			this.each(function (index, schema) {
+				var value = schema.displayOrder();
+				if (value != null && (displayOrder == null || value < displayOrder)) {
+					displayOrder = value;
+				}
+			});
+			return displayOrder;
+		}
+	});
+	
+	// displayAsTable extension (non-standard keyword, suggested by Ognian)
+	Jsonary.extendSchema({
+		displayAsTable: function () {
+			return !!this.data.propertyValue("displayAsTable");
+		}
+	});
+	Jsonary.extendSchemaList({
+		displayAsTable: function () {
+			var displayAsTable = false;
+			this.each(function (index, schema) {
+				displayAsTable = displayAsTable || schema.displayAsTable();
+			});
+			return displayAsTable;
+		}
+	});
+
+/**** ../plugins/jsonary.render.table.css ****/
+
+	if (typeof window != 'undefined' && typeof document != 'undefined') {
+		(function () {
+			var style = document.createElement('style');
+			style.innerHTML = ".json-array-table{border-spacing:0;border-collapse:collapse}.json-array-table .json-array-table{width:100%;margin:-4px;width:calc(100% + 8px)}.json-array-table>thead>tr>th{background-color:#EEE;border-bottom:1px solid #666;padding:.3em;font-size:.9em;font-weight:700;text-align:center}.json-array-table>thead{border:1px solid #BBB}.json-array-table>thead>tr>th.json-array-table-pages{border-bottom:1px solid #BBB;background-color:#DDD}.json-array-table>thead>tr>th.json-array-table-pages .button{font-family:Courier New,monospace}.json-array-table>tbody>tr>td{border:1px solid #CCC;border-top-color:#DDD;border-bottom-color:#DDD;padding:3px;font-size:inherit;text-align:left}.json-array-table>tbody>tr>td.json-array-table-full{padding:.3em;background-color:#EEE}.json-array-table>tbody>tr>td.json-array-table-add{text-align:center;background-color:#F8F8F8;border:1px solid #DDD}.json-array-table-full-buttons{text-align:center}.json-array-table-full-title{text-align:center;margin:-.3em;margin-bottom:.5em;background-color:#CCC;border-bottom:1px solid #BBB;font-weight:700;padding:.2em}.json-array-table-move-select,.json-array-table-move-cancel,.json-array-table-move-to,.json-array-table-delete{display:block;width:16px;height:16px;text-indent:16px;overflow:hidden;background-position:center middle;background-repeat:no-repeat;opacity:.35}.json-array-table-move-select:hover,.json-array-table-move-cancel:hover,.json-array-table-move-to:hover,.json-array-table-delete:hover{opacity:1}.json-array-table-delete{background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAApElEQVQ4y82SsQ3CMBBFHxEFAyAKF6HLCKTPHhnkJsgg2SODuDNFhJAHcIFsmhSWYgeQkeCkq/7/r7h/8G9zAcKGHhZPPmxFQgYSa0lIsCLh1raxsV42pfEuZDO8y0B4TBNV0wDgtWbfdRyHYZVJAWrA3PuewzwD4JTiNI4AZ+Aam6vS2lIAY0XwWuOUwimF1xorAmBeAT8+4ldrLH6k4lf+zTwBbL+JOS+cUboAAAAASUVORK5CYII=\")}.json-array-table-move-select{background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdElEQVQ4y62Tyw2AIBBEH94oAauwB+qedrQEj3iRRBMW5TPJXAjzQnYHsLUB6XagUQFIkpKkKsQZ4V3S6zDGCLACRw1QDNcg7m/YgriWsAUJj2m3essv8PTpXOiXLxWm1WF4iNPWOKVIXVUe/kyfkFwY69IFeyZbUaKi2aEAAAAASUVORK5CYII=\")}.json-array-table-move-cancel{background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAZklEQVQ4y81SwQmAQAwLDuIYjpwtOlee8XNCxTs5KaKBvtKEpi3wN2wAfMO79YzFEeGBSea6Jo4I286Na6seh1mTafHFhKRJPhLjGJmkJVmSSeZIJyxvnLIUobTE8hnLj1R+5W+wA9RyupOydS/wAAAAAElFTkSuQmCC\")}.json-array-table-move-up{background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAW0lEQVQ4y+2QwQmAMAxFX4+OEKfoDp37r6MjeKwXhQomGM99kEvgPULApwL9GiOJAV1SlxRGiiNvkh7L1hrACuxR4FWOIuWr7EVKRvYiNnw7O/W+YOEfB5MJcAIH0y4k53GkLAAAAABJRU5ErkJggg==\")}.json-array-table-move-down{background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAY0lEQVQ4y+2RsQnAMAwEz2VGUKbwDp7710lGSOk0MYhgB8W1H4RAcC/xgqUlSE/fJvkLwIA6WbldYMAhKbS2lAKwA2dy85CJh30GIZM33DMYmvTgLxlQJVVJLTD7+6Ls0h7CNyr1LiTNtq8FAAAAAElFTkSuQmCC\")}.json-array-table-sort,.json-array-table-sort-asc,.json-array-table-sort-desc{padding-left:15px;padding-right:15px;margin-left:-5px;margin-right:-5px}.json-array-table-sort-asc,.json-array-table-sort-desc{background-position:right center;background-repeat:no-repeat}.json-array-table-sort-text{display:block;float:right;width:0;overflow:hidden}.json-array-table-sort-asc{background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAXklEQVQoz+3SuwmAQBBF0SPGNmG1lrENmCoWZGoH7pqssCyCn9gLE0xweW9g+ClpMaD5Is9IGN9ITRZilmPeHzUIWaon3IkL9iI1Fek7prriSYe+EK/OgRXb/08fOAC7tBnlR5zMuwAAAABJRU5ErkJggg==\")}.json-array-table-sort-desc{background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAW0lEQVQoz2NgGAUkAUY0NgsRev4yMDD8wyaxE0nyPxL+BxXfhs9UHQYGhgVoGmF4AVQeL9BlYGBYi2T7Pyhfl9iw0GFgYNgO1byWGBvRgT4DA0MHKTZic8FwAwDm/hlxhNq1AAAAAABJRU5ErkJggg==\")}";
+			document.head.appendChild(style);
+		})();
+	}
+
+
+/**** ../renderers/common.css ****/
+
+	if (typeof window != 'undefined' && typeof document != 'undefined') {
+		(function () {
+			var style = document.createElement('style');
+			style.innerHTML = ".link{color:#05C}.link:hover{color:#07F;text-decoration:underline}.jsonary-action,a.jsonary-action{text-decoration:none}.error,.warning{border:1px solid;border-radius:3px;font-size:.8em;padding:.3em;padding-left:25px;padding-right:.5em;background-position:3px 50%;background-repeat:no-repeat}.warning{border-color:#DBB;background-color:#F8F8F0;color:#820;background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QAAAAAAAD5Q7t/AAAACXBIWXMAAAG7AAABuwE67OPiAAAACXZwQWcAAAAQAAAAEABcxq3DAAAB2ElEQVQ4y6WTu2tUURCHvzn3nZu7j+hmtTDCBlstUqZQgvoHKGKjjdpIUJtgIwQsVQQNCqJYaaNYiIuYWOQvSCtEEQtJCEHi7jW72d372GNxTaJg1lUHBuacM/Od35yHaK35H1O9FuOqfT595ZzqSdBa/9aTOet0PHekG8+f0J1Z68xOeTsq0JF7xxyZFKN0Etmwb/9VC923xqT4x/ZgGIgBKjg8HL+xr/QNSBP/urF7nIX7N1l4cBdVOIhOzOm+AMmsdU0Gx3fBOuHiB8L3HxGpofxDQ9Fra/rPgDS4ahQrwDKOEhwloJYwcgHdxJvqCWhX1Q0jqOTEWAFzDS/I4w8Ng9NEvAaqOBK0XqpbP9fI1kN6KFaz6IYD+1NPrBgM+PS0hE4jRi+EIKBTh8Y73QpGozxjOgYwN0mNAblnFlxP8vVs1oTKpS+ZRvmxW7eDVS54jcV4ZnCMi9sKnogftnO13ETLEjfOABaszBQA2DtVhy6QgO54fKtK3PY2iuWzuqkAwjqP7YqXFduAk7mJYIpkwE0VqoV9ILDcGo+2WugsMxEcDzK5ySpoIIXS5VoWr2djEoAyzr48jfm1o9tnYKgXX59/PhctRX18zVXErWnlJ89+vYV/tO89rcJJiVkaLAAAACV0RVh0Y3JlYXRlLWRhdGUAMjAwOS0xMS0xNVQxNzowMjozNC0wNzowMLbnjhIAAAAldEVYdGRhdGU6Y3JlYXRlADIwMTAtMDItMjBUMjM6MjY6MjQtMDc6MDAuw1DWAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDEwLTAxLTExVDA5OjI0OjQ0LTA3OjAwGJHf5wAAAGd0RVh0TGljZW5zZQBodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9saWNlbnNlcy9ieS1zYS8zLjAvIG9yIGh0dHA6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL0xHUEwvMi4xL1uPPGMAAAAldEVYdG1vZGlmeS1kYXRlADIwMDktMDMtMTlUMTA6NTI6NTEtMDY6MDB/aP0GAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAABN0RVh0U291cmNlAE94eWdlbiBJY29uc+wYrugAAAAndEVYdFNvdXJjZV9VUkwAaHR0cDovL3d3dy5veHlnZW4taWNvbnMub3JnL+83qssAAAAASUVORK5CYII=\")}.error{border-color:#DCB;background-color:#F8F0F0;color:#800;background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QAAAAAAAD5Q7t/AAAACXBIWXMAAA3XAAAN1wFCKJt4AAAACXZwQWcAAAAQAAAAEABcxq3DAAACbklEQVQ4y41TS0sbYRQ9984kTia+sEKFmqLUbUi66kIIcSHFnVBKC4VCf0P2zT/wN7gpVLp20V0IrmtH0IrMwkcx0y5iqs2M+b6Ze7uor1YED5zdPeeee+GQquIm2pXKHBG9Y9eti0gZANhxtsTalqqu1oIgvDlPlwbtSoWJucFDQ+8fzs/7hVKJvakpAMB5FCE5OsqijY2BGtNUkZVaEMiVQbtSYXac9vDsbPXR0lIRSYKs14PEMQCAi0W44+NQz8P39fW4f3CwKVlWqwWBMAAQc6NYKlWnFxeLdncX59vbsJ0Osl+/kJ2ewh4fI9nZgd3bw+OlJd+fnn5KzA0AoFa5POfk85tzr14Np4eHkLMzgOial1AFVOGMjMAplRCurfUzY6rO28nJxoNyuZ7L5dh0OlCRa2bZLaZxDPI8IJ934uPjvqsi9dzoqGN+/kTY7YKIcLX3ZoKLFArgSaGA3MiIIyJ1NzOm7HgeBlGE558/4z749uIF8jMzyIwpu1maIksSpIPBvcQAkBoDThJkaQpXRbb6UTTvMOPLwgJABPo/+n9ncLGIfhRBRbZca0zrdxQ9G52aclNjrsV3magiNzaG351Oao1psVi72gtDY62FMCM15m4OBhBmWGvRC0Mj1q7ycrcbpsY0fwRBnwoFCNHV8C0xEahQwI8g6KfGNJe73ZBUFZ98n4m5nfP96vjMTJFUIYMBVOTvNY4DHhqCAujt7/dtHH9VkdrLOJarMn3M55mIGiBq+hMTnut5Ts73AVXY83PYOE6TkxOjqk2orrw25rpMN/GBeQ7AO2KuQ7V88dAtFWkBWH0j8k+d/wDGsYUOvG2ZLQAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxMC0wMi0yMFQyMzoyNDo0MC0wNzowMBgWrX8AAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTAtMDEtMTFUMDk6MTI6NDgtMDc6MDBLzaPVAAAANHRFWHRMaWNlbnNlAGh0dHA6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL0dQTC8yLjAvbGoGqAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAATdEVYdFNvdXJjZQBHTk9NRS1Db2xvcnOqmUTiAAAAMXRFWHRTb3VyY2VfVVJMAGh0dHA6Ly9jb2RlLmdvb2dsZS5jb20vcC9nbm9tZS1jb2xvcnMvUB216wAAAABJRU5ErkJggg==\")}.prompt-outer{display:inline;position:relative;text-align:center;position:absolute;left:10%;width:80%;z-index:1000}.prompt-inner{display:inline-block}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.3);background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.prompt-box{position:relative;text-align:left;background-color:#fff;border:2px solid #000;border-radius:10px;padding:1em;padding-bottom:1.5em;padding-top:.5em}.prompt-box h1{text-align:center;font-size:1.3em;font-weight:700;border:0;border-bottom:1px solid #000;margin:0}.prompt-box h2{color:#666;text-align:center;font-size:1.1em;font-style:italic;border:0;margin:0;padding:0;margin-bottom:1em}.prompt-buttons{position:relative;top:-13px;border:2px solid #000;border-bottom-left-radius:10px;border-bottom-right-radius:10px;padding-top:.3em;padding-bottom:.3em}.dialog-anchor{position:relative;height:1em}.dialog-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.2);background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\");z-index:1000;opacity:.5}.dialog-box{position:absolute;top:-.1em;left:-0em;width:auto;height:auto;padding:.3em;padding-top:1.3em;border:2px solid #000;border-radius:5px;background-color:#FFF;box-shadow:0 0 20px rgba(0,0,0,.1),0 3px 5px rgba(0,0,0,.3);min-width:100px;z-index:1001}.dialog-title{display:block;margin:-.3em;margin-top:-1.3em;margin-bottom:.3em;padding-left:3em;padding-right:3em;background-color:#EEE;border-bottom:2px solid #000;font-weight:700;border-top-left-radius:4px;border-top-right-radius:4px;white-space:pre}.dialog-close{position:absolute;display:block;margin:0;top:0;left:0;font-weight:400;font-size:.8em}.dialog-close.button,.dialog-close .button{margin:0;border-top-left-radius:2px;border-bottom-left-radius:2px}input[type=text]{border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}textarea,select,textarea:hover,select:hover{border:1px solid;background-color:#FFF;border-radius:3px;border-color:#BBB;border-top-color:#AAA;border-bottom-color:#CCC}select{box-shadow:-1px -1px 0 rgba(0,0,0,.05),1px 0 0 rgba(0,0,0,.025),0 1px 0 rgba(255,255,255,.5),-1px 0 0 rgba(255,255,255,.25)}select:hover{box-shadow:-1px -1px 0 rgba(0,0,0,.1),1px 0 0 rgba(0,0,0,.05),0 1px 0 rgba(255,255,255,.5),-1px 0 0 rgba(255,255,255,.5)}.button{display:inline;text-align:center;color:#444;font-weight:700;text-decoration:none;margin-left:.5em;margin-right:.5em;padding-left:.3em;padding-right:.3em;border:1px solid;border-radius:3px;border-left-color:#BBB;border-right-color:#DDD;border-top-color:#F3F3F3;border-bottom-color:#AAA;box-shadow:0 0 1px rgba(0,0,0,.9),0 2px 4px rgba(0,0,0,.05);background:#E4E4E4;font-family:\"Trebuchet MS\";white-space:nowrap}.button:hover{color:#222;background:#EEE;box-shadow:0 0 1px rgba(0,0,0,1),0 0 4px rgba(255,255,255,1),0 2px 4px rgba(0,0,0,.05)}.button:active{background-color:#E0E0E0;border-left-color:#C8C8C8;border-right-color:#DDD;border-top-color:#E8E8E8;border-bottom-color:#BBB;box-shadow:0 0 1px rgba(0,0,0,1),0 0 4px rgba(255,255,255,.7),0 2px 3px rgba(0,0,0,.05)}.button.link{color:#05C;border-color:#F0F8FF;background-color:#E0E8F0;background-image:none}.button.link:hover{color:#07F;background-color:#E8F0F8;background-image:none}.button.action{color:#000;border-color:#F8D8A8;background-color:#F0B870;background-image:none;font-weight:700}.button.action:hover{background-color:#FCC47C}.button.disabled,.button.disabled:hover{border-color:#F8F8F8;color:#888;background-color:#EEE;background-image:none;cursor:default}";
+			document.head.appendChild(style);
+		})();
+	}
+
+
+/**** ../renderers/plain.jsonary.css ****/
+
+	if (typeof window != 'undefined' && typeof document != 'undefined') {
+		(function () {
+			var style = document.createElement('style');
+			style.innerHTML = ".json-schema,.json-link{margin-right:.5em;margin-left:.5em;border:1px solid #DD3;background-color:#FFB;padding-left:.5em;padding-right:.5em;color:#880;font-size:.85em;font-style:italic;text-decoration:none}.json-link{border:1px solid #88F;background-color:#DDF;color:#008;font-style:normal}.json-raw{display:inline;white-space:pre}.valid{background-color:#DFD}.invalid{background-color:#FDD}textarea{vertical-align:middle}.json-object{width:100%}.json-object-title{font-weight:700}.json-object-outer{background-color:#FFF;border-radius:3px}.json-object-outer>legend{background-color:#EEE;border:1px solid #BBB;border-radius:3px;font-size:.8em;padding:.2em;padding-left:.7em;padding-right:.7em}.json-object-pair{margin-bottom:.3em}.json-object-key{padding:0;vertical-align:top;width:4em}.json-object-key-text,.json-object-key-title{text-align:right;font-style:italic;padding-right:.5em;border-right:1px solid #000;white-space:pre}.json-object-key-title{font-weight:700;font-style:normal;min-height:1.2em}.json-object-value{padding-left:.5em;vertical-align:top}.json-object-delete-container,.json-array-delete-container{position:relative;vertical-align:top;padding-left:1.2em}.json-object-delete,.json-array-delete{position:absolute;left:0;top:0;font-family:Arial,sans-serif;font-style:normal;font-weight:700;font-size:.9em;color:red;text-decoration:none;margin-right:1em;opacity:.5;transition:opacity .05s ease-in;text-shadow:0 -1px 1px rgba(255,255,255,.7),0 1px 1px rgba(0,0,0,.8)}.json-object-delete:hover,.json-array-delete:hover{opacity:1}.json-object-delete-value{}.json-object-add{display:block;padding-left:2.2em;color:#888;font-size:.9em}.json-object-add-key,.json-object-add-key-new{text-decoration:none;margin-left:1em;color:#000;border:1px solid #888;background-color:#EEE}.json-object-add-key-new{border:1px dotted #BBB;background-color:#EEF;font-style:italic}.json-select-type-dialog-outer{position:relative}.json-select-type-dialog{position:absolute;top:-.65em;left:-.5em;width:12em;border:2px solid #000;border-radius:10px;background-color:#fff;padding:.5em;z-index:1;opacity:.95;box-shadow:0 1px 3px rgba(0,0,0,.1)}.json-select-type-background{position:fixed;top:0;right:0;bottom:0;left:0;background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.json-select-type{font-family:monospaced;font-weight:700;font-size:.8em;padding-left:.3em;padding-right:.3em}.json-array{}.json-array-item{display:block}.json-array-add{display:block;padding-left:2.2em;color:#000;font-family:monospace;font-style:normal;font-weight:700;color:#00F;text-decoration:none;margin-right:1em}.json-string{white-space:pre-wrap;border-radius:3px;font-size:inherit}.json-string-content-editable{display:inline;display:inline-block;vertical-align:text-top;background-color:#FFF;background-color:rgba(255,255,255,.95);outline:1px solid #BBB;outline:1px solid rgba(0,0,0,.05);color:#444;margin:.1em;padding:.3em;font-family:inherit;text-shadow:none;font-size:.9em;line-height:1.2em;min-width:5em;min-height:1.2em;max-height:20em;overflow:auto;border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}.json-string-content-editable:focus{color:#000;border-color:#48C;box-shadow:0 0 2px rgba(0,0,0,.1);z-index:1}.json-string-content-editable p{display:block!important;margin:0!important;padding:0!important}.json-string-content-editable *{position:static!important;margin:0!important;padding:0!important;font-size:inherit!important;font-family:inherit!important;color:#000!important;background:none!important;border:0!important;outline:0!important;font-weight:400!important;font-style:normal!important;text-decoration:none!important;text-transform:none!important;font-variant:normal!important;line-height:1.2em!important}textarea.json-string{font-size:inherit;font-weight:inherit;background-color:#FFF;background-color:rgba(255,255,255,.5);width:30%}.json-string-notice{color:#666;margin-left:.5em}.json-number{font-family:monospace;color:#000;font-weight:700;text-decoration:none}input.json-number{width:3em;text-align:center;font-family:Trebuchet MS}.json-number-increment,.json-number-decrement{font-family:monospace;padding-left:.5em;padding-right:.5em}.json-boolean-true,.json-boolean-false{font-family:monospace;color:#080;font-weight:700;text-decoration:none}.json-boolean-false{color:#800}.json-undefined-create{color:#008;text-decoration:none}.json-undefined-create:hover{color:#08F}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.5)}.prompt-buttons{background-color:#EEE;border:2px solid #000;text-align:center;position:relative}.prompt-data{background-color:#fff;border:2px solid #000;border-radius:10px;position:relative}";
+			document.head.appendChild(style);
+		})();
+	}
+
+return this;
+}).call(this);
