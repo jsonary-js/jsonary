@@ -1,4 +1,8 @@
 (function () {
+	if (typeof window == 'undefined') {
+		return;
+	}
+	
 	var modKeyDown = false;
 	var shiftKeyDown = false;
 	var otherKeys = {};
