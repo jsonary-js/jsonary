@@ -462,7 +462,7 @@ Request.prototype = {
 					publicApi.invalidate(params.url);
 				}			
 			} else {
-				thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
+				thisRequest.ajaxError(error, data);
 			}
 		});
 	}
