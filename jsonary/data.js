@@ -294,7 +294,7 @@ function Data(document, secrets, parent, parentKey) {
 				}
 			} else {
 				var child = operation.subjectChild(thisPath);
-				if (child) {
+				if (typeof child == "string") {
 					updateKeys[child] = true;
 					if (basicType == "object") {
 						if (operation.action() == "add") {
@@ -374,7 +374,7 @@ function Data(document, secrets, parent, parentKey) {
 					}
 				}
 				var targetChild = operation.targetChild(thisPath);
-				if (targetChild) {
+				if (typeof targetChild == "string") {
 					updateKeys[targetChild] = true;
 					if (basicType == "object") {
 						if (operation.action() == "move") {
