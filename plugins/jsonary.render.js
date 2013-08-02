@@ -845,7 +845,7 @@
 		return "javascript:void(0)";
 	};
 	render.actionHtml = function (elementId, linkUrl, innerHtml) {
-		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
+		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
 	};
 	
 	/**********/
