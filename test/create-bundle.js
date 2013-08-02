@@ -1,5 +1,7 @@
 var fs = require('fs');
 var path = require('path');
+var uglify = require('uglify-js');
+var cleanCss = require('clean-css');
 
 function Bundle() {
 	this.jsCode = [];
@@ -17,6 +19,9 @@ Bundle.prototype = {
 			var cssCode = fs.readFileSync(filename, {enc:'utf8'}).toString();
 			// Replace each URI(...) with a base64-encoded data URI
 			cssCode = cssCode.replace(/((:|\s)url\()\s*(.*)\s*\)/gi, function (fullString, prefix, spacing, uri) {
+				if (uri.toLowerCase().substring(0, 5) == "data:") {
+					return fullString;
+				}
 				var suffix = fullString.substring(prefix.length + uri.length);
 				if (uri.charAt(0) == '"' || uri.charAt(0) == "'") {
 					uri = uri.substring(1, uri.length - 1);
@@ -27,11 +32,12 @@ Bundle.prototype = {
 				return prefix + JSON.stringify(dataUri) + suffix;
 			});
 			this.cssCode.push('\n\n/**** ' + filename + ' ****/\n\n' + cssCode);
+			
 			jsCode += '\n\n/**** ' + filename + ' ****/\n\n';
 			jsCode += "	if (typeof window != 'undefined' && typeof document != 'undefined') {\n";
 			jsCode += "		(function () {\n";
 			jsCode += "			var style = document.createElement('style');\n";
-			jsCode += "			style.innerHTML = " + JSON.stringify(cssCode) + ";\n";
+			jsCode += "			style.innerHTML = " + JSON.stringify(cleanCss.process(cssCode)) + ";\n";
 			jsCode += "			document.head.appendChild(style);\n";
 			jsCode += "		})();\n";
 			jsCode += "	}\n";
@@ -59,7 +65,7 @@ Bundle.prototype = {
 		this.jsCode.push(code);
 		return this;
 	},
-	compileJs: function (outputFile, includeCss) {
+	compileJs: function (outputFile, minify, includeCss) {
 		var code = '(function() {\n';
 		code += this.jsCode.join("");
 		if (includeCss) {
@@ -72,13 +78,16 @@ Bundle.prototype = {
 			//console.log('Writing JS bundle to: ' + outputFile);
 			// Timestamp line also keeps line numbers in sync between bundle file and anonymous function in Node
 			var fileCode = '/* Bundled on ' + (new Date) + '*/\n' + code + '.call(this);';
+			if (minify) {
+				fileCode = uglify.minify(fileCode, {fromString: true}).code;
+			}
 			fs.writeFileSync(outputFile, fileCode, {enc:'utf8'});
 		}
 		
 		var functionCode = 'return ' + code + '.call({}); // to set "this" in case any of the renderers/code expect a global context\n';
 		return new Function(functionCode);
 	},
-	compileCss: function (outputFile) {
+	compileCss: function (outputFile, minify) {
 		var cssCode = '/* Bundled on ' + (new Date) + '*/\n';
 		cssCode += this.cssCode.join("");
 		if (outputFile) {
