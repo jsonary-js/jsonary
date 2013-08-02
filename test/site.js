@@ -69,6 +69,7 @@ var createJsonary = function () {
 		return result;
 	};
 	
+	// TODO: make this part of Jsonary, so we can include things like createValue() callbacks and other async stuff
 	var requestCount = 0;
 	var requestCompleteCallbacks = [];
 	Jsonary.whenRequestsComplete = function (callback) {
@@ -169,7 +170,7 @@ var createJsonary = function () {
 		result += 		'var link = document.createElement("a");';
 		result += 		'link.setAttribute("href", linkUrl);';
 		result += 		'link.innerHTML = innerHtml;';
-		result += 		'link.style.textDecoration = "none";';
+		result += 		'link.className = "jsonary-action";';
 		result += 		'link.onclick = function () {';
 		result += 			'document.getElementById("button-" + elementId).click();';
 		result += 			'return false;';
@@ -226,7 +227,7 @@ app.all('/', function (request, response) {
 			});
 		});
 	} else {
-		Jsonary.asyncRenderHtml("/json/data", Jsonary.decodeData(url.parse(request.url).query, 'application/x-www-form-urlencoded', encodingVariant), handleInnerHtml);
+		Jsonary.asyncRenderHtml("/json/data", Jsonary.decodeData(url.parse(request.url).query || '', 'application/x-www-form-urlencoded', encodingVariant), handleInnerHtml);
 	}
 	
 	function handleInnerHtml(error, innerHtml, renderContext) {
@@ -332,11 +333,12 @@ app.use('/json/', function (request, response) {
 					items: {
 						type: "object",
 						properties: {
-							"a": {type: "integer"},
+							"a": {type: "integer", minimum: 0},
 							"b": {type: "integer"}
 						}
 					}
-				}
+				},
+				"enum": {"enum": ["one", "two", "three", "orange"]}
 			},
 			required: ["title", "array"]
 		}, null, "\t"));
