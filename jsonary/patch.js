@@ -166,7 +166,7 @@ PatchOperation.prototype = {
 		if (this._subject.substring(0, path.length) == path) {
 			var remainder = this._subject.substring(path.length);
 			if (remainder.indexOf("/") == -1) {
-				return decodeURIComponent(remainder);
+				return Utils.decodePointerComponent(remainder);
 			}
 		}
 		return false;
@@ -192,7 +192,7 @@ PatchOperation.prototype = {
 		if (this._target.substring(0, path.length) == path) {
 			var remainder = this._target.substring(path.length);
 			if (remainder.indexOf("/") == -1) {
-				return decodeURIComponent(remainder);
+				return Utils.decodePointerComponent(remainder);
 			}
 		}
 		return false;
