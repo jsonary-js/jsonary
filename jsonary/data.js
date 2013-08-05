@@ -808,8 +808,7 @@ Data.prototype.deflate = function () {
 	var result = this.document.deflate();
 	return {
 		document: this.document.deflate(),
-		path: this.pointerPath(),
-		
+		path: this.pointerPath()
 	}
 };
 Document.prototype.deflate = function (canUseUrl) {
