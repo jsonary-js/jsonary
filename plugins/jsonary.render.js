@@ -814,6 +814,7 @@
 			element = document.getElementById(element);
 		}
 		var innerElement = document.createElement('span');
+		innerElement.className = "jsonary";
 		element.innerHTML = "";
 		element.appendChild(innerElement);
 		var context = pageContext.subContext(Math.random());
@@ -825,10 +826,15 @@
 		var result = pageContext.renderHtml(data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
-		return result;
+		return '<span class="jsonary">' + result + '</span>';
 	}
 	function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-		return pageContext.asyncRenderHtml(data, null, uiStartingState, htmlCallback);
+		return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml) {
+			if (error) {
+				htmlCallback(error, innerHtml);
+			}
+			htmlCallback('<span class="jsonary">' + result + '</span>');
+		});
 	}
 
 	if (global.jQuery != undefined) {
