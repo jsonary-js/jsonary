@@ -92,6 +92,39 @@
 	background-image: url('images/move-cancel.png');
 }
 
-.json-array-table-move-to {
+.json-array-table-move-up {
 	background-image: url('images/move-up.png');
 }
+
+.json-array-table-move-down {
+	background-image: url('images/move-down.png');
+}
+
+/* Sorting */
+
+.json-array-table-sort, .json-array-table-sort-asc, .json-array-table-sort-desc {
+	padding-left: 15px;
+	padding-right: 15px;
+	margin-left: -5px;
+	margin-right: -5px;
+}
+
+.json-array-table-sort-asc, .json-array-table-sort-desc {
+	background-position: right center;
+	background-repeat: no-repeat;
+}
+
+.json-array-table-sort-text {
+	display: block;
+	float: right;
+	width: 0px;
+	overflow: hidden;
+}
+
+.json-array-table-sort-asc {
+	background-image: url('images/sort-asc.png');
+}
+.json-array-table-sort-desc {
+	background-image: url('images/sort-desc.png');
+}
+

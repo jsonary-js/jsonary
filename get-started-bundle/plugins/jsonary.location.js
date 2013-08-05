@@ -1,11 +1,17 @@
 (function (global) {
+	if (typeof window == 'undefined') {
+		return;
+	}
+	
 	var api = {
 		query: Jsonary.create(null),
-		queryVariant: "dotted",
+		queryVariant: 'pretty',
 		useHistory: true
 	};
 	var changeListeners = [];
 	api.onChange = function (callbackFunction, immediate) {
+		start();
+		
 		var disableCount = 0;
 		var callback = function () {
 			if (disableCount <= 0) {
@@ -35,12 +41,13 @@
 		addHistoryPoint = true;
 	};
 	api.replace = function (newHref, notify) {
+		start();
 		var oldHref = window.location.href;
 		if (notify == undefined) {
 			notify = true;
 		}
 
-		if (window.history && api.useHistory) {
+		if (api.useHistory && window.history && window.history.pushState && window.history.replaceState) {
 			if (addHistoryPoint) {
 				window.history.pushState({}, "", newHref);
 			} else {
@@ -94,10 +101,6 @@
 		}
 		ignoreUpdate = false;
 
-		if (window.history && api.useHistory && window.location.href !== resolved) {
-			updateLocation(false);
-		}
-
 		for (var i = 0; i < changeListeners.length; i++) {
 			changeListeners[i].call(api, api, api.query);
 		}
@@ -118,17 +121,9 @@
 		return result;
 	}
 	
-	if ("onhashchange" in window) {
-		window.onhashchange = update;
-	}
-	if ("onpopstate" in window) {
-		window.onpopstate = update;
-	}
-	setInterval(update, 100);
-	update();
-	
 	function updateLocation(notify) {
-		var queryString = Jsonary.encodeData(api.query.value(), "application/x-www-form-urlencoded", api.queryVariant).replace(/%2F/g, "/");
+		start();
+		var queryString = Jsonary.encodeData(api.query.value(), "application/x-www-form-urlencoded", api.queryVariant);
 		var newHref = api.base + "?" + queryString;
 
 		api.replace(newHref, notify);
@@ -144,4 +139,20 @@
 	Jsonary.extend({
 		location: api
 	});	
+
+	var start = function () {
+		start = function () {};
+		if (window.history && api.useHistory && window.location.href !== api.resolved) {
+			updateLocation(false);
+		}
+	};
+
+	if ("onhashchange" in window) {
+		window.onhashchange = update;
+	}
+	if ("onpopstate" in window) {
+		window.onpopstate = update;
+	}
+	setInterval(update, 100);
+	update();
 })(this);
