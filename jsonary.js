@@ -1446,7 +1446,8 @@ publicApi.ajaxFunction = function (params, callback) {
 	var xhrUrl = params.url;
 	var xhrData = params.data;
 	var encType = params.encType;
-	
+	var method = params.method;
+
 	var xhr = new XMLHttpRequest();
 	xhr.onreadystatechange = function () {
 		if (xhr.readyState == 4) {
@@ -1876,7 +1877,8 @@ Request.prototype = {
 		var params = {
 			url: xhrUrl,
 			data: xhrData,
-			encType: encType
+			encType: encType,
+            method: method
 		};
 		publicApi.ajaxFunction(params, function (error, data, headers) {
 			if (!error) {

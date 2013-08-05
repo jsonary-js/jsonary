@@ -21,8 +21,10 @@ publicApi.ajaxFunction = function (params, callback) {
 	var xhrUrl = params.url;
 	var xhrData = params.data;
 	var encType = params.encType;
-	
-	var xhr = new XMLHttpRequest();
+    var method = params.method;
+
+
+    var xhr = new XMLHttpRequest();
 	xhr.onreadystatechange = function () {
 		if (xhr.readyState == 4) {
 			if (xhr.status >= 200 && xhr.status < 300) {
@@ -451,8 +453,10 @@ Request.prototype = {
 		var params = {
 			url: xhrUrl,
 			data: xhrData,
-			encType: encType
-		};
+			encType: encType,
+            method: method
+
+        };
 		publicApi.ajaxFunction(params, function (error, data, headers) {
 			if (!error) {
 				thisRequest.ajaxSuccess(data, headers, hintSchema);
