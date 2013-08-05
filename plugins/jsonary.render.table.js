@@ -363,25 +363,27 @@
 		};
 		this.addColumn(key, titleFunction, renderFunction);
 	};
-	FancyTableRenderer.prototype.addLinkColumn = function (linkRel, title, linkHtml, activeHtml, isConfirm) {
+	FancyTableRenderer.prototype.addLinkColumn = function (path, linkRel, title, linkHtml, activeHtml, isConfirm) {
+		var subPath = ((typeof path == "string") && path.charAt(0) == "/") ? path : "";
 		if (typeof linkRel == "string") {
-			var columnName = "link$" + linkRel;
+			var columnName = "link" + path + "$" + linkRel;
 			
 			this.addColumn(columnName, title, function (data, context) {
 				if (!context.data.readOnly()) {
 					return '<td></td>';
+					return '<td></td>';
 				}
 				var result = '<td>';
 				if (!context.parent.uiState.linkRel) {
-					var link = data.links(linkRel)[0];
+					var link = data.subPath(subPath).links(linkRel)[0];
 					if (link) {
-						result += context.parent.actionHtml(linkHtml, 'link', linkRel);
+						result += context.parent.actionHtml(linkHtml, 'link', linkRel, 0, subPath || undefined);
 					}
 				} else if (activeHtml) {
-					var activeLink = data.links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
-					if (activeLink.rel == linkRel) {
+					var activeLink = data.subPath(subPath).links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
+					if (activeLink && activeLink.rel == linkRel) {
 						if (isConfirm) {
-							result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex);
+							result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
 						} else {
 							result += context.parent.actionHtml(activeHtml, 'link-cancel');
 						}
@@ -392,22 +394,22 @@
 		} else {
 			var linkDefinition = linkRel;
 			linkRel = linkDefinition.rel();
-			var columnName = "link$" + linkRel + "$" + linkHtml;
+			var columnName = "link" + path + "$" + linkRel + "$";
 			this.addColumn(columnName, title, function (data, context) {
 				var result = '<td>';
 				if (!context.parent.uiState.linkRel) {
-					var links = data.links(linkRel);
+					var links = data.subPath(subPath).links(linkRel);
 					for (var i = 0; i < links.length; i++) {
 						var link = links[i];
 						if (link.definition = linkDefinition) {
-							result += context.parent.actionHtml(linkHtml, 'link', linkRel, i);
+							result += context.parent.actionHtml(linkHtml, 'link', linkRel, i, subPath || undefined);
 						}
 					}
 				} else if (activeHtml) {
-					var activeLink = data.links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
+					var activeLink = data.subPath(subPath).links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
 					if (activeLink.definition == linkDefinition) {
 						if (isConfirm) {
-							result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex);
+							result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
 						} else {
 							result += context.parent.actionHtml(activeHtml, 'link-cancel');
 						}
@@ -620,7 +622,7 @@
 				}
 				result += '</td>';
 			} else if (context.uiState.linkRel) {
-				var link = data.links(context.uiState.linkRel)[context.uiState.linkIndex || 0];
+				var link = data.subPath(context.uiState.linkPath || '').links(context.uiState.linkRel)[context.uiState.linkIndex || 0];
 				if (context.uiState.linkData) {
 					if (link.rel == "edit" && link.submissionSchemas.length == 0) {
 						result += TableRenderer.defaults.rowRenderHtml.call(this, context.uiState.linkData, context);
@@ -629,7 +631,7 @@
 						result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
 						result += '<div class="json-array-table-full-title">' + Jsonary.escapeHtml(link.title || link.rel) + '</div>';
 						result += '<div class="json-array-table-full-buttons">';
-						result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex);
+						result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex, context.uiState.linkPath);
 						result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
 						result += '</div>';
 						result += context.renderHtml(context.uiState.linkData);
@@ -640,7 +642,7 @@
 					result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
 					result += '<div class="json-array-table-full-title">' + Jsonary.escapeHtml(link.title || link.rel) + '</div>';
 						result += '<div class="json-array-table-full-buttons">';
-					result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex);
+					result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex, context.uiState.linkPath);
 					result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
 						result += '</div>';
 					result += '</td>';
@@ -650,7 +652,8 @@
 			}
 			return result;
 		},
-		rowAction: function (data, context, actionName, arg1, arg2) {
+		rowAction: function (data, context, actionName, arg1, arg2, arg3) {
+			thisConfig = this;
 			delete context.parent.uiState.moveRow;
 			if (actionName == "expand") {
 				if (context.uiState.expand && !arg1) {
@@ -660,14 +663,19 @@
 				}
 				return true;
 			} else if (actionName == "link") {
-				var linkRel = arg1, linkIndex = arg2
-				var link = data.links(linkRel)[linkIndex || 0];
+				var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
+				var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
 				if (link.submissionSchemas.length) {
 					context.uiState.linkRel = linkRel;
 					context.uiState.linkIndex = linkIndex;
 					var linkData = Jsonary.create();
 					linkData.addSchema(link.submissionSchemas);
 					context.uiState.linkData = linkData;
+					if (subPath) {
+						context.uiState.linkPath = subPath;
+					} else {
+						delete context.uiState.linkPath;
+					}
 					link.submissionSchemas.createValue(function (value) {
 						linkData.setValue(value);
 					});
@@ -675,11 +683,21 @@
 				} else if (link.rel == "edit") {
 					context.uiState.linkRel = linkRel;
 					context.uiState.linkIndex = linkIndex;
-					context.uiState.linkData = data.editableCopy();
+					if (subPath) {
+						context.uiState.linkPath = subPath;
+					} else {
+						delete context.uiState.linkPath;
+					}
+					context.uiState.linkData = data.subPath(subPath).editableCopy();
 					delete context.uiState.expand;
 				} else if (link.method != "GET") {
 					context.uiState.linkRel = linkRel;
 					context.uiState.linkIndex = linkIndex;
+					if (subPath) {
+						context.uiState.linkPath = subPath;
+					} else {
+						delete context.uiState.linkPath;
+					}
 					delete context.uiState.linkData;
 					delete context.uiState.expand;
 				} else {
@@ -692,19 +710,23 @@
 				}
 				return true;
 			} else if (actionName == "link-confirm") {
-				var linkRel = arg1, linkIndex = arg2
-				var link = data.links(linkRel)[linkIndex || 0];
+				var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
+				var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
 				if (link) {
-					link.follow(context.uiState.linkData, this.linkHandler);
+					link.follow(context.uiState.linkData, function (link, submissionData, request) {
+						return thisConfig.linkHandler(data, context, link, submissionData, request);
+					});
 				}
 				delete context.uiState.linkRel;
 				delete context.uiState.linkIndex;
+				delete context.uiState.linkPath;
 				delete context.uiState.linkData;
 				delete context.uiState.expand;
 				return true;
 			} else if (actionName == "link-cancel") {
 				delete context.uiState.linkRel;
 				delete context.uiState.linkIndex;
+				delete context.uiState.linkPath;
 				delete context.uiState.linkData;
 				delete context.uiState.expand;
 				return true;
