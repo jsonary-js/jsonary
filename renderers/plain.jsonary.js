@@ -384,7 +384,18 @@
 			return true;
 		}
 	});
-		
+	
+	// Display/edit null
+	Jsonary.render.register({
+		name: "Jsonary plain null",
+		renderHtml: function (data, context) {
+			return '<span class="json-null">null</span>';
+		},
+		filter: function (data) {
+			return data.basicType() == "null";
+		}
+	});
+	
 	function updateTextAreaSize(textarea) {
 		var lines = textarea.value.split("\n");
 		var maxWidth = 4;
@@ -755,7 +766,7 @@
 				var width = data.value().toString().length;
 				style = 'style="width: ' + width + 'em;"';
 			}
-			var result = '<input class="json-number" type="text" value="' + data.value() + '" name="' + context.inputNameForAction('input') + '" ' + style + '></input>';
+			var result = '<input class="json-number-input" type="text" value="' + data.value() + '" name="' + context.inputNameForAction('input') + '" ' + style + '></input>';
 			
 			var interval = data.schemas().numberInterval();
 			if (interval != undefined) {
@@ -773,7 +784,7 @@
 					result += '<span class="json-number-increment button disabled" onmousedown="event.preventDefault;">+</span>';
 				}
 			}
-			return result;
+			return '<span class="json-number">' + result + '</span>';
 		},
 		action: function (context, actionName, arg1) {
 			var data = context.data;

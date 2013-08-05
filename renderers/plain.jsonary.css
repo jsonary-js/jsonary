@@ -23,6 +23,11 @@
 	white-space: pre;
 }
 
+.json-null {
+	font-style: italic;
+	color: #666;
+}
+
 .valid {
 	background-color: #DFD;
 }
@@ -283,12 +288,14 @@ textarea.json-string {
 	color: #000;
 	font-weight: bold;
 	text-decoration: none;
+	white-space: nowrap;
 }
 
-input.json-number {
+input.json-number-input {
 	width: 3em;
 	text-align: center;
 	font-family: Trebuchet MS;
+	font-weight: bold;
 }
 
 .json-number-increment, .json-number-decrement {
