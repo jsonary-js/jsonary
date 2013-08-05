@@ -109,15 +109,73 @@ Uri.prototype = {
 			result += "#" + this.fragment;
 		}
 		return result;
+	},
+	resolve: function (relative) {
+		var result = new Uri(relative + "");
+		if (result.scheme == null) {
+			result.scheme = this.scheme;
+			result.doubleSlash = this.doubleSlash;
+			if (result.domain == null) {
+				result.domain = this.domain;
+				result.port = this.port;
+				result.username = this.username;
+				result.password = this.password;
+				if (result.path == null) {
+					result.path = this.path;
+					if (result.query == null) {
+						result.query = this.query;
+					}
+				} else if (result.path.charAt(0) != "/" && this.path != null) {
+					var precedingSlash = this.path.charAt(0) == "/";
+					var thisParts;
+					if (precedingSlash) {
+						thisParts = this.path.substring(1).split("/");
+					} else {
+						thisParts = this.path.split("/");
+					}
+					if (thisParts[thisParts.length - 1] == "..") {
+						thisParts.push("");
+					}
+					thisParts.pop();
+					for (var i = thisParts.length - 1; i >= 0; i--) {
+						if (thisParts[i] == ".") {
+							thisParts.slice(i, 1);
+						}
+					}
+					var resultParts = result.path.split("/");
+					for (var i = 0; i < resultParts.length; i++) {
+						var part = resultParts[i];
+						if (part == ".") {
+							continue;
+						} else if (part == "..") {
+							if (thisParts.length > 0 && thisParts[thisParts.length - 1] != "..") {
+								thisParts.pop();
+							} else if (!precedingSlash) {
+								thisParts = thisParts.concat(resultParts.slice(i));
+								break;
+							}
+						} else {
+							thisParts.push(part);
+						}
+					}
+					result.path = (precedingSlash ? "/" : "") + thisParts.join("/");
+				}
+			}
+		}
+		return result.toString();
 	}
 };
+publicApi.baseUri = null;
 Uri.resolve = function(base, relative) {
 	if (relative == undefined) {
-		if (typeof window == 'undefined') {
+		relative = base;
+		if (publicApi.baseUri) {
+			base = publicApi.baseUri;
+		} else if (typeof window != 'undefined') {
+			base = window.location.href;
+		} else {
 			return base;
 		}
-		relative = base;
-		base = window.location.toString();
 	}
 	if (base == undefined) {
 		return relative;
@@ -125,58 +183,7 @@ Uri.resolve = function(base, relative) {
 	if (!(base instanceof Uri)) {
 		base = new Uri(base);
 	}
-	var result = new Uri(relative + "");
-	if (result.scheme == null) {
-		result.scheme = base.scheme;
-		result.doubleSlash = base.doubleSlash;
-		if (result.domain == null) {
-			result.domain = base.domain;
-			result.port = base.port;
-			result.username = base.username;
-			result.password = base.password;
-			if (result.path == null) {
-				result.path = base.path;
-				if (result.query == null) {
-					result.query = base.query;
-				}
-			} else if (result.path.charAt(0) != "/" && base.path != null) {
-				var precedingSlash = base.path.charAt(0) == "/";
-				var baseParts;
-				if (precedingSlash) {
-					baseParts = base.path.substring(1).split("/");
-				} else {
-					baseParts = base.path.split("/");
-				}
-				if (baseParts[baseParts.length - 1] == "..") {
-					baseParts.push("");
-				}
-				baseParts.pop();
-				for (var i = baseParts.length - 1; i >= 0; i--) {
-					if (baseParts[i] == ".") {
-						baseParts.slice(i, 1);
-					}
-				}
-				var resultParts = result.path.split("/");
-				for (var i = 0; i < resultParts.length; i++) {
-					var part = resultParts[i];
-					if (part == ".") {
-						continue;
-					} else if (part == "..") {
-						if (baseParts.length > 0 && baseParts[baseParts.length - 1] != "..") {
-							baseParts.pop();
-						} else if (!precedingSlash) {
-							baseParts = baseParts.concat(resultParts.slice(i));
-							break;
-						}
-					} else {
-						baseParts.push(part);
-					}
-				}
-				result.path = (precedingSlash ? "/" : "") + baseParts.join("/");
-			}
-		}
-	}
-	return result.toString();
+	return base.resolve(relative);
 };
 Uri.parse = function(uri) {
 	return new Uri(uri);
