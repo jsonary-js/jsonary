@@ -10,6 +10,8 @@
 	};
 	var changeListeners = [];
 	api.onChange = function (callbackFunction, immediate) {
+		start();
+		
 		var disableCount = 0;
 		var callback = function () {
 			if (disableCount <= 0) {
@@ -39,6 +41,7 @@
 		addHistoryPoint = true;
 	};
 	api.replace = function (newHref, notify) {
+		start();
 		var oldHref = window.location.href;
 		if (notify == undefined) {
 			notify = true;
@@ -98,10 +101,6 @@
 		}
 		ignoreUpdate = false;
 
-		if (window.history && api.useHistory && window.location.href !== resolved) {
-			updateLocation(false);
-		}
-
 		for (var i = 0; i < changeListeners.length; i++) {
 			changeListeners[i].call(api, api, api.query);
 		}
@@ -122,16 +121,8 @@
 		return result;
 	}
 	
-	if ("onhashchange" in window) {
-		window.onhashchange = update;
-	}
-	if ("onpopstate" in window) {
-		window.onpopstate = update;
-	}
-	setInterval(update, 100);
-	update();
-	
 	function updateLocation(notify) {
+		start();
 		var queryString = Jsonary.encodeData(api.query.value(), "application/x-www-form-urlencoded", api.queryVariant);
 		var newHref = api.base + "?" + queryString;
 
@@ -148,4 +139,20 @@
 	Jsonary.extend({
 		location: api
 	});	
+
+	var start = function () {
+		start = function () {};
+		if (window.history && api.useHistory && window.location.href !== api.resolved) {
+			updateLocation(false);
+		}
+	};
+
+	if ("onhashchange" in window) {
+		window.onhashchange = update;
+	}
+	if ("onpopstate" in window) {
+		window.onpopstate = update;
+	}
+	setInterval(update, 100);
+	update();
 })(this);
