@@ -806,8 +806,11 @@ publicApi.isData = function (obj) {
 
 Data.prototype.deflate = function () {
 	var result = this.document.deflate();
-	result.path = this.pointerPath();
-	return result;
+	return {
+		document: this.document.deflate(),
+		path: this.pointerPath(),
+		
+	}
 };
 Document.prototype.deflate = function (canUseUrl) {
 	if (this.isDefinitive) {
@@ -832,6 +835,9 @@ Document.prototype.deflate = function (canUseUrl) {
 	return result;
 };
 publicApi.inflate = function (deflated, callback) {
+	if (deflated.path !== undefined && deflated.document !== undefined) {
+		return publicApi.inflate(deflated.document).root.subPath(deflated.path);
+	}
 	if (typeof deflated == "string") {
 		var request = requestJson(deflated).request;
 		if (callback) {
@@ -853,9 +859,6 @@ publicApi.inflate = function (deflated, callback) {
 	}
 	data.document.setRoot(deflated.root);
 	var result = data.document;
-	if (deflated.path) {
-		result = data.document.raw.subPath(deflated.path);
-	}
 	if (callback) {
 		callback(null, result);
 	}
