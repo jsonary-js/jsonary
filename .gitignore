@@ -169,3 +169,5 @@ test/bundle.css
 test/bundle.js
 
 test/bundle.js
+
+node_modules

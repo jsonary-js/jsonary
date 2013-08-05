@@ -1,4 +1,4 @@
-/* Bundled on Fri Aug 02 2013 18:36:31 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Mon Aug 05 2013 21:36:53 GMT+0100 (BST)*/
 (function() {
 
 
@@ -666,15 +666,73 @@
 				result += "#" + this.fragment;
 			}
 			return result;
+		},
+		resolve: function (relative) {
+			var result = new Uri(relative + "");
+			if (result.scheme == null) {
+				result.scheme = this.scheme;
+				result.doubleSlash = this.doubleSlash;
+				if (result.domain == null) {
+					result.domain = this.domain;
+					result.port = this.port;
+					result.username = this.username;
+					result.password = this.password;
+					if (result.path == null) {
+						result.path = this.path;
+						if (result.query == null) {
+							result.query = this.query;
+						}
+					} else if (result.path.charAt(0) != "/" && this.path != null) {
+						var precedingSlash = this.path.charAt(0) == "/";
+						var thisParts;
+						if (precedingSlash) {
+							thisParts = this.path.substring(1).split("/");
+						} else {
+							thisParts = this.path.split("/");
+						}
+						if (thisParts[thisParts.length - 1] == "..") {
+							thisParts.push("");
+						}
+						thisParts.pop();
+						for (var i = thisParts.length - 1; i >= 0; i--) {
+							if (thisParts[i] == ".") {
+								thisParts.slice(i, 1);
+							}
+						}
+						var resultParts = result.path.split("/");
+						for (var i = 0; i < resultParts.length; i++) {
+							var part = resultParts[i];
+							if (part == ".") {
+								continue;
+							} else if (part == "..") {
+								if (thisParts.length > 0 && thisParts[thisParts.length - 1] != "..") {
+									thisParts.pop();
+								} else if (!precedingSlash) {
+									thisParts = thisParts.concat(resultParts.slice(i));
+									break;
+								}
+							} else {
+								thisParts.push(part);
+							}
+						}
+						result.path = (precedingSlash ? "/" : "") + thisParts.join("/");
+					}
+				}
+			}
+			return result.toString();
 		}
 	};
+	publicApi.baseUri = null;
 	Uri.resolve = function(base, relative) {
 		if (relative == undefined) {
-			if (typeof window == 'undefined') {
+			relative = base;
+			if (publicApi.baseUri) {
+				base = publicApi.baseUri;
+			} else if (typeof window != 'undefined') {
+				base = window.location.href;
+			} else {
 				return base;
 			}
-			relative = base;
-			base = window.location.toString();
 		}
 		if (base == undefined) {
 			return relative;
@@ -682,58 +740,7 @@
 		if (!(base instanceof Uri)) {
 			base = new Uri(base);
 		}
-		var result = new Uri(relative + "");
-		if (result.scheme == null) {
-			result.scheme = base.scheme;
-			result.doubleSlash = base.doubleSlash;
-			if (result.domain == null) {
-				result.domain = base.domain;
-				result.port = base.port;
-				result.username = base.username;
-				result.password = base.password;
-				if (result.path == null) {
-					result.path = base.path;
-					if (result.query == null) {
-						result.query = base.query;
-					}
-				} else if (result.path.charAt(0) != "/" && base.path != null) {
-					var precedingSlash = base.path.charAt(0) == "/";
-					var baseParts;
-					if (precedingSlash) {
-						baseParts = base.path.substring(1).split("/");
-					} else {
-						baseParts = base.path.split("/");
-					}
-					if (baseParts[baseParts.length - 1] == "..") {
-						baseParts.push("");
-					}
-					baseParts.pop();
-					for (var i = baseParts.length - 1; i >= 0; i--) {
-						if (baseParts[i] == ".") {
-							baseParts.slice(i, 1);
-						}
-					}
-					var resultParts = result.path.split("/");
-					for (var i = 0; i < resultParts.length; i++) {
-						var part = resultParts[i];
-						if (part == ".") {
-							continue;
-						} else if (part == "..") {
-							if (baseParts.length > 0 && baseParts[baseParts.length - 1] != "..") {
-								baseParts.pop();
-							} else if (!precedingSlash) {
-								baseParts = baseParts.concat(resultParts.slice(i));
-								break;
-							}
-						} else {
-							baseParts.push(part);
-						}
-					}
-					result.path = (precedingSlash ? "/" : "") + baseParts.join("/");
-				}
-			}
-		}
-		return result.toString();
+		return base.resolve(relative);
 	};
 	Uri.parse = function(uri) {
 		return new Uri(uri);
@@ -3056,8 +3063,10 @@
 	
 	Data.prototype.deflate = function () {
 		var result = this.document.deflate();
-		result.path = this.pointerPath();
-		return result;
+		return {
+			document: this.document.deflate(),
+			path: this.pointerPath()
+		}
 	};
 	Document.prototype.deflate = function (canUseUrl) {
 		if (this.isDefinitive) {
@@ -3082,6 +3091,9 @@
 		return result;
 	};
 	publicApi.inflate = function (deflated, callback) {
+		if (deflated.path !== undefined && deflated.document !== undefined) {
+			return publicApi.inflate(deflated.document).root.subPath(deflated.path);
+		}
 		if (typeof deflated == "string") {
 			var request = requestJson(deflated).request;
 			if (callback) {
@@ -3103,9 +3115,6 @@
 		}
 		data.document.setRoot(deflated.root);
 		var result = data.document;
-		if (deflated.path) {
-			result = data.document.raw.subPath(deflated.path);
-		}
 		if (callback) {
 			callback(null, result);
 		}
@@ -6838,6 +6847,7 @@
 				element = document.getElementById(element);
 			}
 			var innerElement = document.createElement('span');
+			innerElement.className = "jsonary";
 			element.innerHTML = "";
 			element.appendChild(innerElement);
 			var context = pageContext.subContext(Math.random());
@@ -6849,10 +6859,15 @@
 			var result = pageContext.renderHtml(data, null, uiStartingState);
 			pageContext.oldSubContexts = {};
 			pageContext.subContexts = {};
-			return result;
+			return '<span class="jsonary">' + result + '</span>';
 		}
 		function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-			return pageContext.asyncRenderHtml(data, null, uiStartingState, htmlCallback);
+			return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml) {
+				if (error) {
+					htmlCallback(error, innerHtml);
+				}
+				htmlCallback('<span class="jsonary">' + result + '</span>');
+			});
 		}
 	
 		if (global.jQuery != undefined) {
@@ -7262,6 +7277,8 @@
 		};
 		var changeListeners = [];
 		api.onChange = function (callbackFunction, immediate) {
+			start();
+			
 			var disableCount = 0;
 			var callback = function () {
 				if (disableCount <= 0) {
@@ -7291,6 +7308,7 @@
 			addHistoryPoint = true;
 		};
 		api.replace = function (newHref, notify) {
+			start();
 			var oldHref = window.location.href;
 			if (notify == undefined) {
 				notify = true;
@@ -7350,10 +7368,6 @@
 			}
 			ignoreUpdate = false;
 	
-			if (window.history && api.useHistory && window.location.href !== resolved) {
-				updateLocation(false);
-			}
-	
 			for (var i = 0; i < changeListeners.length; i++) {
 				changeListeners[i].call(api, api, api.query);
 			}
@@ -7374,16 +7388,8 @@
 			return result;
 		}
 		
-		if ("onhashchange" in window) {
-			window.onhashchange = update;
-		}
-		if ("onpopstate" in window) {
-			window.onpopstate = update;
-		}
-		setInterval(update, 100);
-		update();
-		
 		function updateLocation(notify) {
+			start();
 			var queryString = Jsonary.encodeData(api.query.value(), "application/x-www-form-urlencoded", api.queryVariant);
 			var newHref = api.base + "?" + queryString;
 	
@@ -7400,6 +7406,22 @@
 		Jsonary.extend({
 			location: api
 		});	
+	
+		var start = function () {
+			start = function () {};
+			if (window.history && api.useHistory && window.location.href !== api.resolved) {
+				updateLocation(false);
+			}
+		};
+	
+		if ("onhashchange" in window) {
+			window.onhashchange = update;
+		}
+		if ("onpopstate" in window) {
+			window.onpopstate = update;
+		}
+		setInterval(update, 100);
+		update();
 	})(this);
 	
 
@@ -7645,7 +7667,7 @@
 	
 	// Jsonary plugin
 	(function (Jsonary) {
-	
+		
 		/* Template: jsonary-template-header-code
 		var data = arguments[0], context = arguments[1];
 		function want(path) {
@@ -7777,8 +7799,28 @@
 				}
 			},
 			action: function (context, actionName) {
+				var thisRenderer = this;
+				if (context.label.substring(0, 3) == "col" && !context.cellData) {
+					// Recover cellData when running server-side
+					var columnPath = context.label.substring(3);
+					var rowContext = context.parent;
+					var tableContext = rowContext.parent;
+					context.data.items(function (index, rowData) {
+						if (thisRenderer.rowContext(rowData, tableContext) == rowContext) {
+							var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
+							thisRenderer.cellContext(cellData, rowContext, columnPath); // Sets cellData on the appropriate context
+						}
+					});
+				} else if (context.label.substring(0, 3) == "row" && !context.rowData) {
+					// Recover rowData when running server-side
+					var tableContext = context.parent;
+					context.data.items(function (index, rowData) {
+						thisRenderer.rowContext(rowData, tableContext); // Sets rowData on the appropriate context
+					});
+				}
 				if (context.cellData) {
 					var columnPath = context.columnPath;
+	
 					var cellAction = this.config.cellAction[columnPath];
 					var newArgs = [context.cellData];
 					while (newArgs.length <= arguments.length) {
@@ -7800,7 +7842,8 @@
 				return this.config.action.apply(this.config, newArgs);
 			},
 			rowContext: function (data, context) {
-				var subContext = context.subContext(data);
+				var rowLabel = "row" + context.labelForData(data);
+				var subContext = context.subContext(rowLabel);
 				subContext.rowData = data;
 				return subContext;
 			},
@@ -7823,6 +7866,13 @@
 				} else if (this.config.render) {
 					return this.config.render(element, data, context);
 				}
+			},
+			update: function (element, data, context, operation) {
+				if (this.config.update) {
+					this.config.defaultUpdate = this.config.defaultUpdate || this.defaultUpdate;
+					return this.config.update.apply(this, arguments);
+				}
+				return this.defaultUpdate.apply(this, arguments);
 			},
 			register: function(filterFunction) {
 				if (filterFunction) {
@@ -7944,27 +7994,116 @@
 				}
 				return prevAddColumn.call(this, key, title, renderHtml);
 			};
+			
+			// Delete column for editable items
+			this.addConditionalColumn(function (data) {
+				return !data.readOnly() && data.length() > data.schemas().minItems();
+			}, "remove", "", function (data, context) {
+				var result = '<td>';
+				
+				// Check whether a delete is appropriate
+				var arrayData = data.parent();
+				var tupleTypingLength = arrayData.schemas().tupleTypingLength();
+				var minItems = arrayData.schemas().minItems();
+				var index = parseInt(data.parentKey());
+				if ((index >= tupleTypingLength || index == arrayData.length() - 1)
+					&& arrayData.length() > minItems) {
+					result += context.actionHtml('<span class="json-array-table-delete">X</span>', 'remove');
+				}
+				return result + '</td>';
+			});
+			config.cellAction.remove = function (data, context, actionName) {
+				if (actionName == "remove") {
+					console.log({
+						value: data.value(),
+						pointerPath: data.pointerPath(),
+						parentKey: data.parentKey()
+					});
+					data.remove();
+					return false;
+				}
+			};
+	
+			// Move column for editable items
+			this.addConditionalColumn(function (data) {
+				return !data.readOnly() && data.length() > (data.schemas().tupleTypingLength() + 1);
+			}, "move", function (data, context) {
+				if (context.uiState.moveRow != undefined) {
+					return '<th style="padding: 0; text-align: center">'
+						+ context.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
+						+ '</th>';
+				}
+				return '<th></th>';
+			}, function (data, context) {
+				var result = '<td>';
+				var tableContext = context.parent.parent;
+				
+				// Check whether a move is appropriate
+				var arrayData = data.parent();
+				var tupleTypingLength = arrayData.schemas().tupleTypingLength();
+				var index = parseInt(data.parentKey());
+				if (index >= tupleTypingLength) {
+					if (tableContext.uiState.moveRow == undefined) {
+						result += tableContext.actionHtml('<div class="json-array-table-move-select">move</div>', 'move-select', index);
+					} else if (tableContext.uiState.moveRow == index) {
+						result += tableContext.actionHtml('<div class="json-array-table-move-cancel">cancel</div>', 'move-cancel');
+					} else if (tableContext.uiState.moveRow > index) {
+						result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-up">to here</div>', 'move', tableContext.uiState.moveRow, index);
+					} else {
+						result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-down">to here</div>', 'move', tableContext.uiState.moveRow, index);
+					}
+				}
+				return result + '</td>';
+			});
 		}
 		FancyTableRenderer.prototype = Object.create(TableRenderer.prototype);
-		FancyTableRenderer.prototype.addLinkColumn = function (linkRel, title, linkHtml, activeHtml, isConfirm) {
+		FancyTableRenderer.prototype.addConditionalColumn = function (condition, key, title, renderHtml) {
+			var titleAsFunction = (typeof title == 'function') ? title : function (data, context) {
+				return '<th>' + Jsonary.escapeHtml(title) + '</th>';
+			};
+			if (!renderHtml) {
+				renderHtml = function (data, context) {
+					return this.defaultCellRenderHtml(data, context);
+				};
+			}
+			var titleFunction = function (data, context) {
+				if (!condition.call(this, data, context)) {
+					return '<th style="display: none"></th>';
+				} else {
+					return titleAsFunction.call(this, data, context);
+				}
+			};
+			var renderFunction = function (data, cellContext) {
+				var tableContext = cellContext.parent.parent;
+				if (!condition.call(this, tableContext.data, tableContext)) {
+					return '<td style="display: none"></td>';
+				} else {
+					return renderHtml.call(this, data, cellContext, key);
+				}
+			};
+			this.addColumn(key, titleFunction, renderFunction);
+		};
+		FancyTableRenderer.prototype.addLinkColumn = function (path, linkRel, title, linkHtml, activeHtml, isConfirm) {
+			var subPath = ((typeof path == "string") && path.charAt(0) == "/") ? path : "";
 			if (typeof linkRel == "string") {
-				var columnName = "link$" + linkRel;
+				var columnName = "link" + path + "$" + linkRel;
 				
 				this.addColumn(columnName, title, function (data, context) {
 					if (!context.data.readOnly()) {
 						return '<td></td>';
+						return '<td></td>';
 					}
 					var result = '<td>';
 					if (!context.parent.uiState.linkRel) {
-						var link = data.links(linkRel)[0];
+						var link = data.subPath(subPath).links(linkRel)[0];
 						if (link) {
-							result += context.parent.actionHtml(linkHtml, 'link', linkRel);
+							result += context.parent.actionHtml(linkHtml, 'link', linkRel, 0, subPath || undefined);
 						}
 					} else if (activeHtml) {
-						var activeLink = data.links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
-						if (activeLink.rel == linkRel) {
+						var activeLink = data.subPath(subPath).links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
+						if (activeLink && activeLink.rel == linkRel) {
 							if (isConfirm) {
-								result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex);
+								result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
 							} else {
 								result += context.parent.actionHtml(activeHtml, 'link-cancel');
 							}
@@ -7975,22 +8114,22 @@
 			} else {
 				var linkDefinition = linkRel;
 				linkRel = linkDefinition.rel();
-				var columnName = "link$" + linkRel + "$" + linkHtml;
+				var columnName = "link" + path + "$" + linkRel + "$";
 				this.addColumn(columnName, title, function (data, context) {
 					var result = '<td>';
 					if (!context.parent.uiState.linkRel) {
-						var links = data.links(linkRel);
+						var links = data.subPath(subPath).links(linkRel);
 						for (var i = 0; i < links.length; i++) {
 							var link = links[i];
 							if (link.definition = linkDefinition) {
-								result += context.parent.actionHtml(linkHtml, 'link', linkRel, i);
+								result += context.parent.actionHtml(linkHtml, 'link', linkRel, i, subPath || undefined);
 							}
 						}
 					} else if (activeHtml) {
-						var activeLink = data.links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
+						var activeLink = data.subPath(subPath).links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
 						if (activeLink.definition == linkDefinition) {
 							if (isConfirm) {
-								result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex);
+								result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
 							} else {
 								result += context.parent.actionHtml(activeHtml, 'link-cancel');
 							}
@@ -8133,7 +8272,7 @@
 				}
 				return result + '</tbody>';
 			},
-			action: function (data, context, actionName, arg1) {
+			action: function (data, context, actionName, arg1, arg2) {
 				if (actionName == "sort") {
 					delete context.uiState.page;
 					var columnKey = arg1;
@@ -8152,6 +8291,19 @@
 				} else if (actionName == "page") {
 					context.uiState.page = parseInt(arg1);
 					return true;
+				} else if (actionName == "move-select") {
+					var index = arg1;
+					context.uiState.moveRow = index;
+					return true;
+				} else if (actionName == "move-cancel") {
+					delete context.uiState.moveRow;
+					return true;
+				} else if (actionName == "move") {
+					var fromIndex = arg1;
+					var toIndex = arg2;
+					delete context.uiState.moveRow;
+					data.item(fromIndex).moveTo(data.item(toIndex));
+					return false;
 				}
 				return TableRenderer.defaults.action.apply(this, arguments);
 			},
@@ -8180,8 +8332,17 @@
 			},
 			rowRenderHtml: function (data, context) {
 				var result = '';
-				if (context.uiState.linkRel) {
-					var link = data.links(context.uiState.linkRel)[context.uiState.linkIndex || 0];
+				if (context.uiState.expand) {
+					result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
+					result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
+					if (context.uiState.expand === true) {
+						result += context.renderHtml(data);
+					} else {
+						result += context.renderHtml(context.uiState.expand);
+					}
+					result += '</td>';
+				} else if (context.uiState.linkRel) {
+					var link = data.subPath(context.uiState.linkPath || '').links(context.uiState.linkRel)[context.uiState.linkIndex || 0];
 					if (context.uiState.linkData) {
 						if (link.rel == "edit" && link.submissionSchemas.length == 0) {
 							result += TableRenderer.defaults.rowRenderHtml.call(this, context.uiState.linkData, context);
@@ -8190,7 +8351,7 @@
 							result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
 							result += '<div class="json-array-table-full-title">' + Jsonary.escapeHtml(link.title || link.rel) + '</div>';
 							result += '<div class="json-array-table-full-buttons">';
-							result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex);
+							result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex, context.uiState.linkPath);
 							result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
 							result += '</div>';
 							result += context.renderHtml(context.uiState.linkData);
@@ -8201,7 +8362,7 @@
 						result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
 						result += '<div class="json-array-table-full-title">' + Jsonary.escapeHtml(link.title || link.rel) + '</div>';
 							result += '<div class="json-array-table-full-buttons">';
-						result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex);
+						result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex, context.uiState.linkPath);
 						result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
 							result += '</div>';
 						result += '</td>';
@@ -8209,34 +8370,32 @@
 				} else {
 					result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
 				}
-				if (context.uiState.expand) {
-					result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
-					if (context.uiState.expand === true) {
-						result += context.renderHtml(data);
-					} else {
-						result += context.renderHtml(context.uiState.expand);
-					}
-					result += '</td>';
-				}
 				return result;
 			},
-			rowAction: function (data, context, actionName, arg1, arg2) {
+			rowAction: function (data, context, actionName, arg1, arg2, arg3) {
+				thisConfig = this;
+				delete context.parent.uiState.moveRow;
 				if (actionName == "expand") {
 					if (context.uiState.expand && !arg1) {
-						delete context.uiState.expand;
-					} else {
+	 					delete context.uiState.expand;
+	 				} else {
 						context.uiState.expand = arg1 || true;
 					}
 					return true;
 				} else if (actionName == "link") {
-					var linkRel = arg1, linkIndex = arg2
-					var link = data.links(linkRel)[linkIndex || 0];
+					var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
+					var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
 					if (link.submissionSchemas.length) {
 						context.uiState.linkRel = linkRel;
 						context.uiState.linkIndex = linkIndex;
 						var linkData = Jsonary.create();
 						linkData.addSchema(link.submissionSchemas);
 						context.uiState.linkData = linkData;
+						if (subPath) {
+							context.uiState.linkPath = subPath;
+						} else {
+							delete context.uiState.linkPath;
+						}
 						link.submissionSchemas.createValue(function (value) {
 							linkData.setValue(value);
 						});
@@ -8244,11 +8403,21 @@
 					} else if (link.rel == "edit") {
 						context.uiState.linkRel = linkRel;
 						context.uiState.linkIndex = linkIndex;
-						context.uiState.linkData = data.editableCopy();
+						if (subPath) {
+							context.uiState.linkPath = subPath;
+						} else {
+							delete context.uiState.linkPath;
+						}
+						context.uiState.linkData = data.subPath(subPath).editableCopy();
 						delete context.uiState.expand;
 					} else if (link.method != "GET") {
 						context.uiState.linkRel = linkRel;
 						context.uiState.linkIndex = linkIndex;
+						if (subPath) {
+							context.uiState.linkPath = subPath;
+						} else {
+							delete context.uiState.linkPath;
+						}
 						delete context.uiState.linkData;
 						delete context.uiState.expand;
 					} else {
@@ -8261,24 +8430,35 @@
 					}
 					return true;
 				} else if (actionName == "link-confirm") {
-					var linkRel = arg1, linkIndex = arg2
-					var link = data.links(linkRel)[linkIndex || 0];
+					var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
+					var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
 					if (link) {
-						link.follow(context.uiState.linkData, this.linkHandler);
+						link.follow(context.uiState.linkData, function (link, submissionData, request) {
+							return thisConfig.linkHandler(data, context, link, submissionData, request);
+						});
 					}
 					delete context.uiState.linkRel;
 					delete context.uiState.linkIndex;
+					delete context.uiState.linkPath;
 					delete context.uiState.linkData;
 					delete context.uiState.expand;
 					return true;
 				} else if (actionName == "link-cancel") {
 					delete context.uiState.linkRel;
 					delete context.uiState.linkIndex;
+					delete context.uiState.linkPath;
 					delete context.uiState.linkData;
 					delete context.uiState.expand;
 					return true;
 				}
 				return TableRenderer.defaults.rowAction.apply(this, arguments);
+			},
+			update: function (element, data, context, operation) {
+				if (context.uiState.moveRow != undefined) {
+					delete context.uiState.moveRow;
+					return true;
+				}
+				return this.defaultUpdate(element, data, context, operation);
 			},
 			linkHandler: function () {}
 		};
@@ -8865,7 +9045,18 @@
 				return true;
 			}
 		});
-			
+		
+		// Display/edit null
+		Jsonary.render.register({
+			name: "Jsonary plain null",
+			renderHtml: function (data, context) {
+				return '<span class="json-null">null</span>';
+			},
+			filter: function (data) {
+				return data.basicType() == "null";
+			}
+		});
+		
 		function updateTextAreaSize(textarea) {
 			var lines = textarea.value.split("\n");
 			var maxWidth = 4;
@@ -9236,7 +9427,7 @@
 					var width = data.value().toString().length;
 					style = 'style="width: ' + width + 'em;"';
 				}
-				var result = '<input class="json-number" type="text" value="' + data.value() + '" name="' + context.inputNameForAction('input') + '" ' + style + '></input>';
+				var result = '<input class="json-number-input" type="text" value="' + data.value() + '" name="' + context.inputNameForAction('input') + '" ' + style + '></input>';
 				
 				var interval = data.schemas().numberInterval();
 				if (interval != undefined) {
@@ -9254,7 +9445,7 @@
 						result += '<span class="json-number-increment button disabled" onmousedown="event.preventDefault;">+</span>';
 					}
 				}
-				return result;
+				return '<span class="json-number">' + result + '</span>';
 			},
 			action: function (context, actionName, arg1) {
 				var data = context.data;
@@ -9411,7 +9602,7 @@
 /**** ../renderers/contributed/full-preview.js ****/
 
 	Jsonary.render.register({
-		component: [Jsonary.render.Components.RENDERER, Jsonary.render.Components.LIST_LINKS],
+		component: [Jsonary.render.Components.LIST_LINKS],
 		renderHtml: function (data, context) {
 			var previewLink = data.getLink('full-preview');
 			var innerHtml = context.renderHtml(previewLink.follow(null, false));
@@ -9425,7 +9616,18 @@
 			}
 		},
 		filter: function (data, schemas) {
-			return data.getLink('full') && data.getLink('full-preview');
+			return data.readOnly() && data.getLink('full') && data.getLink('full-preview');
+		}
+	});
+	
+	Jsonary.render.register({
+		component: [Jsonary.render.Components.LIST_LINKS],
+		renderHtml: function (data, context) {
+			var previewLink = data.getLink('full-preview');
+			return context.renderHtml(data) + " - " + context.renderHtml(previewLink.follow(null, false));
+		},
+		filter: function (data, schemas) {
+			return !data.readOnly() && data.getLink('full') && data.getLink('full-preview');
 		}
 	});
 
@@ -9587,7 +9789,7 @@
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
 			var style = document.createElement('style');
-			style.innerHTML = ".link{color:#05C}.link:hover{color:#07F;text-decoration:underline}.jsonary-action,a.jsonary-action{text-decoration:none}.error,.warning{border:1px solid;border-radius:3px;font-size:.8em;padding:.3em;padding-left:25px;padding-right:.5em;background-position:3px 50%;background-repeat:no-repeat}.warning{border-color:#DBB;background-color:#F8F8F0;color:#820;background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QAAAAAAAD5Q7t/AAAACXBIWXMAAAG7AAABuwE67OPiAAAACXZwQWcAAAAQAAAAEABcxq3DAAAB2ElEQVQ4y6WTu2tUURCHvzn3nZu7j+hmtTDCBlstUqZQgvoHKGKjjdpIUJtgIwQsVQQNCqJYaaNYiIuYWOQvSCtEEQtJCEHi7jW72d372GNxTaJg1lUHBuacM/Od35yHaK35H1O9FuOqfT595ZzqSdBa/9aTOet0PHekG8+f0J1Z68xOeTsq0JF7xxyZFKN0Etmwb/9VC923xqT4x/ZgGIgBKjg8HL+xr/QNSBP/urF7nIX7N1l4cBdVOIhOzOm+AMmsdU0Gx3fBOuHiB8L3HxGpofxDQ9Fra/rPgDS4ahQrwDKOEhwloJYwcgHdxJvqCWhX1Q0jqOTEWAFzDS/I4w8Ng9NEvAaqOBK0XqpbP9fI1kN6KFaz6IYD+1NPrBgM+PS0hE4jRi+EIKBTh8Y73QpGozxjOgYwN0mNAblnFlxP8vVs1oTKpS+ZRvmxW7eDVS54jcV4ZnCMi9sKnogftnO13ETLEjfOABaszBQA2DtVhy6QgO54fKtK3PY2iuWzuqkAwjqP7YqXFduAk7mJYIpkwE0VqoV9ILDcGo+2WugsMxEcDzK5ySpoIIXS5VoWr2djEoAyzr48jfm1o9tnYKgXX59/PhctRX18zVXErWnlJ89+vYV/tO89rcJJiVkaLAAAACV0RVh0Y3JlYXRlLWRhdGUAMjAwOS0xMS0xNVQxNzowMjozNC0wNzowMLbnjhIAAAAldEVYdGRhdGU6Y3JlYXRlADIwMTAtMDItMjBUMjM6MjY6MjQtMDc6MDAuw1DWAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDEwLTAxLTExVDA5OjI0OjQ0LTA3OjAwGJHf5wAAAGd0RVh0TGljZW5zZQBodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9saWNlbnNlcy9ieS1zYS8zLjAvIG9yIGh0dHA6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL0xHUEwvMi4xL1uPPGMAAAAldEVYdG1vZGlmeS1kYXRlADIwMDktMDMtMTlUMTA6NTI6NTEtMDY6MDB/aP0GAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAABN0RVh0U291cmNlAE94eWdlbiBJY29uc+wYrugAAAAndEVYdFNvdXJjZV9VUkwAaHR0cDovL3d3dy5veHlnZW4taWNvbnMub3JnL+83qssAAAAASUVORK5CYII=\")}.error{border-color:#DCB;background-color:#F8F0F0;color:#800;background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QAAAAAAAD5Q7t/AAAACXBIWXMAAA3XAAAN1wFCKJt4AAAACXZwQWcAAAAQAAAAEABcxq3DAAACbklEQVQ4y41TS0sbYRQ9984kTia+sEKFmqLUbUi66kIIcSHFnVBKC4VCf0P2zT/wN7gpVLp20V0IrmtH0IrMwkcx0y5iqs2M+b6Ze7uor1YED5zdPeeee+GQquIm2pXKHBG9Y9eti0gZANhxtsTalqqu1oIgvDlPlwbtSoWJucFDQ+8fzs/7hVKJvakpAMB5FCE5OsqijY2BGtNUkZVaEMiVQbtSYXac9vDsbPXR0lIRSYKs14PEMQCAi0W44+NQz8P39fW4f3CwKVlWqwWBMAAQc6NYKlWnFxeLdncX59vbsJ0Osl+/kJ2ewh4fI9nZgd3bw+OlJd+fnn5KzA0AoFa5POfk85tzr14Np4eHkLMzgOial1AFVOGMjMAplRCurfUzY6rO28nJxoNyuZ7L5dh0OlCRa2bZLaZxDPI8IJ934uPjvqsi9dzoqGN+/kTY7YKIcLX3ZoKLFArgSaGA3MiIIyJ1NzOm7HgeBlGE558/4z749uIF8jMzyIwpu1maIksSpIPBvcQAkBoDThJkaQpXRbb6UTTvMOPLwgJABPo/+n9ncLGIfhRBRbZca0zrdxQ9G52aclNjrsV3magiNzaG351Oao1psVi72gtDY62FMCM15m4OBhBmWGvRC0Mj1q7ycrcbpsY0fwRBnwoFCNHV8C0xEahQwI8g6KfGNJe73ZBUFZ98n4m5nfP96vjMTJFUIYMBVOTvNY4DHhqCAujt7/dtHH9VkdrLOJarMn3M55mIGiBq+hMTnut5Ts73AVXY83PYOE6TkxOjqk2orrw25rpMN/GBeQ7AO2KuQ7V88dAtFWkBWH0j8k+d/wDGsYUOvG2ZLQAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxMC0wMi0yMFQyMzoyNDo0MC0wNzowMBgWrX8AAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTAtMDEtMTFUMDk6MTI6NDgtMDc6MDBLzaPVAAAANHRFWHRMaWNlbnNlAGh0dHA6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL0dQTC8yLjAvbGoGqAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAATdEVYdFNvdXJjZQBHTk9NRS1Db2xvcnOqmUTiAAAAMXRFWHRTb3VyY2VfVVJMAGh0dHA6Ly9jb2RlLmdvb2dsZS5jb20vcC9nbm9tZS1jb2xvcnMvUB216wAAAABJRU5ErkJggg==\")}.prompt-outer{display:inline;position:relative;text-align:center;position:absolute;left:10%;width:80%;z-index:1000}.prompt-inner{display:inline-block}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.3);background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.prompt-box{position:relative;text-align:left;background-color:#fff;border:2px solid #000;border-radius:10px;padding:1em;padding-bottom:1.5em;padding-top:.5em}.prompt-box h1{text-align:center;font-size:1.3em;font-weight:700;border:0;border-bottom:1px solid #000;margin:0}.prompt-box h2{color:#666;text-align:center;font-size:1.1em;font-style:italic;border:0;margin:0;padding:0;margin-bottom:1em}.prompt-buttons{position:relative;top:-13px;border:2px solid #000;border-bottom-left-radius:10px;border-bottom-right-radius:10px;padding-top:.3em;padding-bottom:.3em}.dialog-anchor{position:relative;height:1em}.dialog-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.2);background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\");z-index:1000;opacity:.5}.dialog-box{position:absolute;top:-.1em;left:-0em;width:auto;height:auto;padding:.3em;padding-top:1.3em;border:2px solid #000;border-radius:5px;background-color:#FFF;box-shadow:0 0 20px rgba(0,0,0,.1),0 3px 5px rgba(0,0,0,.3);min-width:100px;z-index:1001}.dialog-title{display:block;margin:-.3em;margin-top:-1.3em;margin-bottom:.3em;padding-left:3em;padding-right:3em;background-color:#EEE;border-bottom:2px solid #000;font-weight:700;border-top-left-radius:4px;border-top-right-radius:4px;white-space:pre}.dialog-close{position:absolute;display:block;margin:0;top:0;left:0;font-weight:400;font-size:.8em}.dialog-close.button,.dialog-close .button{margin:0;border-top-left-radius:2px;border-bottom-left-radius:2px}input[type=text]{border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}textarea,select,textarea:hover,select:hover{border:1px solid;background-color:#FFF;border-radius:3px;border-color:#BBB;border-top-color:#AAA;border-bottom-color:#CCC}select{box-shadow:-1px -1px 0 rgba(0,0,0,.05),1px 0 0 rgba(0,0,0,.025),0 1px 0 rgba(255,255,255,.5),-1px 0 0 rgba(255,255,255,.25)}select:hover{box-shadow:-1px -1px 0 rgba(0,0,0,.1),1px 0 0 rgba(0,0,0,.05),0 1px 0 rgba(255,255,255,.5),-1px 0 0 rgba(255,255,255,.5)}.button{display:inline;text-align:center;color:#444;font-weight:700;text-decoration:none;margin-left:.5em;margin-right:.5em;padding-left:.3em;padding-right:.3em;border:1px solid;border-radius:3px;border-left-color:#BBB;border-right-color:#DDD;border-top-color:#F3F3F3;border-bottom-color:#AAA;box-shadow:0 0 1px rgba(0,0,0,.9),0 2px 4px rgba(0,0,0,.05);background:#E4E4E4;font-family:\"Trebuchet MS\";white-space:nowrap}.button:hover{color:#222;background:#EEE;box-shadow:0 0 1px rgba(0,0,0,1),0 0 4px rgba(255,255,255,1),0 2px 4px rgba(0,0,0,.05)}.button:active{background-color:#E0E0E0;border-left-color:#C8C8C8;border-right-color:#DDD;border-top-color:#E8E8E8;border-bottom-color:#BBB;box-shadow:0 0 1px rgba(0,0,0,1),0 0 4px rgba(255,255,255,.7),0 2px 3px rgba(0,0,0,.05)}.button.link{color:#05C;border-color:#F0F8FF;background-color:#E0E8F0;background-image:none}.button.link:hover{color:#07F;background-color:#E8F0F8;background-image:none}.button.action{color:#000;border-color:#F8D8A8;background-color:#F0B870;background-image:none;font-weight:700}.button.action:hover{background-color:#FCC47C}.button.disabled,.button.disabled:hover{border-color:#F8F8F8;color:#888;background-color:#EEE;background-image:none;cursor:default}";
+			style.innerHTML = ".jsonary .link{color:#05C}.jsonary .link:hover{color:#07F;text-decoration:underline}.jsonary .jsonary-action,.jsonary a.jsonary-action{text-decoration:none}.jsonary .error,.jsonary .warning{border:1px solid;border-radius:3px;font-size:.8em;padding:.3em;padding-left:25px;padding-right:.5em;background-position:3px 50%;background-repeat:no-repeat}.jsonary .warning{border-color:#DBB;background-color:#F8F8F0;color:#820;background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QAAAAAAAD5Q7t/AAAACXBIWXMAAAG7AAABuwE67OPiAAAACXZwQWcAAAAQAAAAEABcxq3DAAAB2ElEQVQ4y6WTu2tUURCHvzn3nZu7j+hmtTDCBlstUqZQgvoHKGKjjdpIUJtgIwQsVQQNCqJYaaNYiIuYWOQvSCtEEQtJCEHi7jW72d372GNxTaJg1lUHBuacM/Od35yHaK35H1O9FuOqfT595ZzqSdBa/9aTOet0PHekG8+f0J1Z68xOeTsq0JF7xxyZFKN0Etmwb/9VC923xqT4x/ZgGIgBKjg8HL+xr/QNSBP/urF7nIX7N1l4cBdVOIhOzOm+AMmsdU0Gx3fBOuHiB8L3HxGpofxDQ9Fra/rPgDS4ahQrwDKOEhwloJYwcgHdxJvqCWhX1Q0jqOTEWAFzDS/I4w8Ng9NEvAaqOBK0XqpbP9fI1kN6KFaz6IYD+1NPrBgM+PS0hE4jRi+EIKBTh8Y73QpGozxjOgYwN0mNAblnFlxP8vVs1oTKpS+ZRvmxW7eDVS54jcV4ZnCMi9sKnogftnO13ETLEjfOABaszBQA2DtVhy6QgO54fKtK3PY2iuWzuqkAwjqP7YqXFduAk7mJYIpkwE0VqoV9ILDcGo+2WugsMxEcDzK5ySpoIIXS5VoWr2djEoAyzr48jfm1o9tnYKgXX59/PhctRX18zVXErWnlJ89+vYV/tO89rcJJiVkaLAAAACV0RVh0Y3JlYXRlLWRhdGUAMjAwOS0xMS0xNVQxNzowMjozNC0wNzowMLbnjhIAAAAldEVYdGRhdGU6Y3JlYXRlADIwMTAtMDItMjBUMjM6MjY6MjQtMDc6MDAuw1DWAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDEwLTAxLTExVDA5OjI0OjQ0LTA3OjAwGJHf5wAAAGd0RVh0TGljZW5zZQBodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9saWNlbnNlcy9ieS1zYS8zLjAvIG9yIGh0dHA6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL0xHUEwvMi4xL1uPPGMAAAAldEVYdG1vZGlmeS1kYXRlADIwMDktMDMtMTlUMTA6NTI6NTEtMDY6MDB/aP0GAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAABN0RVh0U291cmNlAE94eWdlbiBJY29uc+wYrugAAAAndEVYdFNvdXJjZV9VUkwAaHR0cDovL3d3dy5veHlnZW4taWNvbnMub3JnL+83qssAAAAASUVORK5CYII=\")}.jsonary .error{border-color:#DCB;background-color:#F8F0F0;color:#800;background-image:url(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QAAAAAAAD5Q7t/AAAACXBIWXMAAA3XAAAN1wFCKJt4AAAACXZwQWcAAAAQAAAAEABcxq3DAAACbklEQVQ4y41TS0sbYRQ9984kTia+sEKFmqLUbUi66kIIcSHFnVBKC4VCf0P2zT/wN7gpVLp20V0IrmtH0IrMwkcx0y5iqs2M+b6Ze7uor1YED5zdPeeee+GQquIm2pXKHBG9Y9eti0gZANhxtsTalqqu1oIgvDlPlwbtSoWJucFDQ+8fzs/7hVKJvakpAMB5FCE5OsqijY2BGtNUkZVaEMiVQbtSYXac9vDsbPXR0lIRSYKs14PEMQCAi0W44+NQz8P39fW4f3CwKVlWqwWBMAAQc6NYKlWnFxeLdncX59vbsJ0Osl+/kJ2ewh4fI9nZgd3bw+OlJd+fnn5KzA0AoFa5POfk85tzr14Np4eHkLMzgOial1AFVOGMjMAplRCurfUzY6rO28nJxoNyuZ7L5dh0OlCRa2bZLaZxDPI8IJ934uPjvqsi9dzoqGN+/kTY7YKIcLX3ZoKLFArgSaGA3MiIIyJ1NzOm7HgeBlGE558/4z749uIF8jMzyIwpu1maIksSpIPBvcQAkBoDThJkaQpXRbb6UTTvMOPLwgJABPo/+n9ncLGIfhRBRbZca0zrdxQ9G52aclNjrsV3magiNzaG351Oao1psVi72gtDY62FMCM15m4OBhBmWGvRC0Mj1q7ycrcbpsY0fwRBnwoFCNHV8C0xEahQwI8g6KfGNJe73ZBUFZ98n4m5nfP96vjMTJFUIYMBVOTvNY4DHhqCAujt7/dtHH9VkdrLOJarMn3M55mIGiBq+hMTnut5Ts73AVXY83PYOE6TkxOjqk2orrw25rpMN/GBeQ7AO2KuQ7V88dAtFWkBWH0j8k+d/wDGsYUOvG2ZLQAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAxMC0wMi0yMFQyMzoyNDo0MC0wNzowMBgWrX8AAAAldEVYdGRhdGU6bW9kaWZ5ADIwMTAtMDEtMTFUMDk6MTI6NDgtMDc6MDBLzaPVAAAANHRFWHRMaWNlbnNlAGh0dHA6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL0dQTC8yLjAvbGoGqAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAATdEVYdFNvdXJjZQBHTk9NRS1Db2xvcnOqmUTiAAAAMXRFWHRTb3VyY2VfVVJMAGh0dHA6Ly9jb2RlLmdvb2dsZS5jb20vcC9nbm9tZS1jb2xvcnMvUB216wAAAABJRU5ErkJggg==\")}.jsonary .prompt-outer{display:inline;position:relative;text-align:center;position:absolute;left:10%;width:80%;z-index:1000}.jsonary .prompt-inner{display:inline-block}.jsonary .prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.3);background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.jsonary .prompt-box{position:relative;text-align:left;background-color:#fff;border:2px solid #000;border-radius:10px;padding:1em;padding-bottom:1.5em;padding-top:.5em}.jsonary .prompt-box h1{text-align:center;font-size:1.3em;font-weight:700;border:0;border-bottom:1px solid #000;margin:0}.jsonary .prompt-box h2{color:#666;text-align:center;font-size:1.1em;font-style:italic;border:0;margin:0;padding:0;margin-bottom:1em}.jsonary .prompt-buttons{position:relative;top:-13px;border:2px solid #000;border-bottom-left-radius:10px;border-bottom-right-radius:10px;padding-top:.3em;padding-bottom:.3em}.jsonary .dialog-anchor{position:relative;height:1em}.jsonary .dialog-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.2);background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\");z-index:1000;opacity:.5}.jsonary .dialog-box{position:absolute;top:-.1em;left:-0em;width:auto;height:auto;padding:.3em;padding-top:1.3em;border:2px solid #000;border-radius:5px;background-color:#FFF;box-shadow:0 0 20px rgba(0,0,0,.1),0 3px 5px rgba(0,0,0,.3);min-width:100px;z-index:1001}.jsonary .dialog-title{display:block;margin:-.3em;margin-top:-1.3em;margin-bottom:.3em;padding-left:3em;padding-right:3em;background-color:#EEE;border-bottom:2px solid #000;font-weight:700;border-top-left-radius:4px;border-top-right-radius:4px;white-space:pre}.jsonary .dialog-close{position:absolute;display:block;margin:0;top:0;left:0;font-weight:400;font-size:.8em}.jsonary .dialog-close.button,.jsonary .dialog-close .button{margin:0;border-top-left-radius:2px;border-bottom-left-radius:2px}.jsonary input[type=text]{border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}.jsonary textarea,.jsonary select,.jsonary textarea:hover,.jsonary select:hover{border:1px solid;background-color:#FFF;border-radius:3px;border-color:#BBB;border-top-color:#AAA;border-bottom-color:#CCC}.jsonary select{box-shadow:-1px -1px 0 rgba(0,0,0,.05),1px 0 0 rgba(0,0,0,.025),0 1px 0 rgba(255,255,255,.5),-1px 0 0 rgba(255,255,255,.25)}.jsonary select:hover{box-shadow:-1px -1px 0 rgba(0,0,0,.1),1px 0 0 rgba(0,0,0,.05),0 1px 0 rgba(255,255,255,.5),-1px 0 0 rgba(255,255,255,.5)}.jsonary .button{display:inline;text-align:center;color:#444;font-weight:700;text-decoration:none;margin-left:.5em;margin-right:.5em;padding-left:.3em;padding-right:.3em;border:1px solid;border-radius:3px;border-left-color:#BBB;border-right-color:#DDD;border-top-color:#F3F3F3;border-bottom-color:#AAA;box-shadow:0 0 1px rgba(0,0,0,.9),0 2px 4px rgba(0,0,0,.05);background:#E4E4E4;font-family:\"Trebuchet MS\";white-space:nowrap}.jsonary .button:hover{color:#222;background:#EEE;box-shadow:0 0 1px rgba(0,0,0,1),0 0 4px rgba(255,255,255,1),0 2px 4px rgba(0,0,0,.05)}.jsonary .button:active{background-color:#E0E0E0;border-left-color:#C8C8C8;border-right-color:#DDD;border-top-color:#E8E8E8;border-bottom-color:#BBB;box-shadow:0 0 1px rgba(0,0,0,1),0 0 4px rgba(255,255,255,.7),0 2px 3px rgba(0,0,0,.05)}.jsonary .button.link{color:#05C;background-color:#E0E8F0}.jsonary .button.link:hover{color:#07F;background-color:#E8F0F8;background-image:none}.jsonary .button.action{color:#000;background-color:#F0B870;font-weight:700}.jsonary .button.action:hover{background-color:#FCC47C}.jsonary .button.disabled,.jsonary .button.disabled:hover{border-color:#DDD;color:#999;background-color:#EEE;cursor:default}";
 			document.head.appendChild(style);
 		})();
 	}
@@ -9598,7 +9800,7 @@
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
 			var style = document.createElement('style');
-			style.innerHTML = ".json-schema,.json-link{margin-right:.5em;margin-left:.5em;border:1px solid #DD3;background-color:#FFB;padding-left:.5em;padding-right:.5em;color:#880;font-size:.85em;font-style:italic;text-decoration:none}.json-link{border:1px solid #88F;background-color:#DDF;color:#008;font-style:normal}.json-raw{display:inline;white-space:pre}.valid{background-color:#DFD}.invalid{background-color:#FDD}textarea{vertical-align:middle}.json-object{width:100%}.json-object-title{font-weight:700}.json-object-outer{background-color:#FFF;border-radius:3px}.json-object-outer>legend{background-color:#EEE;border:1px solid #BBB;border-radius:3px;font-size:.8em;padding:.2em;padding-left:.7em;padding-right:.7em}.json-object-pair{margin-bottom:.3em}.json-object-key{padding:0;vertical-align:top;width:4em}.json-object-key-text,.json-object-key-title{text-align:right;font-style:italic;padding-right:.5em;border-right:1px solid #000;white-space:pre}.json-object-key-title{font-weight:700;font-style:normal;min-height:1.2em}.json-object-value{padding-left:.5em;vertical-align:top}.json-object-delete-container,.json-array-delete-container{position:relative;vertical-align:top;padding-left:1.2em}.json-object-delete,.json-array-delete{position:absolute;left:0;top:0;font-family:Arial,sans-serif;font-style:normal;font-weight:700;font-size:.9em;color:red;text-decoration:none;margin-right:1em;opacity:.5;transition:opacity .05s ease-in;text-shadow:0 -1px 1px rgba(255,255,255,.7),0 1px 1px rgba(0,0,0,.8)}.json-object-delete:hover,.json-array-delete:hover{opacity:1}.json-object-delete-value{}.json-object-add{display:block;padding-left:2.2em;color:#888;font-size:.9em}.json-object-add-key,.json-object-add-key-new{text-decoration:none;margin-left:1em;color:#000;border:1px solid #888;background-color:#EEE}.json-object-add-key-new{border:1px dotted #BBB;background-color:#EEF;font-style:italic}.json-select-type-dialog-outer{position:relative}.json-select-type-dialog{position:absolute;top:-.65em;left:-.5em;width:12em;border:2px solid #000;border-radius:10px;background-color:#fff;padding:.5em;z-index:1;opacity:.95;box-shadow:0 1px 3px rgba(0,0,0,.1)}.json-select-type-background{position:fixed;top:0;right:0;bottom:0;left:0;background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.json-select-type{font-family:monospaced;font-weight:700;font-size:.8em;padding-left:.3em;padding-right:.3em}.json-array{}.json-array-item{display:block}.json-array-add{display:block;padding-left:2.2em;color:#000;font-family:monospace;font-style:normal;font-weight:700;color:#00F;text-decoration:none;margin-right:1em}.json-string{white-space:pre-wrap;border-radius:3px;font-size:inherit}.json-string-content-editable{display:inline;display:inline-block;vertical-align:text-top;background-color:#FFF;background-color:rgba(255,255,255,.95);outline:1px solid #BBB;outline:1px solid rgba(0,0,0,.05);color:#444;margin:.1em;padding:.3em;font-family:inherit;text-shadow:none;font-size:.9em;line-height:1.2em;min-width:5em;min-height:1.2em;max-height:20em;overflow:auto;border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}.json-string-content-editable:focus{color:#000;border-color:#48C;box-shadow:0 0 2px rgba(0,0,0,.1);z-index:1}.json-string-content-editable p{display:block!important;margin:0!important;padding:0!important}.json-string-content-editable *{position:static!important;margin:0!important;padding:0!important;font-size:inherit!important;font-family:inherit!important;color:#000!important;background:none!important;border:0!important;outline:0!important;font-weight:400!important;font-style:normal!important;text-decoration:none!important;text-transform:none!important;font-variant:normal!important;line-height:1.2em!important}textarea.json-string{font-size:inherit;font-weight:inherit;background-color:#FFF;background-color:rgba(255,255,255,.5);width:30%}.json-string-notice{color:#666;margin-left:.5em}.json-number{font-family:monospace;color:#000;font-weight:700;text-decoration:none}input.json-number{width:3em;text-align:center;font-family:Trebuchet MS}.json-number-increment,.json-number-decrement{font-family:monospace;padding-left:.5em;padding-right:.5em}.json-boolean-true,.json-boolean-false{font-family:monospace;color:#080;font-weight:700;text-decoration:none}.json-boolean-false{color:#800}.json-undefined-create{color:#008;text-decoration:none}.json-undefined-create:hover{color:#08F}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.5)}.prompt-buttons{background-color:#EEE;border:2px solid #000;text-align:center;position:relative}.prompt-data{background-color:#fff;border:2px solid #000;border-radius:10px;position:relative}";
+			style.innerHTML = ".json-schema,.json-link{margin-right:.5em;margin-left:.5em;border:1px solid #DD3;background-color:#FFB;padding-left:.5em;padding-right:.5em;color:#880;font-size:.85em;font-style:italic;text-decoration:none}.json-link{border:1px solid #88F;background-color:#DDF;color:#008;font-style:normal}.json-raw{display:inline;white-space:pre}.json-null{font-style:italic;color:#666}.valid{background-color:#DFD}.invalid{background-color:#FDD}textarea{vertical-align:middle}.json-object{width:100%}.json-object-title{font-weight:700}.json-object-outer{background-color:#FFF;border-radius:3px}.json-object-outer>legend{background-color:#EEE;border:1px solid #BBB;border-radius:3px;font-size:.8em;padding:.2em;padding-left:.7em;padding-right:.7em}.json-object-pair{margin-bottom:.3em}.json-object-key{padding:0;vertical-align:top;width:4em}.json-object-key-text,.json-object-key-title{text-align:right;font-style:italic;padding-right:.5em;border-right:1px solid #000;white-space:pre}.json-object-key-title{font-weight:700;font-style:normal;min-height:1.2em}.json-object-value{padding-left:.5em;vertical-align:top}.json-object-delete-container,.json-array-delete-container{position:relative;vertical-align:top;padding-left:1.2em}.json-object-delete,.json-array-delete{position:absolute;left:0;top:0;font-family:Arial,sans-serif;font-style:normal;font-weight:700;font-size:.9em;color:red;text-decoration:none;margin-right:1em;opacity:.5;transition:opacity .05s ease-in;text-shadow:0 -1px 1px rgba(255,255,255,.7),0 1px 1px rgba(0,0,0,.8)}.json-object-delete:hover,.json-array-delete:hover{opacity:1}.json-object-delete-value{}.json-object-add{display:block;padding-left:2.2em;color:#888;font-size:.9em}.json-object-add-key,.json-object-add-key-new{text-decoration:none;margin-left:1em;color:#000;border:1px solid #888;background-color:#EEE}.json-object-add-key-new{border:1px dotted #BBB;background-color:#EEF;font-style:italic}.json-select-type-dialog-outer{position:relative}.json-select-type-dialog{position:absolute;top:-.65em;left:-.5em;width:12em;border:2px solid #000;border-radius:10px;background-color:#fff;padding:.5em;z-index:1;opacity:.95;box-shadow:0 1px 3px rgba(0,0,0,.1)}.json-select-type-background{position:fixed;top:0;right:0;bottom:0;left:0;background-image:URL(\"data:;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.json-select-type{font-family:monospaced;font-weight:700;font-size:.8em;padding-left:.3em;padding-right:.3em}.json-array{}.json-array-item{display:block}.json-array-add{display:block;padding-left:2.2em;color:#000;font-family:monospace;font-style:normal;font-weight:700;color:#00F;text-decoration:none;margin-right:1em}.json-string{white-space:pre-wrap;border-radius:3px;font-size:inherit}.json-string-content-editable{display:inline;display:inline-block;vertical-align:text-top;background-color:#FFF;background-color:rgba(255,255,255,.95);outline:1px solid #BBB;outline:1px solid rgba(0,0,0,.05);color:#444;margin:.1em;padding:.3em;font-family:inherit;text-shadow:none;font-size:.9em;line-height:1.2em;min-width:5em;min-height:1.2em;max-height:20em;overflow:auto;border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}.json-string-content-editable:focus{color:#000;border-color:#48C;box-shadow:0 0 2px rgba(0,0,0,.1);z-index:1}.json-string-content-editable p{display:block!important;margin:0!important;padding:0!important}.json-string-content-editable *{position:static!important;margin:0!important;padding:0!important;font-size:inherit!important;font-family:inherit!important;color:#000!important;background:none!important;border:0!important;outline:0!important;font-weight:400!important;font-style:normal!important;text-decoration:none!important;text-transform:none!important;font-variant:normal!important;line-height:1.2em!important}textarea.json-string{font-size:inherit;font-weight:inherit;background-color:#FFF;background-color:rgba(255,255,255,.5);width:30%}.json-string-notice{color:#666;margin-left:.5em}.json-number{font-family:monospace;color:#000;font-weight:700;text-decoration:none;white-space:nowrap}input.json-number-input{width:3em;text-align:center;font-family:Trebuchet MS;font-weight:700}.json-number-increment,.json-number-decrement{font-family:monospace;padding-left:.5em;padding-right:.5em}.json-boolean-true,.json-boolean-false{font-family:monospace;color:#080;font-weight:700;text-decoration:none}.json-boolean-false{color:#800}.json-undefined-create{color:#008;text-decoration:none}.json-undefined-create:hover{color:#08F}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.5)}.prompt-buttons{background-color:#EEE;border:2px solid #000;text-align:center;position:relative}.prompt-data{background-color:#fff;border:2px solid #000;border-radius:10px;position:relative}";
 			document.head.appendChild(style);
 		})();
 	}

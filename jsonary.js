@@ -12,6 +12,7 @@ if (typeof window != "undefined" && typeof localStorage == "undefined") {
 	window.localStorage = {};
 }
 
+
 // This is not a full ES5 shim - it just covers the functions that Jsonary uses.
 
 if (!Array.isArray) {
@@ -44,6 +45,21 @@ if (!String.prototype.trim) {
 	String.prototype.trim = function () {
 		return this.replace(/^\s+|\s+$/g,'');
 	};
+}
+
+// Polyfill from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create
+if (!Object.create) {
+	Object.create = (function(){
+		function F(){}
+
+		return function(o){
+			if (arguments.length != 1) {
+				throw new Error('Object.create implementation only accepts one parameter.');
+			}
+			F.prototype = o
+			return new F()
+		}
+	})()
 }
 
 // json2.js, from Douglas Crockford's GitHub repo
@@ -648,15 +664,73 @@ Uri.prototype = {
 			result += "#" + this.fragment;
 		}
 		return result;
+	},
+	resolve: function (relative) {
+		var result = new Uri(relative + "");
+		if (result.scheme == null) {
+			result.scheme = this.scheme;
+			result.doubleSlash = this.doubleSlash;
+			if (result.domain == null) {
+				result.domain = this.domain;
+				result.port = this.port;
+				result.username = this.username;
+				result.password = this.password;
+				if (result.path == null) {
+					result.path = this.path;
+					if (result.query == null) {
+						result.query = this.query;
+					}
+				} else if (result.path.charAt(0) != "/" && this.path != null) {
+					var precedingSlash = this.path.charAt(0) == "/";
+					var thisParts;
+					if (precedingSlash) {
+						thisParts = this.path.substring(1).split("/");
+					} else {
+						thisParts = this.path.split("/");
+					}
+					if (thisParts[thisParts.length - 1] == "..") {
+						thisParts.push("");
+					}
+					thisParts.pop();
+					for (var i = thisParts.length - 1; i >= 0; i--) {
+						if (thisParts[i] == ".") {
+							thisParts.slice(i, 1);
+						}
+					}
+					var resultParts = result.path.split("/");
+					for (var i = 0; i < resultParts.length; i++) {
+						var part = resultParts[i];
+						if (part == ".") {
+							continue;
+						} else if (part == "..") {
+							if (thisParts.length > 0 && thisParts[thisParts.length - 1] != "..") {
+								thisParts.pop();
+							} else if (!precedingSlash) {
+								thisParts = thisParts.concat(resultParts.slice(i));
+								break;
+							}
+						} else {
+							thisParts.push(part);
+						}
+					}
+					result.path = (precedingSlash ? "/" : "") + thisParts.join("/");
+				}
+			}
+		}
+		return result.toString();
 	}
 };
+publicApi.baseUri = null;
 Uri.resolve = function(base, relative) {
 	if (relative == undefined) {
-		if (typeof window == 'undefined') {
+		relative = base;
+		if (publicApi.baseUri) {
+			base = publicApi.baseUri;
+		} else if (typeof window != 'undefined') {
+			base = window.location.href;
+		} else {
 			return base;
 		}
-		relative = base;
-		base = window.location.toString();
 	}
 	if (base == undefined) {
 		return relative;
@@ -664,58 +738,7 @@ Uri.resolve = function(base, relative) {
 	if (!(base instanceof Uri)) {
 		base = new Uri(base);
 	}
-	var result = new Uri(relative + "");
-	if (result.scheme == null) {
-		result.scheme = base.scheme;
-		result.doubleSlash = base.doubleSlash;
-		if (result.domain == null) {
-			result.domain = base.domain;
-			result.port = base.port;
-			result.username = base.username;
-			result.password = base.password;
-			if (result.path == null) {
-				result.path = base.path;
-				if (result.query == null) {
-					result.query = base.query;
-				}
-			} else if (result.path.charAt(0) != "/" && base.path != null) {
-				var precedingSlash = base.path.charAt(0) == "/";
-				var baseParts;
-				if (precedingSlash) {
-					baseParts = base.path.substring(1).split("/");
-				} else {
-					baseParts = base.path.split("/");
-				}
-				if (baseParts[baseParts.length - 1] == "..") {
-					baseParts.push("");
-				}
-				baseParts.pop();
-				for (var i = baseParts.length - 1; i >= 0; i--) {
-					if (baseParts[i] == ".") {
-						baseParts.slice(i, 1);
-					}
-				}
-				var resultParts = result.path.split("/");
-				for (var i = 0; i < resultParts.length; i++) {
-					var part = resultParts[i];
-					if (part == ".") {
-						continue;
-					} else if (part == "..") {
-						if (baseParts.length > 0 && baseParts[baseParts.length - 1] != "..") {
-							baseParts.pop();
-						} else if (!precedingSlash) {
-							baseParts = baseParts.concat(resultParts.slice(i));
-							break;
-						}
-					} else {
-						baseParts.push(part);
-					}
-				}
-				result.path = (precedingSlash ? "/" : "") + baseParts.join("/");
-			}
-		}
-	}
-	return result.toString();
+	return base.resolve(relative);
 };
 Uri.parse = function(uri) {
 	return new Uri(uri);
@@ -738,6 +761,13 @@ function unpackQuery(queryString) {
 	for (var key in queryFunctions) {
 		pairs[key] = queryFunctions[key];
 	}
+	var oldJson = JSON.stringify(pairs);
+	pairs.toString = function () {
+		if (JSON.stringify(this) == oldJson) {
+			return queryString;
+		}
+		return queryFunctions.toString.call(this);
+	};
 	pairs.isQuery = true;
 	return pairs;
 };
@@ -1077,9 +1107,11 @@ var Utils = {
 			return JSON.stringify(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
 			if (variant == "dotted") {
-				return Utils.formEncode(data, "", '.', '', '|');
+				return Utils.formEncode(data, "", '.', '', '|').replace(/%20/g, '+').replace(/%2F/g, "/");
+			} else if (variant == 'pretty') {
+				return Utils.formEncode(data, "", '[', ']').replace(/%20/g, '+').replace(/%2F/g, "/").replace(/%5B/g, '[').replace(/%5D/g, ']').replace(/%7C/g, '|');
 			} else {
-				return Utils.formEncode(data, "", '[', ']');
+				return Utils.formEncode(data, "", '[', ']').replace(/%20/g, '+');
 			}
 		} else {
 			throw new Error("Unknown encoding type: " + this.encType);
@@ -1092,8 +1124,9 @@ var Utils = {
 		if (encType == "application/json") {
 			return JSON.parse(data);
 		} else if (encType == "application/x-www-form-urlencoded") {
+			data = data.replace(/\+/g, '%20');
 			if (variant == "dotted") {
-				return Utils.formDecode(data, '.', '', '|');
+				return Utils.formDecode(data.replace(/%7C/g, '|'), '.', '', '|');
 			} else {
 				return Utils.formDecode(data, '[', ']');
 			}
@@ -1259,6 +1292,33 @@ var Utils = {
 			result += "/" + Utils.encodePointerComponent(pointerComponents[i]);
 		}
 		return result;
+	},
+	prettyJson: function (data) {
+		var json = JSON.stringify(data, null, "\t");
+		function compactJson(json) {
+			try {
+				var compact = JSON.stringify(JSON.parse(json));
+				var parts = compact.split('"');
+				for (var i = 0; i < parts.length; i++) {
+					var part = parts[i];
+					part = part.replace(/:/g, ': ');
+					part = part.replace(/,/g, ', ');
+					parts[i] = part;
+					i++;
+					while (i < parts.length && parts[i].charAt(parts[i].length - 1) == "\\") {
+						i++;
+					}
+				}
+				return parts.join('"');
+			} catch (e) {
+				return json;
+			}
+		}
+		
+		json = json.replace(/\{[^\{,}]*\}/g, compactJson); // Objects with a single simple property
+		json = json.replace(/\[[^\[,\]]*\]/g, compactJson); // Arrays with a single simple item
+		json = json.replace(/\[[^\{\[\}\]]*\]/g, compactJson); // Arrays containing only scalar items
+		return json;
 	}
 };
 (function () {
@@ -1294,6 +1354,7 @@ publicApi.decodePointerComponent = Utils.decodePointerComponent;
 publicApi.splitPointer = Utils.splitPointer;
 publicApi.joinPointer = Utils.joinPointer;
 publicApi.escapeHtml = Utils.escapeHtml;
+publicApi.prettyJson = Utils.prettyJson;
 
 publicApi.extend = function (obj) {
 	for (var key in obj) {
@@ -1456,7 +1517,7 @@ publicApi.ajaxFunction = function (params, callback) {
 					data = JSON.parse(data);
 				} catch (e) {
 					if (xhr.status !=204) {
-						thisRequest.ajaxError(e, data);
+						callback(e, data);
 						return;
 					} else {
 						data = null;
@@ -1497,7 +1558,7 @@ publicApi.ajaxFunction = function (params, callback) {
 			}
 		}
 	};
-	xhr.open(method, xhrUrl, true);
+	xhr.open(params.method, xhrUrl, true);
 	xhr.setRequestHeader("Content-Type", encType);
 	xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
 	xhr.send(xhrData);
@@ -1680,10 +1741,6 @@ publicApi.HttpError = HttpError;
 
 function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	executeImmediately(this);
-<<<<<<< HEAD
-=======
-	this.circular = true;
->>>>>>> master
 	url = Utils.resolveRelativeUri(url);
 
 	data = Utils.encodeData(data, encType);
@@ -1709,7 +1766,6 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
-	delete this.circular;
 	this.invalidate = function() {
 		if (method == "GET") {
 			this.fetchData(url, method, data, encType, hintSchema);
@@ -1754,12 +1810,16 @@ Request.prototype = {
 			// Some browsers have all parameters as lower-case, so we do this for compatability
 			//       (discovered using Dolphin Browser on an Android phone)
 			keyName = keyName.toLowerCase();
-			if (headers[keyName] == undefined) {
-				headers[keyName] = value;
-			} else if (typeof headers[keyName] == "object") {
-				headers[keyName].push(value);
-			} else {
-				headers[keyName] = [headers[keyName], value];
+			var values = value.split(', ');
+			for (var j = 0; j < values.length; j++) {
+				var value = values[j];
+				if (headers[keyName] == undefined) {
+					headers[keyName] = value;
+				} else if (typeof headers[keyName] == "object") {
+					headers[keyName].push(value);
+				} else {
+					headers[keyName] = [headers[keyName], value];
+				}
 			}
 		}
 		Utils.log(Utils.logLevel.DEBUG, "headers: " + JSON.stringify(headers, null, 4));
@@ -1827,19 +1887,17 @@ Request.prototype = {
 		}
 
 		thisRequest.checkForFullResponse();
-		if (!thisRequest.circular) {
-			thisRequest.document.raw.whenSchemasStable(function () {
-				var rootLink = thisRequest.document.raw.getLink("root");
-				if (rootLink != undefined) {
-					var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
-					thisRequest.document.setRoot(fragment);
-				} else {
-					thisRequest.document.setRoot("");
-				}
-			});
-		} else {
-			thisRequest.document.setRoot("");
-		}
+		thisRequest.waitingForRoot = true;
+		thisRequest.document.raw.whenSchemasStable(function () {
+			delete thisRequest.waitingForRoot;
+			var rootLink = thisRequest.document.raw.getLink("root");
+			if (rootLink != undefined) {
+				var fragment = decodeURI(rootLink.href.substring(rootLink.href.indexOf("#") + 1));
+				thisRequest.document.setRoot(fragment);
+			} else {
+				thisRequest.document.setRoot("");
+			}
+		});
 	},
 	ajaxError: function (error, data) {
 		this.fetched = true;
@@ -1879,13 +1937,18 @@ Request.prototype = {
 		var params = {
 			url: xhrUrl,
 			data: xhrData,
-			encType: encType
+			encType: encType,
+			method: method
 		};
 		publicApi.ajaxFunction(params, function (error, data, headers) {
 			if (!error) {
 				thisRequest.ajaxSuccess(data, headers, hintSchema);
+				// Special RESTy knowledge
+				if (params.method == "PUT") {
+					publicApi.invalidate(params.url);
+				}			
 			} else {
-				thisRequest.ajaxError(new HttpError(xhr.status, xhr), data);
+				thisRequest.ajaxError(error, data);
 			}
 		});
 	}
@@ -2096,7 +2159,7 @@ PatchOperation.prototype = {
 		if (this._subject.substring(0, path.length) == path) {
 			var remainder = this._subject.substring(path.length);
 			if (remainder.indexOf("/") == -1) {
-				return decodeURIComponent(remainder);
+				return Utils.decodePointerComponent(remainder);
 			}
 		}
 		return false;
@@ -2122,7 +2185,7 @@ PatchOperation.prototype = {
 		if (this._target.substring(0, path.length) == path) {
 			var remainder = this._target.substring(path.length);
 			if (remainder.indexOf("/") == -1) {
-				return decodeURIComponent(remainder);
+				return Utils.decodePointerComponent(remainder);
 			}
 		}
 		return false;
@@ -2468,7 +2531,7 @@ function Data(document, secrets, parent, parentKey) {
 				}
 			} else {
 				var child = operation.subjectChild(thisPath);
-				if (child) {
+				if (typeof child == "string") {
 					updateKeys[child] = true;
 					if (basicType == "object") {
 						if (operation.action() == "add") {
@@ -2548,7 +2611,7 @@ function Data(document, secrets, parent, parentKey) {
 					}
 				}
 				var targetChild = operation.targetChild(thisPath);
-				if (targetChild) {
+				if (typeof targetChild == "string") {
 					updateKeys[targetChild] = true;
 					if (basicType == "object") {
 						if (operation.action() == "move") {
@@ -2980,8 +3043,10 @@ publicApi.isData = function (obj) {
 
 Data.prototype.deflate = function () {
 	var result = this.document.deflate();
-	result.path = this.pointerPath();
-	return result;
+	return {
+		document: this.document.deflate(),
+		path: this.pointerPath()
+	}
 };
 Document.prototype.deflate = function (canUseUrl) {
 	if (this.isDefinitive) {
@@ -3006,6 +3071,9 @@ Document.prototype.deflate = function (canUseUrl) {
 	return result;
 };
 publicApi.inflate = function (deflated, callback) {
+	if (deflated.path !== undefined && deflated.document !== undefined) {
+		return publicApi.inflate(deflated.document).root.subPath(deflated.path);
+	}
 	if (typeof deflated == "string") {
 		var request = requestJson(deflated).request;
 		if (callback) {
@@ -3027,9 +3095,6 @@ publicApi.inflate = function (deflated, callback) {
 	}
 	data.document.setRoot(deflated.root);
 	var result = data.document;
-	if (deflated.path) {
-		result = data.document.raw.subPath(deflated.path);
-	}
 	if (callback) {
 		callback(null, result);
 	}
@@ -3039,7 +3104,13 @@ publicApi.inflate = function (deflated, callback) {
 function getSchema(url, callback) {
 	// Use getRawResponse() instead of getRoot to avoid blocking on self-referential schemas
 	return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
+		if (fragmentRequest.fragment) {
+			data = data.subPath(fragmentRequest.fragment);
+		}
 		var schema = data.asSchema();
+		schema.referenceUrl = function () {
+			return fragmentRequest.url;
+		};
 		if (callback != undefined) {
 			callback.call(schema, schema, fragmentRequest);
 		}
@@ -6237,7 +6308,7 @@ publicApi.UriTemplate = UriTemplate;
 					this.oldSubContexts = {};
 				}
 				Context.prototype = this.rootContext;
-				this.subContexts[labelKey] = new Context(this.rootContext, this, label, data, uiStartingState, usedComponents);
+				this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, usedComponents);
 			}
 			var subContext = this.subContexts[labelKey];
 			subContext.elementId = elementId;
@@ -6258,7 +6329,7 @@ publicApi.UriTemplate = UriTemplate;
 				this.clearOldSubContexts();
 			}
 		},
-		rerenderHtml: function (htmlCallback) {
+		asyncRerenderHtml: function (htmlCallback) {
 			var thisContext = this;
 			if (this.uiState == undefined) {
 				this.loadState(this.uiStartingState);
@@ -6266,7 +6337,6 @@ publicApi.UriTemplate = UriTemplate;
 			
 			var renderer = this.renderer;
 			var data = this.data;
-			var elementId = this.elementId;
 			
 			renderer.asyncRenderHtml(data, this, function (error, innerHtml) {
 				if (error) {
@@ -6274,15 +6344,7 @@ publicApi.UriTemplate = UriTemplate;
 				}
 				thisContext.clearOldSubContexts();
 
-				var uniqueId = data.uniqueId;
-				if (thisContext.elementLookup[uniqueId] == undefined) {
-					thisContext.elementLookup[uniqueId] = [];
-				}
-				if (thisContext.elementLookup[uniqueId].indexOf(elementId) == -1) {
-					thisContext.elementLookup[uniqueId].push(elementId);
-				}
-				thisContext.addEnhancement(elementId, thisContext);
-				htmlCallback(null, '<span id="' + elementId + '">' + innerHtml + '</span>', thisContext);
+				htmlCallback(null, innerHtml, thisContext);
 			});
 		},
 
@@ -6344,7 +6406,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			return subContext;
 		},
-		renderHtml: function (data, label, uiStartingState, contextCallback) {
+		renderHtml: function (data, label, uiStartingState) {
 			if (uiStartingState == undefined && typeof label == "object") {
 				uiStartingState = label;
 				label = null;
@@ -6363,7 +6425,7 @@ publicApi.UriTemplate = UriTemplate;
 					} else {
 						var element = document.getElementById(elementId);
 						if (element) {
-							thisContext.render(element, actualData, label, uiStartingState, contextCallback);
+							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
 							Jsonary.log(Jsonary.logLevel.WARNING, "Attempted delayed render to non-existent element: " + elementId);
 						}
@@ -6399,9 +6461,6 @@ publicApi.UriTemplate = UriTemplate;
 				this.elementLookup[uniqueId].push(elementId);
 			}
 			this.addEnhancement(elementId, subContext);
-			if (contextCallback) {
-				contextCallback(subContext);
-			}
 			return '<span id="' + elementId + '">' + innerHtml + '</span>';
 		},
 		asyncRenderHtml: function (data, label, uiStartingState, htmlCallback) {
@@ -6417,9 +6476,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (data.getData != undefined) {
 				label = label || 'async' + Math.random();
 				var subContext = this.getSubContext(elementId, null, label, uiStartingState);
-				console.log("Fetching data");
 				data.getData(function (actualData) {
-					console.log("Fetched data");
 					thisContext.asyncRenderHtml(actualData, label, uiStartingState, htmlCallback);
 				});
 				return subContext;
@@ -6441,15 +6498,7 @@ publicApi.UriTemplate = UriTemplate;
 			
 			renderer.asyncRenderHtml(data, subContext, function (error, innerHtml) {
 				subContext.clearOldSubContexts();
-				var uniqueId = data.uniqueId;
-				if (thisContext.elementLookup[uniqueId] == undefined) {
-					thisContext.elementLookup[uniqueId] = [];
-				}
-				if (thisContext.elementLookup[uniqueId].indexOf(elementId) == -1) {
-					thisContext.elementLookup[uniqueId].push(elementId);
-				}
-				thisContext.addEnhancement(elementId, subContext);
-				htmlCallback(null, '<span id="' + elementId + '">' + innerHtml + '</span>', subContext);
+				htmlCallback(null, innerHtml, subContext);
 			});
 			return subContext;
 		},
@@ -6756,7 +6805,11 @@ publicApi.UriTemplate = UriTemplate;
 	}
 
 	function render(element, data, uiStartingState) {
+		if (typeof element == 'string') {
+			element = document.getElementById(element);
+		}
 		var innerElement = document.createElement('span');
+		innerElement.className = "jsonary";
 		element.innerHTML = "";
 		element.appendChild(innerElement);
 		var context = pageContext.subContext(Math.random());
@@ -6768,10 +6821,15 @@ publicApi.UriTemplate = UriTemplate;
 		var result = pageContext.renderHtml(data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
-		return result;
+		return '<span class="jsonary">' + result + '</span>';
 	}
 	function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-		return pageContext.asyncRenderHtml(data, null, uiStartingState, htmlCallback);
+		return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml) {
+			if (error) {
+				htmlCallback(error, innerHtml);
+			}
+			htmlCallback('<span class="jsonary">' + result + '</span>');
+		});
 	}
 
 	if (global.jQuery != undefined) {
@@ -6788,7 +6846,7 @@ publicApi.UriTemplate = UriTemplate;
 		return "javascript:void(0)";
 	};
 	render.actionHtml = function (elementId, linkUrl, innerHtml) {
-		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" style="text-decoration: none">' + innerHtml + '</a>';
+		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
 	};
 	
 	/**********/
@@ -6804,7 +6862,6 @@ publicApi.UriTemplate = UriTemplate;
 		return saveDataId;
 	};
 	render.loadData = function (saveDataId) {
-		console.log("Loading: " + saveDataId);
 		if (typeof localStorage == "undefined") {
 			return undefined;
 		}
@@ -6884,10 +6941,49 @@ publicApi.UriTemplate = UriTemplate;
 		},
 		asyncRenderHtml: function (data, context, htmlCallback) {
 			var innerHtml = "";
+			var subCounter = 1;
+			var subs = {};
 			if (this.renderHtmlFunction != undefined) {
-				innerHtml = this.renderHtmlFunction(data, context);
+				// Create a substitute context for this render
+				// uiState and other variables still point to the same place, but calls to renderHtml() are redirected to an async substitute
+				var substituteRenderHtml = function (data, label, uiState) {
+					var placeholderString = '<<ASYNC' + Math.random() + '>>';
+					var actualString = null;
+					subCounter++;
+					this.asyncRenderHtml(data, label, uiState, function (error, innerHtml) {
+						subs[placeholderString] = innerHtml;
+						actualString = innerHtml;
+						decrementSubRenderCount();
+					});
+					if (actualString !== null) {
+						delete subs[placeholderString];
+						return actualString;
+					}
+					return placeholderString;
+				};
+				function createAsyncContext(context) {
+					var asyncContext = Object.create(context);
+					asyncContext.renderHtml = substituteRenderHtml;
+					asyncContext.subContext = function () {
+						return createAsyncContext(context.subContext.apply(this, arguments));
+					};
+					return asyncContext;
+				}
+				// Render innerHtml with placeholders
+				innerHtml = this.renderHtmlFunction(data, createAsyncContext(context));
 			}
-			htmlCallback(null, innerHtml, context);
+			function decrementSubRenderCount() {
+				subCounter--;
+				if (subCounter > 0) {
+					return;
+				}
+				
+				for (var placeholder in subs) {
+					//innerHtml = innerHtml.replace(placeholder, subs[placeholder]);
+				}
+				htmlCallback(null, innerHtml, context);
+			}
+			decrementSubRenderCount();
 		},
 		enhance: function (element, data, context) {
 			if (this.renderFunction != null) {
