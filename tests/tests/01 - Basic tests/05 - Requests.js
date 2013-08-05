@@ -22,7 +22,7 @@ tests.add("encodeData()", function() {
 		{"array":[[0,1],[2,3]]}
 	];
 	var expectedForm = [
-		"plain%20string",
+		"plain+string",
 		"1",
 		"key=value",
 		"array%5B%5D=null&array%5B%5D=true&array%5B%5D=3&array%5B%5D=4",
