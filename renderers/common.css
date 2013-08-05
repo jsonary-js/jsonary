@@ -1,17 +1,17 @@
-.link {
+.jsonary .link {
 	color: #05C;
 }
 
-.link:hover {
+.jsonary .link:hover {
 	color: #07F;
 	text-decoration: underline;
 }
 
-.jsonary-action, a.jsonary-action {
+.jsonary .jsonary-action, .jsonary a.jsonary-action {
 	text-decoration: none;
 }
 
-.error, .warning {
+.jsonary .error, .jsonary .warning {
 	border: 1px solid;
 	border-radius: 3px;
 	font-size: 0.8em;
@@ -22,14 +22,14 @@
 	background-repeat: no-repeat;
 }
 
-.warning {
+.jsonary .warning {
 	border-color: #DBB;
 	background-color: #F8F8F0;
 	color: #820;
 	background-image: url('images/warning.png');
 }
 
-.error {
+.jsonary .error {
 	border-color: #DCB;
 	background-color: #F8F0F0;
 	color: #800;
@@ -38,7 +38,7 @@
 
 /****** Prompt *******/
 
-.prompt-outer {
+.jsonary .prompt-outer {
 	display: inline;
 	position: relative;
 	text-align: center;
@@ -48,11 +48,11 @@
 	z-index: 1000;
 }
 
-.prompt-inner {
+.jsonary .prompt-inner {
 	display: inline-block;
 }
 
-.prompt-overlay {
+.jsonary .prompt-overlay {
 	position: fixed;
 	top: 0;
 	left: 0;
@@ -65,7 +65,7 @@
 	background-image: URL('images/background-stripe.png');
 }
 
-.prompt-box {
+.jsonary .prompt-box {
 	position: relative;
 	text-align: left;
 	background-color: white;
@@ -76,7 +76,7 @@
 	padding-top: 0.5em;
 }
 
-.prompt-box h1 {
+.jsonary .prompt-box h1 {
 	text-align: center;
 	font-size: 1.3em;
 	font-weight: bold;
@@ -85,7 +85,7 @@
 	margin: 0;
 }
 
-.prompt-box h2 {
+.jsonary .prompt-box h2 {
 	color: #666;
 	text-align: center;
 	font-size: 1.1em;
@@ -96,7 +96,7 @@
 	margin-bottom: 1em;
 }
 
-.prompt-buttons {
+.jsonary .prompt-buttons {
 	position: relative;
 	top: -13px;
 	border: 2px solid black;
@@ -108,12 +108,12 @@
 
 /************ Dialog *************/
 
-.dialog-anchor {
+.jsonary .dialog-anchor {
 	position: relative;
 	height: 1em;
 }
 
-.dialog-overlay {
+.jsonary .dialog-overlay {
 	position: fixed;
 	top: 0;
 	left: 0;
@@ -128,7 +128,7 @@
 	opacity: 0.5;
 }
 
-.dialog-box {
+.jsonary .dialog-box {
 	position: absolute;
 	top: -0.1em;
 	left: -0em;
@@ -144,7 +144,7 @@
 	z-index: 1001;
 }
 
-.dialog-title {
+.jsonary .dialog-title {
 	display: block;
 	margin: -0.3em;
 	margin-top: -1.3em;
@@ -159,7 +159,7 @@
 	white-space: pre;
 }
 
-.dialog-close {
+.jsonary .dialog-close {
 	position: absolute;
 	display: block;
 	margin: 0;
@@ -169,7 +169,7 @@
 	font-size: 0.8em;
 }
 
-.dialog-close.button, .dialog-close .button {
+.jsonary .dialog-close.button, .jsonary .dialog-close .button {
 	margin: 0;
 	border-top-left-radius: 2px;
 	border-bottom-left-radius: 2px;
@@ -177,7 +177,7 @@
 
 /************ Inputs *************/
 
-input[type=text] {
+.jsonary input[type=text] {
 	border: 1px solid;
 	background-color: #FFF;
 	border-radius: 3px;
@@ -186,7 +186,7 @@ input[type=text] {
 	border-bottom-color: #DDD;
 }
 
-textarea, select, textarea:hover, select:hover {
+.jsonary textarea, .jsonary select, .jsonary textarea:hover, .jsonary select:hover {
 	border: 1px solid;
 	background-color: #FFF;
 	border-radius: 3px;
@@ -196,17 +196,17 @@ textarea, select, textarea:hover, select:hover {
 	
 }
 
-select {
+.jsonary select {
 	box-shadow: -1px -1px 0px rgba(0, 0, 0, 0.05), 1px 0px 0px rgba(0, 0, 0, 0.025), 0px 1px 0px rgba(255, 255, 255, 0.5), -1px 0px 0px rgba(255, 255, 255, 0.25);
 }
 
-select:hover {
+.jsonary select:hover {
 	box-shadow: -1px -1px 0px rgba(0, 0, 0, 0.1), 1px 0px 0px rgba(0, 0, 0, 0.05), 0px 1px 0px rgba(255, 255, 255, 0.5), -1px 0px 0px rgba(255, 255, 255, 0.5);
 }
 
 /************ Buttons *************/
 
-.button {
+.jsonary .button {
 	display: inline;
 	text-align: center; /* in case some other class combines to make it display:block */
 	color: #444;
@@ -230,13 +230,13 @@ select:hover {
 	white-space: nowrap;
 }
 
-.button:hover {
+.jsonary .button:hover {
 	color: #222;
 	background: #EEEEEE;
 	box-shadow: 0px 0px 1px rgba(0, 0, 0, 1), 0px 0px 4px rgba(255, 255, 255, 1), 0px 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.button:active {
+.jsonary .button:active {
 	background-color: #E0E0E0;
 	border-left-color: #C8C8C8;
 	border-right-color: #DDD;
@@ -245,35 +245,30 @@ select:hover {
 	box-shadow: 0px 0px 1px rgba(0, 0, 0, 1), 0px 0px 4px rgba(255, 255, 255, 0.7), 0px 2px 3px rgba(0, 0, 0, 0.05);
 }
 
-.button.link {
+.jsonary .button.link {
 	color: #05C;
-	border-color: #F0F8FF;
 	background-color: #E0E8F0;
-	background-image: none;
 }
 
-.button.link:hover {
+.jsonary .button.link:hover {
 	color: #07F;
 	background-color: #E8F0F8;
 	background-image: none;
 }
 
-.button.action {
+.jsonary .button.action {
 	color: #000;
-	border-color: #F8D8A8;
 	background-color: #F0B870;
-	background-image: none;
 	font-weight: bold;
 }
 
-.button.action:hover {
+.jsonary .button.action:hover {
 	background-color: #FCC47C;
 }
 
-.button.disabled, .button.disabled:hover {
-	border-color: #F8F8F8;
-	color: #888;
+.jsonary .button.disabled, .jsonary .button.disabled:hover {
+	border-color: #DDD;
+	color: #999;
 	background-color: #EEE;
-	background-image: none;
 	cursor: default;
 }
