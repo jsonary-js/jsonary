@@ -71,14 +71,14 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 		function addColumnsFromLink(linkDefinition, index) {
 			var columnName = "link$" + index + "$" + linkDefinition.rel();
 
-			var columnTitle = Jsonary.escapeHtml(linkDefinition.title || linkDefinition.rel());
+			var columnTitle = Jsonary.escapeHtml(linkDefinition.data.property("title").value()|| linkDefinition.rel());
 			var linkText = columnTitle;
 			var activeText = null, isConfirm = true;
 			if (linkDefinition.rel() == 'edit') {
 				activeText = 'save';
 			}
 
-			renderer.addLinkColumn(linkDefinition, columnTitle, linkText, activeText, isConfirm);
+			renderer.addLinkColumn(linkDefinition, linkDefinition.rel(), columnTitle, linkText, activeText, isConfirm);
 		}
 
 		var itemSchemas = data.schemas().indexSchemas(0).getFull();
