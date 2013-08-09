@@ -59,6 +59,9 @@
 			ignoreChanges--;
 			return;
 		}
+		if (!Jsonary.render.rendered(document.root)) {
+			return;
+		}
 		undoList.push({patch: patch, document: document});
 		while (undoList.length > Jsonary.undo.historyLength) {
 			undoList.shift();

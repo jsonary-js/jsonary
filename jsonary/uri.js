@@ -236,7 +236,7 @@ var queryFunctions = {
 		return result.join("&");
 	},
 	get: function(key, defaultValue) {
-		for (var i = 0; i < this.length; i++) {
+		for (var i = this.length - 1; i >= 0; i--) {
 			if (this[i].key == key) {
 				return this[i].value;
 			}
@@ -244,7 +244,7 @@ var queryFunctions = {
 		return defaultValue;
 	},
 	set: function(key, value) {
-		for (var i = 0; i < this.length; i++) {
+		for (var i = this.length - 1; i >= 0; i--) {
 			if (this[i].key == key) {
 				this[i].value = value;
 				return;

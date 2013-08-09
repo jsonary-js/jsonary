@@ -37,6 +37,7 @@ var masterBundle = bundle.js([
 	.js('../renderers/string-formats.js')
 	
 	.js('../renderers/contributed/full-preview.js')
+	.js('../renderers/contributed/full-instances.js')
 	.js('../renderers/contributed/adaptive-table.js');
 
 masterBundle.compileJs('../jsonary-super-bundle.js', false, true);

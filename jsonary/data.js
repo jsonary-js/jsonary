@@ -46,7 +46,6 @@ function Document(url, isDefinitive, readOnly) {
 	this.registerChangeListener = function (listener) {
 		documentChangeListeners.push(listener);
 	};
-	
 	function notifyChangeListeners(patch) {
 		DelayedCallbacks.increment();
 		var listeners = changeListeners.concat(documentChangeListeners);
@@ -56,6 +55,16 @@ function Document(url, isDefinitive, readOnly) {
 			}
 		});
 		DelayedCallbacks.decrement();
+	}
+
+	var accessCallbacks = [];
+	this.access = function () {
+		while (accessCallbacks.length) {
+			accessCallbacks.shift().call(this);
+		}
+	}
+	this.whenAccessed = function (callback) {
+		accessCallbacks.push(callback);
 	}
 
 	this.setRaw = function (value) {
@@ -83,6 +92,7 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		this.access();
 		if (this.readOnly) {
 			throw new Error("Cannot update read-only document");
 		}
@@ -236,9 +246,11 @@ function Data(document, secrets, parent, parentKey) {
 	};
 	
 	this.basicType = function() {
+		document.access();
 		return basicType;
 	};
 	this.value = function() {
+		document.access();
 		if (basicType == "object") {
 			var result = {};
 			for (var i = 0; i < keys.length; i++) {
@@ -265,9 +277,11 @@ function Data(document, secrets, parent, parentKey) {
 		}
 	};
 	this.keys = function () {
+		document.access();
 		return keys.slice(0);
 	};
 	this.length = function () {
+		document.access();
 		return length;
 	};
 	
@@ -498,20 +512,25 @@ function Data(document, secrets, parent, parentKey) {
 	
 	secrets.schemas = new SchemaSet(this);
 	this.schemas = function () {
+		document.access();
 		return secrets.schemas.getSchemas();
 	};
 	this.whenSchemasStable = function(callback) {
+		document.access();
 		secrets.schemas.whenSchemasStable(callback);
 		return this;
 	};
 	this.links = function (rel) {
+		document.access();
 		return secrets.schemas.getLinks(rel);
 	};
 	this.addLink = function (rawLink) {
+		document.access();
 		secrets.schemas.addLink(rawLink);
 		return this;
 	};
 	this.addSchema = function (schema, schemaKey) {
+		document.access();
 		var thisData = this;
 		if (schema instanceof SchemaList) {
 			schema.each(function (index, schema) {
@@ -523,10 +542,12 @@ function Data(document, secrets, parent, parentKey) {
 		return this;
 	};
 	this.removeSchema = function ( schemaKey) {
+		document.access();
 		secrets.schemas.removeSchema(schemaKey);
 		return this;
 	};
 	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+		document.access();
 		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately, impatientCallbacks);
 	};
 }

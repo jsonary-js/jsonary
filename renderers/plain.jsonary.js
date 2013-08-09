@@ -94,7 +94,7 @@
 			return !data.readOnly();
 		},
 		saveState: function (uiState, subStates) {
-			return subStates.data;
+			return subStates.data || {};
 		},
 		loadState: function (savedState) {
 			return [
@@ -200,7 +200,7 @@
 	});
 
 	// Display schema switcher
-	Jsonary.render.Components.add("SCHEMA_SWITCHER");
+	Jsonary.render.Components.add("SCHEMA_SWITCHER", 0);
 	Jsonary.render.register({
 		name: "Jsonary plain schema-switcher",
 		component: Jsonary.render.Components.SCHEMA_SWITCHER,
@@ -421,12 +421,16 @@
 			}
 			result += '<table class="json-object"><tbody>';
 			var drawProperty = function (key, subData) {
-				result += '<tr class="json-object-pair">';
 				if (subData.defined()) {
 					var title = subData.schemas().title();
 				} else {
-					var title = subData.parent().schemas().propertySchemas(subData.parentKey()).title();
+					var schemas = subData.parent().schemas().propertySchemas(subData.parentKey());
+					if (schemas.readOnly()) {
+						return;
+					}
+					var title = schemas.title();
 				}
+				result += '<tr class="json-object-pair">';
 				if (title == "") {
 					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div></td>';
 				} else {

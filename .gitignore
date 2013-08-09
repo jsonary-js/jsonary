@@ -171,3 +171,5 @@ test/bundle.js
 test/bundle.js
 
 node_modules
+
+bower_components

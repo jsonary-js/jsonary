@@ -1,13 +1,9 @@
 function getSchema(url, callback) {
-	// Use getRawResponse() instead of getRoot to avoid blocking on self-referential schemas
 	return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
-		if (fragmentRequest.fragment) {
-			data = data.subPath(fragmentRequest.fragment);
-		}
+		// Set the root to avoid blocking on self-referential schemas
+		data.document.setRoot('');
+	}).getData(function (data, fragmentRequest) {
 		var schema = data.asSchema();
-		schema.referenceUrl = function () {
-			return fragmentRequest.url;
-		};
 		if (callback != undefined) {
 			callback.call(schema, schema, fragmentRequest);
 		}
@@ -62,7 +58,10 @@ Schema.prototype = {
 	"toString": function () {
 		return "<Schema " + this.data + ">";
 	},
-	referenceUrl: function () {
+	referenceUrl: function (includeRef) {
+		if (includeRef && this.data.property('$ref').defined()) {
+			return this.data.resolveUrl(this.data.propertyValue("$ref"));
+		}
 		return this.data.referenceUrl();
 	},
 	isFull: function () {
@@ -733,6 +732,53 @@ ActiveLink.prototype = {
 			}
 		}
 		return request;
+	},
+	valueForUrl: function (url) {
+		var template = this.definition.uriTemplate;
+	
+		var extractedValues = template.fromUrl(url);
+		var result = {};
+		function decodeStringValue(stringValue, schemas) {
+			schemas = schemas.getFull();
+			var types = schemas.types();
+			if (types.indexOf('null') != -1 && stringValue == 'null') {
+				return null;
+			} else if (types.indexOf('boolean') != -1 && (stringValue == "true" || stringValue == "false")) {
+				return (stringValue == "true");
+			} else if (types.indexOf('string') != -1) {
+				return stringValue;
+			} else if (types.indexOf('number') != -1 && !isNaN(parseFloat(stringValue))) {
+				return parseFloat(stringValue);
+			} else if (types.indexOf('integer') != -1 && parseFloat(stringValue)%1 == 0) {
+				return parseFloat(stringValue);
+			} else if (types.indexOf('object')) {
+				return Jsonary.decodeData(stringValue);
+			}
+			return undefined;
+		}
+		var schemas = this.subjectData.schemas();
+		for (var varName in extractedValues) {
+			var value = extractedValues[varName];
+			var decodedVarName = translateUriTemplateName(varName);
+			if (decodedVarName == null) {
+				if (typeof value == "string") {
+					value = decodeStringValue(value, schemas);
+				}
+				if (value === undefined) {
+					return undefined;
+				}
+				result = value;
+			} else {
+				if (typeof value == "string") {
+					value = decodeStringValue(value, schemas.propertySchemas(decodedVarName));
+				}
+				if (value === undefined) {
+					return undefined;
+				}
+				result[decodedVarName] = value;
+			}
+		}
+		return result;
 	}
 };
 

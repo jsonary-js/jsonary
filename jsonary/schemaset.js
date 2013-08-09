@@ -103,7 +103,7 @@ SchemaList.prototype = {
 		if (url instanceof RegExp) {
 			for (var i = 0; i < this.length; i++) {
 				var schema = this[i];
-				if (url.test(schema.referenceUrl())) {
+				if (url.test(schema.referenceUrl(true))) {
 					return true;
 				}
 			}
@@ -113,7 +113,7 @@ SchemaList.prototype = {
 			}
 			for (var i = 0; i < this.length; i++) {
 				var schema = this[i];
-				var referenceUrl = schema.referenceUrl();
+				var referenceUrl = schema.referenceUrl(true);
 				if (referenceUrl != null && referenceUrl.substring(referenceUrl.length - url.length) == url) {
 					return true;
 				}

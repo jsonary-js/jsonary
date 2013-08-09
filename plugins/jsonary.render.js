@@ -30,13 +30,18 @@
 				return;
 			}
 			this[newName] = newName;
-			if (componentList.indexOf(beforeName) != -1) {
+			if (typeof beforeName == 'number') {
+				var index = Math.max(0, Math.min(componentList.length - 1, Math.round(beforeName)));
+				componentList.splice(index, 0, this[newName]);
+			} else if (componentList.indexOf(beforeName) != -1) {
 				componentList.splice(componentList.indexOf(beforeName), 0, this[newName]);
+			} else if (componentList.indexOf(componentNames[beforeName]) != -1) {
+				componentList.splice(componentList.indexOf(componentNames[beforeName]), 0, this[newName]);
 			} else {
 				componentList.splice(componentList.length - 1, 0, this[newName]);
 			}
 		}
-	};	
+	};
 	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
 	var contextIdCounter = 0;
@@ -853,6 +858,21 @@
 	render.actionHtml = function (elementId, linkUrl, innerHtml) {
 		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
 	};
+	render.rendered = function (data) {
+		var uniqueId = data.uniqueId;
+		if (!pageContext.elementLookup[uniqueId]) {
+			return false;
+		}
+		var elementIds = pageContext.elementLookup[uniqueId];
+		for (var i = 0; i < elementIds.length; i++) {
+			var elementId = elementIds[i];
+			var element = document.getElementById(elementId);
+			if (element) {
+				return true;
+			}
+		}
+		return false;
+	};
 	
 	/**********/
 	
@@ -1227,4 +1247,22 @@
 			render(element, this, uiState);
 		}
 	});
+	// Whenever anything is invalidated, call access() on every document we know about, to force a re-request.
+	Jsonary.invalidate = function (oldFunction) {
+		return function () {
+			var result = oldFunction.apply(this, arguments);
+			var elementIds = [];
+			for (var uniqueId in pageContext.elementLookup) {
+				var ids = pageContext.elementLookup[uniqueId];
+				elementIds = elementIds.concat(ids);
+			}
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
+				if (element && element.jsonaryContext) {
+					element.jsonaryContext.data.document.access();
+				}
+			}
+			return result;
+		};
+	}(Jsonary.invalidate);
 })(this);

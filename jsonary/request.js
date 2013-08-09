@@ -145,6 +145,7 @@ function FragmentRequest(request, fragment) {
 		request.getRoot(function(data) {
 			callback.call(data, data, thisFragmentRequest);
 		});
+		return this;
 	};
 	this.getData = function (callback) {
 		if (fragment == null || fragment == "") {
@@ -156,11 +157,13 @@ function FragmentRequest(request, fragment) {
 				callback.call(data, data, thisFragmentRequest);
 			});
 		}
+		return this;
 	};
 	this.getRawResponse = function (callback) {
 		request.getResponse(function(data) {
 			callback.call(data, data, thisFragmentRequest);
 		});
+		return this;
 	};
 }
 FragmentRequest.prototype = {
@@ -196,6 +199,19 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 	}
 	if (cacheFunction == undefined) {
 		cacheFunction = publicApi.defaultCache;
+	}
+
+	if (method == "GET") {
+		data = Jsonary.encodeData(data, encType);
+		if (data != '') {
+			if (url.indexOf("?") == -1) {
+				url += "?";
+			} else {
+				url += "&";
+			}
+			url += data;
+		}
+		data = {};
 	}
 
 	var cacheable = (cacheFunction && method == "GET" && encType == "application/x-www-form-urlencoded");
@@ -257,20 +273,11 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	executeImmediately(this);
 	url = Utils.resolveRelativeUri(url);
 
-	data = Utils.encodeData(data, encType);
-	if (method == "GET" && data != "") {
-		if (url.indexOf("?") == -1) {
-			url += "?";
-		} else {
-			url += "&";
-		}
-		url += data;
-		data = "";
-	}
+	data = (method == "GET" || method == "DELETE") ? null : Utils.encodeData(data, encType);
 
 	Utils.log(Utils.logLevel.STANDARD, "Sending request for: " + url);
 	var thisRequest = this;
-	this.successful = undefined;
+	this.successful = null;
 	this.error = null;
 	this.url = url;
 
@@ -281,9 +288,16 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
 	this.invalidate = function() {
-		if (method == "GET") {
-			this.fetchData(url, method, data, encType, hintSchema);
-		}
+		var thisRequest = this;
+		this.document.whenAccessed(function () {
+			if (thisRequest.successful == null) {
+				// We've already got a pending request
+				return;
+			}
+			if (method == "GET") {
+				thisRequest.fetchData(url, method, data, encType, hintSchema);
+			}
+		});
 	};
 }
 Request.prototype = {
@@ -428,6 +442,7 @@ Request.prototype = {
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
 		var thisRequest = this;
+		this.successful = null;
 		var xhrUrl = url;
 		var xhrData = data;
 		if ((method == "GET" || method == "DELETE") && (xhrData != undefined && xhrData != "")) {

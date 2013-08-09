@@ -2,6 +2,7 @@ var fs = require('fs');
 var path = require('path');
 var uglify = require('uglify-js');
 var cleanCss = require('clean-css');
+var mime = require('mime');
 
 function Bundle() {
 	this.jsCode = [];
@@ -28,7 +29,8 @@ Bundle.prototype = {
 				}
 				var resourcePath = path.resolve(path.dirname(filename), uri);
 				var base64 = fs.readFileSync(resourcePath).toString('base64');
-				var dataUri = "data:;base64," + base64;
+				var mimeType = mime.lookup(resourcePath);
+				var dataUri = "data:" + mimeType + ";base64," + base64;
 				return prefix + JSON.stringify(dataUri) + suffix;
 			});
 			this.cssCode.push('\n\n/**** ' + filename + ' ****/\n\n' + cssCode);
@@ -73,6 +75,7 @@ Bundle.prototype = {
 		}
 		code += '\nreturn this;\n';
 		code += '})';
+		code = code.replace(/\r\n/g, "\n");
 		
 		if (outputFile) {
 			//console.log('Writing JS bundle to: ' + outputFile);
