@@ -164,7 +164,7 @@
 				}
 			}
 			for (var key in b) {
-				if (a[key] === undefined && a[key] !== undefined) {
+				if (a[key] === undefined && b[key] !== undefined) {
 					return false;
 				}
 			}
