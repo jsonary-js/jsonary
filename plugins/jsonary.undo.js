@@ -59,7 +59,22 @@
 			ignoreChanges--;
 			return;
 		}
-		if (!Jsonary.render.rendered(document.root)) {
+		if (document.readOnly) {
+			return;
+		}
+		var rendered = false;
+		for (var i = 0; !rendered && i < patch.operations.length; i++) {
+			var operation = patch.operations[i];
+			var affectedData = document.affectedData(operation);
+			for (var j = 0; j < affectedData.length; j++) {
+				var data = affectedData[j];
+				if (Jsonary.render.rendered(data)) {
+					rendered = true;
+					break;
+				}
+			}
+		}
+		if (!rendered) {
 			return;
 		}
 		undoList.push({patch: patch, document: document});
