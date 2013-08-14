@@ -10,7 +10,6 @@
 			
 			var links = data.links('instances');
 			var fullLink = data.getLink('full');
-			fullLink.valueForUrl = valueForUrl;
 			var previewPath = "";
 			
 			var fullPreviewLink = data.getLink('full-preview');
@@ -66,7 +65,6 @@
 			if (actionName == 'select-url') {
 				var url = arg1;
 				var fullLink = data.getLink('full');
-				fullLink.valueForUrl = valueForUrl;
 				var value = fullLink.valueForUrl(url);
 				data.setValue(value);
 			}
