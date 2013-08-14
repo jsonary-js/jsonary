@@ -736,7 +736,7 @@ ActiveLink.prototype = {
 	valueForUrl: function (url) {
 		var template = this.definition.uriTemplate;
 	
-		var extractedValues = template.fromUrl(url);
+		var extractedValues = template.fromUri(url);
 		var result = {};
 		function decodeStringValue(stringValue, schemas) {
 			schemas = schemas.getFull();
