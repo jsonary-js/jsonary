@@ -218,9 +218,9 @@
 				}
 			}
 			
+			context.uiState.xorSelected = [];
+			context.uiState.orSelected = [];
 			if (singleOption) {
-				context.uiState.xorSelected = [];
-				context.uiState.orSelected = [];
 				for (var i = 0; i < xorSchemas.length; i++) {
 					var options = xorSchemas[i];
 					var inputName = context.inputNameForAction('selectXorSchema', i);
@@ -291,18 +291,18 @@
 			var newSchemas = context.data.schemas().fixed();
 			var xorSchemas = context.data.schemas().fixed().xorSchemas();
 			for (var i = 0; i < xorSchemas.length; i++) {
-				newSchemas = newSchemas.concat([xorSchemas[i][context.uiState.xorSelected[i]]]);
+				newSchemas = newSchemas.concat([xorSchemas[i][context.uiState.xorSelected[i]].getFull()]);
 			}
 			var orSchemas = context.data.schemas().fixed().orSchemas();
 			for (var i = 0; i < orSchemas.length; i++) {
 				var options = orSchemas[i];
 				for (var j = 0; j < options.length; j++) {
 					if (context.uiState.orSelected[i][j]) {
-						newSchemas = newSchemas.concat([options[j]]);
+						newSchemas = newSchemas.concat([options[j].getFull()]);
 					}
 				}
 			}
-			newSchemas.getFull(function (sl) {newSchemas = sl;});
+			newSchemas = newSchemas.getFull();
 			data.setValue(newSchemas.createValue());
 			newSchemas.createValue(function (value) {
 				data.setValue(value);
