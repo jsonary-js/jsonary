@@ -94,7 +94,7 @@
 			return !data.readOnly();
 		},
 		saveState: function (uiState, subStates) {
-			return subStates.data;
+			return subStates.data || {};
 		},
 		loadState: function (savedState) {
 			return [
@@ -200,7 +200,7 @@
 	});
 
 	// Display schema switcher
-	Jsonary.render.Components.add("SCHEMA_SWITCHER");
+	Jsonary.render.Components.add("SCHEMA_SWITCHER", 0);
 	Jsonary.render.register({
 		name: "Jsonary plain schema-switcher",
 		component: Jsonary.render.Components.SCHEMA_SWITCHER,
@@ -218,9 +218,9 @@
 				}
 			}
 			
+			context.uiState.xorSelected = [];
+			context.uiState.orSelected = [];
 			if (singleOption) {
-				context.uiState.xorSelected = [];
-				context.uiState.orSelected = [];
 				for (var i = 0; i < xorSchemas.length; i++) {
 					var options = xorSchemas[i];
 					var inputName = context.inputNameForAction('selectXorSchema', i);
@@ -291,18 +291,18 @@
 			var newSchemas = context.data.schemas().fixed();
 			var xorSchemas = context.data.schemas().fixed().xorSchemas();
 			for (var i = 0; i < xorSchemas.length; i++) {
-				newSchemas = newSchemas.concat([xorSchemas[i][context.uiState.xorSelected[i]]]);
+				newSchemas = newSchemas.concat([xorSchemas[i][context.uiState.xorSelected[i]].getFull()]);
 			}
 			var orSchemas = context.data.schemas().fixed().orSchemas();
 			for (var i = 0; i < orSchemas.length; i++) {
 				var options = orSchemas[i];
 				for (var j = 0; j < options.length; j++) {
 					if (context.uiState.orSelected[i][j]) {
-						newSchemas = newSchemas.concat([options[j]]);
+						newSchemas = newSchemas.concat([options[j].getFull()]);
 					}
 				}
 			}
-			newSchemas.getFull(function (sl) {newSchemas = sl;});
+			newSchemas = newSchemas.getFull();
 			data.setValue(newSchemas.createValue());
 			newSchemas.createValue(function (value) {
 				data.setValue(value);
@@ -421,12 +421,16 @@
 			}
 			result += '<table class="json-object"><tbody>';
 			var drawProperty = function (key, subData) {
-				result += '<tr class="json-object-pair">';
 				if (subData.defined()) {
 					var title = subData.schemas().title();
 				} else {
-					var title = subData.parent().schemas().propertySchemas(subData.parentKey()).title();
+					var schemas = subData.parent().schemas().propertySchemas(subData.parentKey());
+					if (schemas.readOnly()) {
+						return;
+					}
+					var title = schemas.title();
 				}
+				result += '<tr class="json-object-pair">';
 				if (title == "") {
 					result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div></td>';
 				} else {

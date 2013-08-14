@@ -101,6 +101,10 @@
 		}
 		ignoreUpdate = false;
 
+		if (started && window.history && api.useHistory && window.location.href !== api.resolved) {
+			updateLocation(false);
+		}
+
 		for (var i = 0; i < changeListeners.length; i++) {
 			changeListeners[i].call(api, api, api.query);
 		}
@@ -140,11 +144,9 @@
 		location: api
 	});	
 
+	var started = false;
 	var start = function () {
-		start = function () {};
-		if (window.history && api.useHistory && window.location.href !== api.resolved) {
-			updateLocation(false);
-		}
+		started = true;
 	};
 
 	if ("onhashchange" in window) {

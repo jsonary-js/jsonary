@@ -791,7 +791,7 @@ var queryFunctions = {
 		return result.join("&");
 	},
 	get: function(key, defaultValue) {
-		for (var i = 0; i < this.length; i++) {
+		for (var i = this.length - 1; i >= 0; i--) {
 			if (this[i].key == key) {
 				return this[i].value;
 			}
@@ -799,7 +799,7 @@ var queryFunctions = {
 		return defaultValue;
 	},
 	set: function(key, value) {
-		for (var i = 0; i < this.length; i++) {
+		for (var i = this.length - 1; i >= 0; i--) {
 			if (this[i].key == key) {
 				this[i].value = value;
 				return;
@@ -824,16 +824,23 @@ var uriTemplateSuffices = {
 	"*": true
 };
 
+function notReallyPercentEncode(string) {
+	return encodeURI(string).replace(/%25[0-9][0-9]/g, function (doubleEncoded) {
+		return "%" + doubleEncoded.substring(3);
+	});
+}
+
 function uriTemplateSubstitution(spec) {
 	var modifier = "";
 	if (uriTemplateGlobalModifiers[spec.charAt(0)]) {
 		modifier = spec.charAt(0);
 		spec = spec.substring(1);
 	}
-	var separator = ",";
+	var separator = "";
 	var prefix = "";
 	var shouldEscape = true;
 	var showVariables = false;
+	var trimEmptyString = false;
 	if (modifier == '+') {
 		shouldEscape = false;
 	} else if (modifier == ".") {
@@ -849,6 +856,7 @@ function uriTemplateSubstitution(spec) {
 		prefix = ";";
 		separator = ";",
 		showVariables = true;
+		trimEmptyString = true;
 	} else if (modifier == '?') {
 		prefix = "?";
 		separator = "&",
@@ -862,46 +870,56 @@ function uriTemplateSubstitution(spec) {
 	var varNames = [];
 	var varList = spec.split(",");
 	var varSpecs = [];
+	var varSpecMap = {};
 	for (var i = 0; i < varList.length; i++) {
-		var varSpec = varList[i];
+		var varName = varList[i];
 		var truncate = null;
-		if (varSpec.indexOf(":") != -1) {
-			var parts = varSpec.split(":");
-			varSpec = parts[0];
+		if (varName.indexOf(":") != -1) {
+			var parts = varName.split(":");
+			varName = parts[0];
 			truncate = parseInt(parts[1]);
 		}
 		var suffices = {};
-		while (uriTemplateSuffices[varSpec.charAt(varSpec.length - 1)]) {
-			suffices[varSpec.charAt(varSpec.length - 1)] = true;
-			varSpec = varSpec.substring(0, varSpec.length - 1);
+		while (uriTemplateSuffices[varName.charAt(varName.length - 1)]) {
+			suffices[varName.charAt(varName.length - 1)] = true;
+			varName = varName.substring(0, varName.length - 1);
 		}
-		varSpecs.push({
+		var varSpec = {
 			truncate: truncate,
-			name: varSpec,
+			name: varName,
 			suffices: suffices
-		});
-		varNames.push(varSpec);
+		};
+		varSpecs.push(varSpec);
+		varSpecMap[varName] = varSpec;
+		varNames.push(varName);
 	}
-	var resultFunction = function (valueFunction) {
-		var result = prefix;
+	var subFunction = function (valueFunction) {
+		var result = "";
+		var startIndex = 0;
 		for (var i = 0; i < varSpecs.length; i++) {
 			var varSpec = varSpecs[i];
-			if (i > 0) {
-				result += separator;
-			}
 			var value = valueFunction(varSpec.name);
+			if (value == null || (Array.isArray(value) && value.length == 0) || (typeof value == 'object' && Object.keys(value).length == 0)) {
+				startIndex++;
+				continue;
+			}
+			if (i == startIndex) {
+				result += prefix;
+			} else {
+				result += (separator || ",");
+			}
 			if (Array.isArray(value)) {
 				if (showVariables) {
 					result += varSpec.name + "=";
 				}
 				for (var j = 0; j < value.length; j++) {
 					if (j > 0) {
-						result += varSpec.suffices['*'] ? separator : ",";
+						result += varSpec.suffices['*'] ? (separator || ",") : ",";
 						if (varSpec.suffices['*'] && showVariables) {
 							result += varSpec.name + "=";
 						}
 					}
-					result += shouldEscape ? encodeURIComponent(value[j]).replace("!", "%21"): encodeURI(value[j]).replace("%25", "%");
+					result += shouldEscape ? encodeURIComponent(value[j]).replace(/!/g, "%21") : notReallyPercentEncode(value[j]);
 				}
 			} else if (typeof value == "object") {
 				if (showVariables && !varSpec.suffices['*']) {
@@ -910,42 +928,209 @@ function uriTemplateSubstitution(spec) {
 				var first = true;
 				for (var key in value) {
 					if (!first) {
-						result += varSpec.suffices['*'] ? separator : ",";
+						result += varSpec.suffices['*'] ? (separator || ",") : ",";
 					}
 					first = false;
-					result += shouldEscape ? encodeURIComponent(key).replace("!", "%21"): encodeURI(key).replace("%25", "%");
+					result += shouldEscape ? encodeURIComponent(key).replace(/!/g, "%21") : notReallyPercentEncode(key);
 					result += varSpec.suffices['*'] ? '=' : ",";
-					result += shouldEscape ? encodeURIComponent(value[key]).replace("!", "%21"): encodeURI(value[key]).replace("%25", "%");
+					result += shouldEscape ? encodeURIComponent(value[key]).replace(/!/g, "%21") : notReallyPercentEncode(value[key]);
 				}
 			} else {
 				if (showVariables) {
-					result += varSpec.name + "=";
+					result += varSpec.name;
+					if (!trimEmptyString || value != "") {
+						result += "=";
+					}
 				}
 				if (varSpec.truncate != null) {
 					value = value.substring(0, varSpec.truncate);
 				}
-				result += shouldEscape ? encodeURIComponent(value).replace("!", "%21"): encodeURI(value).replace("%25", "%");
+				result += shouldEscape ? encodeURIComponent(value).replace(/!/g, "%21"): notReallyPercentEncode(value);
 			}
 		}
 		return result;
 	};
-	resultFunction.varNames = varNames;
-	return resultFunction;
+	var guessFunction = function (stringValue, resultObj) {
+		if (prefix) {
+			if (stringValue.substring(0, prefix.length) == prefix) {
+				stringValue = stringValue.substring(prefix.length);
+			} else {
+				return null;
+			}
+		}
+		if (varSpecs.length == 1 && varSpecs[0].suffices['*']) {
+			var varSpec = varSpecs[0];
+			var varName = varSpec.name;
+			var arrayValue = varSpec.suffices['*'] ? stringValue.split(separator || ",") : [stringValue];
+			var hasEquals = (shouldEscape && stringValue.indexOf('=') != -1);	// There's otherwise no way to distinguish between "{value*}" for arrays and objects
+			for (var i = 1; i < arrayValue.length; i++) {
+				var stringValue = arrayValue[i];
+				if (hasEquals && stringValue.indexOf('=') == -1) {
+					// Bit of a hack - if we're expecting "=" for key/value pairs, and values can't contain "=", then assume a value has been accidentally split
+					arrayValue[i - 1] += (separator || ",") + stringValue;
+					arrayValue.splice(i, 1);
+					i--;
+				}
+			}
+			for (var i = 0; i < arrayValue.length; i++) {
+				var stringValue = arrayValue[i];
+				if (shouldEscape && stringValue.indexOf('=') != -1) {
+					hasEquals = true;  
+				}
+				var innerArrayValue = stringValue.split(",");
+				for (var j = 0; j < innerArrayValue.length; j++) {
+					if (shouldEscape) {
+						innerArrayValue[j] = decodeURIComponent(innerArrayValue[j]);
+					}
+				}
+				if (innerArrayValue.length == 1) {
+					arrayValue[i] = innerArrayValue[0];
+				} else {
+					arrayValue[i] = innerArrayValue;
+				}
+			}
+		
+			if (showVariables || hasEquals) {
+				var objectValue = resultObj[varName] || {};
+				for (var j = 0; j < arrayValue.length; j++) {
+					var innerValue = stringValue;
+					if (typeof arrayValue[j] == "string") {
+						var stringValue = arrayValue[j];
+						var innerVarName = stringValue.split("=", 1)[0];
+						var stringValue = stringValue.substring(innerVarName.length + 1);
+						innerValue = stringValue;
+					} else {
+						var stringValue = arrayValue[j][0];
+						var innerVarName = stringValue.split("=", 1)[0];
+						var stringValue = stringValue.substring(innerVarName.length + 1);
+						arrayValue[j][0] = stringValue;
+						innerValue = arrayValue[j];
+					}
+					if (objectValue[innerVarName] !== undefined) {
+						if (Array.isArray(objectValue[innerVarName])) {
+							objectValue[innerVarName].push(innerValue);
+						} else {
+							objectValue[innerVarName] = [objectValue[innerVarName], innerValue];
+						}
+					} else {
+						objectValue[innerVarName] = innerValue;
+					}
+				}
+				if (Object.keys(objectValue).length == 1 && objectValue[varName] !== undefined) {
+					resultObj[varName] = objectValue[varName];
+				} else {
+					resultObj[varName] = objectValue;
+				}
+			} else {
+				if (resultObj[varName] !== undefined) {
+					if (Array.isArray(resultObj[varName])) {
+						resultObj[varName] = resultObj[varName].concat(arrayValue);
+					} else {
+						resultObj[varName] = [resultObj[varName]].concat(arrayValue);
+					}
+				} else {
+					if (arrayValue.length == 1 && !varSpec.suffices['*']) {
+						resultObj[varName] = arrayValue[0];
+					} else {
+						resultObj[varName] = arrayValue;
+					}
+				}
+			}
+		} else {
+			var arrayValue = (varSpecs.length == 1) ? [stringValue] : stringValue.split(separator || ",");
+			var specIndexMap = {};
+			for (var i = 0; i < arrayValue.length; i++) {
+				// Try from beginning
+				for (var firstStarred = 0; firstStarred < varSpecs.length - 1 && firstStarred < i; firstStarred++) {
+					if (varSpecs[firstStarred].suffices['*']) {
+						break;
+					}
+				}
+				if (j == i) {
+					// The first [i] of them have no "*" suffix
+					specIndexMap[i] = i;
+					continue;
+				} else {
+					// Try from the end
+					for (var lastStarred = varSpecs.length - 1; lastStarred > 0 && (varSpecs.length - lastStarred) < (arrayValue.length - i); lastStarred--) {
+						if (varSpecs[lastStarred].suffices['*']) {
+							break;
+						}
+					}
+					if ((varSpecs.length - lastStarred) == (arrayValue.length - i)) {
+						// The last [length - i] of them have no "*" suffix
+						specIndexMap[i] = lastStarred;
+						continue;
+					}
+				}
+				// Just give up and use the first one
+				specIndexMap[i] = firstStarred;
+			}
+			for (var i = 0; i < arrayValue.length; i++) {
+				var stringValue = arrayValue[i];
+				var innerArrayValue = stringValue.split(",");
+			
+				if (showVariables) {
+					var stringValue = innerArrayValue[0]; // using innerArrayValue
+					var varName = stringValue.split("=", 1)[0];
+					var stringValue = stringValue.substring(varName.length + 1);
+					innerArrayValue[0] = stringValue;
+					var varSpec = varSpecMap[varName] || varSpecs[0];
+				} else {
+					var varSpec = varSpecs[specIndexMap[i]];
+					var varName = varSpec.name;
+				}
+
+				for (var j = 0; j < innerArrayValue.length; j++) {
+					if (shouldEscape) {
+						innerArrayValue[j] = decodeURIComponent(innerArrayValue[j]);
+					}
+				}
+
+				if ((showVariables || varSpec.suffices['*'])&& resultObj[varName] !== undefined) {
+					if (Array.isArray(resultObj[varName])) {
+						resultObj[varName] = resultObj[varName].concat(innerArrayValue);
+					} else {
+						resultObj[varName] = [resultObj[varName]].concat(innerArrayValue);
+					}
+				} else {
+					if (innerArrayValue.length == 1 && !varSpec.suffices['*']) {
+						resultObj[varName] = innerArrayValue[0];
+					} else {
+						resultObj[varName] = innerArrayValue;
+					}
+				}
+			}
+		}
+	};
+	subFunction.varNames = varNames;
+	return {
+		prefix: prefix,
+		substitution: subFunction,
+		unSubstitution: guessFunction
+	};
 }
 
 function UriTemplate(template) {
+	if (!(this instanceof UriTemplate)) {
+		return new UriTemplate(template);
+	}
 	var parts = template.split("{");
 	var textParts = [parts.shift()];
+	var prefixes = [];
 	var substitutions = [];
+	var unSubstitutions = [];
 	var varNames = [];
 	while (parts.length > 0) {
 		var part = parts.shift();
 		var spec = part.split("}")[0];
 		var remainder = part.substring(spec.length + 1);
-		var substitution = uriTemplateSubstitution(spec);
-		substitutions.push(substitution);
+		var funcs = uriTemplateSubstitution(spec);
+		substitutions.push(funcs.substitution);
+		unSubstitutions.push(funcs.unSubstitution);
+		prefixes.push(funcs.prefix);
 		textParts.push(remainder);
-		varNames = varNames.concat(substitution.varNames);
+		varNames = varNames.concat(funcs.substitution.varNames);
 	}
 	this.fill = function (valueFunction) {
 		var result = textParts[0];
@@ -956,8 +1141,65 @@ function UriTemplate(template) {
 		}
 		return result;
 	};
+	this.fromUri = function (substituted) {
+		var result = {};
+		for (var i = 0; i < textParts.length; i++) {
+			var part = textParts[i];
+			if (substituted.substring(0, part.length) !== part) {
+				console.log([substituted, part]);
+				return undefined;
+			}
+			substituted = substituted.substring(part.length);
+			if (i >= textParts.length - 1) {
+				if (substituted == "") {
+					break;
+				} else {
+					return undefined;
+				}
+			}
+			var nextPart = textParts[i + 1];
+			var offset = i;
+			while (true) {
+				if (offset == textParts.length - 2) {
+					var endPart = substituted.substring(substituted.length - nextPart.length);
+					if (endPart !== nextPart) {
+						return undefined;
+					}
+					var stringValue = substituted.substring(0, substituted.length - nextPart.length);
+					substituted = endPart;
+				} else if (nextPart) {
+					var nextPartPos = substituted.indexOf(nextPart);
+					var stringValue = substituted.substring(0, nextPartPos);
+					substituted = substituted.substring(nextPartPos);
+				} else if (prefixes[offset + 1]) {
+					var nextPartPos = substituted.indexOf(prefixes[offset + 1]);
+					var stringValue = substituted.substring(0, nextPartPos);
+					substituted = substituted.substring(nextPartPos);
+				} else if (textParts.length > offset + 2) {
+					// If the separator between this variable and the next is blank (with no prefix), continue onwards
+					offset++;
+					nextPart = textParts[offset + 1];
+					continue;
+				} else {
+					var stringValue = substituted;
+					substituted = "";
+				}
+				break;
+			}
+			unSubstitutions[i](stringValue, result);
+		}
+		return result;
+	}
 	this.varNames = varNames;
 }
+UriTemplate.prototype = {
+	fillFromObject: function (obj) {
+		return this.fill(function (varName) {
+			return obj[varName];
+		});
+	}
+};
+
 var Utils = {
 	guessBasicType: function (data, prevType) {
 		if (data === null) {
@@ -1631,6 +1873,7 @@ function FragmentRequest(request, fragment) {
 		request.getRoot(function(data) {
 			callback.call(data, data, thisFragmentRequest);
 		});
+		return this;
 	};
 	this.getData = function (callback) {
 		if (fragment == null || fragment == "") {
@@ -1642,11 +1885,13 @@ function FragmentRequest(request, fragment) {
 				callback.call(data, data, thisFragmentRequest);
 			});
 		}
+		return this;
 	};
 	this.getRawResponse = function (callback) {
 		request.getResponse(function(data) {
 			callback.call(data, data, thisFragmentRequest);
 		});
+		return this;
 	};
 }
 FragmentRequest.prototype = {
@@ -1682,6 +1927,19 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 	}
 	if (cacheFunction == undefined) {
 		cacheFunction = publicApi.defaultCache;
+	}
+
+	if (method == "GET") {
+		data = Jsonary.encodeData(data, encType);
+		if (data != '') {
+			if (url.indexOf("?") == -1) {
+				url += "?";
+			} else {
+				url += "&";
+			}
+			url += data;
+		}
+		data = {};
 	}
 
 	var cacheable = (cacheFunction && method == "GET" && encType == "application/x-www-form-urlencoded");
@@ -1743,20 +2001,11 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	executeImmediately(this);
 	url = Utils.resolveRelativeUri(url);
 
-	data = Utils.encodeData(data, encType);
-	if (method == "GET" && data != "") {
-		if (url.indexOf("?") == -1) {
-			url += "?";
-		} else {
-			url += "&";
-		}
-		url += data;
-		data = "";
-	}
+	data = (method == "GET" || method == "DELETE") ? null : Utils.encodeData(data, encType);
 
 	Utils.log(Utils.logLevel.STANDARD, "Sending request for: " + url);
 	var thisRequest = this;
-	this.successful = undefined;
+	this.successful = null;
 	this.error = null;
 	this.url = url;
 
@@ -1767,9 +2016,16 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
 	this.invalidate = function() {
-		if (method == "GET") {
-			this.fetchData(url, method, data, encType, hintSchema);
-		}
+		var thisRequest = this;
+		this.document.whenAccessed(function () {
+			if (thisRequest.successful == null) {
+				// We've already got a pending request
+				return;
+			}
+			if (method == "GET") {
+				thisRequest.fetchData(url, method, data, encType, hintSchema);
+			}
+		});
 	};
 }
 Request.prototype = {
@@ -1914,6 +2170,7 @@ Request.prototype = {
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
 		var thisRequest = this;
+		this.successful = null;
 		var xhrUrl = url;
 		var xhrData = data;
 		if ((method == "GET" || method == "DELETE") && (xhrData != undefined && xhrData != "")) {
@@ -2283,7 +2540,6 @@ function Document(url, isDefinitive, readOnly) {
 	this.registerChangeListener = function (listener) {
 		documentChangeListeners.push(listener);
 	};
-	
 	function notifyChangeListeners(patch) {
 		DelayedCallbacks.increment();
 		var listeners = changeListeners.concat(documentChangeListeners);
@@ -2293,6 +2549,16 @@ function Document(url, isDefinitive, readOnly) {
 			}
 		});
 		DelayedCallbacks.decrement();
+	}
+
+	var accessCallbacks = [];
+	this.access = function () {
+		while (accessCallbacks.length) {
+			accessCallbacks.shift().call(this);
+		}
+	}
+	this.whenAccessed = function (callback) {
+		accessCallbacks.push(callback);
 	}
 
 	this.setRaw = function (value) {
@@ -2320,6 +2586,7 @@ function Document(url, isDefinitive, readOnly) {
 		rootListeners.notify(this.root);
 	};
 	this.patch = function (patch) {
+		this.access();
 		if (this.readOnly) {
 			throw new Error("Cannot update read-only document");
 		}
@@ -2473,9 +2740,11 @@ function Data(document, secrets, parent, parentKey) {
 	};
 	
 	this.basicType = function() {
+		document.access();
 		return basicType;
 	};
 	this.value = function() {
+		document.access();
 		if (basicType == "object") {
 			var result = {};
 			for (var i = 0; i < keys.length; i++) {
@@ -2502,9 +2771,11 @@ function Data(document, secrets, parent, parentKey) {
 		}
 	};
 	this.keys = function () {
+		document.access();
 		return keys.slice(0);
 	};
 	this.length = function () {
+		document.access();
 		return length;
 	};
 	
@@ -2735,20 +3006,25 @@ function Data(document, secrets, parent, parentKey) {
 	
 	secrets.schemas = new SchemaSet(this);
 	this.schemas = function () {
+		document.access();
 		return secrets.schemas.getSchemas();
 	};
 	this.whenSchemasStable = function(callback) {
+		document.access();
 		secrets.schemas.whenSchemasStable(callback);
 		return this;
 	};
 	this.links = function (rel) {
+		document.access();
 		return secrets.schemas.getLinks(rel);
 	};
 	this.addLink = function (rawLink) {
+		document.access();
 		secrets.schemas.addLink(rawLink);
 		return this;
 	};
 	this.addSchema = function (schema, schemaKey) {
+		document.access();
 		var thisData = this;
 		if (schema instanceof SchemaList) {
 			schema.each(function (index, schema) {
@@ -2760,10 +3036,12 @@ function Data(document, secrets, parent, parentKey) {
 		return this;
 	};
 	this.removeSchema = function ( schemaKey) {
+		document.access();
 		secrets.schemas.removeSchema(schemaKey);
 		return this;
 	};
 	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
+		document.access();
 		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately, impatientCallbacks);
 	};
 }
@@ -3102,15 +3380,11 @@ publicApi.inflate = function (deflated, callback) {
 };
 
 function getSchema(url, callback) {
-	// Use getRawResponse() instead of getRoot to avoid blocking on self-referential schemas
 	return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
-		if (fragmentRequest.fragment) {
-			data = data.subPath(fragmentRequest.fragment);
-		}
+		// Set the root to avoid blocking on self-referential schemas
+		data.document.setRoot('');
+	}).getData(function (data, fragmentRequest) {
 		var schema = data.asSchema();
-		schema.referenceUrl = function () {
-			return fragmentRequest.url;
-		};
 		if (callback != undefined) {
 			callback.call(schema, schema, fragmentRequest);
 		}
@@ -3165,7 +3439,10 @@ Schema.prototype = {
 	"toString": function () {
 		return "<Schema " + this.data + ">";
 	},
-	referenceUrl: function () {
+	referenceUrl: function (includeRef) {
+		if (includeRef && this.data.property('$ref').defined()) {
+			return this.data.resolveUrl(this.data.propertyValue("$ref"));
+		}
 		return this.data.referenceUrl();
 	},
 	isFull: function () {
@@ -3836,6 +4113,53 @@ ActiveLink.prototype = {
 			}
 		}
 		return request;
+	},
+	valueForUrl: function (url) {
+		var template = this.definition.uriTemplate;
+	
+		var extractedValues = template.fromUri(url);
+		var result = {};
+		function decodeStringValue(stringValue, schemas) {
+			schemas = schemas.getFull();
+			var types = schemas.types();
+			if (types.indexOf('null') != -1 && stringValue == 'null') {
+				return null;
+			} else if (types.indexOf('boolean') != -1 && (stringValue == "true" || stringValue == "false")) {
+				return (stringValue == "true");
+			} else if (types.indexOf('string') != -1) {
+				return stringValue;
+			} else if (types.indexOf('number') != -1 && !isNaN(parseFloat(stringValue))) {
+				return parseFloat(stringValue);
+			} else if (types.indexOf('integer') != -1 && parseFloat(stringValue)%1 == 0) {
+				return parseFloat(stringValue);
+			} else if (types.indexOf('object')) {
+				return Jsonary.decodeData(stringValue);
+			}
+			return undefined;
+		}
+		var schemas = this.subjectData.schemas();
+		for (var varName in extractedValues) {
+			var value = extractedValues[varName];
+			var decodedVarName = translateUriTemplateName(varName);
+			if (decodedVarName == null) {
+				if (typeof value == "string") {
+					value = decodeStringValue(value, schemas);
+				}
+				if (value === undefined) {
+					return undefined;
+				}
+				result = value;
+			} else {
+				if (typeof value == "string") {
+					value = decodeStringValue(value, schemas.propertySchemas(decodedVarName));
+				}
+				if (value === undefined) {
+					return undefined;
+				}
+				result[decodedVarName] = value;
+			}
+		}
+		return result;
 	}
 };
 
@@ -4470,7 +4794,7 @@ SchemaList.prototype = {
 		if (url instanceof RegExp) {
 			for (var i = 0; i < this.length; i++) {
 				var schema = this[i];
-				if (url.test(schema.referenceUrl())) {
+				if (url.test(schema.referenceUrl(true))) {
 					return true;
 				}
 			}
@@ -4480,7 +4804,7 @@ SchemaList.prototype = {
 			}
 			for (var i = 0; i < this.length; i++) {
 				var schema = this[i];
-				var referenceUrl = schema.referenceUrl();
+				var referenceUrl = schema.referenceUrl(true);
 				if (referenceUrl != null && referenceUrl.substring(referenceUrl.length - url.length) == url) {
 					return true;
 				}
@@ -6025,13 +6349,18 @@ publicApi.UriTemplate = UriTemplate;
 				return;
 			}
 			this[newName] = newName;
-			if (componentList.indexOf(beforeName) != -1) {
+			if (typeof beforeName == 'number') {
+				var index = Math.max(0, Math.min(componentList.length - 1, Math.round(beforeName)));
+				componentList.splice(index, 0, this[newName]);
+			} else if (componentList.indexOf(beforeName) != -1) {
 				componentList.splice(componentList.indexOf(beforeName), 0, this[newName]);
+			} else if (componentList.indexOf(componentNames[beforeName]) != -1) {
+				componentList.splice(componentList.indexOf(componentNames[beforeName]), 0, this[newName]);
 			} else {
 				componentList.splice(componentList.length - 1, 0, this[newName]);
 			}
 		}
-	};	
+	};
 	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
 	var contextIdCounter = 0;
@@ -6848,6 +7177,21 @@ publicApi.UriTemplate = UriTemplate;
 	render.actionHtml = function (elementId, linkUrl, innerHtml) {
 		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
 	};
+	render.rendered = function (data) {
+		var uniqueId = data.uniqueId;
+		if (!pageContext.elementLookup[uniqueId]) {
+			return false;
+		}
+		var elementIds = pageContext.elementLookup[uniqueId];
+		for (var i = 0; i < elementIds.length; i++) {
+			var elementId = elementIds[i];
+			var element = document.getElementById(elementId);
+			if (element) {
+				return true;
+			}
+		}
+		return false;
+	};
 	
 	/**********/
 	
@@ -7222,5 +7566,23 @@ publicApi.UriTemplate = UriTemplate;
 			render(element, this, uiState);
 		}
 	});
+	// Whenever anything is invalidated, call access() on every document we know about, to force a re-request.
+	Jsonary.invalidate = function (oldFunction) {
+		return function () {
+			var result = oldFunction.apply(this, arguments);
+			var elementIds = [];
+			for (var uniqueId in pageContext.elementLookup) {
+				var ids = pageContext.elementLookup[uniqueId];
+				elementIds = elementIds.concat(ids);
+			}
+			for (var i = 0; i < elementIds.length; i++) {
+				var element = document.getElementById(elementIds[i]);
+				if (element && element.jsonaryContext) {
+					element.jsonaryContext.data.document.access();
+				}
+			}
+			return result;
+		};
+	}(Jsonary.invalidate);
 })(this);
 

@@ -1,3 +1,13 @@
+.jsonary .loading {
+	margin: 0px;
+	padding: 15px;
+	margin-left: 15px;
+	margin-right: 15px;
+	background-image: url('images/loading.gif');
+	background-position: middle;
+	background-repeat: no-repeat;
+}
+
 .jsonary .link {
 	color: #05C;
 }
@@ -40,12 +50,18 @@
 
 .jsonary .prompt-outer {
 	display: inline;
-	position: relative;
+	position: fixed;
 	text-align: center;
-	position: absolute;
-	left: 10%;
-	width: 80%;
-	z-index: 1000;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	padding: 5%;
+	z-index: 10000;
+	overflow: auto;
+	background-color: #CCC;
+	background-color: rgba(100, 100, 100, 0.3);
+	background-image: URL('images/background-stripe.png');
 }
 
 .jsonary .prompt-inner {
@@ -56,13 +72,8 @@
 	position: fixed;
 	top: 0;
 	left: 0;
-	width: 70%;
-	height: 100%;
-	background-color: #000;
-	padding-left: 15%;
-	padding-right: 15%;
-	background-color: rgba(100, 100, 100, 0.3);
-	background-image: URL('images/background-stripe.png');
+	bottom: 0;
+	right: 0;
 }
 
 .jsonary .prompt-box {
@@ -104,6 +115,11 @@
 	border-bottom-right-radius: 10px;
 	padding-top: 0.3em;
 	padding-bottom: 0.3em;
+}
+
+.jsonary .prompt-buttons-top {
+	padding: 0.3em;
+	text-align: center;
 }
 
 /************ Dialog *************/
@@ -228,6 +244,7 @@
 	background: #E4E4E4;
 	font-family: "Trebuchet MS"; /* Relatively narrow font */
 	white-space: nowrap;
+	cursor: pointer;
 }
 
 .jsonary .button:hover {

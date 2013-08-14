@@ -170,7 +170,7 @@
 		},
 		cellRenderHtml: {},
 		defaultCellRenderHtml: function (cellData, context, columnPath) {
-			return '<td>' + context.renderHtml(cellData) + '</td>';
+			return '<td>' + context.renderHtml(cellData, columnPath) + '</td>';
 		},
 		cellAction: {},
 		rowRenderHtml: function (rowData, context) {
@@ -363,7 +363,7 @@
 		};
 		this.addColumn(key, titleFunction, renderFunction);
 	};
-	FancyTableRenderer.prototype.addLinkColumn = function (path, linkRel, title, linkHtml, activeHtml, isConfirm) {
+	FancyTableRenderer.prototype.addLinkColumn = function (path, linkRel, title, linkHtml, activeHtml, confirmHtml) {
 		var subPath = ((typeof path == "string") && path.charAt(0) == "/") ? path : "";
 		if (typeof linkRel == "string") {
 			var columnName = "link" + path + "$" + linkRel;
@@ -377,15 +377,25 @@
 				if (!context.parent.uiState.linkRel) {
 					var link = data.subPath(subPath).links(linkRel)[0];
 					if (link) {
-						result += context.parent.actionHtml(linkHtml, 'link', linkRel, 0, subPath || undefined);
+						var html = (typeof linkHtml == 'function') ? linkHtml.call(this, data, context, link) : linkHtml;
+						result += context.parent.actionHtml(html, 'link', linkRel, 0, subPath || undefined);
 					}
 				} else if (activeHtml) {
 					var activeLink = data.subPath(subPath).links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
 					if (activeLink && activeLink.rel == linkRel) {
-						if (isConfirm) {
-							result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
-						} else {
-							result += context.parent.actionHtml(activeHtml, 'link-cancel');
+						if (typeof confirmHtml == 'string') {
+							var html = (typeof confirmHtml == 'function') ? confirmHtml.call(this, data, context, activeLink) : confirmHtml;
+							result += context.parent.actionHtml(confirmHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
+							if (activeHtml) {
+								var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
+								result += context.parent.actionHtml(html, 'link-cancel');
+							}
+						} else if (confirmHtml) {
+							var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
+							result += context.parent.actionHtml(html, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
+						} else if (activeHtml) {
+							var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
+							result += context.parent.actionHtml(html, 'link-cancel');
 						}
 					}
 				}
@@ -402,16 +412,26 @@
 					for (var i = 0; i < links.length; i++) {
 						var link = links[i];
 						if (link.definition = linkDefinition) {
-							result += context.parent.actionHtml(linkHtml, 'link', linkRel, i, subPath || undefined);
+							var html = (typeof linkHtml == 'function') ? linkHtml.call(this, data, context, link) : linkHtml;
+							result += context.parent.actionHtml(html, 'link', linkRel, 0, subPath || undefined);
 						}
 					}
 				} else if (activeHtml) {
 					var activeLink = data.subPath(subPath).links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
 					if (activeLink.definition == linkDefinition) {
-						if (isConfirm) {
-							result += context.parent.actionHtml(activeHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
-						} else {
-							result += context.parent.actionHtml(activeHtml, 'link-cancel');
+						if (typeof confirmHtml == 'string') {
+							var html = (typeof confirmHtml == 'function') ? confirmHtml.call(this, data, context, activeLink) : confirmHtml;
+							result += context.parent.actionHtml(confirmHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
+							if (activeHtml) {
+								var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
+								result += context.parent.actionHtml(html, 'link-cancel');
+							}
+						} else if (confirmHtml) {
+							var html = (typeof confirmHtml == 'function') ? confirmHtml.call(this, data, context, activeLink) : confirmHtml;
+							result += context.parent.actionHtml(html, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
+						} else if (activeHtml) {
+							var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
+							result += context.parent.actionHtml(html, 'link-cancel');
 						}
 					}
 				}
@@ -487,7 +507,7 @@
 		tableHeadRenderHtml: function (data, context) {
 			var result = '<thead>';
 			var rowOrder = this.rowOrder(data, context);
-			var pages = this.pages(rowOrder);
+			var pages = this.pages(rowOrder, data, context);
 			if (pages.length > 1) {
 				var page = context.uiState.page || 0;
 				result += '<tr><th colspan="' + this.columns.length + '" class="json-array-table-pages">';
@@ -529,7 +549,7 @@
 			var result = '<tbody>';
 			var rowOrder = this.rowOrder(data, context);
 
-			var pages = this.pages(rowOrder);
+			var pages = this.pages(rowOrder, data, context);
 			if (!pages.length) {
 				pages = [[]];
 			}
@@ -610,17 +630,20 @@
 			}
 			return TableRenderer.defaults.defaultTitleHtml.call(this, data, context, columnKey);
 		},
+		rowExpandRenderHtml: function (data, context, expand) {
+			result = '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
+			if (expand === true) {
+				result += context.renderHtml(data, 'expand');
+			} else {
+				result += context.renderHtml(expand, 'expand');
+			}
+			return result + '</td>';
+		},
 		rowRenderHtml: function (data, context) {
 			var result = '';
 			if (context.uiState.expand) {
 				result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
-				result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
-				if (context.uiState.expand === true) {
-					result += context.renderHtml(data);
-				} else {
-					result += context.renderHtml(context.uiState.expand);
-				}
-				result += '</td>';
+				result += this.rowExpandRenderHtml(data, context, context.uiState.expand);
 			} else if (context.uiState.linkRel) {
 				var link = data.subPath(context.uiState.linkPath || '').links(context.uiState.linkRel)[context.uiState.linkIndex || 0];
 				if (context.uiState.linkData) {
@@ -634,7 +657,7 @@
 						result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex, context.uiState.linkPath);
 						result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
 						result += '</div>';
-						result += context.renderHtml(context.uiState.linkData);
+						result += context.renderHtml(context.uiState.linkData, 'linkData');
 						result += '</td>';
 					}
 				} else {
