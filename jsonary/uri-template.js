@@ -11,6 +11,12 @@ var uriTemplateSuffices = {
 	"*": true
 };
 
+function notReallyPercentEncode(string) {
+	return encodeURI(string).replace(/%25[0-9][0-9]/g, function (doubleEncoded) {
+		return "%" + doubleEncoded.substring(3);
+	});
+}
+
 function uriTemplateSubstitution(spec) {
 	var modifier = "";
 	if (uriTemplateGlobalModifiers[spec.charAt(0)]) {
@@ -21,6 +27,7 @@ function uriTemplateSubstitution(spec) {
 	var prefix = "";
 	var shouldEscape = true;
 	var showVariables = false;
+	var trimEmptyString = false;
 	if (modifier == '+') {
 		shouldEscape = false;
 	} else if (modifier == ".") {
@@ -36,6 +43,7 @@ function uriTemplateSubstitution(spec) {
 		prefix = ";";
 		separator = ";",
 		showVariables = true;
+		trimEmptyString = true;
 	} else if (modifier == '?') {
 		prefix = "?";
 		separator = "&",
@@ -73,13 +81,20 @@ function uriTemplateSubstitution(spec) {
 		varNames.push(varName);
 	}
 	var subFunction = function (valueFunction) {
-		var result = prefix;
+		var result = "";
+		var startIndex = 0;
 		for (var i = 0; i < varSpecs.length; i++) {
 			var varSpec = varSpecs[i];
-			if (i > 0) {
+			var value = valueFunction(varSpec.name);
+			if (value == null || (Array.isArray(value) && value.length == 0) || (typeof value == 'object' && Object.keys(value).length == 0)) {
+				startIndex++;
+				continue;
+			}
+			if (i == startIndex) {
+				result += prefix;
+			} else {
 				result += (separator || ",");
 			}
-			var value = valueFunction(varSpec.name);
 			if (Array.isArray(value)) {
 				if (showVariables) {
 					result += varSpec.name + "=";
@@ -91,7 +106,7 @@ function uriTemplateSubstitution(spec) {
 							result += varSpec.name + "=";
 						}
 					}
-					result += shouldEscape ? encodeURIComponent(value[j]).replace(/!/g, "%21") : encodeURI(value[j]).replace(/%25/g, "%");
+					result += shouldEscape ? encodeURIComponent(value[j]).replace(/!/g, "%21") : notReallyPercentEncode(value[j]);
 				}
 			} else if (typeof value == "object") {
 				if (showVariables && !varSpec.suffices['*']) {
@@ -103,25 +118,32 @@ function uriTemplateSubstitution(spec) {
 						result += varSpec.suffices['*'] ? (separator || ",") : ",";
 					}
 					first = false;
-					result += shouldEscape ? encodeURIComponent(key).replace(/!/g, "%21") : encodeURI(key).replace(/%25/g, "%");
+					result += shouldEscape ? encodeURIComponent(key).replace(/!/g, "%21") : notReallyPercentEncode(key);
 					result += varSpec.suffices['*'] ? '=' : ",";
-					result += shouldEscape ? encodeURIComponent(value[key]).replace(/!/g, "%21") : encodeURI(value[key]).replace(/%25/g, "%");
+					result += shouldEscape ? encodeURIComponent(value[key]).replace(/!/g, "%21") : notReallyPercentEncode(value[key]);
 				}
 			} else {
 				if (showVariables) {
-					result += varSpec.name + "=";
+					result += varSpec.name;
+					if (!trimEmptyString || value != "") {
+						result += "=";
+					}
 				}
 				if (varSpec.truncate != null) {
 					value = value.substring(0, varSpec.truncate);
 				}
-				result += shouldEscape ? encodeURIComponent(value).replace(/!/g, "%21"): encodeURI(value).replace(/%25/g, "%");
+				result += shouldEscape ? encodeURIComponent(value).replace(/!/g, "%21"): notReallyPercentEncode(value);
 			}
 		}
 		return result;
 	};
 	var guessFunction = function (stringValue, resultObj) {
-		if (prefix && stringValue.substring(0, prefix.length) == prefix) {
-			stringValue = stringValue.substring(prefix.length);
+		if (prefix) {
+			if (stringValue.substring(0, prefix.length) == prefix) {
+				stringValue = stringValue.substring(prefix.length);
+			} else {
+				return null;
+			}
 		}
 		if (varSpecs.length == 1 && varSpecs[0].suffices['*']) {
 			var varSpec = varSpecs[0];
@@ -154,7 +176,7 @@ function uriTemplateSubstitution(spec) {
 					arrayValue[i] = innerArrayValue;
 				}
 			}
-			
+		
 			if (showVariables || hasEquals) {
 				var objectValue = resultObj[varName] || {};
 				for (var j = 0; j < arrayValue.length; j++) {
@@ -234,7 +256,7 @@ function uriTemplateSubstitution(spec) {
 			for (var i = 0; i < arrayValue.length; i++) {
 				var stringValue = arrayValue[i];
 				var innerArrayValue = stringValue.split(",");
-				
+			
 				if (showVariables) {
 					var stringValue = innerArrayValue[0]; // using innerArrayValue
 					var varName = stringValue.split("=", 1)[0];
@@ -270,14 +292,19 @@ function uriTemplateSubstitution(spec) {
 	};
 	subFunction.varNames = varNames;
 	return {
+		prefix: prefix,
 		substitution: subFunction,
 		unSubstitution: guessFunction
 	};
 }
 
 function UriTemplate(template) {
+	if (!(this instanceof UriTemplate)) {
+		return new UriTemplate(template);
+	}
 	var parts = template.split("{");
 	var textParts = [parts.shift()];
+	var prefixes = [];
 	var substitutions = [];
 	var unSubstitutions = [];
 	var varNames = [];
@@ -288,6 +315,7 @@ function UriTemplate(template) {
 		var funcs = uriTemplateSubstitution(spec);
 		substitutions.push(funcs.substitution);
 		unSubstitutions.push(funcs.unSubstitution);
+		prefixes.push(funcs.prefix);
 		textParts.push(remainder);
 		varNames = varNames.concat(funcs.substitution.varNames);
 	}
@@ -300,16 +328,12 @@ function UriTemplate(template) {
 		}
 		return result;
 	};
-	this.fillFromObject = function (obj) {
-		return this.fill(function (varName) {
-			return obj[varName];
-		});
-	};
-	this.fromUrl = function (substituted) {
+	this.fromUri = function (substituted) {
 		var result = {};
 		for (var i = 0; i < textParts.length; i++) {
 			var part = textParts[i];
-			if (substituted.substring(0, part.length) != part) {
+			if (substituted.substring(0, part.length) !== part) {
+				console.log([substituted, part]);
 				return undefined;
 			}
 			substituted = substituted.substring(part.length);
@@ -321,13 +345,33 @@ function UriTemplate(template) {
 				}
 			}
 			var nextPart = textParts[i + 1];
-			if (nextPart) {
-				var nextPartPos = substituted.indexOf(nextPart);
-				var stringValue = substituted.substring(0, nextPartPos);
-				substituted = substituted.substring(nextPartPos);
-			} else {
-				var stringValue = substituted;
-				substituted = "";
+			var offset = i;
+			while (true) {
+				if (offset == textParts.length - 2) {
+					var endPart = substituted.substring(substituted.length - nextPart.length);
+					if (endPart !== nextPart) {
+						return undefined;
+					}
+					var stringValue = substituted.substring(0, substituted.length - nextPart.length);
+					substituted = endPart;
+				} else if (nextPart) {
+					var nextPartPos = substituted.indexOf(nextPart);
+					var stringValue = substituted.substring(0, nextPartPos);
+					substituted = substituted.substring(nextPartPos);
+				} else if (prefixes[offset + 1]) {
+					var nextPartPos = substituted.indexOf(prefixes[offset + 1]);
+					var stringValue = substituted.substring(0, nextPartPos);
+					substituted = substituted.substring(nextPartPos);
+				} else if (textParts.length > offset + 2) {
+					// If the separator between this variable and the next is blank (with no prefix), continue onwards
+					offset++;
+					nextPart = textParts[offset + 1];
+					continue;
+				} else {
+					var stringValue = substituted;
+					substituted = "";
+				}
+				break;
 			}
 			unSubstitutions[i](stringValue, result);
 		}
@@ -336,4 +380,9 @@ function UriTemplate(template) {
 	this.varNames = varNames;
 }
 UriTemplate.prototype = {
+	fillFromObject: function (obj) {
+		return this.fill(function (varName) {
+			return obj[varName];
+		});
+	}
 };
