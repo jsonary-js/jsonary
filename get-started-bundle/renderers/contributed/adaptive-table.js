@@ -9,15 +9,15 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 			rowsPerPage: 15
 		});
 		var columnsObj = {};
-
-		function addColumnsFromSchemas(schemas, pathPrefix) {
+		
+		function addColumnsFromSchemas(schemas, pathPrefix, depthRemaining) {
 			schemas = schemas.getFull();
 
 			pathPrefix = pathPrefix || "";
 			var basicTypes = schemas.basicTypes();
 
 			// If the data might not be an object, add a column for it
-			if (basicTypes.length != 1 || basicTypes[0] != "object") {
+			if (basicTypes.length != 1 || basicTypes[0] != "object" || depthRemaining <= 0) {
 				var column = pathPrefix;
 				if (!columnsObj[column]) {
 					columnsObj[column] = true;
@@ -34,7 +34,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 			}
 
 			// If the data might be an object, add columns for its links/properties
-			if (basicTypes.indexOf('object') != -1) {
+			if (basicTypes.indexOf('object') != -1 && depthRemaining > 0) {
 				if (data.readOnly()) {
 					var links = schemas.links();
 					for (var i = 0; i < links.length; i++) {
@@ -63,7 +63,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 				// Iterate over the potential properties
 				for (var i = 0; i < knownProperties.length; i++) {
 					var key = knownProperties[i];
-					addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]));
+					addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]), depthRemaining - 1);
 				}
 			}
 		}
@@ -82,7 +82,8 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 		}
 
 		var itemSchemas = data.schemas().indexSchemas(0).getFull();
-		addColumnsFromSchemas(itemSchemas);
+		var recursionLimit = (itemSchemas.knownProperties().length >= 8) ? 0 : 1;
+		addColumnsFromSchemas(itemSchemas, '', recursionLimit);
 		return renderer;
 	},
 	filter: function (data, schemas) {
@@ -95,7 +96,9 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 				var indexSchemas = schemas.indexSchemas(0).getFull();
 				var itemTypes = indexSchemas.basicTypes();
 				if (itemTypes.length == 1 && itemTypes[0] == "object") {
-					return true;
+					if (indexSchemas.knownProperties().length < 20) {
+						return true;
+					}
 				}
 			}
 		}

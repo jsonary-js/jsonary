@@ -3469,13 +3469,35 @@ Schema.prototype = {
 			}
 		} else if (callback) {
 			getSchema(refUrl, callback);
+		} else {
+			var result = this;
+			this.getFull(function (fullResult) {
+				result = fullResult;
+			});
+			return result;
 		}
-		return this;
 	},
 	title: function () {
-		var title = this.data.propertyValue("title");
-		if (title == undefined) {
-			title = null;
+		return this.data.propertyValue("title") || null;
+	},
+	forceTitle: function () {
+		var title = this.data.propertyValue("title") || null;
+		if (title === null) {
+			if (this.enumData().defined()) {
+				return "enum";
+			}
+			var basicTypes = this.basicTypes();
+			if (basicTypes.length == 1) {
+				if (basicTypes[0] == 'array' && !this.tupleTyping()) {
+					var indexSchemas = this.indexSchemas(0);
+					var itemTitle = indexSchemas.forceTitle();
+					if (itemTitle) {
+						return "array of " + itemTitle + " items";
+					}
+				} else {
+					return basicTypes[0];
+				}
+			}
 		}
 		return title;
 	},
@@ -3489,18 +3511,18 @@ Schema.prototype = {
 		var schemas = [];
 		var subSchema = this.data.property("properties").property(key);
 		if (subSchema.defined()) {
-			schemas.push(subSchema.asSchema());
+			schemas.push(subSchema.asSchema().getFull());
 		}
 		this.data.property("patternProperties").properties(function (patternKey, subData) {
 			var regEx = new RegExp(patternKey);
 			if (regEx.test(key)) {
-				schemas.push(subData.asSchema());
+				schemas.push(subData.asSchema().getFull());
 			}
 		});
 		if (schemas.length == 0) {
 			subSchema = this.data.property("additionalProperties");
 			if (subSchema.defined()) {
-				schemas.push(subSchema.asSchema());
+				schemas.push(subSchema.asSchema().getFull());
 			}
 		}
 		return new SchemaList(schemas);
@@ -3521,7 +3543,7 @@ Schema.prototype = {
 		}
 		return [];
 	},
-	indexSchemas: function (i) {
+	itemSchemas: function (i) {
 		var items = this.data.property("items");
 		var subSchema;
 		if (!items.defined()) {
@@ -3536,7 +3558,7 @@ Schema.prototype = {
 			subSchema = items;
 		}
 		if (subSchema.defined()) {
-			var result = subSchema.asSchema();
+			var result = subSchema.asSchema().getFull();
 			return new SchemaList([result]);
 		}
 		return new SchemaList();
@@ -3818,6 +3840,7 @@ Schema.prototype = {
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
 Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
+Schema.prototype.indexSchemas = Schema.prototype.itemSchemas;
 Schema.prototype.isComplete = Schema.prototype.isFull;
 
 publicApi.extendSchema = function (obj) {
@@ -4857,6 +4880,16 @@ SchemaList.prototype = {
 		}
 		return titles.join(' - ');
 	},
+	forceTitle: function () {
+		var titles = [];
+		for (var i = 0; i < this.length; i++) {
+			var title = this[i].forceTitle();
+			if (title) {
+				titles.push(title);
+			}
+		}
+		return titles.join(' - ');
+	},
 	definedProperties: function (ignoreList) {
 		if (ignoreList) {
 			this.definedProperties(); // create cached function
@@ -5608,11 +5641,11 @@ SchemaList.prototype = {
 	},
 	getFull: function(callback) {
 		if (!callback) {
-			var result = this;
-			this.getFull(function (fullResult) {
-				result = fullResult;
-			});
-			return result;
+			var result = [];
+			for (var i = 0; i < this.length; i++) {
+				result[i] = this[i].getFull();
+			}
+			return new SchemaList(result);
 		}
 		if (this.length == 0) {
 			callback.call(this, this);
@@ -6346,7 +6379,13 @@ publicApi.UriTemplate = UriTemplate;
 		RENDERER: "DATA_RENDERER",
 		add: function (newName, beforeName) {
 			if (this[newName] != undefined) {
-				return;
+				if (beforeName !== undefined) {
+					if (componentList.indexOf(newName) != -1) {
+						componentList.splice(componentList.indexOf(newName), 1);
+					}
+				} else {
+					return;
+				}
 			}
 			this[newName] = newName;
 			if (typeof beforeName == 'number') {
@@ -7198,6 +7237,18 @@ publicApi.UriTemplate = UriTemplate;
 	render.saveData = function (data, saveDataId) {
 		if (typeof localStorage == 'undefined') {
 			return "LOCALSTORAGE_MISSING";
+		}
+		var deleteThreshhold = (new Date).getTime() - 1000*60*60*2; // Delete after two hours
+		var keys = Object.keys(localStorage);
+		for (var i = 0; i < keys.length; i++) {
+			var key = keys[i];
+			try {
+				var storedData = JSON.parse(localStorage[key]);
+				if (storedData.accessed < deleteThreshhold) {
+					delete localStorage[key];
+				}
+			} catch (e) {
+			}
 		}
 		localStorage[data.saveStateId] = JSON.stringify({
 			accessed: (new Date).getTime(),

@@ -1,4 +1,4 @@
-/* Bundled on Wed Aug 14 2013 19:04:05 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Wed Aug 21 2013 18:18:22 GMT+0100 (GMT Daylight Time)*/
 (function() {
 
 
@@ -3492,13 +3492,35 @@
 				}
 			} else if (callback) {
 				getSchema(refUrl, callback);
+			} else {
+				var result = this;
+				this.getFull(function (fullResult) {
+					result = fullResult;
+				});
+				return result;
 			}
-			return this;
 		},
 		title: function () {
-			var title = this.data.propertyValue("title");
-			if (title == undefined) {
-				title = null;
+			return this.data.propertyValue("title") || null;
+		},
+		forceTitle: function () {
+			var title = this.data.propertyValue("title") || null;
+			if (title === null) {
+				if (this.enumData().defined()) {
+					return "enum";
+				}
+				var basicTypes = this.basicTypes();
+				if (basicTypes.length == 1) {
+					if (basicTypes[0] == 'array' && !this.tupleTyping()) {
+						var indexSchemas = this.indexSchemas(0);
+						var itemTitle = indexSchemas.forceTitle();
+						if (itemTitle) {
+							return "array of " + itemTitle + " items";
+						}
+					} else {
+						return basicTypes[0];
+					}
+				}
 			}
 			return title;
 		},
@@ -3512,18 +3534,18 @@
 			var schemas = [];
 			var subSchema = this.data.property("properties").property(key);
 			if (subSchema.defined()) {
-				schemas.push(subSchema.asSchema());
+				schemas.push(subSchema.asSchema().getFull());
 			}
 			this.data.property("patternProperties").properties(function (patternKey, subData) {
 				var regEx = new RegExp(patternKey);
 				if (regEx.test(key)) {
-					schemas.push(subData.asSchema());
+					schemas.push(subData.asSchema().getFull());
 				}
 			});
 			if (schemas.length == 0) {
 				subSchema = this.data.property("additionalProperties");
 				if (subSchema.defined()) {
-					schemas.push(subSchema.asSchema());
+					schemas.push(subSchema.asSchema().getFull());
 				}
 			}
 			return new SchemaList(schemas);
@@ -3544,7 +3566,7 @@
 			}
 			return [];
 		},
-		indexSchemas: function (i) {
+		itemSchemas: function (i) {
 			var items = this.data.property("items");
 			var subSchema;
 			if (!items.defined()) {
@@ -3559,7 +3581,7 @@
 				subSchema = items;
 			}
 			if (subSchema.defined()) {
-				var result = subSchema.asSchema();
+				var result = subSchema.asSchema().getFull();
 				return new SchemaList([result]);
 			}
 			return new SchemaList();
@@ -3841,6 +3863,7 @@
 	};
 	Schema.prototype.basicTypes = Schema.prototype.types;
 	Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
+	Schema.prototype.indexSchemas = Schema.prototype.itemSchemas;
 	Schema.prototype.isComplete = Schema.prototype.isFull;
 	
 	publicApi.extendSchema = function (obj) {
@@ -4886,6 +4909,16 @@
 			}
 			return titles.join(' - ');
 		},
+		forceTitle: function () {
+			var titles = [];
+			for (var i = 0; i < this.length; i++) {
+				var title = this[i].forceTitle();
+				if (title) {
+					titles.push(title);
+				}
+			}
+			return titles.join(' - ');
+		},
 		definedProperties: function (ignoreList) {
 			if (ignoreList) {
 				this.definedProperties(); // create cached function
@@ -5637,11 +5670,11 @@
 		},
 		getFull: function(callback) {
 			if (!callback) {
-				var result = this;
-				this.getFull(function (fullResult) {
-					result = fullResult;
-				});
-				return result;
+				var result = [];
+				for (var i = 0; i < this.length; i++) {
+					result[i] = this[i].getFull();
+				}
+				return new SchemaList(result);
 			}
 			if (this.length == 0) {
 				callback.call(this, this);
@@ -6384,7 +6417,13 @@
 			RENDERER: "DATA_RENDERER",
 			add: function (newName, beforeName) {
 				if (this[newName] != undefined) {
-					return;
+					if (beforeName !== undefined) {
+						if (componentList.indexOf(newName) != -1) {
+							componentList.splice(componentList.indexOf(newName), 1);
+						}
+					} else {
+						return;
+					}
 				}
 				this[newName] = newName;
 				if (typeof beforeName == 'number') {
@@ -7237,6 +7276,18 @@
 			if (typeof localStorage == 'undefined') {
 				return "LOCALSTORAGE_MISSING";
 			}
+			var deleteThreshhold = (new Date).getTime() - 1000*60*60*2; // Delete after two hours
+			var keys = Object.keys(localStorage);
+			for (var i = 0; i < keys.length; i++) {
+				var key = keys[i];
+				try {
+					var storedData = JSON.parse(localStorage[key]);
+					if (storedData.accessed < deleteThreshhold) {
+						delete localStorage[key];
+					}
+				} catch (e) {
+				}
+			}
 			localStorage[data.saveStateId] = JSON.stringify({
 				accessed: (new Date).getTime(),
 				data: data.deflate()
@@ -8050,20 +8101,19 @@
 	// Jsonary plugin
 	(function (Jsonary) {
 		
-		/* Template: jsonary-template-header-code
-		var data = arguments[0], context = arguments[1];
-		function want(path) {
-			var subData = data.subPath(path);
-			return subData.defined() || !subData.readOnly();
-		};
-		function action(html, actionName) {
-			echo(context.actionHtml.apply(context, arguments));
-		};
-		function render(subData, label) {
-			echo(context.renderHtml(subData, label));
-		};
-		*/
-		var headerCode = jstl.getTemplate('jsonary-template-header-code').code;
+		var headerCode = [
+			'var data = arguments[0], context = arguments[1];',
+			'function want(path) {',
+			'	var subData = data.subPath(path);',
+			'	return subData.defined() || !subData.readOnly();',
+			'};',
+			'function action(html, actionName) {',
+			'echo(context.actionHtml.apply(context, arguments));',
+			'};',
+			'function render(subData, label) {',
+			'	echo(context.renderHtml(subData, label));',
+			'};'
+		].join("\n");
 		var substitutionFunction = function (path) {
 			if (path == "$") {
 				return function (data, context) {
@@ -9117,7 +9167,6 @@
 					result += "<div class='json-" + parentType + "-delete-container'>";
 					result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
 					result += context.renderHtml(data, 'data');
-					result += '<div style="clear: both"></div></div>';
 				} else {
 					result += context.renderHtml(data, 'data');
 				}
@@ -9175,45 +9224,28 @@
 			component: Jsonary.render.Components.TYPE_SELECTOR,
 			renderHtml: function (data, context) {
 				var result = "";
-				var basicTypes = data.schemas().basicTypes();
 				var enums = data.schemas().enumValues();
-				if (context.uiState.dialogOpen) {
-					result += context.actionHtml('<div class="dialog-overlay"></div>', "closeDialog");
-					result += '<div class="dialog-box">';
-					result += context.actionHtml('<div class="dialog-close button">close</div>', "closeDialog");
-					if (basicTypes.length > 1) {
-						result += '<div class="dialog-title">Select basic type:</div>';
-						for (var i = 0; i < basicTypes.length; i++) {
-							if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
-								continue;
-							}
-							if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
-								result += '<li>' + basicTypes[i];
-							} else {
-								result += '<li>' + context.actionHtml(basicTypes[i], 'select-basic-type', basicTypes[i]);
-							}
+				var basicTypes = data.schemas().basicTypes();
+				if (basicTypes.length > 1 && enums == null) {
+					result += '<select name="' + context.inputNameForAction('select-basic-type') + '">';
+					for (var i = 0; i < basicTypes.length; i++) {
+						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
+							continue;
 						}
-						result += '</ul>';
+						var typeHtml = Jsonary.escapeHtml(basicTypes[i]);
+						if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
+							result += '<option value="' + typeHtml + '" selected>' + typeHtml +'</option>';
+						} else {
+							result += '<option value="' + typeHtml + '">' + typeHtml +'</option>';
+						}
 					}
-					result += '</div>';
+					result += '</select> ';
 				}
 				result += context.renderHtml(data, 'data');
-				if (basicTypes.length > 1 && enums == null) {
-					result = '<span class="dialog-anchor">'
-						+ context.actionHtml("<span class=\"json-select-type button\">T</span>", "openDialog") + " "
-						+ result
-						+ '</span>';
-				}
 				return result;
 			},
 			action: function (context, actionName, basicType) {
-				if (actionName == "closeDialog") {
-					context.uiState.dialogOpen = false;
-					return true;
-				} else if (actionName == "openDialog") {
-					context.uiState.dialogOpen = true;
-					return true;
-				} else if (actionName == "select-basic-type") {
+				if (actionName == "select-basic-type") {
 					context.uiState.dialogOpen = false;
 					var schemas = context.data.schemas().concat([Jsonary.createSchema({type: basicType})]);
 					schemas.createValue(function (newValue) {
@@ -9266,7 +9298,7 @@
 		});
 	
 		// Display schema switcher
-		Jsonary.render.Components.add("SCHEMA_SWITCHER", 0);
+		Jsonary.render.Components.add("SCHEMA_SWITCHER", Jsonary.render.Components.TYPE_SELECTOR);
 		Jsonary.render.register({
 			name: "Jsonary plain schema-switcher",
 			component: Jsonary.render.Components.SCHEMA_SWITCHER,
@@ -9299,7 +9331,7 @@
 								context.uiState.xorSelected[i] = j;
 								selected = " selected";
 							}
-							result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+							result += '<option value="' + j + '"' + selected + '>' + schema.forceTitle() + '</option>'
 						}
 						result += '</select>';
 					}
@@ -9347,7 +9379,7 @@
 					result += '</span></div>';
 				}
 				if (!singleOption && fixedSchemas.length < data.schemas().length) {
-					result += context.actionHtml("<span class=\"json-select-type\">S</span>", "openDialog") + " ";
+					result += context.actionHtml("<span class=\"json-select-type button\">Schemas</span>", "openDialog") + " ";
 				}
 				result += context.renderHtml(data, 'data');
 				return result;
@@ -9488,7 +9520,7 @@
 				result += '<table class="json-object"><tbody>';
 				var drawProperty = function (key, subData) {
 					if (subData.defined()) {
-						var title = subData.schemas().title();
+						var title = subData.schemas().fixed().title();
 					} else {
 						var schemas = subData.parent().schemas().propertySchemas(subData.parentKey());
 						if (schemas.readOnly()) {
@@ -9507,25 +9539,55 @@
 				}
 				if (!data.readOnly()) {
 					var schemas = data.schemas();
-					var definedProperties = schemas.definedProperties();
+					var knownProperties = schemas.knownProperties();
+					
+					var shouldHideUndefined = knownProperties.length - schemas.requiredProperties().length > 5;
+					
 					var maxProperties = schemas.maxProperties();
 					var canAdd = (maxProperties == null || maxProperties > schemas.keys().length);
-					data.properties(definedProperties, function (key, subData) {
-						if (canAdd || subData.defined()) {
+					data.properties(knownProperties, function (key, subData) {
+						if ((!shouldHideUndefined && canAdd) || subData.defined()) {
 							drawProperty(key, subData);
 						}
 					}, drawProperty);
 	
-					if (canAdd && schemas.allowedAdditionalProperties()) {
+					if (canAdd && (schemas.allowedAdditionalProperties() || shouldHideUndefined)) {
 						if (context.uiState.addInput) {
 							result += '<tr class="json-object-pair"><td class="json-object-key"><div class="json-object-key-text">';
 							result += context.actionHtml('<span class="button">add</span>', "add-confirm");
 							result += '<br>';
 							result += '</div></td><td>';
-							result += '<input type="text" class="json-object-add-input" name="' + context.inputNameForAction("add-input") + '" value="' + Jsonary.escapeHtml(context.uiState.addInputValue) + '"></input>';
-							result += context.actionHtml('<span class="button">cancel</span>', "add-cancel");
-							if (data.property(context.uiState.addInputValue).defined()) {
-								result += '<span class="warning"><code>' + Jsonary.escapeHtml(context.uiState.addInputValue) + '</code> already exists</span>';
+							if (shouldHideUndefined) {
+								var missingKeys = [];
+								data.properties(knownProperties, function (key, subData) {
+									if (!subData.defined()) {
+										missingKeys.push(key);
+									}
+								});
+								result += '<select name="' + context.inputNameForAction('select-preset') + '">';
+								if (schemas.allowedAdditionalProperties()) {
+									result += '<option value="custom">Enter your own:</option>';
+								}
+								result += '<optgroup label="Known properties">';
+								missingKeys.sort();
+								for (var i = 0; i < missingKeys.length; i++) {
+									var key = missingKeys[i];
+									if (key == context.uiState.addInputSelect) {
+										result += '<option value="key-' + Jsonary.escapeHtml(key) + '" selected>' + Jsonary.escapeHtml(key) + '</option>';
+									} else {
+										result += '<option value="key-' + Jsonary.escapeHtml(key) + '">' + Jsonary.escapeHtml(key) + '</option>';
+									}
+								}
+								result += '</optgroup></select>';
+							}
+							if (schemas.allowedAdditionalProperties() && (!shouldHideUndefined || context.uiState.addInputSelect == null)) {
+								result += '<input type="text" class="json-object-add-input" name="' + context.inputNameForAction("add-input") + '" value="' + Jsonary.escapeHtml(context.uiState.addInputValue) + '"></input>';
+								result += context.actionHtml('<span class="button">cancel</span>', "add-cancel");
+								if (data.property(context.uiState.addInputValue).defined()) {
+									result += '<span class="warning"><code>' + Jsonary.escapeHtml(context.uiState.addInputValue) + '</code> already exists</span>';
+								}
+							} else {
+								result += context.actionHtml('<span class="button">cancel</span>', "add-cancel");
 							}
 							result += '</td></tr>';
 						} else {
@@ -9535,8 +9597,8 @@
 						}
 					}
 				} else {
-					var definedProperties = data.schemas().definedProperties();
-					data.properties(definedProperties, function (key, subData) {
+					var knownProperties = data.schemas().knownProperties();
+					data.properties(knownProperties, function (key, subData) {
 						if (subData.defined()) {
 							drawProperty(key, subData);
 						}
@@ -9548,11 +9610,14 @@
 			},
 			action: function (context, actionName, arg1) {
 				var data = context.data;
-				if (actionName == "add-named") {
-					var key = arg1;
-					data.schemas().createValueForProperty(key, function (newValue) {
-						data.property(key).setValue(newValue);
-					});
+				if (actionName == "select-preset") {
+					if (arg1 == 'custom') {
+						delete context.uiState.addInputSelect;
+					} else {
+						var key = arg1;
+						context.uiState.addInputSelect = key.substring(4);
+					}
+					return true;
 				} else if (actionName == "add-input") {
 					context.uiState.addInput = true;
 					context.uiState.addInputValue = (arg1 == undefined) ? "key" : arg1;
@@ -9560,12 +9625,14 @@
 				} else if (actionName == "add-cancel") {
 					delete context.uiState.addInput;
 					delete context.uiState.addInputValue;
+					delete context.uiState.addInputSelect;
 					return true;
 				} else if (actionName == "add-confirm") {
-					var key = context.uiState.addInputValue;
+					var key = (context.uiState.addInputSelect != null) ? context.uiState.addInputSelect : context.uiState.addInputValue;
 					if (key != null && !data.property(key).defined()) {
 						delete context.uiState.addInput;
 						delete context.uiState.addInputValue;
+						delete context.uiState.addInputSelect;
 						data.schemas().createValueForProperty(key, function (newValue) {
 							data.property(key).setValue(newValue);
 						});
@@ -10132,15 +10199,15 @@
 				rowsPerPage: 15
 			});
 			var columnsObj = {};
-	
-			function addColumnsFromSchemas(schemas, pathPrefix) {
+			
+			function addColumnsFromSchemas(schemas, pathPrefix, depthRemaining) {
 				schemas = schemas.getFull();
 	
 				pathPrefix = pathPrefix || "";
 				var basicTypes = schemas.basicTypes();
 	
 				// If the data might not be an object, add a column for it
-				if (basicTypes.length != 1 || basicTypes[0] != "object") {
+				if (basicTypes.length != 1 || basicTypes[0] != "object" || depthRemaining <= 0) {
 					var column = pathPrefix;
 					if (!columnsObj[column]) {
 						columnsObj[column] = true;
@@ -10157,7 +10224,7 @@
 				}
 	
 				// If the data might be an object, add columns for its links/properties
-				if (basicTypes.indexOf('object') != -1) {
+				if (basicTypes.indexOf('object') != -1 && depthRemaining > 0) {
 					if (data.readOnly()) {
 						var links = schemas.links();
 						for (var i = 0; i < links.length; i++) {
@@ -10186,7 +10253,7 @@
 					// Iterate over the potential properties
 					for (var i = 0; i < knownProperties.length; i++) {
 						var key = knownProperties[i];
-						addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]));
+						addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]), depthRemaining - 1);
 					}
 				}
 			}
@@ -10205,7 +10272,8 @@
 			}
 	
 			var itemSchemas = data.schemas().indexSchemas(0).getFull();
-			addColumnsFromSchemas(itemSchemas);
+			var recursionLimit = (itemSchemas.knownProperties().length >= 8) ? 0 : 1;
+			addColumnsFromSchemas(itemSchemas, '', recursionLimit);
 			return renderer;
 		},
 		filter: function (data, schemas) {
@@ -10218,7 +10286,9 @@
 					var indexSchemas = schemas.indexSchemas(0).getFull();
 					var itemTypes = indexSchemas.basicTypes();
 					if (itemTypes.length == 1 && itemTypes[0] == "object") {
-						return true;
+						if (indexSchemas.knownProperties().length < 20) {
+							return true;
+						}
 					}
 				}
 			}
@@ -10288,7 +10358,7 @@
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
 			var style = document.createElement('style');
-			style.innerHTML = ".json-schema,.json-link{margin-right:.5em;margin-left:.5em;border:1px solid #DD3;background-color:#FFB;padding-left:.5em;padding-right:.5em;color:#880;font-size:.85em;font-style:italic;text-decoration:none}.json-link{border:1px solid #88F;background-color:#DDF;color:#008;font-style:normal}.json-raw{display:inline;white-space:pre}.json-null{font-style:italic;color:#666}.valid{background-color:#DFD}.invalid{background-color:#FDD}textarea{vertical-align:middle}.json-object{width:100%}.json-object-title{font-weight:700}.json-object-outer{background-color:#FFF;border-radius:3px}.json-object-outer>legend{background-color:#EEE;border:1px solid #BBB;border-radius:3px;font-size:.8em;padding:.2em;padding-left:.7em;padding-right:.7em}.json-object-pair{margin-bottom:.3em}.json-object-key{padding:0;vertical-align:top;width:4em}.json-object-key-text,.json-object-key-title{text-align:right;font-style:italic;padding-right:.5em;border-right:1px solid #000;white-space:pre}.json-object-key-title{font-weight:700;font-style:normal;min-height:1.2em}.json-object-value{padding-left:.5em;vertical-align:top}.json-object-delete-container,.json-array-delete-container{position:relative;vertical-align:top;padding-left:1.2em}.json-object-delete,.json-array-delete{position:absolute;left:0;top:0;font-family:Arial,sans-serif;font-style:normal;font-weight:700;font-size:.9em;color:red;text-decoration:none;margin-right:1em;opacity:.5;transition:opacity .05s ease-in;text-shadow:0 -1px 1px rgba(255,255,255,.7),0 1px 1px rgba(0,0,0,.8)}.json-object-delete:hover,.json-array-delete:hover{opacity:1}.json-object-delete-value{}.json-object-add{display:block;padding-left:2.2em;color:#888;font-size:.9em}.json-object-add-key,.json-object-add-key-new{text-decoration:none;margin-left:1em;color:#000;border:1px solid #888;background-color:#EEE}.json-object-add-key-new{border:1px dotted #BBB;background-color:#EEF;font-style:italic}.json-select-type-dialog-outer{position:relative}.json-select-type-dialog{position:absolute;top:-.65em;left:-.5em;width:12em;border:2px solid #000;border-radius:10px;background-color:#fff;padding:.5em;z-index:1;opacity:.95;box-shadow:0 1px 3px rgba(0,0,0,.1)}.json-select-type-background{position:fixed;top:0;right:0;bottom:0;left:0;background-image:URL(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.json-select-type{font-family:monospaced;font-weight:700;font-size:.8em;padding-left:.3em;padding-right:.3em}.json-array{}.json-array-item{display:block}.json-array-add{display:block;padding-left:2.2em;color:#000;font-family:monospace;font-style:normal;font-weight:700;color:#00F;text-decoration:none;margin-right:1em}.json-string{white-space:pre-wrap;border-radius:3px;font-size:inherit}.json-string-content-editable{display:inline;display:inline-block;vertical-align:text-top;background-color:#FFF;background-color:rgba(255,255,255,.95);outline:1px solid #BBB;outline:1px solid rgba(0,0,0,.05);color:#444;margin:.1em;padding:.3em;font-family:inherit;text-shadow:none;font-size:.9em;line-height:1.2em;min-width:5em;min-height:1.2em;max-height:20em;overflow:auto;border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}.json-string-content-editable:focus{color:#000;border-color:#48C;box-shadow:0 0 2px rgba(0,0,0,.1);z-index:1}.json-string-content-editable p{display:block!important;margin:0!important;padding:0!important}.json-string-content-editable *{position:static!important;margin:0!important;padding:0!important;font-size:inherit!important;font-family:inherit!important;color:#000!important;background:none!important;border:0!important;outline:0!important;font-weight:400!important;font-style:normal!important;text-decoration:none!important;text-transform:none!important;font-variant:normal!important;line-height:1.2em!important}textarea.json-string{font-size:inherit;font-weight:inherit;background-color:#FFF;background-color:rgba(255,255,255,.5);width:30%}.json-string-notice{color:#666;margin-left:.5em}.json-number{font-family:monospace;color:#000;font-weight:700;text-decoration:none;white-space:nowrap}input.json-number-input{width:3em;text-align:center;font-family:Trebuchet MS;font-weight:700}.json-number-increment,.json-number-decrement{font-family:monospace;padding-left:.5em;padding-right:.5em}.json-boolean-true,.json-boolean-false{font-family:monospace;color:#080;font-weight:700;text-decoration:none}.json-boolean-false{color:#800}.json-undefined-create{color:#008;text-decoration:none}.json-undefined-create:hover{color:#08F}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.5)}.prompt-buttons{background-color:#EEE;border:2px solid #000;text-align:center;position:relative}.prompt-data{background-color:#fff;border:2px solid #000;border-radius:10px;position:relative}";
+			style.innerHTML = ".json-schema,.json-link{margin-right:.5em;margin-left:.5em;border:1px solid #DD3;background-color:#FFB;padding-left:.5em;padding-right:.5em;color:#880;font-size:.85em;font-style:italic;text-decoration:none}.json-link{border:1px solid #88F;background-color:#DDF;color:#008;font-style:normal}.json-raw{display:inline;white-space:pre}.json-null{font-style:italic;color:#666}.valid{background-color:#DFD}.invalid{background-color:#FDD}textarea{vertical-align:middle}.json-object{width:100%;font-size:inherit}.json-object-title{font-weight:700}.json-object-outer{background-color:#FFF;background-color:rgba(255,255,255,.8);border-radius:3px}.json-object-outer>legend{background-color:#EEE;border:1px solid #BBB;border-radius:3px;font-size:.8em;padding:.2em;padding-left:.7em;padding-right:.7em}.json-object-pair{margin-bottom:.3em}.json-object-key{padding:0;vertical-align:top;width:4em}.json-object-key-text,.json-object-key-title{text-align:right;font-style:italic;padding-right:.5em;border-right:1px solid #000;white-space:pre}.json-object-key-title{font-weight:700;font-style:normal;min-height:1.2em}.json-object-value{padding-left:.5em;vertical-align:top}.json-object-delete-container,.json-array-delete-container{position:relative;vertical-align:top;padding-left:1.2em}.json-object-delete,.json-array-delete{position:absolute;left:0;top:0;font-family:Arial,sans-serif;font-style:normal;font-weight:700;font-size:.9em;color:red;text-decoration:none;margin-right:1em;opacity:.5;transition:opacity .05s ease-in;text-shadow:0 -1px 1px rgba(255,255,255,.7),0 1px 1px rgba(0,0,0,.8)}.json-object-delete:hover,.json-array-delete:hover{opacity:1}.json-object-delete-value{}.json-object-add{display:block;padding-left:2.2em;color:#888;font-size:.9em}.json-object-add-key,.json-object-add-key-new{text-decoration:none;margin-left:1em;color:#000;border:1px solid #888;background-color:#EEE}.json-object-add-key-new{border:1px dotted #BBB;background-color:#EEF;font-style:italic}.json-select-type-dialog-outer{position:relative}.json-select-type-dialog{position:absolute;top:-.65em;left:-.5em;width:12em;border:2px solid #000;border-radius:10px;background-color:#fff;padding:.5em;z-index:1;opacity:.95;box-shadow:0 1px 3px rgba(0,0,0,.1)}.json-select-type-background{position:fixed;top:0;right:0;bottom:0;left:0;background-image:URL(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.json-select-type{font-family:monospaced;font-weight:700;font-size:.8em;padding-left:.3em;padding-right:.3em}.json-array{font-size:inherit}.json-array-item{display:block}.json-array-add{display:block;padding-left:2.2em;color:#000;font-family:monospace;font-style:normal;font-weight:700;color:#00F;text-decoration:none;margin-right:1em}.json-string{white-space:pre-wrap;border-radius:3px;font-size:inherit}.json-string-content-editable{display:inline;display:inline-block;vertical-align:text-top;background-color:#FFF;background-color:rgba(255,255,255,.95);outline:1px solid #BBB;outline:1px solid rgba(0,0,0,.05);color:#444;margin:.1em;padding:.3em;font-family:inherit;text-shadow:none;font-size:.9em;line-height:1.2em;min-width:5em;min-height:1.2em;max-height:20em;overflow:auto;border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}.json-string-content-editable:focus{color:#000;border-color:#48C;box-shadow:0 0 2px rgba(0,0,0,.1);z-index:1}.json-string-content-editable p{display:block!important;margin:0!important;padding:0!important}.json-string-content-editable *{position:static!important;margin:0!important;padding:0!important;font-size:inherit!important;font-family:inherit!important;color:#000!important;background:none!important;border:0!important;outline:0!important;font-weight:400!important;font-style:normal!important;text-decoration:none!important;text-transform:none!important;font-variant:normal!important;line-height:1.2em!important}textarea.json-string{font-size:inherit;font-weight:inherit;background-color:#FFF;background-color:rgba(255,255,255,.5);width:30%}.json-string-notice{color:#666;margin-left:.5em}.json-number{font-family:monospace;color:#000;font-weight:700;text-decoration:none;white-space:nowrap}input.json-number-input{width:3em;text-align:center;font-family:Trebuchet MS;font-weight:700}.json-number-increment,.json-number-decrement{font-family:monospace;padding-left:.5em;padding-right:.5em}.json-boolean-true,.json-boolean-false{font-family:monospace;color:#080;font-weight:700;text-decoration:none}.json-boolean-false{color:#800}.json-undefined-create{color:#008;text-decoration:none}.json-undefined-create:hover{color:#08F}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.5)}.prompt-buttons{background-color:#EEE;border:2px solid #000;text-align:center;position:relative}.prompt-data{background-color:#fff;border:2px solid #000;border-radius:10px;position:relative}";
 			document.head.appendChild(style);
 		})();
 	}

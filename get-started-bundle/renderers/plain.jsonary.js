@@ -51,7 +51,6 @@
 				result += "<div class='json-" + parentType + "-delete-container'>";
 				result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
 				result += context.renderHtml(data, 'data');
-				result += '<div style="clear: both"></div></div>';
 			} else {
 				result += context.renderHtml(data, 'data');
 			}
@@ -109,45 +108,28 @@
 		component: Jsonary.render.Components.TYPE_SELECTOR,
 		renderHtml: function (data, context) {
 			var result = "";
-			var basicTypes = data.schemas().basicTypes();
 			var enums = data.schemas().enumValues();
-			if (context.uiState.dialogOpen) {
-				result += context.actionHtml('<div class="dialog-overlay"></div>', "closeDialog");
-				result += '<div class="dialog-box">';
-				result += context.actionHtml('<div class="dialog-close button">close</div>', "closeDialog");
-				if (basicTypes.length > 1) {
-					result += '<div class="dialog-title">Select basic type:</div>';
-					for (var i = 0; i < basicTypes.length; i++) {
-						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
-							continue;
-						}
-						if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
-							result += '<li>' + basicTypes[i];
-						} else {
-							result += '<li>' + context.actionHtml(basicTypes[i], 'select-basic-type', basicTypes[i]);
-						}
+			var basicTypes = data.schemas().basicTypes();
+			if (basicTypes.length > 1 && enums == null) {
+				result += '<select name="' + context.inputNameForAction('select-basic-type') + '">';
+				for (var i = 0; i < basicTypes.length; i++) {
+					if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
+						continue;
 					}
-					result += '</ul>';
+					var typeHtml = Jsonary.escapeHtml(basicTypes[i]);
+					if (basicTypes[i] == data.basicType() || basicTypes[i] == "number" && data.basicType() == "integer") {
+						result += '<option value="' + typeHtml + '" selected>' + typeHtml +'</option>';
+					} else {
+						result += '<option value="' + typeHtml + '">' + typeHtml +'</option>';
+					}
 				}
-				result += '</div>';
+				result += '</select> ';
 			}
 			result += context.renderHtml(data, 'data');
-			if (basicTypes.length > 1 && enums == null) {
-				result = '<span class="dialog-anchor">'
-					+ context.actionHtml("<span class=\"json-select-type button\">T</span>", "openDialog") + " "
-					+ result
-					+ '</span>';
-			}
 			return result;
 		},
 		action: function (context, actionName, basicType) {
-			if (actionName == "closeDialog") {
-				context.uiState.dialogOpen = false;
-				return true;
-			} else if (actionName == "openDialog") {
-				context.uiState.dialogOpen = true;
-				return true;
-			} else if (actionName == "select-basic-type") {
+			if (actionName == "select-basic-type") {
 				context.uiState.dialogOpen = false;
 				var schemas = context.data.schemas().concat([Jsonary.createSchema({type: basicType})]);
 				schemas.createValue(function (newValue) {
@@ -200,7 +182,7 @@
 	});
 
 	// Display schema switcher
-	Jsonary.render.Components.add("SCHEMA_SWITCHER", 0);
+	Jsonary.render.Components.add("SCHEMA_SWITCHER", Jsonary.render.Components.TYPE_SELECTOR);
 	Jsonary.render.register({
 		name: "Jsonary plain schema-switcher",
 		component: Jsonary.render.Components.SCHEMA_SWITCHER,
@@ -233,7 +215,7 @@
 							context.uiState.xorSelected[i] = j;
 							selected = " selected";
 						}
-						result += '<option value="' + j + '"' + selected + '>' + schema.title() + '</option>'
+						result += '<option value="' + j + '"' + selected + '>' + schema.forceTitle() + '</option>'
 					}
 					result += '</select>';
 				}
@@ -281,7 +263,7 @@
 				result += '</span></div>';
 			}
 			if (!singleOption && fixedSchemas.length < data.schemas().length) {
-				result += context.actionHtml("<span class=\"json-select-type\">S</span>", "openDialog") + " ";
+				result += context.actionHtml("<span class=\"json-select-type button\">Schemas</span>", "openDialog") + " ";
 			}
 			result += context.renderHtml(data, 'data');
 			return result;
@@ -422,7 +404,7 @@
 			result += '<table class="json-object"><tbody>';
 			var drawProperty = function (key, subData) {
 				if (subData.defined()) {
-					var title = subData.schemas().title();
+					var title = subData.schemas().fixed().title();
 				} else {
 					var schemas = subData.parent().schemas().propertySchemas(subData.parentKey());
 					if (schemas.readOnly()) {
@@ -441,25 +423,55 @@
 			}
 			if (!data.readOnly()) {
 				var schemas = data.schemas();
-				var definedProperties = schemas.definedProperties();
+				var knownProperties = schemas.knownProperties();
+				
+				var shouldHideUndefined = knownProperties.length - schemas.requiredProperties().length > 5;
+				
 				var maxProperties = schemas.maxProperties();
 				var canAdd = (maxProperties == null || maxProperties > schemas.keys().length);
-				data.properties(definedProperties, function (key, subData) {
-					if (canAdd || subData.defined()) {
+				data.properties(knownProperties, function (key, subData) {
+					if ((!shouldHideUndefined && canAdd) || subData.defined()) {
 						drawProperty(key, subData);
 					}
 				}, drawProperty);
 
-				if (canAdd && schemas.allowedAdditionalProperties()) {
+				if (canAdd && (schemas.allowedAdditionalProperties() || shouldHideUndefined)) {
 					if (context.uiState.addInput) {
 						result += '<tr class="json-object-pair"><td class="json-object-key"><div class="json-object-key-text">';
 						result += context.actionHtml('<span class="button">add</span>', "add-confirm");
 						result += '<br>';
 						result += '</div></td><td>';
-						result += '<input type="text" class="json-object-add-input" name="' + context.inputNameForAction("add-input") + '" value="' + Jsonary.escapeHtml(context.uiState.addInputValue) + '"></input>';
-						result += context.actionHtml('<span class="button">cancel</span>', "add-cancel");
-						if (data.property(context.uiState.addInputValue).defined()) {
-							result += '<span class="warning"><code>' + Jsonary.escapeHtml(context.uiState.addInputValue) + '</code> already exists</span>';
+						if (shouldHideUndefined) {
+							var missingKeys = [];
+							data.properties(knownProperties, function (key, subData) {
+								if (!subData.defined()) {
+									missingKeys.push(key);
+								}
+							});
+							result += '<select name="' + context.inputNameForAction('select-preset') + '">';
+							if (schemas.allowedAdditionalProperties()) {
+								result += '<option value="custom">Enter your own:</option>';
+							}
+							result += '<optgroup label="Known properties">';
+							missingKeys.sort();
+							for (var i = 0; i < missingKeys.length; i++) {
+								var key = missingKeys[i];
+								if (key == context.uiState.addInputSelect) {
+									result += '<option value="key-' + Jsonary.escapeHtml(key) + '" selected>' + Jsonary.escapeHtml(key) + '</option>';
+								} else {
+									result += '<option value="key-' + Jsonary.escapeHtml(key) + '">' + Jsonary.escapeHtml(key) + '</option>';
+								}
+							}
+							result += '</optgroup></select>';
+						}
+						if (schemas.allowedAdditionalProperties() && (!shouldHideUndefined || context.uiState.addInputSelect == null)) {
+							result += '<input type="text" class="json-object-add-input" name="' + context.inputNameForAction("add-input") + '" value="' + Jsonary.escapeHtml(context.uiState.addInputValue) + '"></input>';
+							result += context.actionHtml('<span class="button">cancel</span>', "add-cancel");
+							if (data.property(context.uiState.addInputValue).defined()) {
+								result += '<span class="warning"><code>' + Jsonary.escapeHtml(context.uiState.addInputValue) + '</code> already exists</span>';
+							}
+						} else {
+							result += context.actionHtml('<span class="button">cancel</span>', "add-cancel");
 						}
 						result += '</td></tr>';
 					} else {
@@ -469,8 +481,8 @@
 					}
 				}
 			} else {
-				var definedProperties = data.schemas().definedProperties();
-				data.properties(definedProperties, function (key, subData) {
+				var knownProperties = data.schemas().knownProperties();
+				data.properties(knownProperties, function (key, subData) {
 					if (subData.defined()) {
 						drawProperty(key, subData);
 					}
@@ -482,11 +494,14 @@
 		},
 		action: function (context, actionName, arg1) {
 			var data = context.data;
-			if (actionName == "add-named") {
-				var key = arg1;
-				data.schemas().createValueForProperty(key, function (newValue) {
-					data.property(key).setValue(newValue);
-				});
+			if (actionName == "select-preset") {
+				if (arg1 == 'custom') {
+					delete context.uiState.addInputSelect;
+				} else {
+					var key = arg1;
+					context.uiState.addInputSelect = key.substring(4);
+				}
+				return true;
 			} else if (actionName == "add-input") {
 				context.uiState.addInput = true;
 				context.uiState.addInputValue = (arg1 == undefined) ? "key" : arg1;
@@ -494,12 +509,14 @@
 			} else if (actionName == "add-cancel") {
 				delete context.uiState.addInput;
 				delete context.uiState.addInputValue;
+				delete context.uiState.addInputSelect;
 				return true;
 			} else if (actionName == "add-confirm") {
-				var key = context.uiState.addInputValue;
+				var key = (context.uiState.addInputSelect != null) ? context.uiState.addInputSelect : context.uiState.addInputValue;
 				if (key != null && !data.property(key).defined()) {
 					delete context.uiState.addInput;
 					delete context.uiState.addInputValue;
+					delete context.uiState.addInputSelect;
 					data.schemas().createValueForProperty(key, function (newValue) {
 						data.property(key).setValue(newValue);
 					});

@@ -27,7 +27,13 @@
 		RENDERER: "DATA_RENDERER",
 		add: function (newName, beforeName) {
 			if (this[newName] != undefined) {
-				return;
+				if (beforeName !== undefined) {
+					if (componentList.indexOf(newName) != -1) {
+						componentList.splice(componentList.indexOf(newName), 1);
+					}
+				} else {
+					return;
+				}
 			}
 			this[newName] = newName;
 			if (typeof beforeName == 'number') {
@@ -879,6 +885,18 @@
 	render.saveData = function (data, saveDataId) {
 		if (typeof localStorage == 'undefined') {
 			return "LOCALSTORAGE_MISSING";
+		}
+		var deleteThreshhold = (new Date).getTime() - 1000*60*60*2; // Delete after two hours
+		var keys = Object.keys(localStorage);
+		for (var i = 0; i < keys.length; i++) {
+			var key = keys[i];
+			try {
+				var storedData = JSON.parse(localStorage[key]);
+				if (storedData.accessed < deleteThreshhold) {
+					delete localStorage[key];
+				}
+			} catch (e) {
+			}
 		}
 		localStorage[data.saveStateId] = JSON.stringify({
 			accessed: (new Date).getTime(),

@@ -145,20 +145,19 @@
 // Jsonary plugin
 (function (Jsonary) {
 	
-	/* Template: jsonary-template-header-code
-	var data = arguments[0], context = arguments[1];
-	function want(path) {
-		var subData = data.subPath(path);
-		return subData.defined() || !subData.readOnly();
-	};
-	function action(html, actionName) {
-		echo(context.actionHtml.apply(context, arguments));
-	};
-	function render(subData, label) {
-		echo(context.renderHtml(subData, label));
-	};
-	*/
-	var headerCode = jstl.getTemplate('jsonary-template-header-code').code;
+	var headerCode = [
+		'var data = arguments[0], context = arguments[1];',
+		'function want(path) {',
+		'	var subData = data.subPath(path);',
+		'	return subData.defined() || !subData.readOnly();',
+		'};',
+		'function action(html, actionName) {',
+		'echo(context.actionHtml.apply(context, arguments));',
+		'};',
+		'function render(subData, label) {',
+		'	echo(context.renderHtml(subData, label));',
+		'};'
+	].join("\n");
 	var substitutionFunction = function (path) {
 		if (path == "$") {
 			return function (data, context) {
