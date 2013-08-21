@@ -44,6 +44,7 @@ textarea {
 
 .json-object {
 	width: 100%;
+	font-size: inherit;
 }
 
 .json-object-title {
@@ -52,6 +53,7 @@ textarea {
 
 .json-object-outer {
 	background-color: #FFF;
+	background-color: rgba(255, 255, 255, 0.8);
 	border-radius: 3px;
 }
 
@@ -182,6 +184,7 @@ textarea {
 /**** JSON Array ****/
 
 .json-array {
+	font-size: inherit;
 }
 
 .json-array-item {
