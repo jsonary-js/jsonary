@@ -166,6 +166,16 @@ SchemaList.prototype = {
 		}
 		return titles.join(' - ');
 	},
+	forceTitle: function () {
+		var titles = [];
+		for (var i = 0; i < this.length; i++) {
+			var title = this[i].forceTitle();
+			if (title) {
+				titles.push(title);
+			}
+		}
+		return titles.join(' - ');
+	},
 	definedProperties: function (ignoreList) {
 		if (ignoreList) {
 			this.definedProperties(); // create cached function
@@ -917,11 +927,11 @@ SchemaList.prototype = {
 	},
 	getFull: function(callback) {
 		if (!callback) {
-			var result = this;
-			this.getFull(function (fullResult) {
-				result = fullResult;
-			});
-			return result;
+			var result = [];
+			for (var i = 0; i < this.length; i++) {
+				result[i] = this[i].getFull();
+			}
+			return new SchemaList(result);
 		}
 		if (this.length == 0) {
 			callback.call(this, this);
