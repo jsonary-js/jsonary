@@ -1,0 +1,112 @@
+body {
+	font-size: 14px;
+}
+
+.example {
+	margin-top: 0.5em;
+	margin-bottom: 0.5em;
+	position: relative;
+	border: 1px solid black;
+	border-radius: 15px;
+	clear: both;
+	overflow: auto;
+	width: 100%;
+	box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+.example h2 {
+	position: relative;
+	display: block;
+	margin: 0;
+	padding: 0.2em;
+	text-align: center;
+
+	font-size: 1em;
+	font-weight: normal;
+	font-family: Verdana;
+
+	color: #FFF;
+	text-shadow: 0px 1px 2px #000;
+
+	background-color: #822;
+	border-radius-top-left: 13px;
+	border-radius-top-right: 13px;
+	border-bottom: 1px solid #000;
+}
+
+.example p {
+	margin: 0;
+	padding-top: 0.5em;
+	padding-bottom: 0.5em;
+}
+
+.example-description {
+	display: block;
+	margin: 0;
+	padding: 0.3em;
+	padding-left: 1em;
+	padding-right: 0.8em;
+	background: #FFF;
+	border-bottom: 1px solid #BBB;
+}
+
+.example-code, .example-schema {
+	display: block;
+	overflow: auto;
+	margin: 0;
+	background-color: #F4F4F0;
+	border-bottom: 1px solid #BBB;
+}
+
+.example-schema {
+	font-size: 0.9em;
+	font-family: Trebuchet MS;
+}
+
+.example-code-background {
+	display: none;
+}
+
+.example-code pre {
+	margin: 0.5em;
+}
+
+.example-code code {
+	font-family: Consolas;
+	font-size: 0.9em;
+	margin: 0;
+}
+
+.example-code .javascript {
+	background: none;
+}
+
+.example-target {
+	display: block;
+	padding: 0.5em;
+}
+
+@media (min-width: 900px) {
+	.example-code, .example-schema {
+		float: left;
+		width: 50%;
+		margin-right: 0.5em;
+		border-bottom: none;
+	}
+
+	.example-code-background {
+		display: block;
+		position: absolute;
+		border-right: 1px solid #BBB;
+		background-color: #F4F4F0;
+		left: 0;
+		top: 0;
+		width: 50%;
+		bottom: 0;
+		z-index: -1;
+	}
+	
+	.example-target {
+		margin-left: 50%;
+	}
+}
