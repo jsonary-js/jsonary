@@ -1,7 +1,9 @@
 function getSchema(url, callback) {
 	return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
 		// Set the root to avoid blocking on self-referential schemas
-		data.document.setRoot('');
+		if (!data.document.root) {
+			data.document.setRoot('');
+		}
 	}).getData(function (data, fragmentRequest) {
 		var schema = data.asSchema();
 		if (callback != undefined) {
