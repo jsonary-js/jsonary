@@ -204,7 +204,9 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 	if (method == "GET") {
 		data = Jsonary.encodeData(data, encType);
 		if (data != '') {
-			if (url.indexOf("?") == -1) {
+			if (url.indexOf("?") == url.length - 1) {
+				// It already ends with a query - do nothing
+			} else if (url.indexOf("?") == -1) {
 				url += "?";
 			} else {
 				url += "&";
