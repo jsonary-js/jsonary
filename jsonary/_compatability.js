@@ -37,6 +37,32 @@ if (!String.prototype.trim) {
 	};
 }
 
+// from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
+if ( !Date.prototype.toISOString ) {
+  ( function() {
+    
+    function pad(number) {
+      var r = String(number);
+      if ( r.length === 1 ) {
+        r = '0' + r;
+      }
+      return r;
+    }
+ 
+    Date.prototype.toISOString = function() {
+      return this.getUTCFullYear()
+        + '-' + pad( this.getUTCMonth() + 1 )
+        + '-' + pad( this.getUTCDate() )
+        + 'T' + pad( this.getUTCHours() )
+        + ':' + pad( this.getUTCMinutes() )
+        + ':' + pad( this.getUTCSeconds() )
+        + '.' + String( (this.getUTCMilliseconds()/1000).toFixed(3) ).slice( 2, 5 )
+        + 'Z';
+    };
+  
+  }() );
+}
+
 // Polyfill from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create
 if (!Object.create) {
 	Object.create = (function(){
