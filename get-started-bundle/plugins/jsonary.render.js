@@ -617,6 +617,11 @@
 				if (element == rootElement) {
 					break;
 				}
+				if (element.parentNode != element.nextSibling.parentNode) {
+					// This is IE 7+8's *brilliant* reaction to missing close tags (e.g. <div><span>...</div>)
+					// element = element.parentNode;
+					throw new Error("DOM mismatch - did you forget a close tag? " + element.innerHTML);
+				}
 				element = element.nextSibling;
 			}
 		},

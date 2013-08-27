@@ -47,6 +47,32 @@ if (!String.prototype.trim) {
 	};
 }
 
+// from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
+if ( !Date.prototype.toISOString ) {
+  ( function() {
+    
+    function pad(number) {
+      var r = String(number);
+      if ( r.length === 1 ) {
+        r = '0' + r;
+      }
+      return r;
+    }
+ 
+    Date.prototype.toISOString = function() {
+      return this.getUTCFullYear()
+        + '-' + pad( this.getUTCMonth() + 1 )
+        + '-' + pad( this.getUTCDate() )
+        + 'T' + pad( this.getUTCHours() )
+        + ':' + pad( this.getUTCMinutes() )
+        + ':' + pad( this.getUTCSeconds() )
+        + '.' + String( (this.getUTCMilliseconds()/1000).toFixed(3) ).slice( 2, 5 )
+        + 'Z';
+    };
+  
+  }() );
+}
+
 // Polyfill from MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/create
 if (!Object.create) {
 	Object.create = (function(){
@@ -1932,7 +1958,9 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
 	if (method == "GET") {
 		data = Jsonary.encodeData(data, encType);
 		if (data != '') {
-			if (url.indexOf("?") == -1) {
+			if (url.indexOf("?") == url.length - 1) {
+				// It already ends with a query - do nothing
+			} else if (url.indexOf("?") == -1) {
 				url += "?";
 			} else {
 				url += "&";
@@ -3382,7 +3410,9 @@ publicApi.inflate = function (deflated, callback) {
 function getSchema(url, callback) {
 	return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
 		// Set the root to avoid blocking on self-referential schemas
-		data.document.setRoot('');
+		if (!data.document.root) {
+			data.document.setRoot('');
+		}
 	}).getData(function (data, fragmentRequest) {
 		var schema = data.asSchema();
 		if (callback != undefined) {
@@ -6968,6 +6998,11 @@ publicApi.UriTemplate = UriTemplate;
 				}
 				if (element == rootElement) {
 					break;
+				}
+				if (element.parentNode != element.nextSibling.parentNode) {
+					// This is IE 7+8's *brilliant* reaction to missing close tags (e.g. <div><span>...</div>)
+					// element = element.parentNode;
+					throw new Error("DOM mismatch - did you forget a close tag? " + element.innerHTML);
 				}
 				element = element.nextSibling;
 			}
