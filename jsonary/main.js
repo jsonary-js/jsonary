@@ -15,5 +15,6 @@
 // TODO: separate schema monitors from type monitors?
 
 publicApi.config = {
-	antiCacheUrls: false
+	antiCacheUrls: false,
+	debug: false
 }

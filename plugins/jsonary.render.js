@@ -1,5 +1,7 @@
 (function (global) {
 	var Jsonary = global.Jsonary;
+	
+	Jsonary.config.checkTagParity = ['div', 'span'];
 
 	function copyValue(value) {
 		return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
@@ -984,6 +986,17 @@
 			var innerHtml = "";
 			if (this.renderHtmlFunction != undefined) {
 				innerHtml = this.renderHtmlFunction(data, context);
+				if (Jsonary.config.debug) {
+					for (var i = 0; i < Jsonary.config.checkTagParity.length; i++) {
+						var tagName = Jsonary.config.checkTagParity[i];
+						var openTagCount = innerHtml.match(new RegExp("<\s*" + tagName, "gi"));
+						var closeTagCount = innerHtml.match(new RegExp("<\/\s*" + tagName, "gi"));
+						if (openTagCount && (!closeTagCount || openTagCount.length != closeTagCount.length)) {
+							Jsonary.log(Jsonary.logLevel.ERROR, "<" + tagName + "> mismatch in: " + this.name);
+							innerHtml = '<div class="error">&lt;' + tagName + '&gt; mismatch in ' + Jsonary.escapeHtml(this.name) + '</div>';
+						}
+					}
+				}
 			}
 			return innerHtml;
 		},
