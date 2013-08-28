@@ -868,6 +868,17 @@ SchemaList.prototype = {
 		var indexSchemas = this.indexSchemas(index);
 		return indexSchemas.createValue(callback);
 	},
+	createData: function (callback) {
+		var thisSchemaSet = this;
+		if (callback) {
+			this.createValue(function (value) {
+				var data = publicApi.create(value).addSchema(thisSchemaSet);
+				callback(data);
+			});
+			return this;
+		}
+		return publicApi.create(this.createValue()).addSchema(this);
+	},
 	indexSchemas: function(index) {
 		var result = new SchemaList();
 		for (var i = 0; i < this.length; i++) {

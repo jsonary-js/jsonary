@@ -466,6 +466,14 @@ Schema.prototype = {
 	},
 	format: function () {
 		return this.data.propertyValue("format");
+	},
+	createValue: function () {
+		var list = this.asList();
+		return list.createValue.apply(list, arguments);
+	},
+	createData: function () {
+		var list = this.asList();
+		return list.createData.apply(list, arguments);
 	}
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
