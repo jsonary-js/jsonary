@@ -3,6 +3,7 @@ body {
 }
 
 .example {
+	text-align: left;
 	margin-top: 0.5em;
 	margin-bottom: 0.5em;
 	position: relative;
@@ -41,12 +42,15 @@ body {
 }
 
 .example-description {
+	text-align: left;
+	clear: both;
 	display: block;
 	margin: 0;
 	padding: 0.3em;
 	padding-left: 1em;
 	padding-right: 0.8em;
-	background: #FFF;
+	background: #EEE;
+	border-top: 1px solid #BBB;
 	border-bottom: 1px solid #BBB;
 }
 
@@ -54,17 +58,12 @@ body {
 	display: block;
 	overflow: auto;
 	margin: 0;
-	background-color: #F4F4F0;
 	border-bottom: 1px solid #BBB;
 }
 
 .example-schema {
 	font-size: 0.9em;
 	font-family: Trebuchet MS;
-}
-
-.example-code-background {
-	display: none;
 }
 
 .example-code pre {
@@ -79,6 +78,7 @@ body {
 
 .example-code .javascript {
 	background: none;
+	background-color: #EEE;
 }
 
 .example-target {
@@ -94,19 +94,13 @@ body {
 		border-bottom: none;
 	}
 
-	.example-code-background {
-		display: block;
-		position: absolute;
-		border-right: 1px solid #BBB;
-		background-color: #F4F4F0;
-		left: 0;
-		top: 0;
-		width: 50%;
-		bottom: 0;
-		z-index: -1;
-	}
-	
 	.example-target {
 		margin-left: 50%;
+	}
+	
+	.full-width: {
+		float: none;
+		width: auto;
+		margin: 0;
 	}
 }

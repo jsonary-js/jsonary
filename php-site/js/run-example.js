@@ -15,20 +15,32 @@
 	function runExample(elementId, targetVar, targetElementId) {
 		var codeElement = document.getElementById(elementId);
 		var code = getText(codeElement);
-		var compiledFunc = new Function(targetVar || 'targetElement', code);
-
-		if (!targetElementId) {
-			var targetElement = document.createElement('div');
-			targetElement.className = 'example-target';
-			if (codeElement.nextSibling) {
-				codeElement.parentNode.insertBefore(targetElement, codeElement.nextSibling);
-			} else {
-				codeElement.parentNode.appendChild(targetElement);
+		var varNames = [];
+		var varValues = [];
+		if (typeof targetVar == "object") {
+			for (var key in targetVar) {
+				varNames.push(key);
+				varValues.push(targetVar[key]);
 			}
 		} else {
-			targetElement = document.getElementById(targetElementId);
+			var targetElement;
+			if (!targetElementId) {
+				targetElement = document.createElement('div');
+				targetElement.className = 'example-target';
+				if (codeElement.nextSibling) {
+					codeElement.parentNode.insertBefore(targetElement, codeElement.nextSibling);
+				} else {
+					codeElement.parentNode.appendChild(targetElement);
+				}
+			} else {
+				targetElement = document.getElementById(targetElementId);
+			}
+			varNames.push(targetVar || 'targetElement');
+			varValues.push(targetElement);
 		}
-		compiledFunc(targetElement);
+		var compiledFunc = new Function(varNames, code);
+
+		compiledFunc.apply(null, varValues);
 	}
 	
 	global.runExample = runExample;
