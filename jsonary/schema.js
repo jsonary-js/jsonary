@@ -89,7 +89,16 @@ Schema.prototype = {
 				return schema;
 			}
 		} else if (callback) {
-			getSchema(refUrl, callback);
+			if (refUrl.charAt(0) == "#") {
+				var fragment = decodeURIComponent(refUrl.substring(1));
+				var document = this.data.document;
+				document.getFragment(fragment, function (data) {
+					var schema = data.asSchema();
+					callback.call(schema, schema, null);
+				});
+			} else {
+				getSchema(refUrl, callback);
+			}
 		} else {
 			var result = this;
 			this.getFull(function (fullResult) {

@@ -141,13 +141,30 @@ function Document(url, isDefinitive, readOnly) {
 		}
 		return result;
 	}
-}
-
-Document.prototype = {
-	resolveUrl: function (url) {
-		return Uri.resolve(this.url, url);
-	},
-	getFragment: function (fragment, callback) {
+	
+	var baseUrl = (this.url || '').split('#')[0];
+	var fragmentMap = {};
+	this.addSelfLink = function (link) {
+		var href = link.rawLink.href;
+		if (href.substring(0, baseUrl.length + 1) == baseUrl + '#') {
+			var fragment = decodeURIComponent(href.substring(baseUrl.length + 1));
+			fragmentMap[fragment] = link.dataObj;
+		}
+	};
+	this.removeSelfLink = function (link) {
+		var href = link.rawLink.href;
+		if (href.substring(0, baseUrl.length + 1) == baseUrl + '#') {
+			var fragment = decodeURIComponent(href.substring(baseUrl.length + 1));
+			if (fragmentMap[fragment] == link.dataObj) {
+				delete fragmentMap[fragment];
+			}
+		}
+	};
+	this.getFragment = function (fragment, callback) {
+		if (fragmentMap[fragment] !== undefined) {
+			callback.call(this, fragmentMap[fragment]);
+			return;
+		}
 		this.getRoot(function (data) {
 			if (fragment == "") {
 				callback.call(this, data);
@@ -156,6 +173,12 @@ Document.prototype = {
 				callback.call(this, fragmentData);
 			}
 		});
+	};
+}
+
+Document.prototype = {
+	resolveUrl: function (url) {
+		return Uri.resolve(this.url, url);
 	},
 	get: function (path) {
 		return this.root.get(path);
@@ -176,6 +199,8 @@ var INDEX_REGEX = /^(0|[1-9]\d*)$/
 function isIndex(value) {
 	return INDEX_REGEX.test(value);
 }
+
+var META_SCHEMA_KEY = "meta-schema-key";
 
 var uniqueIdCounter = 0;
 function Data(document, secrets, parent, parentKey) {
@@ -715,9 +740,13 @@ Data.prototype = {
 		return copy;
 	},
 	asSchema: function () {
-		var schema = new Schema(this.readOnlyCopy());
+		var readOnlyCopy = this.readOnlyCopy();
+		var schema = new Schema(readOnlyCopy);
 		if (this.readOnly(false)) {
 			cacheResult(this, {asSchema: schema});
+		}
+		if (!readOnlyCopy.property("$ref").defined()) {
+			readOnlyCopy.addSchema("http://json-schema.org/hyper-schema", META_SCHEMA_KEY);
 		}
 		return schema;
 	},

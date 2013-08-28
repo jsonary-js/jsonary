@@ -20,7 +20,8 @@
     'schemaset.js',
     'main.js',
     '_footer.js',
-    '../plugins/jsonary.render.js'
+    '../plugins/jsonary.render.js',
+    '_cache-json-schema-org.js'
   );
 
   $outputString = "/**\n";

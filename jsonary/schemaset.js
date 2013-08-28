@@ -1513,7 +1513,13 @@ LinkInstance.prototype = {
 		var active = this.potentialLink.canApplyTo(this.dataObj);
 		if (active) {
 			this.rawLink = this.potentialLink.linkForData(this.dataObj);
-		} else {
+			if (this.potentialLink.rel() == "self") {
+				this.dataObj.document.addSelfLink(this);
+			}
+		} else if (this.rawLink) {
+			if (this.potentialLink.rel() == "self") {
+				this.dataObj.document.removeSelfLink(this);
+			}
 			this.rawLink = null;
 		}
 		this.active = active;

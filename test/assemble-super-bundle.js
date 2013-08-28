@@ -16,6 +16,7 @@ var masterBundle = bundle.js([
 		'../jsonary/main.js',
 		'../jsonary/_footer.js',
 		'../plugins/jsonary.render.js',
+		'../jsonary/_cache-json-schema-org.js',
 	])
 	.code('var Jsonary = this.Jsonary;')
 
