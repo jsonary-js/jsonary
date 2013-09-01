@@ -1,4 +1,4 @@
-/* Bundled on Wed Aug 28 2013 20:37:06 GMT+0100 (BST)*/
+/* Bundled on Sun Sep 01 2013 08:00:22 GMT+0100 (BST)*/
 (function() {
 
 
@@ -6770,7 +6770,7 @@
 					if (this.data == data) {
 						usedComponents = this.usedComponents.slice(0);
 						if (this.renderer != undefined) {
-							usedComponents = usedComponents.concat(this.renderer.component);
+							usedComponents = usedComponents.concat(this.renderer.filterObj.component);
 						}
 					}
 					if (typeof elementId == "object") {
@@ -7258,7 +7258,8 @@
 				if (pageContext.enhancementContexts[key]) {
 					var context = pageContext.enhancementContexts[key];
 					Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned context for element: ' + JSON.stringify(key)
-						+ '\ncomponents:' + context.renderer.component.join(", ")
+						+ '\renderer:' + context.renderer.name
+						+ '\ncomponents:' + context.renderer.filterObj.component.join(", ")
 						+ '\ndata: ' + context.data.json());
 					pageContext.enhancementContexts[key] = null;
 				}
@@ -7267,7 +7268,8 @@
 				if (pageContext.enhancementActions[key]) {
 					var context = pageContext.enhancementActions[key].context;
 					Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for element: ' + JSON.stringify(key)
-						+ '\ncomponents:' + context.renderer.component.join(", ")
+						+ '\renderer:' + context.renderer.name
+						+ '\ncomponents:' + context.renderer.filterObj.component.join(", ")
 						+ '\ndata: ' + context.data.json());
 					pageContext.enhancementActions[key] = null;
 				}
@@ -7276,7 +7278,8 @@
 				if (pageContext.enhancementInputs[key]) {
 					var context = pageContext.enhancementInputs[key].context;
 					Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for input: ' + JSON.stringify(key)
-						+ '\ncomponents:' + context.renderer.component.join(", ")
+						+ '\renderer:' + context.renderer.name
+						+ '\ncomponents:' + context.renderer.filterObj.component.join(", ")
 						+ '\ndata: ' + context.data.json());
 					pageContext.enhancementInputs[key] = null;
 				}
@@ -7391,7 +7394,13 @@
 			this.renderFunction = sourceObj.render || sourceObj.enhance;
 			this.renderHtmlFunction = sourceObj.renderHtml;
 			this.updateFunction = sourceObj.update;
-			this.filterFunction = sourceObj.filter;
+			if (typeof sourceObj.filter == 'function') {
+				this.filterFunction = sourceObj.filter;
+				this.filterObj = {};
+			} else {
+				this.filterObj = sourceObj.filter || {};
+				this.filterFunction = this.filterObj.filter;
+			}
 			this.actionFunction = sourceObj.action;
 			for (var key in sourceObj) {
 				if (this[key] == undefined) {
@@ -7400,10 +7409,15 @@
 			}
 			this.uniqueId = rendererIdCounter++;
 			this.name = sourceObj.name || ("#" + this.uniqueId);
-			this.component = (sourceObj.component != undefined) ? sourceObj.component : componentList[componentList.length - 1];
-			if (typeof this.component == "string") {
-				this.component = [this.component];
+			var sourceComponent = sourceObj.component || this.filterObj.component;
+			if (sourceComponent == undefined) {
+				sourceComponent = componentList[componentList.length - 1];
 			}
+			if (typeof sourceComponent == "string") {
+				sourceComponent = [sourceComponent];
+			}
+			// TODO: remove this.component
+			this.component = this.filterObj.component = sourceComponent;
 			if (sourceObj.saveState) {
 				this.saveState = sourceObj.saveState;
 			}
@@ -7617,11 +7631,40 @@
 		Renderer.prototype.super_ = Renderer.prototype;
 	
 		var rendererLookup = {};
-		var rendererList = [];
+		var rendererListByType = { // Index first by type, then component
+			'undefined': {},
+			'null': {},
+			'boolean': {},
+			'integer': {},
+			'number': {},
+			'string' :{},
+			'object': {},
+			'array': {}
+		};
 		function register(obj) {
 			var renderer = new Renderer(obj);
 			rendererLookup[renderer.uniqueId] = renderer;
-			rendererList.push(renderer);
+			
+			var types = renderer.filterObj.type || ['undefined', 'null', 'boolean', 'integer', 'number', 'string', 'object', 'array'];
+			var components = renderer.filterObj.component;
+			if (!Array.isArray(types)) {
+				types = [types];
+			}
+			if (types.indexOf('number') !== -1 && types.indexOf('integer') === -1) {
+				types.push('integer');
+			}
+			for (var i = 0; i < types.length; i++) {
+				var type = types[i];
+				if (!rendererListByType[type]) {
+					throw new Error('Invalid type(s): ' + type);
+				}
+				var rendererListByComponent = rendererListByType[type];
+				for (var j = 0; j < components.length; j++) {
+					var component = components[j];
+					rendererListByComponent[component] = rendererListByComponent[component] || [];
+					rendererListByComponent[component].push(renderer);
+				}
+			}
 			return renderer;
 		}
 		function deregister(rendererId) {
@@ -7629,10 +7672,15 @@
 				rendererId = rendererId.uniqueId;
 			}
 			delete rendererLookup[rendererId];
-			for (var i = 0; i < rendererList.length; i++) {
-				if (rendererList[i].uniqueId == rendererId) {
-					rendererList.splice(i, 1);
-					i--;
+			for (var type in rendererListByType) {
+				for (var component in rendererListByType[type]) {
+					var rendererList = rendererListByType[type][component];
+					for (var i = 0; i < rendererList.length; i++) {
+						if (rendererList[i].uniqueId == rendererId) {
+							rendererList.splice(i, 1);
+							i--;
+						}
+					}
 				}
 			}
 		}
@@ -7660,16 +7708,18 @@
 	
 		function selectRenderer(data, uiStartingState, usedComponents) {
 			var schemas = data.schemas();
+			var basicType = data.basicType();
 			for (var j = 0; j < componentList.length; j++) {
 				if (usedComponents.indexOf(componentList[j]) == -1) {
 					var component = componentList[j];
-					for (var i = rendererList.length - 1; i >= 0; i--) {
-						var renderer = rendererList[i];
-						if (renderer.component.indexOf(component) == -1) {
-							continue;
-						}
-						if (renderer.canRender(data, schemas, uiStartingState)) {
-							return renderer;
+					var rendererListByComponent = rendererListByType[basicType];
+					if (rendererListByComponent[component]) {
+						var rendererList = rendererListByComponent[component];
+						for (var i = rendererList.length - 1; i >= 0; i--) {
+							var renderer = rendererList[i];
+							if (renderer.canRender(data, schemas, uiStartingState)) {
+								return renderer;
+							}
 						}
 					}
 				}
