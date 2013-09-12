@@ -75,7 +75,7 @@
 			var thisRenderer = this;
 			return function (cellData, context) {
 				var cellContext = thisRenderer.cellContext(cellData, context, columnKey);
-				return original.call(functionThis, cellData, cellContext);
+				return original.call(functionThis, cellData, cellContext, columnKey);
 			}
 		},
 		action: function (context, actionName) {
@@ -170,7 +170,7 @@
 		},
 		cellRenderHtml: {},
 		defaultCellRenderHtml: function (cellData, context, columnPath) {
-			return '<td>' + context.renderHtml(cellData, columnPath) + '</td>';
+			return '<td data-column="' + Jsonary.escapeHtml(columnPath) + '">' + context.renderHtml(cellData, columnPath) + '</td>';
 		},
 		cellAction: {},
 		rowRenderHtml: function (rowData, context) {
@@ -179,7 +179,7 @@
 				var columnPath = this.columns[i];
 				var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
 				var cellRenderHtml = this.cellRenderHtml[columnPath];
-				result += this.cellRenderHtml[columnPath](cellData, context);
+				result += this.cellRenderHtml[columnPath](cellData, context, columnPath);
 			}
 			result += '</tr>';
 			return result;
@@ -279,7 +279,7 @@
 		this.addConditionalColumn(function (data) {
 			return !data.readOnly() && data.length() > data.schemas().minItems();
 		}, "remove", "", function (data, context) {
-			var result = '<td>';
+			var result = '<td class="json-array-table-remove">';
 			
 			// Check whether a delete is appropriate
 			var arrayData = data.parent();
@@ -315,7 +315,7 @@
 			}
 			return '<th></th>';
 		}, function (data, context) {
-			var result = '<td>';
+			var result = '<td class="json-array-table-move">';
 			var tableContext = context.parent.parent;
 			
 			// Check whether a move is appropriate
@@ -509,27 +509,27 @@
 			var rowOrder = this.rowOrder(data, context);
 			var pages = this.pages(rowOrder, data, context);
 			if (pages.length > 1) {
-				var page = context.uiState.page || 0;
+				var page = context.uiState.page || 1;
 				result += '<tr><th colspan="' + this.columns.length + '" class="json-array-table-pages">';
-				if (page > 0) {
-					result += context.actionHtml('<span class="button">&lt;&lt;</span>', 'page', 0);
+				if (page > 1) {
+					result += context.actionHtml('<span class="button">&lt;&lt;</span>', 'page', 1);
 					result += context.actionHtml('<span class="button">&lt;</span>', 'page', page - 1);
 				} else {
 					result += '<span class="button disabled">&lt;&lt;</span>';
 					result += '<span class="button disabled">&lt;</span>';
 				}
 				result += 'page <select name="' + context.inputNameForAction('page') + '">';
-				for (var i = 0; i < pages.length; i++) {
+				for (var i = 1; i <= pages.length; i++) {
 					if (i == page) {
 						result += '<option value="' + i + '" selected>' + i + '</option>';
 					} else {
 						result += '<option value="' + i + '">' + i + '</option>';
 					}
 				}
-				result += '</select>';
-				if (page < pages.length - 1) {
+				result += '</select>/' + pages.length;
+				if (page < pages.length) {
 					result += context.actionHtml('<span class="button">&gt;</span>', 'page', page + 1);
-					result += context.actionHtml('<span class="button">&gt;&gt;</span>', 'page', pages.length - 1);
+					result += context.actionHtml('<span class="button">&gt;&gt;</span>', 'page', pages.length);
 				} else {
 					result += '<span class="button disabled">&gt;</span>';
 					result += '<span class="button disabled">&gt;&gt;</span>';
@@ -553,8 +553,8 @@
 			if (!pages.length) {
 				pages = [[]];
 			}
-			var page = context.uiState.page || 0;
-			var pageRows = pages[page];
+			var page = context.uiState.page || 1;
+			var pageRows = pages[page - 1];
 			if (!pageRows) {
 				pageRows = pages[0] || [];
 				context.uiState.page = 0;
@@ -563,7 +563,7 @@
 				var rowData = data.item(pageRows[i]);
 				result += this.rowRenderHtml(rowData, context);
 			}
-			if (page == pages.length - 1 && !data.readOnly()) {
+			if (page == pages.length && !data.readOnly()) {
 				if (data.schemas().maxItems() == null || data.schemas().maxItems() > data.length()) {
 					result += '<tr><td colspan="' + this.columns.length + '" class="json-array-table-add">';
 					result += context.actionHtml('+ add', 'add');

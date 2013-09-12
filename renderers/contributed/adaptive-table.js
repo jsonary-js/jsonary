@@ -25,7 +25,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 						if (data.basicType() == "object" && depthRemaining > 0) {
 							return '<td></td>';
 						} else {
-							return this.defaultCellRenderHtml(data, context);
+							return this.defaultCellRenderHtml(data, context, column);
 						}
 					});
 					// add sorting
