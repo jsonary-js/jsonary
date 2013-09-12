@@ -15,10 +15,12 @@ var masterBundle = bundle.js([
 		'../jsonary/schemaset.js',
 		'../jsonary/main.js',
 		'../jsonary/_footer.js',
-		'../plugins/jsonary.render.js',
-		'../jsonary/_cache-json-schema-org.js',
+		'../plugins/jsonary.render.js'
 	])
 	.code('var Jsonary = this.Jsonary;')
+	
+	// http://json-schema.org/ meta-schemas
+	.js('../jsonary/_cache-json-schema-org.js')
 
 	// Plugins
 	.js('../plugins/jsonary.location.js')
