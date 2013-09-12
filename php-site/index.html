@@ -31,6 +31,11 @@
 			
 			<div id="top-block">
 				<div class="content-block">
+					<h3>What is it?</h3>
+					<p>Jsonary is a library for dealing with JSON data and/or APIs that have been documented using JSON (Hyper-)Schema.</p>
+				</div>
+
+				<div class="content-block">
 					<h3>What can it do?</h3>
 				
 					<h4>Embeddable JSON data</h4>
@@ -119,14 +124,20 @@ Jsonary.render(targetElement, data);
 							border: 1px solid black;
 							border-radius: 3px;
 							box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.2);
+							font-family: Arial;
 						}
 						.custom-title {
-							border-bottom: 1px solid #888;
-							background-color: #F0F4F8;
+							background: #D8E8F0;
+							background: linear-gradient(to bottom, #f7f8ff 0%,#c9dfef 44%,#a5bece 100%);
+
+							border-bottom: 1px solid #666;
 							text-align: center;
 							padding: 0.1em;
 							border-top-left-radius: 2px;
 							border-top-right-radius: 2px;
+							color: #444;
+							box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.3);
+							text-shadow: 0px 1px 2px #DDD;
 						}
 						.custom-content {
 							padding: 0.4em;
@@ -180,8 +191,8 @@ Jsonary.render(targetElementEditable, editableData);
 							targetElementEditable: 'example-target-embed-customise-editable'
 						});</script>
 					</div>
-					<p>It's worth noting that this particular example would not adapt to changes in the schema.  However, creating a flexible renderer is actually very simple.</p>
-					<p>You can customise the appearance without losing flexibility.  <!--See "<a href="flexible-renderers.html">Flexible Renderers</a>" for more details.--></p>
+					<p>It's worth noting that this particular example would not adapt to changes in the schema.  However, you can customise the appearance without losing flexibility, and it's actually pretty simple to do.</p>
+					<!--<p>See "<a href="flexible-renderers.html">Flexible Renderers</a>" for more details.</p>-->
 				</div>
 				
 				<div class="content-block">

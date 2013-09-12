@@ -73,7 +73,7 @@ table, tr, td {
 #page-title {
 	margin: 0;
 	width: 100%;
-	border: 3px solid black;
+	border: 2px solid black;
 	line-height: 48px;
 	border-top-left-radius: 23px;
 	border-top-right-radius: 23px;
@@ -95,7 +95,7 @@ table, tr, td {
 	padding-top: 0.3em;
 	padding-bottom: 0.3em;
 	
-	border: 3px solid black;
+	border: 2px solid black;
 	border-top: none;
 	
 	background-color: #E6E6E6;
@@ -195,7 +195,7 @@ table.key-value td.value p {
 /* Content */
 
 h2 {
-	border-bottom: 3px solid black;
+	border-bottom: 2px solid black;
 	margin: 0;
 	padding: 0;
 	padding-left: 10px;
@@ -208,7 +208,7 @@ h2 {
 
 .content-block, .info-block, .navigation {
 	text-align: left;
-	border: 3px solid black;
+	border: 2px solid black;
 	margin-top: 18px;
 	width: 100%;
 	background-color: #FFF;
