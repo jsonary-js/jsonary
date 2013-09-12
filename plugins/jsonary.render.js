@@ -86,10 +86,11 @@
 					var data = dataObjects[i];
 					var uniqueId = data.uniqueId;
 					var elementIds = thisContext.elementLookup[uniqueId];
-					if (elementIds == undefined || elementIds.length == 0) {
-						return;
+					if (elementIds) {
+						elementIdLookup[uniqueId] = elementIds.slice(0);
+					} else {
+						elementIdLookup[uniqueId] = [];
 					}
-					elementIdLookup[uniqueId] = elementIds.slice(0);
 				}
 				for (var j = 0; j < dataObjects.length; j++) {
 					var data = dataObjects[j];
