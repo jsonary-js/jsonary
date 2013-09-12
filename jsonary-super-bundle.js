@@ -1,4 +1,4 @@
-/* Bundled on Sun Sep 01 2013 08:00:22 GMT+0100 (BST)*/
+/* Bundled on Thu Sep 12 2013 17:42:53 GMT+0100 (GMT Daylight Time)*/
 (function() {
 
 
@@ -3927,6 +3927,14 @@
 		},
 		format: function () {
 			return this.data.propertyValue("format");
+		},
+		createValue: function () {
+			var list = this.asList();
+			return list.createValue.apply(list, arguments);
+		},
+		createData: function () {
+			var list = this.asList();
+			return list.createData.apply(list, arguments);
 		}
 	};
 	Schema.prototype.basicTypes = Schema.prototype.types;
@@ -5679,6 +5687,17 @@
 			var indexSchemas = this.indexSchemas(index);
 			return indexSchemas.createValue(callback);
 		},
+		createData: function (callback) {
+			var thisSchemaSet = this;
+			if (callback) {
+				this.createValue(function (value) {
+					var data = publicApi.create(value).addSchema(thisSchemaSet);
+					callback(data);
+				});
+				return this;
+			}
+			return publicApi.create(this.createValue()).addSchema(this);
+		},
 		indexSchemas: function(index) {
 			var result = new SchemaList();
 			for (var i = 0; i < this.length; i++) {
@@ -6449,7 +6468,8 @@
 	// TODO: separate schema monitors from type monitors?
 	
 	publicApi.config = {
-		antiCacheUrls: false
+		antiCacheUrls: false,
+		debug: false
 	}
 
 /**** ../jsonary/_footer.js ****/
@@ -6464,6 +6484,8 @@
 
 	(function (global) {
 		var Jsonary = global.Jsonary;
+		
+		Jsonary.config.checkTagParity = ['div', 'span'];
 	
 		function copyValue(value) {
 			return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
@@ -6548,10 +6570,11 @@
 						var data = dataObjects[i];
 						var uniqueId = data.uniqueId;
 						var elementIds = thisContext.elementLookup[uniqueId];
-						if (elementIds == undefined || elementIds.length == 0) {
-							return;
+						if (elementIds) {
+							elementIdLookup[uniqueId] = elementIds.slice(0);
+						} else {
+							elementIdLookup[uniqueId] = [];
 						}
-						elementIdLookup[uniqueId] = elementIds.slice(0);
 					}
 					for (var j = 0; j < dataObjects.length; j++) {
 						var data = dataObjects[j];
@@ -7462,6 +7485,17 @@
 				var innerHtml = "";
 				if (this.renderHtmlFunction != undefined) {
 					innerHtml = this.renderHtmlFunction(data, context);
+					if (Jsonary.config.debug) {
+						for (var i = 0; i < Jsonary.config.checkTagParity.length; i++) {
+							var tagName = Jsonary.config.checkTagParity[i];
+							var openTagCount = innerHtml.match(new RegExp("<\s*" + tagName, "gi"));
+							var closeTagCount = innerHtml.match(new RegExp("<\/\s*" + tagName, "gi"));
+							if (openTagCount && (!closeTagCount || openTagCount.length != closeTagCount.length)) {
+								Jsonary.log(Jsonary.logLevel.ERROR, "<" + tagName + "> mismatch in: " + this.name);
+								innerHtml = '<div class="error">&lt;' + tagName + '&gt; mismatch in ' + Jsonary.escapeHtml(this.name) + '</div>';
+							}
+						}
+					}
 				}
 				return innerHtml;
 			},
@@ -7803,7 +7837,7 @@
 			};
 		}(Jsonary.invalidate);
 	})(this);
-	
+	var Jsonary = this.Jsonary;
 
 /**** ../jsonary/_cache-json-schema-org.js ****/
 
@@ -8135,7 +8169,7 @@
 	Jsonary.addToCache('http://json-schema.org/draft-04/schema', baseSchema);
 	
 	Jsonary.addToCache('http://json-schema.org/hyper-schema', {allOf: [{"$ref": "draft-04/hyper-schema"}]});
-	Jsonary.addToCache('http://json-schema.org/draft-04/hyper-schema', hyperSchema);var Jsonary = this.Jsonary;
+	Jsonary.addToCache('http://json-schema.org/draft-04/hyper-schema', hyperSchema);
 
 /**** ../plugins/jsonary.location.js ****/
 
@@ -8688,7 +8722,7 @@
 				var thisRenderer = this;
 				return function (cellData, context) {
 					var cellContext = thisRenderer.cellContext(cellData, context, columnKey);
-					return original.call(functionThis, cellData, cellContext);
+					return original.call(functionThis, cellData, cellContext, columnKey);
 				}
 			},
 			action: function (context, actionName) {
@@ -8783,7 +8817,7 @@
 			},
 			cellRenderHtml: {},
 			defaultCellRenderHtml: function (cellData, context, columnPath) {
-				return '<td>' + context.renderHtml(cellData, columnPath) + '</td>';
+				return '<td data-column="' + Jsonary.escapeHtml(columnPath) + '">' + context.renderHtml(cellData, columnPath) + '</td>';
 			},
 			cellAction: {},
 			rowRenderHtml: function (rowData, context) {
@@ -8792,7 +8826,7 @@
 					var columnPath = this.columns[i];
 					var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
 					var cellRenderHtml = this.cellRenderHtml[columnPath];
-					result += this.cellRenderHtml[columnPath](cellData, context);
+					result += this.cellRenderHtml[columnPath](cellData, context, columnPath);
 				}
 				result += '</tr>';
 				return result;
@@ -8892,7 +8926,7 @@
 			this.addConditionalColumn(function (data) {
 				return !data.readOnly() && data.length() > data.schemas().minItems();
 			}, "remove", "", function (data, context) {
-				var result = '<td>';
+				var result = '<td class="json-array-table-remove">';
 				
 				// Check whether a delete is appropriate
 				var arrayData = data.parent();
@@ -8928,7 +8962,7 @@
 				}
 				return '<th></th>';
 			}, function (data, context) {
-				var result = '<td>';
+				var result = '<td class="json-array-table-move">';
 				var tableContext = context.parent.parent;
 				
 				// Check whether a move is appropriate
@@ -9122,27 +9156,27 @@
 				var rowOrder = this.rowOrder(data, context);
 				var pages = this.pages(rowOrder, data, context);
 				if (pages.length > 1) {
-					var page = context.uiState.page || 0;
+					var page = context.uiState.page || 1;
 					result += '<tr><th colspan="' + this.columns.length + '" class="json-array-table-pages">';
-					if (page > 0) {
-						result += context.actionHtml('<span class="button">&lt;&lt;</span>', 'page', 0);
+					if (page > 1) {
+						result += context.actionHtml('<span class="button">&lt;&lt;</span>', 'page', 1);
 						result += context.actionHtml('<span class="button">&lt;</span>', 'page', page - 1);
 					} else {
 						result += '<span class="button disabled">&lt;&lt;</span>';
 						result += '<span class="button disabled">&lt;</span>';
 					}
 					result += 'page <select name="' + context.inputNameForAction('page') + '">';
-					for (var i = 0; i < pages.length; i++) {
+					for (var i = 1; i <= pages.length; i++) {
 						if (i == page) {
 							result += '<option value="' + i + '" selected>' + i + '</option>';
 						} else {
 							result += '<option value="' + i + '">' + i + '</option>';
 						}
 					}
-					result += '</select>';
-					if (page < pages.length - 1) {
+					result += '</select>/' + pages.length;
+					if (page < pages.length) {
 						result += context.actionHtml('<span class="button">&gt;</span>', 'page', page + 1);
-						result += context.actionHtml('<span class="button">&gt;&gt;</span>', 'page', pages.length - 1);
+						result += context.actionHtml('<span class="button">&gt;&gt;</span>', 'page', pages.length);
 					} else {
 						result += '<span class="button disabled">&gt;</span>';
 						result += '<span class="button disabled">&gt;&gt;</span>';
@@ -9166,8 +9200,8 @@
 				if (!pages.length) {
 					pages = [[]];
 				}
-				var page = context.uiState.page || 0;
-				var pageRows = pages[page];
+				var page = context.uiState.page || 1;
+				var pageRows = pages[page - 1];
 				if (!pageRows) {
 					pageRows = pages[0] || [];
 					context.uiState.page = 0;
@@ -9176,7 +9210,7 @@
 					var rowData = data.item(pageRows[i]);
 					result += this.rowRenderHtml(rowData, context);
 				}
-				if (page == pages.length - 1 && !data.readOnly()) {
+				if (page == pages.length && !data.readOnly()) {
 					if (data.schemas().maxItems() == null || data.schemas().maxItems() > data.length()) {
 						result += '<tr><td colspan="' + this.columns.length + '" class="json-array-table-add">';
 						result += context.actionHtml('+ add', 'add');
@@ -9628,6 +9662,7 @@
 					result += "<div class='json-" + parentType + "-delete-container'>";
 					result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
 					result += context.renderHtml(data, 'data');
+					result += "</div>";
 				} else {
 					result += context.renderHtml(data, 'data');
 				}
@@ -10673,10 +10708,10 @@
 					if (!columnsObj[column]) {
 						columnsObj[column] = true;
 						renderer.addColumn(column, schemas.title() || column, function (data, context) {
-							if (data.basicType() == "object") {
+							if (data.basicType() == "object" && depthRemaining > 0) {
 								return '<td></td>';
 							} else {
-								return this.defaultCellRenderHtml(data, context);
+								return this.defaultCellRenderHtml(data, context, column);
 							}
 						});
 						// add sorting

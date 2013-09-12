@@ -3904,6 +3904,14 @@ Schema.prototype = {
 	},
 	format: function () {
 		return this.data.propertyValue("format");
+	},
+	createValue: function () {
+		var list = this.asList();
+		return list.createValue.apply(list, arguments);
+	},
+	createData: function () {
+		var list = this.asList();
+		return list.createData.apply(list, arguments);
 	}
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
@@ -5650,6 +5658,17 @@ SchemaList.prototype = {
 		var indexSchemas = this.indexSchemas(index);
 		return indexSchemas.createValue(callback);
 	},
+	createData: function (callback) {
+		var thisSchemaSet = this;
+		if (callback) {
+			this.createValue(function (value) {
+				var data = publicApi.create(value).addSchema(thisSchemaSet);
+				callback(data);
+			});
+			return this;
+		}
+		return publicApi.create(this.createValue()).addSchema(this);
+	},
 	indexSchemas: function(index) {
 		var result = new SchemaList();
 		for (var i = 0; i < this.length; i++) {
@@ -6417,7 +6436,8 @@ DependencyApplier.prototype = {
 // TODO: separate schema monitors from type monitors?
 
 publicApi.config = {
-	antiCacheUrls: false
+	antiCacheUrls: false,
+	debug: false
 }
 publicApi.UriTemplate = UriTemplate;
 
@@ -6426,6 +6446,8 @@ publicApi.UriTemplate = UriTemplate;
 
 (function (global) {
 	var Jsonary = global.Jsonary;
+	
+	Jsonary.config.checkTagParity = ['div', 'span'];
 
 	function copyValue(value) {
 		return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
@@ -6510,10 +6532,11 @@ publicApi.UriTemplate = UriTemplate;
 					var data = dataObjects[i];
 					var uniqueId = data.uniqueId;
 					var elementIds = thisContext.elementLookup[uniqueId];
-					if (elementIds == undefined || elementIds.length == 0) {
-						return;
+					if (elementIds) {
+						elementIdLookup[uniqueId] = elementIds.slice(0);
+					} else {
+						elementIdLookup[uniqueId] = [];
 					}
-					elementIdLookup[uniqueId] = elementIds.slice(0);
 				}
 				for (var j = 0; j < dataObjects.length; j++) {
 					var data = dataObjects[j];
@@ -7424,6 +7447,17 @@ publicApi.UriTemplate = UriTemplate;
 			var innerHtml = "";
 			if (this.renderHtmlFunction != undefined) {
 				innerHtml = this.renderHtmlFunction(data, context);
+				if (Jsonary.config.debug) {
+					for (var i = 0; i < Jsonary.config.checkTagParity.length; i++) {
+						var tagName = Jsonary.config.checkTagParity[i];
+						var openTagCount = innerHtml.match(new RegExp("<\s*" + tagName, "gi"));
+						var closeTagCount = innerHtml.match(new RegExp("<\/\s*" + tagName, "gi"));
+						if (openTagCount && (!closeTagCount || openTagCount.length != closeTagCount.length)) {
+							Jsonary.log(Jsonary.logLevel.ERROR, "<" + tagName + "> mismatch in: " + this.name);
+							innerHtml = '<div class="error">&lt;' + tagName + '&gt; mismatch in ' + Jsonary.escapeHtml(this.name) + '</div>';
+						}
+					}
+				}
 			}
 			return innerHtml;
 		},

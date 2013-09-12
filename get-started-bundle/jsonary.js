@@ -2663,13 +2663,30 @@ function Document(url, isDefinitive, readOnly) {
 		}
 		return result;
 	}
-}
-
-Document.prototype = {
-	resolveUrl: function (url) {
-		return Uri.resolve(this.url, url);
-	},
-	getFragment: function (fragment, callback) {
+	
+	var baseUrl = (this.url || '').split('#')[0];
+	var fragmentMap = {};
+	this.addSelfLink = function (link) {
+		var href = link.rawLink.href;
+		if (href.substring(0, baseUrl.length + 1) == baseUrl + '#') {
+			var fragment = decodeURIComponent(href.substring(baseUrl.length + 1));
+			fragmentMap[fragment] = link.dataObj;
+		}
+	};
+	this.removeSelfLink = function (link) {
+		var href = link.rawLink.href;
+		if (href.substring(0, baseUrl.length + 1) == baseUrl + '#') {
+			var fragment = decodeURIComponent(href.substring(baseUrl.length + 1));
+			if (fragmentMap[fragment] == link.dataObj) {
+				delete fragmentMap[fragment];
+			}
+		}
+	};
+	this.getFragment = function (fragment, callback) {
+		if (fragmentMap[fragment] !== undefined) {
+			callback.call(this, fragmentMap[fragment]);
+			return;
+		}
 		this.getRoot(function (data) {
 			if (fragment == "") {
 				callback.call(this, data);
@@ -2678,6 +2695,12 @@ Document.prototype = {
 				callback.call(this, fragmentData);
 			}
 		});
+	};
+}
+
+Document.prototype = {
+	resolveUrl: function (url) {
+		return Uri.resolve(this.url, url);
 	},
 	get: function (path) {
 		return this.root.get(path);
@@ -2698,6 +2721,8 @@ var INDEX_REGEX = /^(0|[1-9]\d*)$/
 function isIndex(value) {
 	return INDEX_REGEX.test(value);
 }
+
+var META_SCHEMA_KEY = "meta-schema-key";
 
 var uniqueIdCounter = 0;
 function Data(document, secrets, parent, parentKey) {
@@ -3237,9 +3262,13 @@ Data.prototype = {
 		return copy;
 	},
 	asSchema: function () {
-		var schema = new Schema(this.readOnlyCopy());
+		var readOnlyCopy = this.readOnlyCopy();
+		var schema = new Schema(readOnlyCopy);
 		if (this.readOnly(false)) {
 			cacheResult(this, {asSchema: schema});
+		}
+		if (!readOnlyCopy.property("$ref").defined()) {
+			readOnlyCopy.addSchema("http://json-schema.org/hyper-schema", META_SCHEMA_KEY);
 		}
 		return schema;
 	},
@@ -3498,7 +3527,16 @@ Schema.prototype = {
 				return schema;
 			}
 		} else if (callback) {
-			getSchema(refUrl, callback);
+			if (refUrl.charAt(0) == "#") {
+				var fragment = decodeURIComponent(refUrl.substring(1));
+				var document = this.data.document;
+				document.getFragment(fragment, function (data) {
+					var schema = data.asSchema();
+					callback.call(schema, schema, null);
+				});
+			} else {
+				getSchema(refUrl, callback);
+			}
 		} else {
 			var result = this;
 			this.getFull(function (fullResult) {
@@ -3866,6 +3904,14 @@ Schema.prototype = {
 	},
 	format: function () {
 		return this.data.propertyValue("format");
+	},
+	createValue: function () {
+		var list = this.asList();
+		return list.createValue.apply(list, arguments);
+	},
+	createData: function () {
+		var list = this.asList();
+		return list.createData.apply(list, arguments);
 	}
 };
 Schema.prototype.basicTypes = Schema.prototype.types;
@@ -5612,6 +5658,17 @@ SchemaList.prototype = {
 		var indexSchemas = this.indexSchemas(index);
 		return indexSchemas.createValue(callback);
 	},
+	createData: function (callback) {
+		var thisSchemaSet = this;
+		if (callback) {
+			this.createValue(function (value) {
+				var data = publicApi.create(value).addSchema(thisSchemaSet);
+				callback(data);
+			});
+			return this;
+		}
+		return publicApi.create(this.createValue()).addSchema(this);
+	},
 	indexSchemas: function(index) {
 		var result = new SchemaList();
 		for (var i = 0; i < this.length; i++) {
@@ -6257,7 +6314,13 @@ LinkInstance.prototype = {
 		var active = this.potentialLink.canApplyTo(this.dataObj);
 		if (active) {
 			this.rawLink = this.potentialLink.linkForData(this.dataObj);
-		} else {
+			if (this.potentialLink.rel() == "self") {
+				this.dataObj.document.addSelfLink(this);
+			}
+		} else if (this.rawLink) {
+			if (this.potentialLink.rel() == "self") {
+				this.dataObj.document.removeSelfLink(this);
+			}
 			this.rawLink = null;
 		}
 		this.active = active;
@@ -6373,7 +6436,8 @@ DependencyApplier.prototype = {
 // TODO: separate schema monitors from type monitors?
 
 publicApi.config = {
-	antiCacheUrls: false
+	antiCacheUrls: false,
+	debug: false
 }
 publicApi.UriTemplate = UriTemplate;
 
@@ -6382,6 +6446,8 @@ publicApi.UriTemplate = UriTemplate;
 
 (function (global) {
 	var Jsonary = global.Jsonary;
+	
+	Jsonary.config.checkTagParity = ['div', 'span'];
 
 	function copyValue(value) {
 		return (typeof value == "object") ? JSON.parse(JSON.stringify(value)) : value;
@@ -6466,10 +6532,11 @@ publicApi.UriTemplate = UriTemplate;
 					var data = dataObjects[i];
 					var uniqueId = data.uniqueId;
 					var elementIds = thisContext.elementLookup[uniqueId];
-					if (elementIds == undefined || elementIds.length == 0) {
-						return;
+					if (elementIds) {
+						elementIdLookup[uniqueId] = elementIds.slice(0);
+					} else {
+						elementIdLookup[uniqueId] = [];
 					}
-					elementIdLookup[uniqueId] = elementIds.slice(0);
 				}
 				for (var j = 0; j < dataObjects.length; j++) {
 					var data = dataObjects[j];
@@ -6688,7 +6755,7 @@ publicApi.UriTemplate = UriTemplate;
 				if (this.data == data) {
 					usedComponents = this.usedComponents.slice(0);
 					if (this.renderer != undefined) {
-						usedComponents = usedComponents.concat(this.renderer.component);
+						usedComponents = usedComponents.concat(this.renderer.filterObj.component);
 					}
 				}
 				if (typeof elementId == "object") {
@@ -7176,7 +7243,8 @@ publicApi.UriTemplate = UriTemplate;
 			if (pageContext.enhancementContexts[key]) {
 				var context = pageContext.enhancementContexts[key];
 				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned context for element: ' + JSON.stringify(key)
-					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\renderer:' + context.renderer.name
+					+ '\ncomponents:' + context.renderer.filterObj.component.join(", ")
 					+ '\ndata: ' + context.data.json());
 				pageContext.enhancementContexts[key] = null;
 			}
@@ -7185,7 +7253,8 @@ publicApi.UriTemplate = UriTemplate;
 			if (pageContext.enhancementActions[key]) {
 				var context = pageContext.enhancementActions[key].context;
 				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for element: ' + JSON.stringify(key)
-					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\renderer:' + context.renderer.name
+					+ '\ncomponents:' + context.renderer.filterObj.component.join(", ")
 					+ '\ndata: ' + context.data.json());
 				pageContext.enhancementActions[key] = null;
 			}
@@ -7194,7 +7263,8 @@ publicApi.UriTemplate = UriTemplate;
 			if (pageContext.enhancementInputs[key]) {
 				var context = pageContext.enhancementInputs[key].context;
 				Jsonary.log(Jsonary.logLevel.WARNING, 'Orphaned action for input: ' + JSON.stringify(key)
-					+ '\ncomponents:' + context.renderer.component.join(", ")
+					+ '\renderer:' + context.renderer.name
+					+ '\ncomponents:' + context.renderer.filterObj.component.join(", ")
 					+ '\ndata: ' + context.data.json());
 				pageContext.enhancementInputs[key] = null;
 			}
@@ -7309,7 +7379,13 @@ publicApi.UriTemplate = UriTemplate;
 		this.renderFunction = sourceObj.render || sourceObj.enhance;
 		this.renderHtmlFunction = sourceObj.renderHtml;
 		this.updateFunction = sourceObj.update;
-		this.filterFunction = sourceObj.filter;
+		if (typeof sourceObj.filter == 'function') {
+			this.filterFunction = sourceObj.filter;
+			this.filterObj = {};
+		} else {
+			this.filterObj = sourceObj.filter || {};
+			this.filterFunction = this.filterObj.filter;
+		}
 		this.actionFunction = sourceObj.action;
 		for (var key in sourceObj) {
 			if (this[key] == undefined) {
@@ -7318,10 +7394,15 @@ publicApi.UriTemplate = UriTemplate;
 		}
 		this.uniqueId = rendererIdCounter++;
 		this.name = sourceObj.name || ("#" + this.uniqueId);
-		this.component = (sourceObj.component != undefined) ? sourceObj.component : componentList[componentList.length - 1];
-		if (typeof this.component == "string") {
-			this.component = [this.component];
+		var sourceComponent = sourceObj.component || this.filterObj.component;
+		if (sourceComponent == undefined) {
+			sourceComponent = componentList[componentList.length - 1];
 		}
+		if (typeof sourceComponent == "string") {
+			sourceComponent = [sourceComponent];
+		}
+		// TODO: remove this.component
+		this.component = this.filterObj.component = sourceComponent;
 		if (sourceObj.saveState) {
 			this.saveState = sourceObj.saveState;
 		}
@@ -7366,6 +7447,17 @@ publicApi.UriTemplate = UriTemplate;
 			var innerHtml = "";
 			if (this.renderHtmlFunction != undefined) {
 				innerHtml = this.renderHtmlFunction(data, context);
+				if (Jsonary.config.debug) {
+					for (var i = 0; i < Jsonary.config.checkTagParity.length; i++) {
+						var tagName = Jsonary.config.checkTagParity[i];
+						var openTagCount = innerHtml.match(new RegExp("<\s*" + tagName, "gi"));
+						var closeTagCount = innerHtml.match(new RegExp("<\/\s*" + tagName, "gi"));
+						if (openTagCount && (!closeTagCount || openTagCount.length != closeTagCount.length)) {
+							Jsonary.log(Jsonary.logLevel.ERROR, "<" + tagName + "> mismatch in: " + this.name);
+							innerHtml = '<div class="error">&lt;' + tagName + '&gt; mismatch in ' + Jsonary.escapeHtml(this.name) + '</div>';
+						}
+					}
+				}
 			}
 			return innerHtml;
 		},
@@ -7535,11 +7627,40 @@ publicApi.UriTemplate = UriTemplate;
 	Renderer.prototype.super_ = Renderer.prototype;
 
 	var rendererLookup = {};
-	var rendererList = [];
+	var rendererListByType = { // Index first by type, then component
+		'undefined': {},
+		'null': {},
+		'boolean': {},
+		'integer': {},
+		'number': {},
+		'string' :{},
+		'object': {},
+		'array': {}
+	};
 	function register(obj) {
 		var renderer = new Renderer(obj);
 		rendererLookup[renderer.uniqueId] = renderer;
-		rendererList.push(renderer);
+		
+		var types = renderer.filterObj.type || ['undefined', 'null', 'boolean', 'integer', 'number', 'string', 'object', 'array'];
+		var components = renderer.filterObj.component;
+		if (!Array.isArray(types)) {
+			types = [types];
+		}
+		if (types.indexOf('number') !== -1 && types.indexOf('integer') === -1) {
+			types.push('integer');
+		}
+		for (var i = 0; i < types.length; i++) {
+			var type = types[i];
+			if (!rendererListByType[type]) {
+				throw new Error('Invalid type(s): ' + type);
+			}
+			var rendererListByComponent = rendererListByType[type];
+			for (var j = 0; j < components.length; j++) {
+				var component = components[j];
+				rendererListByComponent[component] = rendererListByComponent[component] || [];
+				rendererListByComponent[component].push(renderer);
+			}
+		}
 		return renderer;
 	}
 	function deregister(rendererId) {
@@ -7547,10 +7668,15 @@ publicApi.UriTemplate = UriTemplate;
 			rendererId = rendererId.uniqueId;
 		}
 		delete rendererLookup[rendererId];
-		for (var i = 0; i < rendererList.length; i++) {
-			if (rendererList[i].uniqueId == rendererId) {
-				rendererList.splice(i, 1);
-				i--;
+		for (var type in rendererListByType) {
+			for (var component in rendererListByType[type]) {
+				var rendererList = rendererListByType[type][component];
+				for (var i = 0; i < rendererList.length; i++) {
+					if (rendererList[i].uniqueId == rendererId) {
+						rendererList.splice(i, 1);
+						i--;
+					}
+				}
 			}
 		}
 	}
@@ -7578,16 +7704,18 @@ publicApi.UriTemplate = UriTemplate;
 
 	function selectRenderer(data, uiStartingState, usedComponents) {
 		var schemas = data.schemas();
+		var basicType = data.basicType();
 		for (var j = 0; j < componentList.length; j++) {
 			if (usedComponents.indexOf(componentList[j]) == -1) {
 				var component = componentList[j];
-				for (var i = rendererList.length - 1; i >= 0; i--) {
-					var renderer = rendererList[i];
-					if (renderer.component.indexOf(component) == -1) {
-						continue;
-					}
-					if (renderer.canRender(data, schemas, uiStartingState)) {
-						return renderer;
+				var rendererListByComponent = rendererListByType[basicType];
+				if (rendererListByComponent[component]) {
+					var rendererList = rendererListByComponent[component];
+					for (var i = rendererList.length - 1; i >= 0; i--) {
+						var renderer = rendererList[i];
+						if (renderer.canRender(data, schemas, uiStartingState)) {
+							return renderer;
+						}
 					}
 				}
 			}
@@ -7672,3 +7800,332 @@ publicApi.UriTemplate = UriTemplate;
 	}(Jsonary.invalidate);
 })(this);
 
+// Modified versions of the meta-schemas
+
+var baseSchema = {
+	"id": "http://json-schema.org/draft-04/schema#",
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "JSON Schema",
+	"description": "Core schema meta-schema",
+	"definitions": {
+		"schemaArray": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "$ref": "#" }
+		},
+		"positiveInteger": {
+			"type": "integer",
+			"minimum": 0
+		},
+		"positiveIntegerDefault0": {
+			"allOf": [ { "$ref": "#/definitions/positiveInteger" }, { "default": 0 } ]
+		},
+		"simpleTypes": {
+			"title": "Simple type",
+			"enum": [ "array", "boolean", "integer", "null", "number", "object", "string" ]
+		},
+		"stringArray": {
+			"type": "array",
+			"items": { "type": "string" },
+			"minItems": 1,
+			"uniqueItems": true
+		}
+	},
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string",
+			"format": "uri"
+		},
+		"$schema": {
+			"type": "string",
+			"format": "uri"
+		},
+		"title": {
+			"type": "string"
+		},
+		"description": {
+			"type": "string"
+		},
+		"default": {},
+		"multipleOf": {
+			"type": "number",
+			"minimum": 0,
+			"exclusiveMinimum": true
+		},
+		"maximum": {
+			"type": "number"
+		},
+		"exclusiveMaximum": {
+			"type": "boolean",
+			"default": false
+		},
+		"minimum": {
+			"type": "number"
+		},
+		"exclusiveMinimum": {
+			"type": "boolean",
+			"default": false
+		},
+		"maxLength": { "$ref": "#/definitions/positiveInteger" },
+		"minLength": { "$ref": "#/definitions/positiveIntegerDefault0" },
+		"pattern": {
+			"type": "string",
+			"format": "regex"
+		},
+		"additionalItems": {
+			"oneOf": [
+				{ "type": "boolean" },
+				{ "$ref": "#" }
+			],
+			"default": {}
+		},
+		"items": {
+			"oneOf": [
+				{ "$ref": "#" },
+				{ "$ref": "#/definitions/schemaArray" }
+			],
+			"default": {}
+		},
+		"maxItems": { "$ref": "#/definitions/positiveInteger" },
+		"minItems": { "$ref": "#/definitions/positiveIntegerDefault0" },
+		"uniqueItems": {
+			"type": "boolean",
+			"default": false
+		},
+		"maxProperties": { "$ref": "#/definitions/positiveInteger" },
+		"minProperties": { "$ref": "#/definitions/positiveIntegerDefault0" },
+		"required": { "$ref": "#/definitions/stringArray" },
+		"additionalProperties": {
+			"oneOf": [
+				{ "type": "boolean"},
+				{ "$ref": "#" }
+			],
+			"default": {}
+		},
+		"definitions": {
+			"type": "object",
+			"additionalProperties": { "$ref": "#" },
+			"default": {}
+		},
+		"properties": {
+			"type": "object",
+			"additionalProperties": { "$ref": "#" },
+			"default": {}
+		},
+		"patternProperties": {
+			"type": "object",
+			"additionalProperties": { "$ref": "#" },
+			"default": {}
+		},
+		"dependencies": {
+			"type": "object",
+			"additionalProperties": {
+				"oneOf": [
+					{ "$ref": "#" },
+					{ "$ref": "#/definitions/stringArray" }
+				]
+			}
+		},
+		"enum": {
+			"type": "array",
+			"minItems": 1,
+			"uniqueItems": true
+		},
+		"type": {
+			"oneOf": [
+				{ "$ref": "#/definitions/simpleTypes" },
+				{
+					"type": "array",
+					"items": { "$ref": "#/definitions/simpleTypes" },
+					"minItems": 1,
+					"uniqueItems": true
+				}
+			]
+		},
+		"allOf": { "$ref": "#/definitions/schemaArray" },
+		"anyOf": { "$ref": "#/definitions/schemaArray" },
+		"oneOf": { "$ref": "#/definitions/schemaArray" },
+		"not": { "$ref": "#" }
+	},
+	"dependencies": {
+		"exclusiveMaximum": [ "maximum" ],
+		"exclusiveMinimum": [ "minimum" ]
+	},
+	"default": {}
+};
+
+var hyperSchema = {
+	"$schema": "http://json-schema.org/draft-04/hyper-schema#",
+	"id": "http://json-schema.org/draft-04/hyper-schema#",
+	"title": "JSON Hyper-Schema",
+	"allOf": [
+		{
+			"$ref": "http://json-schema.org/draft-04/schema#"
+		}
+	],
+	"properties": {
+		"additionalItems": {
+			"oneOf": [
+				{
+					"type": "boolean"
+				},
+				{
+					"$ref": "#"
+				}
+			]
+		},
+		"additionalProperties": {
+			"oneOf": [
+				{
+					"type": "boolean"
+				},
+				{
+					"$ref": "#"
+				}
+			]
+		},
+		"dependencies": {
+			"additionalProperties": {
+				"oneOf": [
+					{
+						"$ref": "#"
+					},
+					{
+						"type": "array"
+					}
+				]
+			}
+		},
+		"items": {
+			"oneOf": [
+				{
+					"$ref": "#"
+				},
+				{
+					"$ref": "#/definitions/schemaArray"
+				}
+			]
+		},
+		"definitions": {
+			"additionalProperties": {
+				"$ref": "#"
+			}
+		},
+		"patternProperties": {
+			"additionalProperties": {
+				"$ref": "#"
+			}
+		},
+		"properties": {
+			"additionalProperties": {
+				"$ref": "#"
+			}
+		},
+		"allOf": {
+			"$ref": "#/definitions/schemaArray"
+		},
+		"oneOf": {
+			"$ref": "#/definitions/schemaArray"
+		},
+		"oneOf": {
+			"$ref": "#/definitions/schemaArray"
+		},
+		"not": {
+			"$ref": "#"
+		},
+
+		"links": {
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/linkDescription"
+			}
+		},
+		"fragmentResolution": {
+			"type": "string"
+		},
+		"media": {
+			"type": "object",
+			"properties": {
+				"type": {
+					"description": "A media type, as described in RFC 2046",
+					"type": "string"
+				},
+				"binaryEncoding": {
+					"description": "A content encoding scheme, as described in RFC 2045",
+					"type": "string"
+				}
+			}
+		},
+		"pathStart": {
+			"description": "Instances' URIs must start with this value for this schema to apply to them",
+			"type": "string",
+			"format": "uri"
+		}
+	},
+	"definitions": {
+		"schemaArray": {
+			"title": "Array of schemas",
+			"type": "array",
+			"items": {
+				"$ref": "#"
+			}
+		},
+		"linkDescription": {
+			"title": "Link Description Object",
+			"type": "object",
+			"required": [ "href", "rel" ],
+			"properties": {
+				"href": {
+					"description": "a URI template, as defined by RFC 6570, with the addition of the $, ( and ) characters for pre-processing",
+					"type": "string"
+				},
+				"rel": {
+					"description": "relation to the target resource of the link",
+					"type": "string"
+				},
+				"title": {
+					"description": "a title for the link",
+					"type": "string"
+				},
+				"targetSchema": {
+					"description": "JSON Schema describing the link target",
+					"$ref": "#"
+				},
+				"mediaType": {
+					"description": "media type (as defined by RFC 2046) describing the link target",
+					"type": "string"
+				},
+				"method": {
+					"description": "method for requesting the target of the link (e.g. for HTTP this might be \"GET\" or \"DELETE\")",
+					"type": "string"
+				},
+				"encType": {
+					"description": "The media type in which to submit data along with the request",
+					"type": "string",
+					"default": "application/json"
+				},
+				"schema": {
+					"description": "Schema describing the data to submit along with the request",
+					"$ref": "#"
+				}
+			}
+		}
+	},
+	"links": [
+		{
+			"rel": "self",
+			"href": "{+id}"
+		},
+		{
+			"rel": "full",
+			"href": "{+($ref)}"
+		}
+	]
+};
+
+Jsonary.addToCache('http://json-schema.org/schema', {allOf: [{"$ref": "draft-04/schema"}]});
+Jsonary.addToCache('http://json-schema.org/draft-04/schema', baseSchema);
+
+Jsonary.addToCache('http://json-schema.org/hyper-schema', {allOf: [{"$ref": "draft-04/hyper-schema"}]});
+Jsonary.addToCache('http://json-schema.org/draft-04/hyper-schema', hyperSchema);

@@ -51,6 +51,7 @@
 				result += "<div class='json-" + parentType + "-delete-container'>";
 				result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
 				result += context.renderHtml(data, 'data');
+				result += "</div>";
 			} else {
 				result += context.renderHtml(data, 'data');
 			}
