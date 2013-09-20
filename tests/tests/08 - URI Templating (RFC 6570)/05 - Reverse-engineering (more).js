@@ -67,7 +67,7 @@ for (var sub in examples) {
 	(function (sub, expected) {
 		tests.add(sub, function () {
 			var template = new Jsonary.UriTemplate(sub);
-			var value = template.fromUrl(expected);
+			var value = template.fromUri(expected);
 
 			// We don't have checks for the original values - but we *can* check that it re-templates into the same thing
 			
