@@ -30,10 +30,15 @@ function createBundles() {
 			'../jsonary/main.js',
 			'../jsonary/_footer.js',
 			'../plugins/jsonary.render.js',
+			'../plugins/jsonary.render.js',
 		])
 		.code('var Jsonary = this.Jsonary;')
+
+		// http://json-schema.org/ meta-schemas
+		.js('../jsonary/_cache-json-schema-org.js')
+
+		// Renderers
 		.js([
-			// Renderers
 			'../renderers/plain.jsonary.js',
 			'../renderers/list-links.js',
 			'../renderers/string-formats.js'
@@ -46,7 +51,9 @@ function createBundles() {
 		.js('../renderers/contributed/adaptive-table.js');
 	
 	masterBundle.compileCss('bundle.css');
+	masterBundle.compileCss('bundle.min.css', true);
 	jsonaryJsBundle = masterBundle.compileJs('bundle.js');
+	jsonaryJsBundle = masterBundle.compileJs('bundle.min.js', true);
 }
 createBundles();
 
@@ -54,7 +61,7 @@ var createJsonary = function () {
 	var Jsonary = jsonaryJsBundle()['Jsonary'];
 	Jsonary.setLogFunction(function (logLevel, message) {
 		if (logLevel >= Jsonary.logLevel.WARNING) {
-			console.log("Log level " + logLevel + ": " + message);
+			console.log("Jsonary " + Jsonary.logLevel[logLevel] + ": " + message);
 		}
 	});
 	var buttons = [];
@@ -87,7 +94,6 @@ var createJsonary = function () {
 	
 	Jsonary.ajaxFunction = function (params, callback) {
 		requestCount++;
-		console.log(params);
 		// Make an actual HTTP request, defaulting to the current server if just path is given
 		var uri = new Jsonary.Uri(params.url);
 		var httpModule = (uri.scheme == 'https') ? https : http;
@@ -116,7 +122,13 @@ var createJsonary = function () {
 				handleResponse(response, data);
 			});
 		}).on('error', function (e) {
+			console.log({
+				request: params,
+				error: e
+			});
 			callback(e, e, '');
+			requestCount--;
+			checkRequestsComplete();
 		});
 		if (params.data != undefined) {
 			request.write(params.data);
@@ -124,7 +136,6 @@ var createJsonary = function () {
 		request.end();
 		
 		function handleResponse(response, data) {
-			requestCount--;
 			var headerText = [];
 			for (var key in response.headers) {
 				if (Array.isArray(response.headers[key])) {
@@ -157,6 +168,7 @@ var createJsonary = function () {
 				}
 				callback(new Jsonary.HttpError(response.statusCode, response), data, headerText);
 			}
+			requestCount--;
 			checkRequestsComplete();
 		}
 	};
@@ -199,6 +211,7 @@ app.all('/', function (request, response) {
 	Jsonary.render.saveData = function (data, saveDataId) {
 		return data.document.uniqueId + ":" + data.pointerPath();
 	};
+	response.write('<pre>' + Jsonary.escapeHtml(JSON.stringify(request.body, null, 4)) + '</pre>');
 	if (request.body['Jsonary.state']) {
 		var savedState = JSON.parse(request.body['Jsonary.state']);
 		Jsonary.render.loadDocumentsFromState(savedState, function (error, documents) {
@@ -243,6 +256,7 @@ app.all('/', function (request, response) {
 		html += '\n<input name="Jsonary.state" type="hidden" value=\'' + escapedRenderState + '\'></input>';
 		html += '</form>';
 		
+		/*/
 		html += '<hr><div id="jsonary-target"></div>';
 		html += '<script src="bundle.js"></script>';
 		html += '<script>';
@@ -260,6 +274,7 @@ app.all('/', function (request, response) {
 		html += 		'});';
 		html += 	'});';
 		html += '</script>';
+		//*/
 
 		html += '<hr><pre>';
 		html += JSON.stringify(renderContext.saveCompleteState(), null, '\t');

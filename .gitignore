@@ -165,10 +165,9 @@ pip-log.txt
 php/common.php
 
 test/bundle.css
-
+test/bundle.min.css
 test/bundle.js
-
-test/bundle.js
+test/bundle.min.js
 
 node_modules
 

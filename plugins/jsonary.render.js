@@ -363,6 +363,7 @@
 				}
 				thisContext.clearOldSubContexts();
 
+				innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
 				htmlCallback(null, innerHtml, thisContext);
 			});
 		},
@@ -845,17 +846,17 @@
 		return context.render(innerElement, data, 'render', uiStartingState);
 	}
 	function renderHtml(data, uiStartingState) {
-		var result = pageContext.renderHtml(data, null, uiStartingState);
+		var innerHtml = pageContext.renderHtml(data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
-		return '<span class="jsonary">' + result + '</span>';
+		return '<span class="jsonary">' + innerHtml + '</span>';
 	}
 	function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-		return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml) {
+		return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
 			if (error) {
-				htmlCallback(error, innerHtml);
+				htmlCallback(error, innerHtml, renderContext);
 			}
-			htmlCallback('<span class="jsonary">' + result + '</span>');
+			htmlCallback(null, '<span class="jsonary">' + innerHtml + '</span>', renderContext);
 		});
 	}
 

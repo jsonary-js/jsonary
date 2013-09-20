@@ -1,4 +1,6 @@
 (function(publicApi) { // Global wrapper
+
+var Jsonary = publicApi;
 	
 publicApi.toString = function() {
 	return "<Jsonary>";

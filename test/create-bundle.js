@@ -93,6 +93,9 @@ Bundle.prototype = {
 	compileCss: function (outputFile, minify) {
 		var cssCode = '/* Bundled on ' + (new Date) + '*/\n';
 		cssCode += this.cssCode.join("");
+		if (minify) {
+			cssCode = cleanCss.process(cssCode);
+		}
 		if (outputFile) {
 			fs.writeFileSync(outputFile, cssCode, {enc:'utf8'});
 		}

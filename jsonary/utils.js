@@ -367,6 +367,9 @@ var Utils = {
 		return counter++;
 	};
 })();
+for (var logLevel in Utils.logLevel) {
+	Utils.logLevel[Utils.logLevel[logLevel]] = Utils.logLevel[Utils.logLevel[logLevel]] || logLevel;
+}
 
 // Place relevant ones in the public API
 
