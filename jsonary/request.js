@@ -354,15 +354,31 @@ Request.prototype = {
 		}
 		Utils.log(Utils.logLevel.DEBUG, "headers: " + JSON.stringify(headers, null, 4));
 		var contentType = headers["content-type"].split(";")[0];
-		var profileParts = headers["content-type"].substring(contentType.length + 1).split(",");
-		for (var i = 0; i < profileParts.length; i++) {
-			var partName = profileParts[i].split("=")[0];
-			var partValue = profileParts[i].substring(partName.length + 1);
+		var remainder = headers["content-type"].substring(contentType.length + 1);
+		while (remainder.length > 0) {
+			remainder = remainder.replace(/^,\s*/, '');
+			var partName = remainder.split("=", 1)[0];
+			remainder = remainder.substring(partName.length + 1).trim();
 			partName = partName.trim();
 			if (partName == "") {
 				continue;
 			}
-			contentTypeParameters[partName] = partValue;
+			console.log(remainder)
+			if (remainder.charAt(0) === '"') {
+				partValue = /^"([^\\"]|\\.)*("|$)/.exec(remainder)[0];
+				console.log(partValue);
+				remainder = remainder.substring(partValue.length).trim();
+				// Slight hack, perhaps
+				try {
+					contentTypeParameters[partName] = JSON.parse(partValue);
+				} catch (e) {
+					contentTypeParameters[partName] = partValue;
+				}
+			} else {
+				partValue = /^[^,]*/.exec(remainder)[0];
+				remainder = remainder.substring(partValue.length).trim();
+				contentTypeParameters[partName] = partValue;
+			}
 		}
 
 		thisRequest.headers = headers;
