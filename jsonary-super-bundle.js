@@ -1,4 +1,4 @@
-/* Bundled on Thu Sep 12 2013 17:42:53 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Fri Sep 20 2013 19:53:39 GMT+0100 (BST)*/
 (function() {
 
 
@@ -567,6 +567,8 @@
 /**** ../jsonary/_header.js ****/
 
 	(function(publicApi) { // Global wrapper
+	
+	var Jsonary = publicApi;
 		
 	publicApi.toString = function() {
 		return "<Jsonary>";
@@ -1603,6 +1605,9 @@
 			return counter++;
 		};
 	})();
+	for (var logLevel in Utils.logLevel) {
+		Utils.logLevel[Utils.logLevel[logLevel]] = Utils.logLevel[Utils.logLevel[logLevel]] || logLevel;
+	}
 	
 	// Place relevant ones in the public API
 	
@@ -2122,15 +2127,31 @@
 			}
 			Utils.log(Utils.logLevel.DEBUG, "headers: " + JSON.stringify(headers, null, 4));
 			var contentType = headers["content-type"].split(";")[0];
-			var profileParts = headers["content-type"].substring(contentType.length + 1).split(",");
-			for (var i = 0; i < profileParts.length; i++) {
-				var partName = profileParts[i].split("=")[0];
-				var partValue = profileParts[i].substring(partName.length + 1);
+			var remainder = headers["content-type"].substring(contentType.length + 1);
+			while (remainder.length > 0) {
+				remainder = remainder.replace(/^,\s*/, '');
+				var partName = remainder.split("=", 1)[0];
+				remainder = remainder.substring(partName.length + 1).trim();
 				partName = partName.trim();
 				if (partName == "") {
 					continue;
 				}
-				contentTypeParameters[partName] = partValue;
+				console.log(remainder)
+				if (remainder.charAt(0) === '"') {
+					partValue = /^"([^\\"]|\\.)*("|$)/.exec(remainder)[0];
+					console.log(partValue);
+					remainder = remainder.substring(partValue.length).trim();
+					// Slight hack, perhaps
+					try {
+						contentTypeParameters[partName] = JSON.parse(partValue);
+					} catch (e) {
+						contentTypeParameters[partName] = partValue;
+					}
+				} else {
+					partValue = /^[^,]*/.exec(remainder)[0];
+					remainder = remainder.substring(partValue.length).trim();
+					contentTypeParameters[partName] = partValue;
+				}
 			}
 	
 			thisRequest.headers = headers;
@@ -6847,6 +6868,7 @@
 					}
 					thisContext.clearOldSubContexts();
 	
+					innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
 					htmlCallback(null, innerHtml, thisContext);
 				});
 			},
@@ -7329,17 +7351,17 @@
 			return context.render(innerElement, data, 'render', uiStartingState);
 		}
 		function renderHtml(data, uiStartingState) {
-			var result = pageContext.renderHtml(data, null, uiStartingState);
+			var innerHtml = pageContext.renderHtml(data, null, uiStartingState);
 			pageContext.oldSubContexts = {};
 			pageContext.subContexts = {};
-			return '<span class="jsonary">' + result + '</span>';
+			return '<span class="jsonary">' + innerHtml + '</span>';
 		}
 		function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-			return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml) {
+			return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
 				if (error) {
-					htmlCallback(error, innerHtml);
+					htmlCallback(error, innerHtml, renderContext);
 				}
-				htmlCallback('<span class="jsonary">' + result + '</span>');
+				htmlCallback(null, '<span class="jsonary">' + innerHtml + '</span>', renderContext);
 			});
 		}
 	
