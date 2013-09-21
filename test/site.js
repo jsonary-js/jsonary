@@ -48,7 +48,11 @@ function createBundles() {
 		.js('../plugins/jsonary.render.table.js')
 		.css('../plugins/jsonary.render.table.css')
 		.js('../plugins/jsonary.render.generate.js')
-		.js('../renderers/contributed/adaptive-table.js');
+		.js('../renderers/contributed/adaptive-table.js')
+
+		// Custom renderers
+		.js('renderers/site.js')
+		.css('renderers/site.css');
 	
 	masterBundle.compileCss('bundle.css');
 	masterBundle.compileCss('bundle.min.css', true);

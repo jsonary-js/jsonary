@@ -12,6 +12,7 @@
 			"items": {"$ref": "#/definitions/section"}
 		}
 	},
+	"required": ["title", "sections"],
 	"links": [
 		{
 			"rel": "edit",
@@ -23,8 +24,9 @@
 			"title": "Website section",
 			"type": "object",
 			"properties": {
-				"title": {},
+				"title": {"title": "Title"},
 				"tabs": {
+					"title": "Tabs",
 					"oneOf": [
 						{
 							"title": "External URL",
@@ -36,7 +38,8 @@
 						}
 					]
 				}
-			}
+			},
+			"required": ["title", "tabs"]
 		}
 	}
 }
