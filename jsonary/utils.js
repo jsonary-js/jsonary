@@ -306,9 +306,10 @@ var Utils = {
 		}
 		return result;
 	},
-	escapeHtml: function(text) {
+	escapeHtml: function(text, singleQuotesOnly) {
 		text += "";
-		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+		var escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;");
+		return singleQuotesOnly ? escaped : escaped.replace(/"/g, "&quot;");
 	},
 	encodePointerComponent: function (component) {
 		return component.toString().replace("~", "~0").replace("/", "~1");

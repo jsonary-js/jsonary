@@ -121,6 +121,23 @@
 		usedComponents: [],
 		rootContext: null,
 		baseContext: null,
+		labelSequence: function () {
+			if (!this.parent || this.parent == pageContext) {
+				return [];
+			}
+			return this.parent.labelSequence().concat([this.label]);
+		},
+		labelSequenceContext: function (seq) {
+			var result = this;
+			for (var i = 0; i < seq.length; i++) {
+				var label = seq[i];
+				result = result.subContexts[label] || result.oldSubContexts[label];
+				if (!result) {
+					return null;
+				}
+			}
+			return result;
+		},
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
 				var selfLink = data.getLink('self');
@@ -355,16 +372,17 @@
 			}
 			
 			var renderer = this.renderer;
-			var data = this.data;
-			
-			renderer.asyncRenderHtml(data, this, function (error, innerHtml) {
-				if (error) {
-					return htmlCallback(error, innerHtml, thisContext);
-				}
-				thisContext.clearOldSubContexts();
+			console.log("async rendering from document " + this.data.document.uniqueId);
+			this.data.whenStable(function (data) {
+				renderer.asyncRenderHtml(data, thisContext, function (error, innerHtml) {
+					if (error) {
+						return htmlCallback(error, innerHtml, thisContext);
+					}
+					thisContext.clearOldSubContexts();
 
-				innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
-				htmlCallback(null, innerHtml, thisContext);
+					innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
+					htmlCallback(null, innerHtml, thisContext);
+				});
 			});
 		},
 
@@ -549,10 +567,10 @@
 		actionHtml: function(innerHtml, actionName) {
 			var startingIndex = 2;
 			var historyChange = false;
-			var linkUrl = Jsonary.render.actionUrl(this, actionName);
+			var linkUrl = null;
 			if (typeof actionName == "boolean") {
 				historyChange = arguments[1];
-				linkUrl = arguments[2] || linkUrl;
+				linkUrl = arguments[2] || null;
 				actionName = arguments[3];
 				startingIndex += 2;
 			}
@@ -562,7 +580,15 @@
 			}
 			var elementId = this.getElementId();
 			this.addEnhancementAction(elementId, actionName, this, params, historyChange);
-			return Jsonary.render.actionHtml(elementId, linkUrl, innerHtml);
+			var argsObject = {
+				context: this,
+				linkUrl: linkUrl,
+				actionName: actionName,
+				params: params,
+				historyChange: historyChange
+			};
+			argsObject.linkUrl = linkUrl || Jsonary.render.actionUrl(argsObject);
+			return Jsonary.render.actionHtml(elementId, innerHtml, argsObject);
 		},
 		inputNameForAction: function (actionName) {
 			var historyChange = false;
@@ -576,7 +602,11 @@
 			for (var i = startIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
-			var name = this.getElementId();
+			var argsObject = {
+				context: this,
+				actionName: actionName,
+			};
+			var name = Jsonary.render.actionInputName(argsObject);
 			this.enhancementInputs[name] = {
 				inputName: name,
 				actionName: actionName,
@@ -629,6 +659,17 @@
 				element = element.nextSibling;
 			}
 		},
+		action: function (actionName) {
+			var args = [this];
+			for (var i = 0; i < arguments.length; i++) {
+				args.push(arguments[i]);
+			}
+			return this.renderer.action.apply(this.renderer, args);
+		},
+		actionArgs: function (actionName, args) {
+			args = [this, actionName].concat(args || []);
+			return this.renderer.action.apply(this.renderer, args);
+		},
 		enhanceElementSingle: function (element) {
 			var elementId = element.id;
 			var context = this.enhancementContexts[elementId];
@@ -646,8 +687,8 @@
 				element.onclick = function () {
 					var redrawElementId = action.context.elementId;
 					var actionContext = action.context;
-					var args = [actionContext, action.actionName].concat(action.params);
-					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
+					var args = [action.actionName].concat(action.params);
+					if (actionContext.action.apply(actionContext, args)) {
 						// Action returned positive - we should force a re-render
 						actionContext.rerender();
 					}
@@ -674,8 +715,8 @@
 					}
 					var redrawElementId = inputAction.context.elementId;
 					var inputContext = inputAction.context;
-					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
-					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
+					var args = [inputAction.actionName, value].concat(inputAction.params);
+					if (inputContext.action.apply(inputContext, args)) {
 						inputContext.rerender();
 					}
 					notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
@@ -874,11 +915,15 @@
 		};
 	}
 	render.Components = componentNames;
-	render.actionUrl = function (context, actionName) {
+	render.actionInputName = function (args) {
+		var context = args.context;
+		return context.getElementId();
+	};
+	render.actionUrl = function (args) {
 		return "javascript:void(0)";
 	};
-	render.actionHtml = function (elementId, linkUrl, innerHtml) {
-		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
+	render.actionHtml = function (elementId, innerHtml, args) {
+		return '<a href="' + Jsonary.escapeHtml(args.linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
 	};
 	render.rendered = function (data) {
 		var uniqueId = data.uniqueId;

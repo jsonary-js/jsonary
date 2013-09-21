@@ -248,6 +248,7 @@
 			return new FancyTableRenderer(config);
 		}
 		config = config || {};
+		this.name = config.name || "FancyTableRenderer";
 
 		for (var key in FancyTableRenderer.defaults) {
 			if (!config[key]) {

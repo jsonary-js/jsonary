@@ -290,8 +290,7 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
 	this.invalidate = function() {
-		var thisRequest = this;
-		this.document.whenAccessed(function () {
+		var makeRequest = function () {
 			if (thisRequest.successful == null) {
 				// We've already got a pending request
 				return;
@@ -299,7 +298,14 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 			if (method == "GET") {
 				thisRequest.fetchData(url, method, data, encType, hintSchema);
 			}
-		});
+		};
+		var thisRequest = this;
+		this.document.whenAccessed(makeRequest);
+		this.document.whenStable = function (callback) {
+			delete thisRequest.document.whenStable;
+			makeRequest();
+			return thisRequest.document.whenStable(callback);
+		}
 	};
 }
 Request.prototype = {
@@ -457,6 +463,13 @@ Request.prototype = {
 		});
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
+		console.log("Document " + this.document.uniqueId + " is unstable");
+		var stableListeners = new ListenerSet(this);
+		this.document.whenStable = function (callback) {
+			stableListeners.add(callback);
+			return this;
+		};
+		
 		var thisRequest = this;
 		this.successful = null;
 		var xhrUrl = url;
@@ -495,6 +508,9 @@ Request.prototype = {
 			} else {
 				thisRequest.ajaxError(error, data);
 			}
+			console.log("Document " + thisRequest.document.uniqueId + " is stable");
+			delete thisRequest.document.whenStable;
+			stableListeners.notify(thisRequest.document);
 		});
 	}
 };

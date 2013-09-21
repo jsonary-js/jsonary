@@ -127,11 +127,12 @@
 					uiState = {};
 				}
 			}
-			if (savedState[""] != undefined) {
+			if (savedState[""] != '-') {
 				delete savedState[""];
 				var newSavedState = {};
 				for (var key in savedState) {
-					newSavedState[key.substring(1)] = savedState[key];
+					var newKey = (key.charAt(0) == '-') ? key.substring(1) : key;
+					newSavedState[newKey] = savedState[key];
 				}
 				savedState = newSavedState;
 			}

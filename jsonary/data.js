@@ -192,6 +192,10 @@ Document.prototype = {
 		patch.move(source, target);
 		this.patch(patch);
 		return this;
+	},
+	whenStable: function (callback) {
+		callback.call(this, this);
+		return this;
 	}
 }
 
@@ -817,6 +821,13 @@ Data.prototype = {
 	},
 	json: function () {
 		return JSON.stringify(this.value());
+	},
+	whenStable: function (callback) {
+		var thisData = this;
+		this.document.whenStable(function () {
+			callback.call(thisData, thisData);
+		});
+		return this;
 	}
 };
 Data.prototype.indices = Data.prototype.items;

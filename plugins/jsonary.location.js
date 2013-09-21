@@ -1,13 +1,18 @@
 (function (global) {
-	if (typeof window == 'undefined') {
-		return;
-	}
-	
 	var api = {
 		query: Jsonary.create(null),
 		queryVariant: 'pretty',
 		useHistory: true
 	};
+
+	if (typeof window == 'undefined') {
+		// None of the methods, but include the config
+		Jsonary.extend({
+			location: api
+		});
+		return;
+	}
+	
 	var changeListeners = [];
 	api.onChange = function (callbackFunction, immediate) {
 		start();
