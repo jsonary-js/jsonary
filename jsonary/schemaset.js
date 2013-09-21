@@ -1023,6 +1023,7 @@ publicApi.createSchemaList = function (schemas) {
 };
 
 var SCHEMA_SET_UPDATE_KEY = Utils.getUniqueKey();
+var SCHEMA_SET_FIXED_KEY = Utils.getUniqueKey();
 
 function SchemaSet(dataObj) {
 	var thisSchemaSet = this;
@@ -1310,7 +1311,7 @@ SchemaSet.prototype = {
 			publicApi.invalidate(invalidateUrl);
 			return;
 		}
-		var schemaKey = Utils.getUniqueKey();
+		var schemaKey = SCHEMA_SET_FIXED_KEY;
 		var linkData = publicApi.create(rawLink);
 		var potentialLink = new PotentialLink(linkData);
 		this.addLinks([potentialLink], schemaKey);
@@ -1327,7 +1328,7 @@ SchemaSet.prototype = {
 					var schema = publicApi.createSchema({
 						"$ref": rawLink.href
 					});
-					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, false);
+					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
 				}
 			});
 		}

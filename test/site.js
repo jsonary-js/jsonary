@@ -248,6 +248,7 @@ function LogTimer(timerName) {
 LogTimer.prototype = {
 };
 
+var defaultJsonPage = '/json/';
 app.all('/', function (request, response) {
 	function urlForUiState(uiState) {
 		return '?' + Jsonary.encodeData(uiState, 'application/x-www-form-urlencoded', Jsonary.location.queryVariant);
@@ -255,7 +256,7 @@ app.all('/', function (request, response) {
 
 	var timer = LogTimer('request');
 	// Reset bundles on every request
-	/*/
+	//*/
 	createBundles();
 	timer.event('bundle Jsonary (ignoring)');
 	timer.reset();
@@ -311,7 +312,7 @@ app.all('/', function (request, response) {
 		return parts.join('#');
 	};
 	
-	Jsonary.asyncRenderHtml("/json/data", uiState, function (error, innerHtml, renderContext) {
+	Jsonary.asyncRenderHtml(defaultJsonPage, uiState, function (error, innerHtml, renderContext) {
 		timer.event('first render');
 		var needsReRender = false;
 		// Execute inputs first, then actions
@@ -411,7 +412,7 @@ app.all('/', function (request, response) {
 		html += 	'Jsonary.location.replace(' + JSON.stringify(urlForUiState(savedUiState)) + ');'
 		html += 	'var renderContext;';
 		html += 	'var changeMonitor = Jsonary.location.onChange(function () {';
-		html += 		'renderContext = Jsonary.render("jsonary-target", "json/data", Jsonary.location.query.value());';
+		html += 		'renderContext = Jsonary.render("jsonary-target", ' + JSON.stringify(defaultJsonPage) + ', Jsonary.location.query.value());';
 		html += 	'});';
 		html += 	'Jsonary.render.addActionHandler(function (context, data, actionName, historyPoint) {';
 		html += 		'if (historyPoint) {';
@@ -432,15 +433,6 @@ app.all('/', function (request, response) {
 	}
 });
 
-var exampleData = {
-	title: "Example JSON data",
-	"boolean": true,
-	array: [
-		{a: 1, b: 2},
-		{a: 1, b: 3},
-		{a: 2, b: 3}
-	]
-};
 function prettyJson(data) {
 	var json = JSON.stringify(data, null, "\t");
 	function compactJson(json) {
@@ -468,6 +460,40 @@ function prettyJson(data) {
 	json = json.replace(/\[[^\{\[\}\]]*\]/g, compactJson); // Arrays containing only scalar items
 	return json;
 }
+app.use('/json/schemas/', function (request, response, next) {
+	response.set('Content-Type', 'application/json');
+	response.links({
+		describedby: "http://json-schema.org/hyper-schema"
+	});
+	next();
+});
+app.use('/json/schemas/', express.static(__dirname + '/json/schemas'));
+
+app.get('/json/', function (request, response, next) {
+	response.set('Content-Type', 'application/json');
+	response.links({
+		describedby: "schemas/site"
+	});
+	response.json({
+		"title": "Jsonary",
+		"topContent": "[download](get-started-bundle.zip) and get started",
+		"sections": [
+			{
+				"title": "Features and goals",
+				"tabs": "pages/features-and-goals"
+			},
+			{
+				"title": "Examples",
+				"tabs": "pages/examples"
+			},
+			{
+				"title": "API",
+				"tabs": "api/"
+			}
+		]
+	});
+});
+
 app.use('/json/', function (request, response) {
 	response.setHeader('Content-Type', 'application/json');
 	var path = request.url.split('?')[0];

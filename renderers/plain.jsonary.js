@@ -112,6 +112,7 @@
 			var enums = data.schemas().enumValues();
 			var basicTypes = data.schemas().basicTypes();
 			if (basicTypes.length > 1 && enums == null) {
+				console.log(basicTypes);
 				result += '<select name="' + context.inputNameForAction('select-basic-type') + '">';
 				for (var i = 0; i < basicTypes.length; i++) {
 					if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
@@ -640,10 +641,8 @@
 		renderHtml: function (data, context) {
 			var maxLength = data.schemas().maxLength();
 			var inputName = context.inputNameForAction('new-value');
-			var valueHtml = escapeHtml(data.value()).replace('"', '&quot;');
-			var style = "";
-			style += "width: 90%";
-			return '<textarea class="json-string" name="' + inputName + '" style="' + style + '">'
+			var valueHtml = escapeHtml(data.value());
+			return '<textarea class="json-string" name="' + inputName + '">'
 				+ valueHtml
 				+ '</textarea>';
 		},

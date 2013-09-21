@@ -1,0 +1,42 @@
+{
+	"title": "Website root",
+	"type": "object",
+	"properties": {
+		"title": {"type": "string"},
+		"topContent": {
+			"type": "string",
+			"format": "markdown"
+		},
+		"sections": {
+			"type": "array",
+			"items": {"$ref": "#/definitions/section"}
+		}
+	},
+	"links": [
+		{
+			"rel": "edit",
+			"href": ""
+		}
+	],
+	"definitions": {
+		"section": {
+			"title": "Website section",
+			"type": "object",
+			"properties": {
+				"title": {},
+				"tabs": {
+					"oneOf": [
+						{
+							"title": "External URL",
+							"type": "string",
+							"links": [{
+								"rel": "full",
+								"href": "{+$}"
+							}]
+						}
+					]
+				}
+			}
+		}
+	}
+}
