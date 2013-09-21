@@ -363,10 +363,8 @@ Request.prototype = {
 			if (partName == "") {
 				continue;
 			}
-			console.log(remainder)
 			if (remainder.charAt(0) === '"') {
 				partValue = /^"([^\\"]|\\.)*("|$)/.exec(remainder)[0];
-				console.log(partValue);
 				remainder = remainder.substring(partValue.length).trim();
 				// Slight hack, perhaps
 				try {
