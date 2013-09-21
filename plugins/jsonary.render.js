@@ -173,20 +173,20 @@
 			return subContext;
 		},
 		subContextSavedStates: {},
-		saveState: function () {
+		saveUiState: function () {
 			var subStates = {};
 			for (var key in this.subContexts) {
-				subStates[key] = this.subContexts[key].saveState();
+				subStates[key] = this.subContexts[key].saveUiState();
 			}
 			for (var key in this.oldSubContexts) {
-				subStates[key] = this.oldSubContexts[key].saveState();
+				subStates[key] = this.oldSubContexts[key].saveUiState();
 			}
 			
-			var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
+			var saveStateFunction = this.renderer ? this.renderer.saveUiState : Renderer.prototype.saveUiState;
 			return saveStateFunction.call(this.renderer, this.uiState, subStates, this.data);
 		},
-		loadState: function (savedState) {
-			var loadStateFunction = this.renderer ? this.renderer.loadState : Renderer.prototype.loadState;
+		loadUiState: function (savedState) {
+			var loadStateFunction = this.renderer ? this.renderer.loadUiState : Renderer.prototype.loadUiState;
 			var result = loadStateFunction.call(this.renderer, savedState);
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
@@ -274,7 +274,7 @@
 					}
 				}
 				result.contexts = newContexts;
-				result.uiState = this.saveState();
+				result.uiState = this.saveUiState();
 			}
 			return result;
 		},
@@ -684,6 +684,10 @@
 			element = null;
 		}
 	};
+	// TODO: this is for compatability - remove it
+	RenderContext.prototype.saveState = RenderContext.prototype.saveUiState;
+	RenderContext.prototype.loadState = RenderContext.prototype.loadUiState;
+	
 	var pageContext = new RenderContext();
 	render.loadDocumentsFromState = function (saved, callback) {
 		var documents = {};
@@ -958,11 +962,11 @@
 		}
 		// TODO: remove this.component
 		this.component = this.filterObj.component = sourceComponent;
-		if (sourceObj.saveState) {
-			this.saveState = sourceObj.saveState;
+		if (sourceObj.saveState || sourceObj.saveUiState) {
+			this.saveUiState = sourceObj.saveState || sourceObj.saveUiState;
 		}
-		if (sourceObj.loadState) {
-			this.loadState = sourceObj.loadState;
+		if (sourceObj.loadState || sourceObj.loadUiState) {
+			this.loadUiState = sourceObj.loadState || sourceObj.loadUiState;
 		}
 	}
 	Renderer.prototype = {
@@ -1103,7 +1107,7 @@
 			}
 			return redraw;
 		},
-		saveState: function (uiState, subStates, data) {
+		saveUiState: function (uiState, subStates, data) {
 			var result = {};
 			for (key in uiState) {
 				result[key] = uiState[key];
@@ -1131,7 +1135,7 @@
 			data.saveStateId = data.saveStateId || randomId();
 			return render.saveData(data, data.saveStateId) || data.saveStateId;
 		},
-		loadState: function (savedState) {
+		loadUiState: function (savedState) {
 			var uiState = {};
 			var subStates = {};
 			for (var key in savedState) {
