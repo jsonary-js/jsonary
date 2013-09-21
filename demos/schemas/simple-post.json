@@ -3,7 +3,11 @@
 	"type": "object",
 	"properties": {
 		"title": {"type": "string"},
-		"content": {"type": "string"}
+		"content": {"type": "string"},
+		"mood": {
+			"enum": ["happy", "neutral", "grumpy"],
+			"default": "neutral"
+		}
 	},
 	"required": ["title", "content"]
 }

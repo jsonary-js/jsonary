@@ -24,7 +24,7 @@
 			"title": "Website section",
 			"type": "object",
 			"properties": {
-				"title": {"title": "Title"},
+				"title": {"title": "Title", "type": "string"},
 				"tabs": {
 					"title": "Tabs",
 					"oneOf": [

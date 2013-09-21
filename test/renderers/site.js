@@ -7,11 +7,13 @@ Jsonary.render.register({
 			result += context.renderHtml(subData);
 			result += '</div>';
 		});
-		// Render other properties with class "site-section site-section-????"
+		// Render other documented properties with class "site-section site-section-????"
 		data.properties(data.schemas().knownProperties(['title', 'topContent']), function (key, subData) {
-			result += '<div class="site-section site-section-' + Jsonary.escapeHtml(key) + '">';
-			result += context.renderHtml(subData);
-			result += '</div>';
+			if (subData.defined() || !subData.readOnly()) {
+				result += '<div class="site-section site-section-' + Jsonary.escapeHtml(key) + '">';
+				result += context.renderHtml(subData);
+				result += '</div>';
+			}
 		});
 		return result + '</div>';
 	},

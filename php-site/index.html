@@ -143,11 +143,12 @@ Jsonary.render(targetElement, data);
 						.custom-content {
 							padding: 0.4em;
 						}
-						.custom-unknown-key {
-							font-weight: bold;
+						.custom-othertitle {
 							padding-left: 0.4em;
+							font-weight: bold;
+							font-size: 0.9em;
 						}
-						.custom-unknown {
+						.custom-other {
 							padding-left: 3em;
 						}
 					</style>
@@ -161,6 +162,15 @@ Jsonary.render.register({
 		var result = '&lt;div class=&quot;custom-post&quot;&gt;';
 		result += '&lt;div class=&quot;custom-title&quot;&gt;' + context.renderHtml(data.property('title')) + '&lt;/div&gt;';
 		result += '&lt;div class=&quot;custom-content&quot;&gt;' + context.renderHtml(data.property('content')) + '&lt;/div&gt;';
+		// Render any other documented properties in the schema
+		data.properties(data.schemas().knownProperties(['title', 'content']), function (key, subData) {
+			if (subData.defined() || !subData.readOnly()) {
+				result += '&lt;div class=&quot;custom-othertitle&quot;&gt;' + Jsonary.escapeHtml(key) + ':&lt;/div&gt;';
+				result += '&lt;div class=&quot;custom-other custom-other-' + Jsonary.escapeHtml(key) + '&quot;&gt;'
+				result += context.renderHtml(subData);
+				result += '&lt;/div&gt;'
+			}
+		});
 		return result + '&lt;/div&gt;';
 	},
 	filter: function (data, schemas) {
@@ -192,7 +202,7 @@ Jsonary.render(targetElementEditable, editableData);
 							targetElementEditable: 'example-target-embed-customise-editable'
 						});</script>
 					</div>
-					<p>It's worth noting that this particular example would not adapt to changes in the schema.  However, you can customise the appearance without losing flexibility, and it's actually pretty simple to do.</p>
+					<p>It's worth noting that the renderer here dynamically adapts to properties in the schema.  The "mood" property is defined in the schema, and the renderer displays it when needed.</p>
 					<!--<p>See "<a href="flexible-renderers.html">Flexible Renderers</a>" for more details.</p>-->
 				</div>
 				
