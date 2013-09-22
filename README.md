@@ -96,4 +96,6 @@ There is also a demo of how the default editable interface deals with various JS
 
 ## License
 
-Released under an [MIT License](http://jsonary.com/LICENSE.txt).
+Jsonary is released under an [MIT License](http://jsonary.com/LICENSE.txt).
+
+The files in the directory `renderers/separate-license` may have separate licenses.  To keep the licensing for Jsonary clean, they are not included in any of the bundles.
