@@ -52,7 +52,8 @@ function createBundles() {
 
 		// Custom renderers
 		.js('renderers/site.js')
-		.css('renderers/site.css');
+		.css('renderers/site.css')
+		.js('../renderers/contributed/markdown.js');
 	
 	masterBundle.compileCss('bundle.css');
 	masterBundle.compileCss('bundle.min.css', true);
@@ -399,6 +400,9 @@ app.all('/', function (request, response) {
 		console.log(renderContext.saveUiState());
 
 		var html = '';
+		
+		html += '<script src="https://cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Converter.min.js"></script>';
+		html += '<script src="https://cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Sanitizer.min.js"></script>';
 		html += '<link rel="stylesheet" href="bundle.css">';
 		var savedUiState = renderContext.saveUiState();
 		html += '<form action="' + urlForUiState(savedUiState) + '" method="POST">';
@@ -480,7 +484,7 @@ app.get('/json/', function (request, response, next) {
 	});
 	response.json({
 		"title": "Jsonary",
-		"topContent": "[download](get-started-bundle.zip) and get started",
+		"topContent": "[download](https://github.com/geraintluff/jsonary/raw/master/get-started-bundle.zip) and get started",
 		"sections": [
 			{
 				"title": "Features and goals",
