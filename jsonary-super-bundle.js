@@ -1,4 +1,4 @@
-/* Bundled on Wed Sep 25 2013 18:19:50 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Wed Sep 25 2013 23:19:24 GMT+0100 (BST)*/
 (function() {
 
 
@@ -3096,7 +3096,14 @@
 		};
 		
 		secrets.schemas = new SchemaSet(this);
-		this.schemas = function () {
+		this.schemas = function (forceForUndefined) {
+			if (forceForUndefined && basicType == undefined && parent) {
+				if (parent.basicType() === 'array' && isIndex(parentKey)) {
+					return parent.schemas(true).indexSchemas(parentKey);
+				} else if (parent.basicType() === 'object') {
+					return parent.schemas(true).propertySchemas(parentKey);
+				}
+			}
 			document.access();
 			return secrets.schemas.getSchemas();
 		};
@@ -3843,6 +3850,13 @@
 		},
 		maxLength: function () {
 			return this.data.propertyValue("maxLength");
+		},
+		pattern: function () {
+			var patternString = this.data.propertyValue("pattern");
+			if (patternString !== undefined) {
+				return new RegExp(patternString);
+			}
+			return null;
 		},
 		numberInterval: function() {
 			return this.data.propertyValue("divisibleBy");
@@ -5241,6 +5255,16 @@
 			});
 			return maxLength;
 		},
+		patterns: function () {
+			var result = [];
+			for (var i = 0; i < this.length; i++) {
+				var regex = this[i].pattern();
+				if (regex) {
+					result.push(regex);
+				}
+			}
+			return result;
+		},
 		minItems: function () {
 			var minItems = 0;
 			for (var i = 0; i < this.length; i++) {
@@ -5471,7 +5495,11 @@
 			}
 			return totalCombos;
 		},
-		createValue: function(callback, ignoreChoices) {
+		createValue: function(callback, origValue, ignoreChoices, ignoreDefaults) {
+			if (typeof callback !== 'undefined' && typeof callback !== 'function') {
+				origValue = callback;
+				callback = null;
+			}
 			if (!ignoreChoices) {
 				if (callback != null) {
 					this.allCombinations(function (allCombinations) {
@@ -5480,12 +5508,12 @@
 								return callback(undefined);
 							}
 							allCombinations[index].createValue(function (value) {
-								if (value !== undefined) {
+								if (typeof value !== 'undefined') {
 									callback(value);
 								} else {
 									nextOption(index + 1);
 								}
-							}, true);
+							}, origValue, true, ignoreDefaults);
 						}
 						nextOption(0);
 					});
@@ -5494,12 +5522,63 @@
 				// Synchronous version
 				var allCombinations = this.allCombinations();
 				for (var i = 0; i < allCombinations.length; i++) {
-					var value = allCombinations[i].createValue(null, true);
+					var value = allCombinations[i].createValue(undefined, origValue, true, ignoreDefaults);
 					if (value !== undefined) {
 						return value;
 					}
 				}
 				return;
+			}
+	
+			if (!ignoreDefaults) {
+				var thisSchemaSet = this;
+				var nextOrigValue = function () {
+					nextOrigValue = tryDefaults;
+					return origValue;
+				};
+				var defaultPos = 0;
+				var tryDefaults = function () {
+					while (defaultPos < thisSchemaSet.length) {
+						var schema = thisSchemaSet[defaultPos++];
+						if (schema.hasDefault()) {
+							return schema.defaultValue();
+						}
+					}
+					nextOrigValue = tryCustomValueCreation;
+				};
+				var customValuePos = 0;
+				var tryCustomValueCreation = function () {
+					while (customValuePos < customValueCreationFunctions.length) {
+						var func = customValueCreationFunctions[customValuePos++];
+						return func(thisSchemaSet);
+					}
+					nextOrigValue = null;
+				};
+				if (callback) {
+					var handleValue = function (value) {
+						if (typeof value !== 'undefined') {
+							return callback(value);
+						}
+						while (nextOrigValue) {
+							var initialValue = nextOrigValue();
+							if (typeof initialValue !== 'undefined') {
+								return thisSchemaSet.createValue(handleValue, initialValue, true, true);
+							}
+						}
+						thisSchemaSet.createValue(callback, undefined, true, true);
+					};
+					return handleValue(undefined);
+				} else {
+					while (nextOrigValue) {
+						var initialValue = nextOrigValue();
+						if (typeof initialValue !== 'undefined') {
+							var createdValue = this.createValue(undefined, initialValue, true, true);
+							if (typeof createdValue !== 'undefined') {
+								return createdValue;
+							}
+						}
+					}
+				}
 			}
 	
 			var basicTypes = this.basicTypes();
@@ -5524,15 +5603,7 @@
 				}
 			}
 	
-			for (var i = 0; i < this.length; i++) {
-				if (this[i].hasDefault()) {
-					pending++;
-					if (gotCandidate(this[i].defaultValue())) {
-						return chosenCandidate;
-					}
-				}
-			}
-			
+			// TODO: move up above, to the "if (!ignoreDefaults) {" section
 			var enumValues = this.enumValues();
 			if (enumValues != undefined) {
 				pending += enumValues.length;
@@ -5542,8 +5613,23 @@
 					}
 				}
 			} else {
-				pending += basicTypes.length;
-				for (var i = 0; i < basicTypes.length; i++) {
+				if (typeof origValue !== 'undefined') {
+					var basicType = Utils.guessBasicType(origValue);
+					var index = basicTypes.indexOf(basicType);
+					if (index === -1 && basicType == 'integer') {
+						index = basicTypes.indexOf('number');
+					}
+					if (ignoreDefaults) {
+						basicTypes = (index === -1) ? [] : [basicType];
+					} else {
+						if (index !== -1) {
+							basicTypes.splice(index, 1);
+							basicTypes.unshift(basicType);
+						}
+					}
+				}
+				for (var i = 0; (typeof chosenCandidate === 'undefined') && i < basicTypes.length; i++) {
+					pending++;
 					var basicType = basicTypes[i];
 					if (basicType == "null") {
 						if (gotCandidate(null)) {
@@ -5554,12 +5640,12 @@
 							return true;
 						}
 					} else if (basicType == "integer" || basicType == "number") {
-						var candidate = this.createValueNumber();
+						var candidate = this.createValueNumber(origValue);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
 					} else if (basicType == "string") {
-						var candidate = this.createValueString();
+						var candidate = this.createValueString(origValue);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
@@ -5567,9 +5653,9 @@
 						if (callback) {
 							this.createValueArray(function (candidate) {
 								gotCandidate(candidate);
-							});
+							}, origValue);
 						} else {
-							var candidate = this.createValueArray();
+							var candidate = this.createValueArray(undefined, origValue);
 							if (gotCandidate(candidate)) {
 								return chosenCandidate;
 							}
@@ -5578,9 +5664,9 @@
 						if (callback) {
 							var candidate = this.createValueObject(function (candidate) {
 								gotCandidate(candidate);
-							});
+							}, origValue);
 						} else {
-							var candidate = this.createValueObject();
+							var candidate = this.createValueObject(undefined, origValue);
 							if (gotCandidate(candidate)) {
 								return chosenCandidate;
 							}
@@ -5590,13 +5676,31 @@
 			}
 			return gotCandidate(chosenCandidate);
 		},
-		createValueNumber: function () {
+		createValueNumber: function (origValue) {
 			var exclusiveMinimum = this.exclusiveMinimum();
 			var minimum = this.minimum();
 			var maximum = this.maximum();
 			var exclusiveMaximum = this.exclusiveMaximum();
 			var interval = this.numberInterval();
 			var candidate = undefined;
+			if (typeof origValue === 'string') {
+				var asNumber = parseFloat(origValue);
+				if (!isNaN(asNumber)) {
+					origValue = asNumber;
+				}
+			}
+			if (typeof origValue === 'number') {
+				if (interval != undefined) {
+					if (origValue % interval != 0) {
+						origValue = Math.round(origValue/interval)*interval;
+					}
+				}
+				if (minimum == undefined || origValue > minimum || (origValue == minimum && !exclusiveMinimum)) {
+					if (maximum == undefined || origValue < maximum || (origValue == maximum && exclusiveMaximum)) {
+						return origValue;
+					}
+				}
+			}
 			if (minimum != undefined && maximum != undefined) {
 				if (minimum > maximum || (minimum == maximum && (exclusiveMinimum || exclusiveMaximum))) {
 					return;
@@ -5641,80 +5745,200 @@
 			}
 			return candidate;
 		},
-		createValueString: function () {
-			var candidate = "";
-			return candidate;
+		createValueString: function (origValue) {
+			var minLength = this.minLength();
+			var maxLength = this.maxLength()
+			var patterns = this.patterns();
+			if (maxLength != null && minLength > maxLength) {
+				return undefined;
+			}
+			var candidates = [""];
+			if (typeof origValue === 'string') {
+				candidates.unshift(origValue);
+			} else if (typeof origValue === 'number') {
+				candidates.unshift("" + origValue);
+			} else if (typeof origValue === 'boolean') {
+				candidates.unshift(origValue ? 'true' : 'false');
+			}
+			for (var i = 0; i < candidates.length; i++) {
+				var candidate = candidates[i];
+				if (candidate.length < minLength) {
+					var extraChar = '?';
+					candidate += (new Array(minLength - candidate.length + 1)).join(extraChar);
+				} else if (candidate.length > maxLength) {
+					candidate = candidate.substring(0, maxLength);
+				}
+				for (var j = 0; j < patterns.length; j++) {
+					if (!patterns[j].test(candidate)) {
+						continue;
+					}
+				}
+				return candidate;
+			}
 		},
-		createValueArray: function (callback) {
+		createValueArray: function (callback, origValue) {
 			var thisSchemaSet = this;
 			var candidate = [];
 			var minItems = this.minItems();
-			if (!minItems) {
-				if (callback) {
-					callback(candidate);
-				}
-				return candidate;
+			var maxItems = this.maxItems();
+			if (maxItems != null && minItems > maxItems) {
+				return;
 			}
-			var pending = minItems;
-			for (var i = 0; i < minItems; i++) {
+			var pending = 1;
+			for (var i = 0; candidate && i < minItems; i++) {
 				(function (i) {
+					pending++;
+					var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 					if (callback) {
 						thisSchemaSet.createValueForIndex(i, function (value) {
-							candidate[i] = value;
+							if (typeof value === 'undefined') {
+								candidate = undefined;
+							} else if (candidate) {
+								candidate[i] = value;
+							}
 							pending--;
 							if (pending == 0) {
 								callback(candidate);
 							}
-						});
+						}, origItemValue);
 					} else {
-						candidate[i] = thisSchemaSet.createValueForIndex(i);
+						var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+						if (typeof itemValue === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[i] = itemValue;
+						}
 					}
 				})(i);
 			}
+			if (candidate && Array.isArray(origValue)) {
+				if (maxItems != null && origValue.length > maxItems) {
+					origValue = origValue.slice(0, maxItems);
+				} else {
+					maxItems = origValue.length;
+				}
+				for (var i = minItems; candidate && i <= origValue.length && i < maxItems; i++) {
+					(function (i) {
+						pending++;
+						var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
+						if (callback) {
+							thisSchemaSet.createValueForIndex(i, function (value) {
+								if (candidate && typeof value !== 'undefined' && i < maxItems) {
+									candidate[i] = value;
+								} else if (i < maxItems) {
+									maxItems = i;
+								}
+								pending--;
+								if (pending == 0) {
+									callback(candidate);
+								}
+							}, origItemValue);
+						} else {
+							var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+							if (candidate && typeof itemValue !== 'undefined') {
+								candidate[i] = itemValue;
+							} else if (i < maxItems) {
+								maxItems = i;
+							}
+						}
+					})(i);
+				}
+			}
+			pending--;
+			if (callback && pending == 0) {
+				callback(candidate);
+			}
 			return candidate;
 		},
-		createValueObject: function (callback) {
+		createValueObject: function (callback, origValue) {
 			var thisSchemaSet = this;
 			var candidate = {};
 			var requiredProperties = this.requiredProperties();
-			if (requiredProperties.length == 0) {
-				if (callback) {
-					callback(candidate);
-				}
-				return candidate;
-			}
-			var pending = requiredProperties.length;
-			for (var i = 0; i < requiredProperties.length; i++) {
+			var pending = 1;
+			for (var i = 0; candidate && i < requiredProperties.length; i++) {
 				(function (key) {
+					pending++;
+					var origPropValue = (typeof origValue == 'object' && !Array.isArray(origValue)) ? origValue[key] : undefined;
 					if (callback) {
 						thisSchemaSet.createValueForProperty(key, function (value) {
-							candidate[key] = value;
+							if (typeof value === 'undefined') {
+								candidate = undefined;
+							} else if (candidate) {
+								candidate[key] = value;
+							}
 							pending--;
 							if (pending == 0) {
 								callback(candidate);
 							}
-						});
+						}, origPropValue);
 					} else {
-						candidate[key] = thisSchemaSet.createValueForProperty(key);
+						var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						if (typeof propValue === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						}
 					}
 				})(requiredProperties[i]);
 			}
+			if (candidate && typeof origValue === 'object' && !Array.isArray(origValue)) {
+				for (var key in origValue) {
+					if (!candidate || typeof candidate[key] !== 'undefined') {
+						continue;
+					}
+					(function (key) {
+						pending++;
+						var origPropValue = origValue[key];
+						if (callback) {
+							thisSchemaSet.createValueForProperty(key, function (value) {
+								if (candidate && typeof value !== 'undefined') {
+									candidate[key] = value;
+								}
+								pending--;
+								if (pending == 0) {
+									callback(candidate);
+								}
+							}, origPropValue);
+						} else {
+							var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+							if (candidate && typeof propValue !== 'undefined') {
+								candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+							}
+						}
+					})(key);
+				}
+			}
+			pending--;
+			if (callback && pending == 0) {
+				callback(candidate);
+			}
 			return candidate;
 		},
-		createValueForIndex: function(index, callback) {
+		createValueForIndex: function(index, callback, origValue) {
 			var indexSchemas = this.indexSchemas(index);
-			return indexSchemas.createValue(callback);
+			return indexSchemas.createValue(callback, origValue);
 		},
-		createData: function (callback) {
+		createValueForProperty: function(key, callback, origValue) {
+			var propertySchemas = this.propertySchemas(key);
+			return propertySchemas.createValue(callback, origValue);
+		},
+		createData: function (callback, origValue) {
 			var thisSchemaSet = this;
+			if (typeof callback !== 'undefined' && typeof callback !== 'function') {
+				origValue = callback;
+				callback = null;
+			}
+			if (publicApi.isData(origValue)) {
+				origValue == origValue.value();
+			}
 			if (callback) {
 				this.createValue(function (value) {
-					var data = publicApi.create(value).addSchema(thisSchemaSet);
+					var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
 					callback(data);
-				});
+				}, origValue);
 				return this;
 			}
-			return publicApi.create(this.createValue()).addSchema(this);
+			return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
 		},
 		indexSchemas: function(index) {
 			var result = new SchemaList();
@@ -5729,10 +5953,6 @@
 				result = Math.max(result, this[i].tupleTyping());
 			}
 			return result;
-		},
-		createValueForProperty: function(key, callback) {
-			var propertySchemas = this.propertySchemas(key);
-			return propertySchemas.createValue(callback);
 		},
 		propertySchemas: function(key) {
 			var result = new SchemaList();
@@ -5826,6 +6046,9 @@
 			}
 			return result;
 		},
+		containsFormat: function (formatString) {
+			return this.formats().indexOf(formatString) !== -1;
+		},
 		xorSchemas: function () {
 			var result = [];
 			for (var i = 0; i < this.length; i++) {
@@ -5851,6 +6074,10 @@
 			}
 		}
 	};
+	var customValueCreationFunctions = [];
+	publicApi.extendCreateValue = function (creationFunction) {
+		customValueCreationFunctions.push(creationFunction);
+	}
 	
 	publicApi.createSchemaList = function (schemas) {
 		if (!Array.isArray(schemas)) {
