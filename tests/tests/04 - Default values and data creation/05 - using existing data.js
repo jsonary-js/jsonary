@@ -110,3 +110,86 @@ tests.add("defining object properties inside array items (no constraints)", func
 	this.assert(createdData[0].propB == origData[0].propB, "/0/propA matches");
 	return true;
 });
+
+tests.add("used in preference to default", function () {
+	var schema1 = Jsonary.createSchema({
+		type: "number",
+		'default': 5
+	});
+	var origData = 10;
+	var createdData = schema1.createValue(origData);
+	
+	this.assert(createdData == origData, "data matches");
+	return true;
+});
+
+tests.add("default used when supplied value is invalid", function () {
+	var schema1 = Jsonary.createSchema({
+		type: "number",
+		'default': 5
+	});
+	var origData = "ten";
+	var createdData = schema1.createValue(origData);
+	
+	this.assert(createdData == 5, "data matches");
+	return true;
+});
+
+tests.add("used in preference to default (with callback)", function () {
+	var thisTest = this;
+	var schema1 = Jsonary.createSchema({
+		type: "number",
+		'default': 5
+	});
+	var origData = 10;
+	schema1.createValue(function (createdData) {
+		thisTest.assert(createdData == origData, "data matches");
+		thisTest.pass();
+	}, origData);
+});
+
+tests.add("default used when supplied value is invalid (with callback)", function () {
+	var thisTest = this;
+	var schema1 = Jsonary.createSchema({
+		type: "number",
+		'default': 5
+	});
+	var origData = "ten";
+	schema1.createValue(function (createdData) {
+		thisTest.assert(createdData == 5, "data matches");
+		thisTest.pass();
+	}, origData);
+});
+
+tests.add("casting number -> string", function () {
+	var schema1 = Jsonary.createSchema({
+		type: "string"
+	});
+	var origData = 10;
+	var createdData = schema1.createValue(origData);
+	
+	this.assert("10" === createdData, "data matches");
+	return true;
+});
+
+tests.add("casting string -> number", function () {
+	var schema1 = Jsonary.createSchema({
+		type: "number"
+	});
+	var origData = "10.5";
+	var createdData = schema1.createValue(origData);
+	
+	this.assert(10.5 === createdData, "data matches");
+	return true;
+});
+
+tests.add("casting string -> integer", function () {
+	var schema1 = Jsonary.createSchema({
+		type: "integer"
+	});
+	var origData = "10";
+	var createdData = schema1.createValue(origData);
+	
+	this.assert(10 === createdData, "data matches");
+	return true;
+});
