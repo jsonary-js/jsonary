@@ -869,28 +869,73 @@ SchemaList.prototype = {
 		var thisSchemaSet = this;
 		var candidate = [];
 		var minItems = this.minItems();
-		if (!minItems) {
-			if (callback) {
-				callback(candidate);
-			}
-			return candidate;
+		var maxItems = this.maxItems();
+		if (maxItems != null && minItems > maxItems) {
+			return;
 		}
-		var pending = minItems;
-		for (var i = 0; i < minItems; i++) {
+		var pending = 1;
+		for (var i = 0; candidate && i < minItems; i++) {
 			(function (i) {
+				pending++;
 				var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 				if (callback) {
 					thisSchemaSet.createValueForIndex(i, function (value) {
-						candidate[i] = value;
+						if (typeof value === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[i] = value;
+						}
 						pending--;
 						if (pending == 0) {
 							callback(candidate);
 						}
 					}, origItemValue);
 				} else {
-					candidate[i] = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+					var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+					if (typeof itemValue === 'undefined') {
+						candidate = undefined;
+					} else if (candidate) {
+						candidate[i] = value;
+					}
 				}
 			})(i);
+		}
+		if (maxItems != null && origValue.length > maxItems) {
+			origValue = origValue.slice(0, maxItems);
+		} else {
+			maxItems = origValue.length;
+		}
+		if (candidate && Array.isArray(origValue)) {
+			for (var i = minItems; candidate && i <= origValue.length && i < maxItems; i++) {
+				(function (i) {
+					pending++;
+					var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
+					if (callback) {
+						thisSchemaSet.createValueForIndex(i, function (value) {
+							if (candidate && typeof value !== 'undefined' && i < maxItems) {
+								candidate[i] = value;
+							} else if (i < maxItems) {
+								maxItems = i;
+							}
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						}, origItemValue);
+					} else {
+						var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+						if (candidate && typeof itemValue !== 'undefined') {
+							candidate[i] = itemValue;
+						} else if (i < maxItems) {
+							maxItems = i;
+						}
+					}
+				})(i);
+			}
+		}
+		pending--;
+		if (callback && pending == 0) {
+			callback(candidate);
 		}
 		return candidate;
 	},
@@ -898,28 +943,63 @@ SchemaList.prototype = {
 		var thisSchemaSet = this;
 		var candidate = {};
 		var requiredProperties = this.requiredProperties();
-		if (requiredProperties.length == 0) {
-			if (callback) {
-				callback(candidate);
-			}
-			return candidate;
-		}
-		var pending = requiredProperties.length;
-		for (var i = 0; i < requiredProperties.length; i++) {
+		var pending = 1;
+		for (var i = 0; candidate && i < requiredProperties.length; i++) {
 			(function (key) {
+				pending++;
 				var origPropValue = (typeof origValue == 'object' && !Array.isArray(origValue)) ? origValue[key] : undefined;
 				if (callback) {
 					thisSchemaSet.createValueForProperty(key, function (value) {
-						candidate[key] = value;
+						if (typeof value === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[key] = value;
+						}
 						pending--;
 						if (pending == 0) {
 							callback(candidate);
 						}
 					}, origPropValue);
 				} else {
-					candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+					var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+					if (typeof propValue === 'undefined') {
+						candidate = undefined;
+					} else if (candidate) {
+						candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+					}
 				}
 			})(requiredProperties[i]);
+		}
+		if (candidate && typeof origValue === 'object' && !Array.isArray(origValue)) {
+			for (var key in origValue) {
+				if (!candidate || typeof candidate[key] !== 'undefined') {
+					continue;
+				}
+				(function (key) {
+					pending++;
+					var origPropValue = origValue[key];
+					if (callback) {
+						thisSchemaSet.createValueForProperty(key, function (value) {
+							if (candidate && typeof value !== 'undefined') {
+								candidate[key] = value;
+							}
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						}, origPropValue);
+					} else {
+						var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						if (candidate && typeof propValue !== 'undefined') {
+							candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						}
+					}
+				})(key);
+			}
+		}
+		pending--;
+		if (callback && pending == 0) {
+			callback(candidate);
 		}
 		return candidate;
 	},
@@ -936,6 +1016,9 @@ SchemaList.prototype = {
 		if (typeof callback !== 'undefined' && typeof callback !== 'function') {
 			origValue = callback;
 			callback = null;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue == origValue.value();
 		}
 		if (callback) {
 			this.createValue(function (value) {
