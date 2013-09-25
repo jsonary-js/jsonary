@@ -365,6 +365,13 @@ Schema.prototype = {
 	maxLength: function () {
 		return this.data.propertyValue("maxLength");
 	},
+	pattern: function () {
+		var patternString = this.data.propertyValue("pattern");
+		if (patternString !== undefined) {
+			return new RegExp(patternString);
+		}
+		return null;
+	},
 	numberInterval: function() {
 		return this.data.propertyValue("divisibleBy");
 	},
