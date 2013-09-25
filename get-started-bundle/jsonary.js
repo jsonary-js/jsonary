@@ -1,5 +1,5 @@
 /**
-Copyright (C) 2012 Geraint Luff
+Copyright (C) 2012-2013 Geraint Luff
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -1174,7 +1174,6 @@ function UriTemplate(template) {
 		for (var i = 0; i < textParts.length; i++) {
 			var part = textParts[i];
 			if (substituted.substring(0, part.length) !== part) {
-				console.log([substituted, part]);
 				return undefined;
 			}
 			substituted = substituted.substring(part.length);
@@ -2122,10 +2121,8 @@ Request.prototype = {
 			if (partName == "") {
 				continue;
 			}
-			console.log(remainder)
 			if (remainder.charAt(0) === '"') {
 				partValue = /^"([^\\"]|\\.)*("|$)/.exec(remainder)[0];
-				console.log(partValue);
 				remainder = remainder.substring(partValue.length).trim();
 				// Slight hack, perhaps
 				try {
@@ -6564,7 +6561,7 @@ publicApi.UriTemplate = UriTemplate;
 					var uniqueId = data.uniqueId;
 					var elementIds = elementIdLookup[uniqueId];
 					for (var i = 0; i < elementIds.length; i++) {
-						var element = document.getElementById(elementIds[i]);
+						var element = render.getElementById(elementIds[i]);
 						if (element == undefined) {
 							continue;
 						}
@@ -6640,20 +6637,20 @@ publicApi.UriTemplate = UriTemplate;
 			return subContext;
 		},
 		subContextSavedStates: {},
-		saveState: function () {
+		saveUiState: function () {
 			var subStates = {};
 			for (var key in this.subContexts) {
-				subStates[key] = this.subContexts[key].saveState();
+				subStates[key] = this.subContexts[key].saveUiState();
 			}
 			for (var key in this.oldSubContexts) {
-				subStates[key] = this.oldSubContexts[key].saveState();
+				subStates[key] = this.oldSubContexts[key].saveUiState();
 			}
 			
-			var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
+			var saveStateFunction = this.renderer ? this.renderer.saveUiState : Renderer.prototype.saveUiState;
 			return saveStateFunction.call(this.renderer, this.uiState, subStates, this.data);
 		},
-		loadState: function (savedState) {
-			var loadStateFunction = this.renderer ? this.renderer.loadState : Renderer.prototype.loadState;
+		loadUiState: function (savedState) {
+			var loadStateFunction = this.renderer ? this.renderer.loadUiState : Renderer.prototype.loadUiState;
 			var result = loadStateFunction.call(this.renderer, savedState);
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
@@ -6741,7 +6738,7 @@ publicApi.UriTemplate = UriTemplate;
 					}
 				}
 				result.contexts = newContexts;
-				result.uiState = this.saveState();
+				result.uiState = this.saveUiState();
 			}
 			return result;
 		},
@@ -6809,7 +6806,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (this.parent && !this.elementId) {
 				return this.parent.rerender();
 			}
-			var element = document.getElementById(this.elementId);
+			var element = render.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
 				this.clearOldSubContexts();
@@ -6910,7 +6907,7 @@ publicApi.UriTemplate = UriTemplate;
 						rendered = true;
 						data = actualData;
 					} else {
-						var element = document.getElementById(elementId);
+						var element = render.getElementById(elementId);
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
@@ -6997,7 +6994,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			var elementIds = elementIds.slice(0);
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element == undefined) {
 					continue;
 				}
@@ -7151,6 +7148,10 @@ publicApi.UriTemplate = UriTemplate;
 			element = null;
 		}
 	};
+	// TODO: this is for compatability - remove it
+	RenderContext.prototype.saveState = RenderContext.prototype.saveUiState;
+	RenderContext.prototype.loadState = RenderContext.prototype.loadUiState;
+	
 	var pageContext = new RenderContext();
 	render.loadDocumentsFromState = function (saved, callback) {
 		var documents = {};
@@ -7248,7 +7249,7 @@ publicApi.UriTemplate = UriTemplate;
 			var elementIds = pageContext.elementLookup[key];
 			var found = false;
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element) {
 					found = true;
 					break;
@@ -7301,7 +7302,7 @@ publicApi.UriTemplate = UriTemplate;
 
 	function render(element, data, uiStartingState) {
 		if (typeof element == 'string') {
-			element = document.getElementById(element);
+			element = render.getElementById(element);
 		}
 		var innerElement = document.createElement('span');
 		innerElement.className = "jsonary";
@@ -7351,7 +7352,7 @@ publicApi.UriTemplate = UriTemplate;
 		var elementIds = pageContext.elementLookup[uniqueId];
 		for (var i = 0; i < elementIds.length; i++) {
 			var elementId = elementIds[i];
-			var element = document.getElementById(elementId);
+			var element = render.getElementById(elementId);
 			if (element) {
 				return true;
 			}
@@ -7425,11 +7426,11 @@ publicApi.UriTemplate = UriTemplate;
 		}
 		// TODO: remove this.component
 		this.component = this.filterObj.component = sourceComponent;
-		if (sourceObj.saveState) {
-			this.saveState = sourceObj.saveState;
+		if (sourceObj.saveState || sourceObj.saveUiState) {
+			this.saveUiState = sourceObj.saveState || sourceObj.saveUiState;
 		}
-		if (sourceObj.loadState) {
-			this.loadState = sourceObj.loadState;
+		if (sourceObj.loadState || sourceObj.loadUiState) {
+			this.loadUiState = sourceObj.loadState || sourceObj.loadUiState;
 		}
 	}
 	Renderer.prototype = {
@@ -7439,7 +7440,7 @@ publicApi.UriTemplate = UriTemplate;
 				elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
 			}
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element == undefined) {
 					continue;
 				}
@@ -7570,7 +7571,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			return redraw;
 		},
-		saveState: function (uiState, subStates, data) {
+		saveUiState: function (uiState, subStates, data) {
 			var result = {};
 			for (key in uiState) {
 				result[key] = uiState[key];
@@ -7598,7 +7599,7 @@ publicApi.UriTemplate = UriTemplate;
 			data.saveStateId = data.saveStateId || randomId();
 			return render.saveData(data, data.saveStateId) || data.saveStateId;
 		},
-		loadState: function (savedState) {
+		loadUiState: function (savedState) {
 			var uiState = {};
 			var subStates = {};
 			for (var key in savedState) {
@@ -7704,6 +7705,32 @@ publicApi.UriTemplate = UriTemplate;
 	}
 	render.register = register;
 	render.deregister = deregister;
+
+	if (typeof document !== 'undefined') {
+		// Lets us look up elements across multiple documents
+		// This means that we can use a single Jsonary instance across multiple windows, as long as they add/remove their documents correctly (see the "popup" plugin)
+		var documentList = [document];
+		render.addDocument = function (doc) {
+			documentList.push(doc);
+			return this;
+		};
+		render.removeDocument = function (doc) {
+			var index = documentList.indexOf(doc);
+			if (index !== -1) {
+				documentList.splice(index, 1);
+			}
+			return this;
+		}
+		render.getElementById = function (id) {
+			for (var i = 0; i < documentList.length; i++) {
+				var element = documentList[i].getElementById(id);
+				if (element) {
+					return element;
+				}
+			}
+			return null;
+		};
+	}
 	
 	var actionHandlers = [];
 	render.addActionHandler = function (callback) {
@@ -7797,7 +7824,7 @@ publicApi.UriTemplate = UriTemplate;
 	Jsonary.extendData({
 		renderTo: function (element, uiState) {
 			if (typeof element == "string") {
-				element = document.getElementById(element);
+				element = render.getElementById(element);
 			}
 			render(element, this, uiState);
 		}
@@ -7812,7 +7839,7 @@ publicApi.UriTemplate = UriTemplate;
 				elementIds = elementIds.concat(ids);
 			}
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element && element.jsonaryContext) {
 					element.jsonaryContext.data.document.access();
 				}

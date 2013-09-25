@@ -24,6 +24,7 @@ var masterBundle = bundle.js([
 
 	// Plugins
 	.js('../plugins/jsonary.location.js')
+	.js('../plugins/jsonary.popup.js')
 	.js('../plugins/jsonary.undo.js')
 	.js('../plugins/jsonary.jstl.js')
 	.js('../plugins/jsonary.render.table.js')

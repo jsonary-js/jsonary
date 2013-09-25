@@ -1,4 +1,4 @@
-/* Bundled on Fri Sep 20 2013 19:53:39 GMT+0100 (BST)*/
+/* Bundled on Wed Sep 25 2013 18:19:50 GMT+0100 (GMT Daylight Time)*/
 (function() {
 
 
@@ -1179,7 +1179,6 @@
 			for (var i = 0; i < textParts.length; i++) {
 				var part = textParts[i];
 				if (substituted.substring(0, part.length) !== part) {
-					console.log([substituted, part]);
 					return undefined;
 				}
 				substituted = substituted.substring(part.length);
@@ -2136,10 +2135,8 @@
 				if (partName == "") {
 					continue;
 				}
-				console.log(remainder)
 				if (remainder.charAt(0) === '"') {
 					partValue = /^"([^\\"]|\\.)*("|$)/.exec(remainder)[0];
-					console.log(partValue);
 					remainder = remainder.substring(partValue.length).trim();
 					// Slight hack, perhaps
 					try {
@@ -6602,7 +6599,7 @@
 						var uniqueId = data.uniqueId;
 						var elementIds = elementIdLookup[uniqueId];
 						for (var i = 0; i < elementIds.length; i++) {
-							var element = document.getElementById(elementIds[i]);
+							var element = render.getElementById(elementIds[i]);
 							if (element == undefined) {
 								continue;
 							}
@@ -6678,20 +6675,20 @@
 				return subContext;
 			},
 			subContextSavedStates: {},
-			saveState: function () {
+			saveUiState: function () {
 				var subStates = {};
 				for (var key in this.subContexts) {
-					subStates[key] = this.subContexts[key].saveState();
+					subStates[key] = this.subContexts[key].saveUiState();
 				}
 				for (var key in this.oldSubContexts) {
-					subStates[key] = this.oldSubContexts[key].saveState();
+					subStates[key] = this.oldSubContexts[key].saveUiState();
 				}
 				
-				var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
+				var saveStateFunction = this.renderer ? this.renderer.saveUiState : Renderer.prototype.saveUiState;
 				return saveStateFunction.call(this.renderer, this.uiState, subStates, this.data);
 			},
-			loadState: function (savedState) {
-				var loadStateFunction = this.renderer ? this.renderer.loadState : Renderer.prototype.loadState;
+			loadUiState: function (savedState) {
+				var loadStateFunction = this.renderer ? this.renderer.loadUiState : Renderer.prototype.loadUiState;
 				var result = loadStateFunction.call(this.renderer, savedState);
 				this.uiState = result[0];
 				this.subContextSavedStates = result[1];
@@ -6779,7 +6776,7 @@
 						}
 					}
 					result.contexts = newContexts;
-					result.uiState = this.saveState();
+					result.uiState = this.saveUiState();
 				}
 				return result;
 			},
@@ -6847,7 +6844,7 @@
 				if (this.parent && !this.elementId) {
 					return this.parent.rerender();
 				}
-				var element = document.getElementById(this.elementId);
+				var element = render.getElementById(this.elementId);
 				if (element != null) {
 					this.renderer.render(element, this.data, this);
 					this.clearOldSubContexts();
@@ -6948,7 +6945,7 @@
 							rendered = true;
 							data = actualData;
 						} else {
-							var element = document.getElementById(elementId);
+							var element = render.getElementById(elementId);
 							if (element) {
 								thisContext.render(element, actualData, label, uiStartingState);
 							} else {
@@ -7035,7 +7032,7 @@
 				}
 				var elementIds = elementIds.slice(0);
 				for (var i = 0; i < elementIds.length; i++) {
-					var element = document.getElementById(elementIds[i]);
+					var element = render.getElementById(elementIds[i]);
 					if (element == undefined) {
 						continue;
 					}
@@ -7189,6 +7186,10 @@
 				element = null;
 			}
 		};
+		// TODO: this is for compatability - remove it
+		RenderContext.prototype.saveState = RenderContext.prototype.saveUiState;
+		RenderContext.prototype.loadState = RenderContext.prototype.loadUiState;
+		
 		var pageContext = new RenderContext();
 		render.loadDocumentsFromState = function (saved, callback) {
 			var documents = {};
@@ -7286,7 +7287,7 @@
 				var elementIds = pageContext.elementLookup[key];
 				var found = false;
 				for (var i = 0; i < elementIds.length; i++) {
-					var element = document.getElementById(elementIds[i]);
+					var element = render.getElementById(elementIds[i]);
 					if (element) {
 						found = true;
 						break;
@@ -7339,7 +7340,7 @@
 	
 		function render(element, data, uiStartingState) {
 			if (typeof element == 'string') {
-				element = document.getElementById(element);
+				element = render.getElementById(element);
 			}
 			var innerElement = document.createElement('span');
 			innerElement.className = "jsonary";
@@ -7389,7 +7390,7 @@
 			var elementIds = pageContext.elementLookup[uniqueId];
 			for (var i = 0; i < elementIds.length; i++) {
 				var elementId = elementIds[i];
-				var element = document.getElementById(elementId);
+				var element = render.getElementById(elementId);
 				if (element) {
 					return true;
 				}
@@ -7463,11 +7464,11 @@
 			}
 			// TODO: remove this.component
 			this.component = this.filterObj.component = sourceComponent;
-			if (sourceObj.saveState) {
-				this.saveState = sourceObj.saveState;
+			if (sourceObj.saveState || sourceObj.saveUiState) {
+				this.saveUiState = sourceObj.saveState || sourceObj.saveUiState;
 			}
-			if (sourceObj.loadState) {
-				this.loadState = sourceObj.loadState;
+			if (sourceObj.loadState || sourceObj.loadUiState) {
+				this.loadUiState = sourceObj.loadState || sourceObj.loadUiState;
 			}
 		}
 		Renderer.prototype = {
@@ -7477,7 +7478,7 @@
 					elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
 				}
 				for (var i = 0; i < elementIds.length; i++) {
-					var element = document.getElementById(elementIds[i]);
+					var element = render.getElementById(elementIds[i]);
 					if (element == undefined) {
 						continue;
 					}
@@ -7608,7 +7609,7 @@
 				}
 				return redraw;
 			},
-			saveState: function (uiState, subStates, data) {
+			saveUiState: function (uiState, subStates, data) {
 				var result = {};
 				for (key in uiState) {
 					result[key] = uiState[key];
@@ -7636,7 +7637,7 @@
 				data.saveStateId = data.saveStateId || randomId();
 				return render.saveData(data, data.saveStateId) || data.saveStateId;
 			},
-			loadState: function (savedState) {
+			loadUiState: function (savedState) {
 				var uiState = {};
 				var subStates = {};
 				for (var key in savedState) {
@@ -7742,6 +7743,32 @@
 		}
 		render.register = register;
 		render.deregister = deregister;
+	
+		if (typeof document !== 'undefined') {
+			// Lets us look up elements across multiple documents
+			// This means that we can use a single Jsonary instance across multiple windows, as long as they add/remove their documents correctly (see the "popup" plugin)
+			var documentList = [document];
+			render.addDocument = function (doc) {
+				documentList.push(doc);
+				return this;
+			};
+			render.removeDocument = function (doc) {
+				var index = documentList.indexOf(doc);
+				if (index !== -1) {
+					documentList.splice(index, 1);
+				}
+				return this;
+			}
+			render.getElementById = function (id) {
+				for (var i = 0; i < documentList.length; i++) {
+					var element = documentList[i].getElementById(id);
+					if (element) {
+						return element;
+					}
+				}
+				return null;
+			};
+		}
 		
 		var actionHandlers = [];
 		render.addActionHandler = function (callback) {
@@ -7835,7 +7862,7 @@
 		Jsonary.extendData({
 			renderTo: function (element, uiState) {
 				if (typeof element == "string") {
-					element = document.getElementById(element);
+					element = render.getElementById(element);
 				}
 				render(element, this, uiState);
 			}
@@ -7850,7 +7877,7 @@
 					elementIds = elementIds.concat(ids);
 				}
 				for (var i = 0; i < elementIds.length; i++) {
-					var element = document.getElementById(elementIds[i]);
+					var element = render.getElementById(elementIds[i]);
 					if (element && element.jsonaryContext) {
 						element.jsonaryContext.data.document.access();
 					}
@@ -8356,6 +8383,161 @@
 		update();
 	})(this);
 	
+
+/**** ../plugins/jsonary.popup.js ****/
+
+	if (typeof window !== 'undefined') {
+		function escapeHtml(text) {
+			text += "";
+			return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+		}
+		
+		(function (window) {
+			function copyStyle(oldDoc, newDoc) {
+				var links = oldDoc.getElementsByTagName('link');
+				for (var i = 0; i < links.length; i++) {
+					var oldElement = links[i];
+					newDoc.write('<link href="' + escapeHtml(oldElement.href) + '" rel="' + escapeHtml(oldElement.rel || "") + '">');
+				}
+				var styles = oldDoc.getElementsByTagName('style');
+				for (var i = 0; i < styles.length; i++) {
+					var oldElement = styles[i];
+					newDoc.write('<style>' + oldElement.innerHTML + '</style>');
+				}
+			}
+	
+			var scriptConditions = [];
+			function shouldIncludeScript(url) {
+				for (var i = 0; i < scriptConditions.length; i++) {
+					if (scriptConditions[i].call(null, url)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			
+			function copyScripts(oldDoc, newDoc) {
+				var scripts = oldDoc.getElementsByTagName('script');
+				for (var i = 0; i < scripts.length; i++) {
+					var oldElement = scripts[i];
+					if (oldElement.src && shouldIncludeScript(oldElement.src)) {
+						newDoc.write('<script src="' + escapeHtml(oldElement.src) + '"></script>');
+					}
+				}
+			}
+			
+			var setupFunctions = [];
+			var preSetupFunctions = [];
+			
+			Jsonary.popup = function (params, title, openCallback, closeCallback, closeWithParent) {
+				if (closeWithParent === undefined) {
+					closeWithParent = true;
+				}
+				if (typeof params === 'object') {
+					var newParams = [];
+					for (var key in params) {
+						if (typeof params[key] == 'boolean') {
+							newParams.push(key + '=' + (params[key] ? 'yes' : 'no'));
+						} else {
+							newParams.push(key + '=' + params[key]);
+						}
+					}
+					params = newParams.join(',');
+				}
+				var subWindow = window.open(null, null, params);
+				subWindow.document.open();
+				subWindow.document.write('<html><head><title>' + escapeHtml(title || "Popup") + '</title>');
+				copyStyle(window.document, subWindow.document);
+				copyScripts(window.document, subWindow.document);
+				subWindow.document.write('</head><body class="jsonary popup"></body></html>');
+				subWindow.document.close();
+				Jsonary.render.addDocument(subWindow.document);
+				
+				var parentBeforeUnloadListener = function (evt) {
+					if (closeWithParent) {
+						subWindow.close();
+					}
+					Jsonary.render.removeDocument(window.document);
+				};
+				var beforeUnloadListener = function (evt) {
+					evt = evt || window.event;
+					Jsonary.render.removeDocument(subWindow.document);
+					// Remove parent's unload listener, as that will leak the sub-window (including the entire document tree)
+					if (window.removeEventListener) {
+						window.removeEventListener('beforeunload', parentBeforeUnloadListener, false);
+					} else if (window.detachEvent) {
+						window.detachEvent('onbeforeunload', parentBeforeUnloadListener);
+					}
+					if (closeCallback) {
+						var result = closeCallback(evt);
+						if (evt) {
+							evt.returnValue = result;
+						}
+						return result;
+					}
+				}
+				var onLoadListener = function (evt) {
+					evt = evt || window.event;
+					for (var i = 0; i < setupFunctions.length; i++) {
+						setupFunctions[i].call(subWindow.window, subWindow.window, subWindow.document);
+					}
+					if (openCallback) {
+						return openCallback.call(subWindow.window, subWindow.window, subWindow.document);
+					}
+				};
+				if (subWindow.addEventListener) {
+					subWindow.addEventListener('load', onLoadListener, false); 
+					subWindow.addEventListener('beforeunload', beforeUnloadListener, false); 
+					window.addEventListener('beforeunload', parentBeforeUnloadListener, false);
+				} else if (subWindow.attachEvent)  {
+					subWindow.attachEvent('onload', onLoadListener);
+					subWindow.attachEvent('onbeforeunload', beforeUnloadListener);
+					window.attachEvent('onbeforeunload', parentBeforeUnloadListener);
+				}
+				
+				for (var i = 0; i < preSetupFunctions.length; i++) {
+					preSetupFunctions[i].call(subWindow.window, subWindow.window);
+				}
+	
+				return subWindow;
+			};
+			
+			Jsonary.popup.addScripts = function (scripts) {
+				if (typeof scripts == 'boolean') {
+					scriptConditions.push(function () {
+						return scripts;
+					});
+				}
+				if (typeof scripts == 'function') {
+					scriptConditions.push(scripts);
+				}
+				for (var i = 0; i < scripts.length; i++) {
+					(function (search) {
+						if (search instanceof RegExp) {
+							scriptConditions.push(function (url) {
+								return search.test(url);
+							});
+						} else {
+							scriptConditions.push(function (url) {
+								return url.indexOf('search') !== -1;
+							});
+						}
+					})(scripts[i]);
+				}
+				return this;
+			};
+			
+			Jsonary.popup.addPreSetup = function (callback) {
+				preSetupFunctions.push(callback);
+				return this;
+			};
+	
+			Jsonary.popup.addSetup = function (callback) {
+				setupFunctions.push(callback);
+				return this;
+			};
+		})(window);
+	}
 
 /**** ../plugins/jsonary.undo.js ****/
 
@@ -8963,11 +9145,6 @@
 			});
 			config.cellAction.remove = function (data, context, actionName) {
 				if (actionName == "remove") {
-					console.log({
-						value: data.value(),
-						pointerPath: data.pointerPath(),
-						parentKey: data.parentKey()
-					});
 					data.remove();
 					return false;
 				}
@@ -10791,6 +10968,9 @@
 	
 			var itemSchemas = data.schemas().indexSchemas(0).getFull();
 			var recursionLimit = (itemSchemas.knownProperties().length >= 8) ? 0 : 1;
+			if (data.schemas().displayAsTable()) {
+				recursionLimit = 2;
+			}
 			addColumnsFromSchemas(itemSchemas, '', recursionLimit);
 			return renderer;
 		},
