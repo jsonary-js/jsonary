@@ -213,3 +213,30 @@ tests.add("Remote schema title", function () {
 		thisTest.fail("timeout");
 	}, 50);
 });
+
+tests.add("No schemas for undefined data", function () {
+	var thisTest = this;
+	var schema = Jsonary.createSchema({
+		"properties": {
+			"propA": {"title": "test"}
+		}
+	});
+	var data = Jsonary.create({}).addSchema(schema);
+	var schemas = data.property('propA').schemas();
+	this.assert(schemas.length == 0, "empty propA has no schemas");
+	return true;
+});
+
+tests.add("Can force schema for undefined data", function () {
+	var thisTest = this;
+	var schema = Jsonary.createSchema({
+		"properties": {
+			"propA": {"title": "test"}
+		}
+	});
+	var data = Jsonary.create({}).addSchema(schema);
+	var schemas = data.property('propA').schemas(true);
+	this.assert(schemas.length == 1, "empty propA has a schema");
+	this.assert(schemas.title() == "test", "empty propA has correct title");
+	return true;
+});

@@ -536,7 +536,14 @@ function Data(document, secrets, parent, parentKey) {
 	};
 	
 	secrets.schemas = new SchemaSet(this);
-	this.schemas = function () {
+	this.schemas = function (forceForUndefined) {
+		if (forceForUndefined && basicType == undefined && parent) {
+			if (parent.basicType() === 'array' && isIndex(parentKey)) {
+				return parent.schemas(true).indexSchemas(parentKey);
+			} else if (parent.basicType() === 'object') {
+				return parent.schemas(true).propertySchemas(parentKey);
+			}
+		}
 		document.access();
 		return secrets.schemas.getSchemas();
 	};
