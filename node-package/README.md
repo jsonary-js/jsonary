@@ -19,7 +19,7 @@ Right now, the rendering system doesn't quite work, but you can still other (sli
 For example, here is a short script that scrapes a (JSON Hyper-Schema described) API, starring every document written by someone whose name begins with 'J':
 
 ```javascript
-var Jsonary = require('jsonary');
+var Jsonary = require('jsonary').instance();
 
 var results = [];
 Jsonary.getData('http://example.com/documents/', function (documents) {
@@ -43,7 +43,7 @@ That script knows nothing about any URL apart from the entry-point - the link in
 Jsonary also implements a basic cookie store, so your scripts can log in to an API before using it:
 
 ```javascript
-var Jsonary = require('jsonary');
+var Jsonary = require('jsonary').instance();
 
 Jsonary.getData('http://example.com/json/', function (basePage) {
 	var loginLink = basePage.getLink('login');
