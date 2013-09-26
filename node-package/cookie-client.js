@@ -157,7 +157,7 @@ function addPslRule(line) {
 	pslRules.push(line);
 }
 
-var pslFilename = path.join(__dirname, pslFilename);
+var pslFilename = path.join(__dirname, 'public-suffix-list.txt');
 
 fs.exists(pslFilename, function (exists) {
 	if (exists) {
