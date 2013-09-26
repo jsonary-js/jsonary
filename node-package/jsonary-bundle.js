@@ -48,7 +48,7 @@ function JsonaryBundle() {
 		return this;
 	};
 
-	this.add(path.join(__dirname, 'bundle/jsonary-core'));
+	this.add(path.join(__dirname, 'core/jsonary-core'));
 	// Make "Jsonary" available in scope for any additional files
 	bundle.code('var Jsonary = this.Jsonary;');
 }
