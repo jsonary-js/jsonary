@@ -156,7 +156,9 @@ function addPslRule(line) {
 	pslRules.push(line);
 }
 
-fs.exists('public-suffix-list.txt', function (exists) {
+var pslFilename = path.join(__dirname, pslFilename);
+
+fs.exists(pslFilename, function (exists) {
 	if (exists) {
 		readPSLFile();
 		return;
@@ -177,7 +179,7 @@ fs.exists('public-suffix-list.txt', function (exists) {
 	});
 	
 	function writePSLFile(data) {
-		fs.writeFile('public-suffix-list.txt', data, {encoding:'utf8'}, function (error) {
+		fs.writeFile(pslFilename, data, {encoding:'utf8'}, function (error) {
 			if (error) {
 				throw error;
 			}
@@ -186,7 +188,7 @@ fs.exists('public-suffix-list.txt', function (exists) {
 	}
 	
 	function readPSLFile() {
-		fs.readFile('public-suffix-list.txt', function (error, data) {
+		fs.readFile(pslFilename, function (error, data) {
 			if (error) {
 				throw error;
 			}
