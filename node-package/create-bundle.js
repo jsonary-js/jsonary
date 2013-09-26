@@ -20,12 +20,12 @@ Bundle.prototype = {
 			var cssCode = fs.readFileSync(filename, {enc:'utf8'}).toString();
 			// Replace each URI(...) with a base64-encoded data URI
 			cssCode = cssCode.replace(/((:|\s)url\()\s*(.*)\s*\)/gi, function (fullString, prefix, spacing, uri) {
-				if (uri.toLowerCase().substring(0, 5) == "data:") {
+				if (uri.substring(0, 10).replace(/^('|")/, '').toLowerCase().substring(0, 5) == "data:") {
 					return fullString;
 				}
 				var suffix = fullString.substring(prefix.length + uri.length);
 				if (uri.charAt(0) == '"' || uri.charAt(0) == "'") {
-					uri = uri.substring(1, uri.length - 1);
+					uri = uri.substring(1, (uri.charAt(uri.length - 1) === uri.charAt(0)) ? uri.length - 1 : uri.length);
 				}
 				var resourcePath = path.resolve(path.dirname(filename), uri);
 				var base64 = fs.readFileSync(resourcePath).toString('base64');
@@ -78,7 +78,6 @@ Bundle.prototype = {
 		code = code.replace(/\r\n/g, "\n");
 		
 		if (outputFile) {
-			//console.log('Writing JS bundle to: ' + outputFile);
 			// Timestamp line also keeps line numbers in sync between bundle file and anonymous function in Node
 			var fileCode = '/* Bundled on ' + (new Date) + '*/\n' + code + '.call(this);';
 			if (minify) {

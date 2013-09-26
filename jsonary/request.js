@@ -82,9 +82,11 @@ publicApi.ajaxFunction = function (params, callback) {
 (function () {
 	var cacheData = {};
 	var cacheTimes = {};
+	/* empty() doesn't do anything, and this makes Node scripts never-ending (need timer.unref())
 	var emptyTimeout = setInterval(function () {
 		defaultCache.empty();
 	}, 10*1000);
+	*/
 
 	var defaultCache = function (cacheKey, insertData) {
 		if (insertData !== undefined) {
@@ -463,7 +465,7 @@ Request.prototype = {
 		});
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
-		console.log("Document " + this.document.uniqueId + " is unstable");
+		Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + this.document.uniqueId + " is unstable");
 		var stableListeners = new ListenerSet(this);
 		this.document.whenStable = function (callback) {
 			stableListeners.add(callback);
@@ -508,7 +510,7 @@ Request.prototype = {
 			} else {
 				thisRequest.ajaxError(error, data);
 			}
-			console.log("Document " + thisRequest.document.uniqueId + " is stable");
+			Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + thisRequest.document.uniqueId + " is stable");
 			delete thisRequest.document.whenStable;
 			stableListeners.notify(thisRequest.document);
 		});

@@ -1,4 +1,4 @@
-var bundle = require('./create-bundle.js');
+var bundle = require('../node-package/create-bundle.js');
 var masterBundle = bundle.js([
 		// Replacement for jsonary.js, assembled from individual files
 		'../jsonary/_compatability.js',
@@ -18,24 +18,28 @@ var masterBundle = bundle.js([
 		'../plugins/jsonary.render.js'
 	])
 	.code('var Jsonary = this.Jsonary;')
-	
+
 	// http://json-schema.org/ meta-schemas
 	.js('../jsonary/_cache-json-schema-org.js')
-
-	// Plugins
-	.js('../plugins/jsonary.location.js')
-	.js('../plugins/jsonary.undo.js')
-	.js('../plugins/jsonary.jstl.js')
-	.js('../plugins/jsonary.render.table.js')
-	.css('../plugins/jsonary.render.table.css')
-	.js('../plugins/jsonary.render.generate.js')
 
 	// Renderers
 	.js('../renderers/list-links.js')
 	.css('../renderers/common.css')
 
 	.js('../renderers/plain.jsonary.js')
-	.css('../renderers/plain.jsonary.css')
+	.css('../renderers/plain.jsonary.css');
+
+masterBundle.compileJs('../node-package/core/jsonary-core.js');
+masterBundle.compileJs('../node-package/core/jsonary-core.min.js', true);
+masterBundle.compileCss('../node-package/core/jsonary-core.css');
+	
+	// Plugins
+masterBundle.js('../plugins/jsonary.location.js')
+	.js('../plugins/jsonary.undo.js')
+	.js('../plugins/jsonary.jstl.js')
+	.js('../plugins/jsonary.render.table.js')
+	.css('../plugins/jsonary.render.table.css')
+	.js('../plugins/jsonary.render.generate.js')
 
 	.js('../renderers/string-formats.js')
 	
@@ -45,3 +49,5 @@ var masterBundle = bundle.js([
 
 masterBundle.compileJs('../jsonary-super-bundle.js', false, true);
 masterBundle.compileJs('../jsonary-super-bundle.min.js', true, true);
+masterBundle.compileJs('../node-package/super-bundle/jsonary-super-bundle.js', false, true);
+masterBundle.compileJs('../node-package/super-bundle/jsonary-super-bundle.min.js', true, true);

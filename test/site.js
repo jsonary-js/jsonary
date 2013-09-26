@@ -2,73 +2,27 @@ var express = require('express');
 var url = require('url');
 var http = require('http');
 var https = require('https');
-var bundle = require('./create-bundle.js');
+var jsonaryBundle = require('./jsonary-bundle');
 
 var app = express();
 app.use(express.bodyParser());
 
 var jsonaryJsBundle;
 function createBundles() {
-	var masterBundle = bundle.css([
-			'../renderers/common.css',
-			'../renderers/plain.jsonary.css'
-		])
-		.js([
-			// Replacement for jsonary.js, assembled from individual files
-			'../jsonary/_compatability.js',
-			'../jsonary/_header.js',
-			'../jsonary/uri.js',
-			'../jsonary/uri-template.js',
-			'../jsonary/utils.js',
-			'../jsonary/monitors.js',
-			'../jsonary/request.js',
-			'../jsonary/patch.js',
-			'../jsonary/data.js',
-			'../jsonary/schema.js',
-			'../jsonary/schemamatch.js',
-			'../jsonary/schemaset.js',
-			'../jsonary/main.js',
-			'../jsonary/_footer.js',
-			'../plugins/jsonary.render.js',
-			'../plugins/jsonary.render.js',
-		])
-		.code('var Jsonary = this.Jsonary;')
-
-		// http://json-schema.org/ meta-schemas
-		.js('../jsonary/_cache-json-schema-org.js')
-
-		// Renderers
-		.js([
-			'../renderers/plain.jsonary.js',
-			'../renderers/list-links.js',
-			'../renderers/string-formats.js'
-		])
-		// Extra plugins
-		.js('../plugins/jsonary.location.js')
-		.js('../plugins/jsonary.render.table.js')
-		.css('../plugins/jsonary.render.table.css')
-		.js('../plugins/jsonary.render.generate.js')
-		.js('../renderers/contributed/adaptive-table.js')
-
-		// Custom renderers
-		.js('renderers/site.js')
-		.css('renderers/site.css')
-		.js('../renderers/contributed/markdown.js');
+	var bundle = jsonaryBundle.fresh();
+	bundle.add('renderers/site');
+	bundle.add('../renderers/contributed/markdown');
 	
-	masterBundle.compileCss('bundle.css');
-	masterBundle.compileCss('bundle.min.css', true);
-	jsonaryJsBundle = masterBundle.compileJs('bundle.js');
-	jsonaryJsBundle = masterBundle.compileJs('bundle.min.js', true);
+	bundle.writeCss('bundle.css');
+	//bundle.writeCss('bundle.min.css', true);
+	masterBundle.writeJs('bundle.js');
+	//masterBundle.writeJs('bundle.min.js', true);
+	return bundle;
 }
-createBundles();
+var jsonaryJsBundle = createBundles();
 
 var createJsonary = function () {
-	var Jsonary = jsonaryJsBundle()['Jsonary'];
-	Jsonary.setLogFunction(function (logLevel, message) {
-		if (logLevel >= Jsonary.logLevel.WARNING) {
-			console.log("Jsonary " + Jsonary.logLevel[logLevel] + ": " + message);
-		}
-	});
+	var Jsonary = jsonaryJsBundle.instance();
 	var buttons = [];
 	Jsonary.render.clearButtons = function () {
 		buttons = [];
@@ -102,105 +56,6 @@ var createJsonary = function () {
 		return result;
 	};
 	
-	// TODO: make this part of Jsonary, so we can include things like createValue() callbacks and other async stuff
-	var requestCount = 0;
-	var requestCompleteCallbacks = [];
-	Jsonary.whenRequestsComplete = function (callback) {
-		requestCompleteCallbacks.push(callback);
-		checkRequestsComplete();
-	};
-	function checkRequestsComplete() {
-		if (requestCount > 0) {
-			return;
-		}
-		while (requestCompleteCallbacks.length > 0) {
-			requestCompleteCallbacks.shift()();
-		}
-	}
-	
-	Jsonary.ajaxFunction = function (params, callback) {
-		requestCount++;
-		// Make an actual HTTP request, defaulting to the current server if just path is given
-		var uri = new Jsonary.Uri(params.url);
-		var httpModule = (uri.scheme == 'https') ? https : http;
-		var options = {};
-		if (uri.domain) {
-			options.domain = uri.domain;
-			options.host = options.domain;
-			options.path = params.url.split('://').slice(1).join('://');
-		} else {
-			options.domain = 'localhost';
-			options.port = SERVER_PORT;
-			options.path = params.url;
-		}
-		options.method = params.method;
-		options.headers = {
-			'content-type': params.encType
-		};
-		
-		console.log(params.method +" " + params.url);
-		var request = httpModule.request(options, function (response) {
-			console.log("done: " + params.method +" " + params.url);
-			var data;
-			response.setEncoding('utf8'); // Encoding is required
-			response.on('data', function (chunk) {
-				data = data ? data + chunk : chunk;
-			});
-			response.on('end', function () {
-				handleResponse(response, data);
-			});
-		}).on('error', function (e) {
-			console.log(params.method +": " + params.url + " error");
-			console.log({
-				request: params,
-				error: e
-			});
-			callback(e, e, '');
-			requestCount--;
-			checkRequestsComplete();
-		});
-		if (params.data != undefined) {
-			request.write(params.data);
-		}
-		request.end();
-		
-		function handleResponse(response, data) {
-			var headerText = [];
-			for (var key in response.headers) {
-				if (Array.isArray(response.headers[key])) {
-					for (var i = 0; i < respons.headers[key].length; i++) {
-						headerText.push(key + ": " + response.headers[key][i]);
-					}
-				} else {
-					headerText.push(key + ": " + response.headers[key]);
-				}
-			}
-			headerText = headerText.join("\r\n");
-
-			if (response.statusCode >= 200 && response.statusCode < 300) {
-				try {
-					data = JSON.parse(data);
-				} catch (e) {
-					if (response.statusCode !=204) {
-						callback(e, data, headerText);
-						checkRequestsComplete();
-						return;
-					} else {
-						data = null;
-					}
-				}
-				callback(null, data, headerText);
-			} else {
-				try {
-					data = JSON.parse(data);
-				} catch (e) {
-				}
-				callback(new Jsonary.HttpError(response.statusCode, response), data, headerText);
-			}
-			requestCount--;
-			checkRequestsComplete();
-		}
-	};
 	Jsonary.render.footerHtml = function () {
 		result = "";
 		result += '<script>';
