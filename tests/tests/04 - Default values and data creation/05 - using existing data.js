@@ -58,7 +58,7 @@ tests.add("stealing properties in preference 2", function () {
 	return true;
 });
 
-tests.add("defining properties where possible", function () {
+tests.add("not carrying over unknown properties", function () {
 	var schema1 = Jsonary.createSchema({
 		type: "object",
 		properties: {
@@ -75,7 +75,7 @@ tests.add("defining properties where possible", function () {
 	
 	this.assert(createdData.propA == origData.propA, "propA matches");
 	this.assert(typeof createdData.propB !== 'number', "propB is not a number");
-	this.assert(createdData.propC == origData.propC, "propA matches");
+	this.assert(createdData.propC == undefined, "propA matches");
 	return true;
 });
 
@@ -95,7 +95,10 @@ tests.add("defining array items to match original", function () {
 tests.add("defining object properties inside array items (no constraints)", function () {
 	var schema1 = Jsonary.createSchema({
 		type: "array",
-		items: {"type": "object"}
+		items: {
+			"type": "object",
+			"required": ["propA", "propB"]
+		}
 	});
 	var origData = [
 		{

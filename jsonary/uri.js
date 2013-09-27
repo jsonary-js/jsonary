@@ -110,6 +110,16 @@ Uri.prototype = {
 		}
 		return result;
 	},
+	queryObj: function () {
+		var result = {};
+		if (this.query) {
+			for (var i = 0; i < this.query.length; i++) {
+				var pair = this.query[i];
+				result[pair.key] = pair.value;
+			}
+		}
+		return result;
+	},
 	resolve: function (relative) {
 		var result = new Uri(relative + "");
 		if (result.scheme == null) {

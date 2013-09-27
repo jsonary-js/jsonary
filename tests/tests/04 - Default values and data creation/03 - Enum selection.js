@@ -36,3 +36,29 @@ tests.add("select an enum", function () {
 
 	return true;
 });
+
+tests.add("default affects enum choice (A)", function () {
+	var schema1 = Jsonary.createSchema({
+		"enum": ["A", "B", "C"],
+		"default": "A"
+	});
+	var schemaList = Jsonary.createSchemaList(schema1);
+	
+	var value = schemaList.createValue();
+	this.assert(value === "A", "value === 'A'");
+
+	return true;
+});
+
+tests.add("default affects enum choice (B)", function () {
+	var schema1 = Jsonary.createSchema({
+		"enum": ["A", "B", "C"],
+		"default": "B"
+	});
+	var schemaList = Jsonary.createSchemaList(schema1);
+	
+	var value = schemaList.createValue();
+	this.assert(value === "B", "value === 'B'");
+
+	return true;
+});

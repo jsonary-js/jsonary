@@ -4171,17 +4171,21 @@ ActiveLink.prototype = {
 	toString: function() {
 		return this.href;
 	},
-	createSubmissionData: function(callback) {
+	createSubmissionData: function(origData, callback) {
+		if (typeof origData === 'function') {
+			callback = origData;
+			origData = undefined;
+		}
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
 		if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 			Jsonary.getData(this.href, function (data) {
-				callback(data.editableCopy());
+				callback(origData || data.editableCopy());
 			})
 			return this;
 		}
 		if (callback != undefined) {
-			submissionSchemas.createValue(function (value) {
+			submissionSchemas.createValue(origData, function (value) {
 				var data = publicApi.create(value, hrefBase);
 				for (var i = 0; i < submissionSchemas.length; i++) {
 					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -4189,7 +4193,7 @@ ActiveLink.prototype = {
 				callback(data);
 			});
 		} else {
-			var value = submissionSchemas.createValue();
+			var value = submissionSchemas.createValue(origData);
 			var data = publicApi.create(value, hrefBase);
 			for (var i = 0; i < submissionSchemas.length; i++) {
 				data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -5466,43 +5470,36 @@ SchemaList.prototype = {
 		}
 		return totalCombos;
 	},
-	createValue: function(callback, origValue, ignoreChoices, ignoreDefaults) {
-		if (typeof callback !== 'undefined' && typeof callback !== 'function') {
+	createValue: function(origValue, callback, ignoreChoices, ignoreDefaults, banCoercion) {
+		var thisSchemaSet = this;
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
 			origValue = callback;
-			callback = null;
+			callback = tmp;
 		}
-		if (!ignoreChoices) {
-			if (callback != null) {
-				this.allCombinations(function (allCombinations) {
-					function nextOption(index) {
-						if (index >= allCombinations.length) {
-							return callback(undefined);
-						}
-						allCombinations[index].createValue(function (value) {
-							if (typeof value !== 'undefined') {
-								callback(value);
-							} else {
-								nextOption(index + 1);
-							}
-						}, origValue, true, ignoreDefaults);
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		
+		if (typeof banCoercion === 'undefined') {
+			if (callback) {
+				this.createValue(origValue, function (value) {
+					if (typeof value === 'undefined') {
+						thisSchemaSet.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
+					} else {
+						callback(value);
 					}
-					nextOption(0);
-				});
+				}, ignoreChoices, ignoreDefaults, true)
 				return;
 			}
-			// Synchronous version
-			var allCombinations = this.allCombinations();
-			for (var i = 0; i < allCombinations.length; i++) {
-				var value = allCombinations[i].createValue(undefined, origValue, true, ignoreDefaults);
-				if (value !== undefined) {
-					return value;
-				}
+			var value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, true);
+			if (typeof value === 'undefined') {
+				value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
 			}
-			return;
+			return value;
 		}
-
+		
 		if (!ignoreDefaults) {
-			var thisSchemaSet = this;
 			var nextOrigValue = function () {
 				nextOrigValue = tryDefaults;
 				return origValue;
@@ -5533,23 +5530,64 @@ SchemaList.prototype = {
 					while (nextOrigValue) {
 						var initialValue = nextOrigValue();
 						if (typeof initialValue !== 'undefined') {
-							return thisSchemaSet.createValue(handleValue, initialValue, true, true);
+							return thisSchemaSet.createValue(initialValue, handleValue, ignoreChoices, true, banCoercion);
 						}
 					}
-					thisSchemaSet.createValue(callback, undefined, true, true);
+					if (!banCoercion) {
+						// Ignore supplied value, and try creating from scratch
+						thisSchemaSet.createValue(callback, undefined, ignoreChoices, true, banCoercion);
+					} else {
+						callback(undefined);
+					}
 				};
 				return handleValue(undefined);
 			} else {
 				while (nextOrigValue) {
 					var initialValue = nextOrigValue();
 					if (typeof initialValue !== 'undefined') {
-						var createdValue = this.createValue(undefined, initialValue, true, true);
+						var createdValue = this.createValue(initialValue, undefined, ignoreChoices, true, banCoercion);
 						if (typeof createdValue !== 'undefined') {
 							return createdValue;
 						}
 					}
 				}
+				if (!banCoercion) {
+					// Ignore supplied value, and try creating from scratch
+					return this.createValue(undefined, undefined, ignoreChoices, true, banCoercion);
+				} else {
+					return undefined;
+				}
 			}
+		}
+
+		if (!ignoreChoices) {
+			if (callback != null) {
+				this.allCombinations(function (allCombinations) {
+					function nextOption(index) {
+						if (index >= allCombinations.length) {
+							return callback(undefined);
+						}
+						allCombinations[index].createValue(origValue, function (value) {
+							if (typeof value !== 'undefined') {
+								callback(value);
+							} else {
+								nextOption(index + 1);
+							}
+						}, true, ignoreDefaults, banCoercion);
+					}
+					nextOption(0);
+				});
+				return;
+			}
+			// Synchronous version
+			var allCombinations = this.allCombinations();
+			for (var i = 0; i < allCombinations.length; i++) {
+				var value = allCombinations[i].createValue(origValue, undefined, true, ignoreDefaults, banCoercion);
+				if (value !== undefined) {
+					return value;
+				}
+			}
+			return;
 		}
 
 		var basicTypes = this.basicTypes();
@@ -5574,11 +5612,13 @@ SchemaList.prototype = {
 			}
 		}
 
-		// TODO: move up above, to the "if (!ignoreDefaults) {" section
 		var enumValues = this.enumValues();
 		if (enumValues != undefined) {
-			pending += enumValues.length;
 			for (var i = 0; i < enumValues.length; i++) {
+				if (typeof origValue !== 'undefined' && !Utils.recursiveCompare(origValue, enumValues[i])) {
+					continue;
+				}
+				pending++;
 				if (gotCandidate(enumValues[i])) {
 					return chosenCandidate;
 				}
@@ -5586,17 +5626,18 @@ SchemaList.prototype = {
 		} else {
 			if (typeof origValue !== 'undefined') {
 				var basicType = Utils.guessBasicType(origValue);
-				var index = basicTypes.indexOf(basicType);
-				if (index === -1 && basicType == 'integer') {
-					index = basicTypes.indexOf('number');
-				}
-				if (ignoreDefaults) {
-					basicTypes = (index === -1) ? [] : [basicType];
-				} else {
-					if (index !== -1) {
-						basicTypes.splice(index, 1);
-						basicTypes.unshift(basicType);
+				if (basicType == 'integer') {
+					// pull "number" to front first, so it goes "integer", "number", ...
+					var numberIndex = basicTypes.indexOf('number');
+					if (numberIndex !== -1) {
+						basicTypes.splice(numberIndex, 1);
+						basicTypes.unshift('number');
 					}
+				}
+				var index = basicTypes.indexOf(basicType);
+				if (index !== -1) {
+					basicTypes.splice(index, 1);
+					basicTypes.unshift(basicType);
 				}
 			}
 			for (var i = 0; (typeof chosenCandidate === 'undefined') && i < basicTypes.length; i++) {
@@ -5607,38 +5648,38 @@ SchemaList.prototype = {
 						return chosenCandidate;
 					}
 				} else if (basicType == "boolean") {
-					var candidate = this.createValueBoolean(origValue);
+					var candidate = this.createValueBoolean(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return true;
 					}
 				} else if (basicType == "integer" || basicType == "number") {
-					var candidate = this.createValueNumber(origValue);
+					var candidate = this.createValueNumber(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "string") {
-					var candidate = this.createValueString(origValue);
+					var candidate = this.createValueString(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "array") {
 					if (callback) {
-						this.createValueArray(function (candidate) {
+						this.createValueArray(origValue, function (candidate) {
 							gotCandidate(candidate);
-						}, origValue);
+						}, banCoercion);
 					} else {
-						var candidate = this.createValueArray(undefined, origValue);
+						var candidate = this.createValueArray(origValue, undefined, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
 					}
 				} else if (basicType == "object") {
 					if (callback) {
-						var candidate = this.createValueObject(function (candidate) {
+						var candidate = this.createValueObject(origValue, function (candidate) {
 							gotCandidate(candidate);
-						}, origValue);
+						}, banCoercion);
 					} else {
-						var candidate = this.createValueObject(undefined, origValue);
+						var candidate = this.createValueObject(origValue, undefined, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
@@ -5648,23 +5689,22 @@ SchemaList.prototype = {
 		}
 		return gotCandidate(chosenCandidate);
 	},
-	createValueBoolean: function (origValue) {
+	createValueBoolean: function (origValue, banCoercion) {
 		if (origValue === undefined) {
 			return true;
 		}
+		if (banCoercion && typeof origValue !== 'boolean') {
+			return undefined;
+		}
 		return !!origValue;
 	},
-	createValueNumber: function (origValue) {
-		var exclusiveMinimum = this.exclusiveMinimum();
-		var minimum = this.minimum();
-		var maximum = this.maximum();
-		var exclusiveMaximum = this.exclusiveMaximum();
-		var interval = this.numberInterval();
-		var candidate = undefined;
-		if (typeof origValue === 'string') {
+	createValueNumber: function (origValue, banCoercion) {
+		if (!banCoercion && typeof origValue === 'string') {
 			var asNumber = parseFloat(origValue);
 			if (!isNaN(asNumber)) {
 				origValue = asNumber;
+			} else {
+				return undefined;
 			}
 		}
 		if (typeof origValue === 'number') {
@@ -5678,7 +5718,15 @@ SchemaList.prototype = {
 					return origValue;
 				}
 			}
+		} else if (typeof origValue !== 'undefined') {
+			return undefined;
 		}
+		var exclusiveMinimum = this.exclusiveMinimum();
+		var minimum = this.minimum();
+		var maximum = this.maximum();
+		var exclusiveMaximum = this.exclusiveMaximum();
+		var interval = this.numberInterval();
+		var candidate = undefined;
 		if (minimum != undefined && maximum != undefined) {
 			if (minimum > maximum || (minimum == maximum && (exclusiveMinimum || exclusiveMaximum))) {
 				return;
@@ -5723,20 +5771,26 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueString: function (origValue) {
+	createValueString: function (origValue, banCoercion) {
+		var candidates = [""];
+		if (typeof origValue !== 'undefined') {
+			if (typeof origValue === 'string') {
+				candidates.unshift(origValue);
+			} else if (banCoercion) {
+				return undefined;
+			} else if (typeof origValue === 'number') {
+				candidates.unshift("" + origValue);
+			} else if (typeof origValue === 'boolean') {
+				candidates.unshift(origValue ? 'true' : 'false');
+			} else {
+				return undefined;
+			}
+		}
 		var minLength = this.minLength();
 		var maxLength = this.maxLength()
 		var patterns = this.patterns();
 		if (maxLength != null && minLength > maxLength) {
 			return undefined;
-		}
-		var candidates = [""];
-		if (typeof origValue === 'string') {
-			candidates.unshift(origValue);
-		} else if (typeof origValue === 'number') {
-			candidates.unshift("" + origValue);
-		} else if (typeof origValue === 'boolean') {
-			candidates.unshift(origValue ? 'true' : 'false');
 		}
 		for (var i = 0; i < candidates.length; i++) {
 			var candidate = candidates[i];
@@ -5754,7 +5808,15 @@ SchemaList.prototype = {
 			return candidate;
 		}
 	},
-	createValueArray: function (callback, origValue) {
+	createValueArray: function (origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (typeof origValue !== 'undefined' && !Array.isArray(origValue)) {
+			return undefined;
+		}
 		var thisSchemaSet = this;
 		var candidate = [];
 		var minItems = this.minItems();
@@ -5768,7 +5830,7 @@ SchemaList.prototype = {
 				pending++;
 				var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 				if (callback) {
-					thisSchemaSet.createValueForIndex(i, function (value) {
+					thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
 						if (typeof value === 'undefined') {
 							candidate = undefined;
 						} else if (candidate) {
@@ -5778,9 +5840,9 @@ SchemaList.prototype = {
 						if (pending == 0) {
 							callback(candidate);
 						}
-					}, origItemValue);
+					}, banCoercion || undefined);
 				} else {
-					var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+					var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
 					if (typeof itemValue === 'undefined') {
 						candidate = undefined;
 					} else if (candidate) {
@@ -5800,9 +5862,11 @@ SchemaList.prototype = {
 					pending++;
 					var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 					if (callback) {
-						thisSchemaSet.createValueForIndex(i, function (value) {
+						thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
 							if (candidate && typeof value !== 'undefined' && i < maxItems) {
 								candidate[i] = value;
+							} else if (banCoercion) {
+								candidate = undefined;
 							} else if (i < maxItems) {
 								maxItems = i;
 							}
@@ -5810,11 +5874,13 @@ SchemaList.prototype = {
 							if (pending == 0) {
 								callback(candidate);
 							}
-						}, origItemValue);
+						}, banCoercion || undefined);
 					} else {
-						var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+						var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
 						if (candidate && typeof itemValue !== 'undefined') {
 							candidate[i] = itemValue;
+						} else if (banCoercion) {
+							candidate = undefined;
 						} else if (i < maxItems) {
 							maxItems = i;
 						}
@@ -5828,17 +5894,25 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueObject: function (callback, origValue) {
+	createValueObject: function (origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (typeof origValue !== 'undefined' && (typeof origValue !== 'object' || Array.isArray(origValue))) {
+			return undefined;
+		}
 		var thisSchemaSet = this;
 		var candidate = {};
-		var requiredProperties = this.requiredProperties();
 		var pending = 1;
+		var requiredProperties = this.requiredProperties();
 		for (var i = 0; candidate && i < requiredProperties.length; i++) {
 			(function (key) {
 				pending++;
 				var origPropValue = (typeof origValue == 'object' && !Array.isArray(origValue)) ? origValue[key] : undefined;
 				if (callback) {
-					thisSchemaSet.createValueForProperty(key, function (value) {
+					thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 						if (typeof value === 'undefined') {
 							candidate = undefined;
 						} else if (candidate) {
@@ -5848,19 +5922,21 @@ SchemaList.prototype = {
 						if (pending == 0) {
 							callback(candidate);
 						}
-					}, origPropValue);
+					}, banCoercion || undefined);
 				} else {
-					var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+					var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 					if (typeof propValue === 'undefined') {
 						candidate = undefined;
 					} else if (candidate) {
-						candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						candidate[key] = propValue;
 					}
 				}
 			})(requiredProperties[i]);
 		}
 		if (candidate && typeof origValue === 'object' && !Array.isArray(origValue)) {
-			for (var key in origValue) {
+			var definedProperties = this.definedProperties();
+			for (var i = 0; candidate && i < definedProperties.length; i++) {
+				var key = definedProperties[i];
 				if (!candidate || typeof candidate[key] !== 'undefined') {
 					continue;
 				}
@@ -5868,19 +5944,23 @@ SchemaList.prototype = {
 					pending++;
 					var origPropValue = origValue[key];
 					if (callback) {
-						thisSchemaSet.createValueForProperty(key, function (value) {
+						thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 							if (candidate && typeof value !== 'undefined') {
 								candidate[key] = value;
+							} else if (banCoercion) {
+								candidate = undefined;
 							}
 							pending--;
 							if (pending == 0) {
 								callback(candidate);
 							}
-						}, origPropValue);
+						}, banCoercion || undefined);
 					} else {
-						var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 						if (candidate && typeof propValue !== 'undefined') {
-							candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+							candidate[key] = propValue;
+						} else if (banCoercion) {
+							candidate = undefined;
 						}
 					}
 				})(key);
@@ -5892,28 +5972,45 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueForIndex: function(index, callback, origValue) {
-		var indexSchemas = this.indexSchemas(index);
-		return indexSchemas.createValue(callback, origValue);
-	},
-	createValueForProperty: function(key, callback, origValue) {
-		var propertySchemas = this.propertySchemas(key);
-		return propertySchemas.createValue(callback, origValue);
-	},
-	createData: function (callback, origValue) {
-		var thisSchemaSet = this;
-		if (typeof callback !== 'undefined' && typeof callback !== 'function') {
+	createValueForIndex: function(index, origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
 			origValue = callback;
-			callback = null;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		var indexSchemas = this.indexSchemas(index);
+		return indexSchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
+	},
+	createValueForProperty: function(key, origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		var propertySchemas = this.propertySchemas(key);
+		return propertySchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
+	},
+	createData: function (origValue, callback) {
+		var thisSchemaSet = this;
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
 		}
 		if (publicApi.isData(origValue)) {
 			origValue == origValue.value();
 		}
 		if (callback) {
-			this.createValue(function (value) {
+			this.createValue(origValue, function (value) {
 				var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
 				callback(data);
-			}, origValue);
+			});
 			return this;
 		}
 		return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
