@@ -1,12 +1,13 @@
 {
   "name": "jsonary",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Geraint Luff",
   "description": "Server-side Jsonary",
   "dependencies": {
     "clean-css": "1.0.x",
     "uglify-js": "2.3.x",
-    "mime": "1.2.x"
+    "mime": "1.2.x",
+    "cookie-client": "0.0.x"
   },
   "keywords": [
     "json-schema",

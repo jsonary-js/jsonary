@@ -4,8 +4,9 @@ var https = require('https');
 var path = require('path');
 var urlModule = require('url');
 
+var cookieClient = require('cookie-client');
+
 var bundleModule = require('./create-bundle.js');
-var cookieClient = require('./cookie-client');
 
 function JsonaryBundle() {
 	var bundle = bundleModule.js();
@@ -116,7 +117,7 @@ function modifyJsonaryForServer(Jsonary) {
 		
 		Jsonary.log(Jsonary.logLevel.DEBUG, params.method +" " + params.url);
 		var request = httpModule.request(options, function (response) {
-			Jsonary.server.cookies.addCookiesFromHeaders(response.headers, {domain: options.domain, path: options.path});
+			Jsonary.server.cookies.addFromHeaders(response.headers, {domain: options.domain, path: options.path});
 			Jsonary.log(Jsonary.logLevel.DEBUG, "done: " + params.method +" " + params.url);
 			var data;
 			response.setEncoding('utf8'); // Encoding is required

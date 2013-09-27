@@ -1174,7 +1174,6 @@ function UriTemplate(template) {
 		for (var i = 0; i < textParts.length; i++) {
 			var part = textParts[i];
 			if (substituted.substring(0, part.length) !== part) {
-				console.log([substituted, part]);
 				return undefined;
 			}
 			substituted = substituted.substring(part.length);
@@ -1536,9 +1535,10 @@ var Utils = {
 		}
 		return result;
 	},
-	escapeHtml: function(text) {
+	escapeHtml: function(text, singleQuotesOnly) {
 		text += "";
-		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+		var escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;");
+		return singleQuotesOnly ? escaped : escaped.replace(/"/g, "&quot;");
 	},
 	encodePointerComponent: function (component) {
 		return component.toString().replace("~", "~0").replace("/", "~1");
@@ -1841,9 +1841,11 @@ publicApi.ajaxFunction = function (params, callback) {
 (function () {
 	var cacheData = {};
 	var cacheTimes = {};
+	/* empty() doesn't do anything, and this makes Node scripts never-ending (need timer.unref())
 	var emptyTimeout = setInterval(function () {
 		defaultCache.empty();
 	}, 10*1000);
+	*/
 
 	var defaultCache = function (cacheKey, insertData) {
 		if (insertData !== undefined) {
@@ -2049,8 +2051,7 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
 	this.invalidate = function() {
-		var thisRequest = this;
-		this.document.whenAccessed(function () {
+		var makeRequest = function () {
 			if (thisRequest.successful == null) {
 				// We've already got a pending request
 				return;
@@ -2058,7 +2059,14 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 			if (method == "GET") {
 				thisRequest.fetchData(url, method, data, encType, hintSchema);
 			}
-		});
+		};
+		var thisRequest = this;
+		this.document.whenAccessed(makeRequest);
+		this.document.whenStable = function (callback) {
+			delete thisRequest.document.whenStable;
+			makeRequest();
+			return thisRequest.document.whenStable(callback);
+		}
 	};
 }
 Request.prototype = {
@@ -2122,10 +2130,8 @@ Request.prototype = {
 			if (partName == "") {
 				continue;
 			}
-			console.log(remainder)
 			if (remainder.charAt(0) === '"') {
 				partValue = /^"([^\\"]|\\.)*("|$)/.exec(remainder)[0];
-				console.log(partValue);
 				remainder = remainder.substring(partValue.length).trim();
 				// Slight hack, perhaps
 				try {
@@ -2218,6 +2224,13 @@ Request.prototype = {
 		});
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
+		Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + this.document.uniqueId + " is unstable");
+		var stableListeners = new ListenerSet(this);
+		this.document.whenStable = function (callback) {
+			stableListeners.add(callback);
+			return this;
+		};
+		
 		var thisRequest = this;
 		this.successful = null;
 		var xhrUrl = url;
@@ -2256,6 +2269,9 @@ Request.prototype = {
 			} else {
 				thisRequest.ajaxError(error, data);
 			}
+			Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + thisRequest.document.uniqueId + " is stable");
+			delete thisRequest.document.whenStable;
+			stableListeners.notify(thisRequest.document);
 		});
 	}
 };
@@ -2734,6 +2750,10 @@ Document.prototype = {
 		var patch = new Patch();
 		patch.move(source, target);
 		this.patch(patch);
+		return this;
+	},
+	whenStable: function (callback) {
+		callback.call(this, this);
 		return this;
 	}
 }
@@ -3360,6 +3380,13 @@ Data.prototype = {
 	},
 	json: function () {
 		return JSON.stringify(this.value());
+	},
+	whenStable: function (callback) {
+		var thisData = this;
+		this.document.whenStable(function () {
+			callback.call(thisData, thisData);
+		});
+		return this;
 	}
 };
 Data.prototype.indices = Data.prototype.items;
@@ -5032,7 +5059,7 @@ SchemaList.prototype = {
 			}
 			return newList;
 		};
-		return result;
+		return result.slice(0);
 	},
 	knownProperties: function (ignoreList) {
 		if (ignoreList) {
@@ -5041,11 +5068,11 @@ SchemaList.prototype = {
 		}
 		var result;
 		if (this.allowedAdditionalProperties()) {
-			result = this.definedProperties().slice(0);
-			var requiredProperties = this.requiredProperties();
-			for (var i = 0; i < requiredProperties.length; i++) {
-				if (result.indexOf(requiredProperties[i]) == -1) {
-					result.push(requiredProperties[i]);
+			result = this.requiredProperties();
+			var definedProperties = this.definedProperties();
+			for (var i = 0; i < definedProperties.length; i++) {
+				if (result.indexOf(definedProperties[i]) == -1) {
+					result.push(definedProperties[i]);
 				}
 			}
 		} else {
@@ -5834,6 +5861,7 @@ publicApi.createSchemaList = function (schemas) {
 };
 
 var SCHEMA_SET_UPDATE_KEY = Utils.getUniqueKey();
+var SCHEMA_SET_FIXED_KEY = Utils.getUniqueKey();
 
 function SchemaSet(dataObj) {
 	var thisSchemaSet = this;
@@ -6121,7 +6149,7 @@ SchemaSet.prototype = {
 			publicApi.invalidate(invalidateUrl);
 			return;
 		}
-		var schemaKey = Utils.getUniqueKey();
+		var schemaKey = SCHEMA_SET_FIXED_KEY;
 		var linkData = publicApi.create(rawLink);
 		var potentialLink = new PotentialLink(linkData);
 		this.addLinks([potentialLink], schemaKey);
@@ -6138,7 +6166,7 @@ SchemaSet.prototype = {
 					var schema = publicApi.createSchema({
 						"$ref": rawLink.href
 					});
-					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, false);
+					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
 				}
 			});
 		}
@@ -6463,7 +6491,7 @@ publicApi.config = {
 publicApi.UriTemplate = UriTemplate;
 
 // Puts it in "exports" if it exists, otherwise create this.Jsonary (this == window, probably)
-})((typeof module !== 'undefined' && module.exports) ? exports : (this.Jsonary = {}, this.Jsonary));
+})(this.Jsonary = {});
 
 (function (global) {
 	var Jsonary = global.Jsonary;
@@ -6588,6 +6616,23 @@ publicApi.UriTemplate = UriTemplate;
 		usedComponents: [],
 		rootContext: null,
 		baseContext: null,
+		labelSequence: function () {
+			if (!this.parent || this.parent == pageContext) {
+				return [];
+			}
+			return this.parent.labelSequence().concat([this.label]);
+		},
+		labelSequenceContext: function (seq) {
+			var result = this;
+			for (var i = 0; i < seq.length; i++) {
+				var label = seq[i];
+				result = result.subContexts[label] || result.oldSubContexts[label];
+				if (!result) {
+					return null;
+				}
+			}
+			return result;
+		},
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
 				var selfLink = data.getLink('self');
@@ -6640,110 +6685,23 @@ publicApi.UriTemplate = UriTemplate;
 			return subContext;
 		},
 		subContextSavedStates: {},
-		saveState: function () {
+		saveUiState: function () {
 			var subStates = {};
 			for (var key in this.subContexts) {
-				subStates[key] = this.subContexts[key].saveState();
+				subStates[key] = this.subContexts[key].saveUiState();
 			}
 			for (var key in this.oldSubContexts) {
-				subStates[key] = this.oldSubContexts[key].saveState();
+				subStates[key] = this.oldSubContexts[key].saveUiState();
 			}
 			
-			var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
+			var saveStateFunction = this.renderer ? this.renderer.saveUiState : Renderer.prototype.saveUiState;
 			return saveStateFunction.call(this.renderer, this.uiState, subStates, this.data);
 		},
-		loadState: function (savedState) {
-			var loadStateFunction = this.renderer ? this.renderer.loadState : Renderer.prototype.loadState;
+		loadUiState: function (savedState) {
+			var loadStateFunction = this.renderer ? this.renderer.loadUiState : Renderer.prototype.loadUiState;
 			var result = loadStateFunction.call(this.renderer, savedState);
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
-		},
-		saveCompleteState: function (skipEnhancements) {
-			var state = {};
-			state.rendererId = this.renderer ? this.renderer.uniqueId : null;
-			state.sub = {};
-
-			var result = {
-				actions: {},
-				inputs: {},
-				rootContext: this.uniqueId,
-				contexts: {},
-				documents: {}
-			};
-			result.contexts[this.uniqueId] = state;
-			for (var key in this.subContexts) {
-				var subContext = this.subContexts[key];
-				state.sub[key] = subContext.uniqueId;
-				var subResult = subContext.saveCompleteState(true);
-				for (var subKey in subResult.contexts) {
-					result.contexts[subKey] = subResult.contexts[subKey];
-				}
-				for (var subKey in subResult.documents) {
-					result.documents[subKey] = subResult.documents[subKey];
-				}
-			}
-			for (var key in this.oldSubContexts) {
-				var subContext = this.oldSubContexts[key];
-				state.sub[key] = subContext.uniqueId;
-				var subResult = subContext.saveCompleteState(true);
-				for (var subKey in subResult.contexts) {
-					result.contexts[subKey] = subResult.contexts[subKey];
-				}
-				for (var subKey in subResult.documents) {
-					result.documents[subKey] = subResult.documents[subKey];
-				}
-			}
-
-			if (!this.data) {
-				state.data = null;
-			} else {
-				state.data = {
-					path: this.data.pointerPath(),
-					document: this.data.document.uniqueId
-				};
-				if (!result.documents[this.data.document.uniqueId]) {
-					result.documents[this.data.document.uniqueId] = this.data.document.deflate(true);
-				}
-			}
-			
-			if (!skipEnhancements) {
-				for (var key in this.enhancementActions) {
-					var enhancement = this.enhancementActions[key];
-					result.actions[key] = {
-						context: enhancement.context.uniqueId,
-						name: enhancement.actionName,
-						params: enhancement.params
-					};
-					var c = enhancement.context;
-					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
-						result.contexts[c.uniqueId].keep = true;
-						c = c.baseContext;
-					}
-				}
-				for (var key in this.enhancementInputs) {
-					var enhancement = this.enhancementInputs[key];
-					result.inputs[key] = {
-						context: enhancement.context.uniqueId,
-						name: enhancement.actionName,
-						params: enhancement.params
-					};
-					var c = enhancement.context;
-					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
-						result.contexts[c.uniqueId].keep = true;
-						c = c.baseContext;
-					}
-				}
-				var newContexts = {};
-				for (var key in result.contexts) {
-					if (result.contexts[key].keep) {
-						newContexts[key] = result.contexts[key];
-						delete newContexts[key].keep;
-					}
-				}
-				result.contexts = newContexts;
-				result.uiState = this.saveState();
-			}
-			return result;
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			if (typeof label == "object" && label != null) {
@@ -6822,16 +6780,17 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			
 			var renderer = this.renderer;
-			var data = this.data;
-			
-			renderer.asyncRenderHtml(data, this, function (error, innerHtml) {
-				if (error) {
-					return htmlCallback(error, innerHtml, thisContext);
-				}
-				thisContext.clearOldSubContexts();
+			console.log("async rendering from document " + this.data.document.uniqueId);
+			this.data.whenStable(function (data) {
+				renderer.asyncRenderHtml(data, thisContext, function (error, innerHtml) {
+					if (error) {
+						return htmlCallback(error, innerHtml, thisContext);
+					}
+					thisContext.clearOldSubContexts();
 
-				innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
-				htmlCallback(null, innerHtml, thisContext);
+					innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
+					htmlCallback(null, innerHtml, thisContext);
+				});
 			});
 		},
 
@@ -7016,10 +6975,10 @@ publicApi.UriTemplate = UriTemplate;
 		actionHtml: function(innerHtml, actionName) {
 			var startingIndex = 2;
 			var historyChange = false;
-			var linkUrl = Jsonary.render.actionUrl(this, actionName);
+			var linkUrl = null;
 			if (typeof actionName == "boolean") {
 				historyChange = arguments[1];
-				linkUrl = arguments[2] || linkUrl;
+				linkUrl = arguments[2] || null;
 				actionName = arguments[3];
 				startingIndex += 2;
 			}
@@ -7029,7 +6988,15 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			var elementId = this.getElementId();
 			this.addEnhancementAction(elementId, actionName, this, params, historyChange);
-			return Jsonary.render.actionHtml(elementId, linkUrl, innerHtml);
+			var argsObject = {
+				context: this,
+				linkUrl: linkUrl,
+				actionName: actionName,
+				params: params,
+				historyChange: historyChange
+			};
+			argsObject.linkUrl = linkUrl || Jsonary.render.actionUrl(argsObject);
+			return Jsonary.render.actionHtml(elementId, innerHtml, argsObject);
 		},
 		inputNameForAction: function (actionName) {
 			var historyChange = false;
@@ -7043,7 +7010,11 @@ publicApi.UriTemplate = UriTemplate;
 			for (var i = startIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
-			var name = this.getElementId();
+			var argsObject = {
+				context: this,
+				actionName: actionName,
+			};
+			var name = Jsonary.render.actionInputName(argsObject);
 			this.enhancementInputs[name] = {
 				inputName: name,
 				actionName: actionName,
@@ -7096,6 +7067,17 @@ publicApi.UriTemplate = UriTemplate;
 				element = element.nextSibling;
 			}
 		},
+		action: function (actionName) {
+			var args = [this];
+			for (var i = 0; i < arguments.length; i++) {
+				args.push(arguments[i]);
+			}
+			return this.renderer.action.apply(this.renderer, args);
+		},
+		actionArgs: function (actionName, args) {
+			args = [this, actionName].concat(args || []);
+			return this.renderer.action.apply(this.renderer, args);
+		},
 		enhanceElementSingle: function (element) {
 			var elementId = element.id;
 			var context = this.enhancementContexts[elementId];
@@ -7113,8 +7095,8 @@ publicApi.UriTemplate = UriTemplate;
 				element.onclick = function () {
 					var redrawElementId = action.context.elementId;
 					var actionContext = action.context;
-					var args = [actionContext, action.actionName].concat(action.params);
-					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
+					var args = [action.actionName].concat(action.params);
+					if (actionContext.action.apply(actionContext, args)) {
 						// Action returned positive - we should force a re-render
 						actionContext.rerender();
 					}
@@ -7141,8 +7123,8 @@ publicApi.UriTemplate = UriTemplate;
 					}
 					var redrawElementId = inputAction.context.elementId;
 					var inputContext = inputAction.context;
-					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
-					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
+					var args = [inputAction.actionName, value].concat(inputAction.params);
+					if (inputContext.action.apply(inputContext, args)) {
 						inputContext.rerender();
 					}
 					notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
@@ -7151,95 +7133,11 @@ publicApi.UriTemplate = UriTemplate;
 			element = null;
 		}
 	};
+	// TODO: this is for compatability - remove it
+	RenderContext.prototype.saveState = RenderContext.prototype.saveUiState;
+	RenderContext.prototype.loadState = RenderContext.prototype.loadUiState;
+	
 	var pageContext = new RenderContext();
-	render.loadDocumentsFromState = function (saved, callback) {
-		var documents = {};
-		var counter = 0;
-		var error = null;
-		for (var key in saved.documents) {
-			counter++;
-			documents[key] = Jsonary.inflate(saved.documents[key], function (err, document) {
-				error = error || err;
-				counter--;
-				if (counter == 0 && callback) {
-					callback(error, documents);
-				}
-			});
-		}
-		saved.parsedDocuments = function () {
-			return documents;
-		};
-		return documents;
-	};
-	render.loadCompleteState = function (saved) {
-		var contexts = {};
-		if (!saved.parsedDocuments) {
-			render.loadDocumentsFromState(saved);
-		}
-		var documents = saved.parsedDocuments();
-		
-		function contextData(id) {
-			var state = saved.contexts[id];
-			if (state.data) {
-				var document = documents[state.data.document];
-				return document.root.subPath(state.data.path);
-			}
-			return null;
-		}
-		
-		function loadContext(context, id) {
-			var state = saved.contexts[id];
-			contexts[id] = context;
-			
-			var renderer = rendererLookup[state.rendererId];
-			context.renderer = renderer;
-			context.loadState(context.uiStartingState);
-			if (state.sub) {
-				for (var key in state.sub) {
-					var savedId = state.sub[key];
-					if (contexts[savedId] || !saved.contexts[savedId]) {
-						continue;
-					}
-					var data = contextData(savedId);
-					var subContext = context.getSubContext("", data, key);
-					loadContext(subContext, savedId);
-				}
-			}
-		}
-		var rootContextId = saved.rootContext;
-		var rootData = contextData(rootContextId);
-		var rootContext = pageContext.getSubContext('', rootData, null, saved.uiState);
-		loadContext(rootContext, rootContextId);
-
-		var actions = {};		
-		for (var key in saved.actions) {
-			(function (key, action) {
-				var action = saved.actions[key];
-				var actionContext = contexts[action.context];
-				actions[key] = function () {
-					var args = [actionContext, action.name].concat(action.params || []);
-					return actionContext.renderer.action.apply(actionContext.renderer, args);
-				};
-			})(key, saved.actions[key]);
-		}
-		var inputs = {};
-		for (var key in saved.inputs) {
-			(function (key, input) {
-				var input = saved.inputs[key];
-				var inputContext = contexts[input.context];
-				inputs[key] = function (value) {
-					var args = [inputContext, input.name, value].concat(input.params || []);
-					return inputContext.renderer.action.apply(inputContext.renderer, args);
-				};
-			})(key, saved.inputs[key]);
-		}
-
-		return {
-			context: rootContext,
-			actions: actions,
-			inputs: inputs
-		};
-	};
 	
 	function cleanup() {
 		// Clean-up sweep of pageContext's element lookup
@@ -7337,11 +7235,15 @@ publicApi.UriTemplate = UriTemplate;
 		};
 	}
 	render.Components = componentNames;
-	render.actionUrl = function (context, actionName) {
+	render.actionInputName = function (args) {
+		var context = args.context;
+		return context.getElementId();
+	};
+	render.actionUrl = function (args) {
 		return "javascript:void(0)";
 	};
-	render.actionHtml = function (elementId, linkUrl, innerHtml) {
-		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
+	render.actionHtml = function (elementId, innerHtml, args) {
+		return '<a href="' + Jsonary.escapeHtml(args.linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
 	};
 	render.rendered = function (data) {
 		var uniqueId = data.uniqueId;
@@ -7425,11 +7327,11 @@ publicApi.UriTemplate = UriTemplate;
 		}
 		// TODO: remove this.component
 		this.component = this.filterObj.component = sourceComponent;
-		if (sourceObj.saveState) {
-			this.saveState = sourceObj.saveState;
+		if (sourceObj.saveState || sourceObj.saveUiState) {
+			this.saveUiState = sourceObj.saveState || sourceObj.saveUiState;
 		}
-		if (sourceObj.loadState) {
-			this.loadState = sourceObj.loadState;
+		if (sourceObj.loadState || sourceObj.loadUiState) {
+			this.loadUiState = sourceObj.loadState || sourceObj.loadUiState;
 		}
 	}
 	Renderer.prototype = {
@@ -7570,7 +7472,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			return redraw;
 		},
-		saveState: function (uiState, subStates, data) {
+		saveUiState: function (uiState, subStates, data) {
 			var result = {};
 			for (key in uiState) {
 				result[key] = uiState[key];
@@ -7598,7 +7500,7 @@ publicApi.UriTemplate = UriTemplate;
 			data.saveStateId = data.saveStateId || randomId();
 			return render.saveData(data, data.saveStateId) || data.saveStateId;
 		},
-		loadState: function (savedState) {
+		loadUiState: function (savedState) {
 			var uiState = {};
 			var subStates = {};
 			for (var key in savedState) {

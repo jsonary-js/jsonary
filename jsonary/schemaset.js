@@ -221,7 +221,7 @@ SchemaList.prototype = {
 			}
 			return newList;
 		};
-		return result;
+		return result.slice(0);
 	},
 	knownProperties: function (ignoreList) {
 		if (ignoreList) {
@@ -230,11 +230,11 @@ SchemaList.prototype = {
 		}
 		var result;
 		if (this.allowedAdditionalProperties()) {
-			result = this.definedProperties().slice(0);
-			var requiredProperties = this.requiredProperties();
-			for (var i = 0; i < requiredProperties.length; i++) {
-				if (result.indexOf(requiredProperties[i]) == -1) {
-					result.push(requiredProperties[i]);
+			result = this.requiredProperties();
+			var definedProperties = this.definedProperties();
+			for (var i = 0; i < definedProperties.length; i++) {
+				if (result.indexOf(definedProperties[i]) == -1) {
+					result.push(definedProperties[i]);
 				}
 			}
 		} else {

@@ -29,6 +29,7 @@ var masterBundle = bundle.js([
 	.js('../renderers/plain.jsonary.js')
 	.css('../renderers/plain.jsonary.css');
 
+console.log("Writing jsonary-core");
 masterBundle.compileJs('../node-package/core/jsonary-core.js');
 masterBundle.compileJs('../node-package/core/jsonary-core.min.js', true);
 masterBundle.compileCss('../node-package/core/jsonary-core.css');
@@ -47,7 +48,7 @@ masterBundle.js('../plugins/jsonary.location.js')
 	.js('../renderers/contributed/full-instances.js')
 	.js('../renderers/contributed/adaptive-table.js');
 
-masterBundle.compileJs('../jsonary-super-bundle.js', false, true);
-masterBundle.compileJs('../jsonary-super-bundle.min.js', true, true);
+console.log("Writing jsonary-super-bundle");
 masterBundle.compileJs('../node-package/super-bundle/jsonary-super-bundle.js', false, true);
 masterBundle.compileJs('../node-package/super-bundle/jsonary-super-bundle.min.js', true, true);
+console.log("Jsonary bundles complete");
