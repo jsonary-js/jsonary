@@ -2,7 +2,7 @@ var express = require('express');
 var url = require('url');
 var http = require('http');
 var https = require('https');
-var jsonaryBundle = require('./jsonary-bundle');
+var jsonaryBundle = require('../node-package/jsonary-bundle');
 
 var app = express();
 app.use(express.bodyParser());
@@ -11,11 +11,21 @@ var jsonaryJsBundle;
 function createBundles() {
 	var bundle = jsonaryBundle.fresh();
 	bundle.add('renderers/site');
+	// extra plugins and renderers
+	bundle.add('../plugins/jsonary.location');
+	bundle.add('../plugins/jsonary.undo');
+	bundle.add('../plugins/jsonary.jstl');
+	bundle.add('../plugins/jsonary.render.table');
+	bundle.add('../plugins/jsonary.render.generate');
+	bundle.add('../renderers/string-formats');
+	bundle.add('../renderers/contributed/full-preview');
+	bundle.add('../renderers/contributed/full-instances');
+	bundle.add('../renderers/contributed/adaptive-table');
 	bundle.add('../renderers/contributed/markdown');
 	
 	bundle.writeCss('bundle.css');
 	//bundle.writeCss('bundle.min.css', true);
-	masterBundle.writeJs('bundle.js');
+	bundle.writeJs('bundle.js');
 	//masterBundle.writeJs('bundle.min.js', true);
 	return bundle;
 }
@@ -23,6 +33,7 @@ var jsonaryJsBundle = createBundles();
 
 var createJsonary = function () {
 	var Jsonary = jsonaryJsBundle.instance();
+	Jsonary.baseUri = 'http://localhost:8080/';
 	var buttons = [];
 	Jsonary.render.clearButtons = function () {
 		buttons = [];

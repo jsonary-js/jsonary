@@ -2,6 +2,7 @@ var fs = require('fs');
 var http = require('http');
 var https = require('https');
 var path = require('path');
+var urlModule = require('url');
 
 var bundleModule = require('./create-bundle.js');
 var cookieClient = require('./cookie-client');
@@ -100,19 +101,9 @@ function modifyJsonaryForServer(Jsonary) {
 	// Make an actual HTTP request, defaulting to the current server if just path is given
 	Jsonary.ajaxFunction = function (params, callback) {
 		requestCount++;
-		var uri = new Jsonary.Uri(params.url);
-		var isHttps = (uri.scheme == 'https');
+		var options = urlModule.parse(params.url);
+		var isHttps = (options.protocol == 'https');
 		var httpModule = isHttps ? https : http;
-		var options = {};
-		if (uri.domain) {
-			options.domain = uri.domain;
-			options.host = options.domain;
-			options.path = params.url.split(options.host).slice(1).join(options.host);
-		} else {
-			options.domain = 'localhost';
-			options.port = SERVER_PORT;
-			options.path = params.url;
-		}
 		options.method = params.method;
 		var cookieString = Jsonary.server.cookies.cookieStringForRequest(options.domain, options.path, isHttps);
 		options.headers = {

@@ -174,3 +174,5 @@ node_modules
 bower_components
 
 demos/json/data.json
+
+node-package/public-suffix-list.txt
