@@ -193,3 +193,25 @@ tests.add("casting string -> integer", function () {
 	this.assert(10 === createdData, "data matches");
 	return true;
 });
+
+tests.add("use default boolean value (true)", function () {
+	var schema1 = Jsonary.createSchema({
+		type: "boolean",
+		'default': true
+	});
+	var createdData = schema1.createValue();
+	
+	this.assert(createdData === true, "data matches");
+	return true;
+});
+
+tests.add("use default boolean value (false)", function () {
+	var schema1 = Jsonary.createSchema({
+		type: "boolean",
+		'default': false
+	});
+	var createdData = schema1.createValue();
+	
+	this.assert(createdData === false, "data matches");
+	return true;
+});

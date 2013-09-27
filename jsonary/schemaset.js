@@ -785,7 +785,8 @@ SchemaList.prototype = {
 						return chosenCandidate;
 					}
 				} else if (basicType == "boolean") {
-					if (gotCandidate(true)) {
+					var candidate = this.createValueBoolean(origValue);
+					if (gotCandidate(candidate)) {
 						return true;
 					}
 				} else if (basicType == "integer" || basicType == "number") {
@@ -824,6 +825,12 @@ SchemaList.prototype = {
 			}
 		}
 		return gotCandidate(chosenCandidate);
+	},
+	createValueBoolean: function (origValue) {
+		if (origValue === undefined) {
+			return true;
+		}
+		return !!origValue;
 	},
 	createValueNumber: function (origValue) {
 		var exclusiveMinimum = this.exclusiveMinimum();

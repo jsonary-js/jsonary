@@ -1,4 +1,4 @@
-/* Bundled on Wed Sep 25 2013 23:19:24 GMT+0100 (BST)*/
+/* Bundled on Fri Sep 27 2013 13:28:21 GMT+0100 (GMT Daylight Time)*/
 (function() {
 
 
@@ -5636,7 +5636,8 @@
 							return chosenCandidate;
 						}
 					} else if (basicType == "boolean") {
-						if (gotCandidate(true)) {
+						var candidate = this.createValueBoolean(origValue);
+						if (gotCandidate(candidate)) {
 							return true;
 						}
 					} else if (basicType == "integer" || basicType == "number") {
@@ -5675,6 +5676,12 @@
 				}
 			}
 			return gotCandidate(chosenCandidate);
+		},
+		createValueBoolean: function (origValue) {
+			if (origValue === undefined) {
+				return true;
+			}
+			return !!origValue;
 		},
 		createValueNumber: function (origValue) {
 			var exclusiveMinimum = this.exclusiveMinimum();
