@@ -404,6 +404,16 @@ SchemaList.prototype = {
 		});
 		return maxLength;
 	},
+	patterns: function () {
+		var result = [];
+		for (var i = 0; i < this.length; i++) {
+			var regex = this[i].pattern();
+			if (regex) {
+				result.push(regex);
+			}
+		}
+		return result;
+	},
 	minItems: function () {
 		var minItems = 0;
 		for (var i = 0; i < this.length; i++) {
@@ -634,7 +644,96 @@ SchemaList.prototype = {
 		}
 		return totalCombos;
 	},
-	createValue: function(callback, ignoreChoices) {
+	createValue: function(origValue, callback, ignoreChoices, ignoreDefaults, banCoercion) {
+		var thisSchemaSet = this;
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		
+		if (typeof banCoercion === 'undefined') {
+			if (callback) {
+				this.createValue(origValue, function (value) {
+					if (typeof value === 'undefined') {
+						thisSchemaSet.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
+					} else {
+						callback(value);
+					}
+				}, ignoreChoices, ignoreDefaults, true)
+				return;
+			}
+			var value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, true);
+			if (typeof value === 'undefined') {
+				value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
+			}
+			return value;
+		}
+		
+		if (!ignoreDefaults) {
+			var nextOrigValue = function () {
+				nextOrigValue = tryDefaults;
+				return origValue;
+			};
+			var defaultPos = 0;
+			var tryDefaults = function () {
+				while (defaultPos < thisSchemaSet.length) {
+					var schema = thisSchemaSet[defaultPos++];
+					if (schema.hasDefault()) {
+						return schema.defaultValue();
+					}
+				}
+				nextOrigValue = tryCustomValueCreation;
+			};
+			var customValuePos = 0;
+			var tryCustomValueCreation = function () {
+				while (customValuePos < customValueCreationFunctions.length) {
+					var func = customValueCreationFunctions[customValuePos++];
+					return func(thisSchemaSet);
+				}
+				nextOrigValue = null;
+			};
+			if (callback) {
+				var handleValue = function (value) {
+					if (typeof value !== 'undefined') {
+						return callback(value);
+					}
+					while (nextOrigValue) {
+						var initialValue = nextOrigValue();
+						if (typeof initialValue !== 'undefined') {
+							return thisSchemaSet.createValue(initialValue, handleValue, ignoreChoices, true, banCoercion);
+						}
+					}
+					if (!banCoercion) {
+						// Ignore supplied value, and try creating from scratch
+						thisSchemaSet.createValue(callback, undefined, ignoreChoices, true, banCoercion);
+					} else {
+						callback(undefined);
+					}
+				};
+				return handleValue(undefined);
+			} else {
+				while (nextOrigValue) {
+					var initialValue = nextOrigValue();
+					if (typeof initialValue !== 'undefined') {
+						var createdValue = this.createValue(initialValue, undefined, ignoreChoices, true, banCoercion);
+						if (typeof createdValue !== 'undefined') {
+							return createdValue;
+						}
+					}
+				}
+				if (!banCoercion) {
+					// Ignore supplied value, and try creating from scratch
+					return this.createValue(undefined, undefined, ignoreChoices, true, banCoercion);
+				} else {
+					return undefined;
+				}
+			}
+		}
+
 		if (!ignoreChoices) {
 			if (callback != null) {
 				this.allCombinations(function (allCombinations) {
@@ -642,13 +741,13 @@ SchemaList.prototype = {
 						if (index >= allCombinations.length) {
 							return callback(undefined);
 						}
-						allCombinations[index].createValue(function (value) {
-							if (value !== undefined) {
+						allCombinations[index].createValue(origValue, function (value) {
+							if (typeof value !== 'undefined') {
 								callback(value);
 							} else {
 								nextOption(index + 1);
 							}
-						}, true);
+						}, true, ignoreDefaults, banCoercion);
 					}
 					nextOption(0);
 				});
@@ -657,7 +756,7 @@ SchemaList.prototype = {
 			// Synchronous version
 			var allCombinations = this.allCombinations();
 			for (var i = 0; i < allCombinations.length; i++) {
-				var value = allCombinations[i].createValue(null, true);
+				var value = allCombinations[i].createValue(origValue, undefined, true, ignoreDefaults, banCoercion);
 				if (value !== undefined) {
 					return value;
 				}
@@ -687,63 +786,74 @@ SchemaList.prototype = {
 			}
 		}
 
-		for (var i = 0; i < this.length; i++) {
-			if (this[i].hasDefault()) {
-				pending++;
-				if (gotCandidate(this[i].defaultValue())) {
-					return chosenCandidate;
-				}
-			}
-		}
-		
 		var enumValues = this.enumValues();
 		if (enumValues != undefined) {
-			pending += enumValues.length;
 			for (var i = 0; i < enumValues.length; i++) {
+				if (typeof origValue !== 'undefined' && !Utils.recursiveCompare(origValue, enumValues[i])) {
+					continue;
+				}
+				pending++;
 				if (gotCandidate(enumValues[i])) {
 					return chosenCandidate;
 				}
 			}
 		} else {
-			pending += basicTypes.length;
-			for (var i = 0; i < basicTypes.length; i++) {
+			if (typeof origValue !== 'undefined') {
+				var basicType = Utils.guessBasicType(origValue);
+				if (basicType == 'integer') {
+					// pull "number" to front first, so it goes "integer", "number", ...
+					var numberIndex = basicTypes.indexOf('number');
+					if (numberIndex !== -1) {
+						basicTypes.splice(numberIndex, 1);
+						basicTypes.unshift('number');
+					}
+				}
+				var index = basicTypes.indexOf(basicType);
+				if (index !== -1) {
+					basicTypes.splice(index, 1);
+					basicTypes.unshift(basicType);
+				}
+			}
+			for (var i = 0; (typeof chosenCandidate === 'undefined') && i < basicTypes.length; i++) {
+				pending++;
 				var basicType = basicTypes[i];
 				if (basicType == "null") {
 					if (gotCandidate(null)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "boolean") {
-					if (gotCandidate(true)) {
+					var candidate = this.createValueBoolean(origValue, banCoercion);
+					if (gotCandidate(candidate)) {
 						return true;
 					}
 				} else if (basicType == "integer" || basicType == "number") {
-					var candidate = this.createValueNumber();
+					var candidate = this.createValueNumber(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "string") {
-					var candidate = this.createValueString();
+					var candidate = this.createValueString(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "array") {
 					if (callback) {
-						this.createValueArray(function (candidate) {
+						this.createValueArray(origValue, function (candidate) {
 							gotCandidate(candidate);
-						});
+						}, banCoercion);
 					} else {
-						var candidate = this.createValueArray();
+						var candidate = this.createValueArray(origValue, undefined, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
 					}
 				} else if (basicType == "object") {
 					if (callback) {
-						var candidate = this.createValueObject(function (candidate) {
+						var candidate = this.createValueObject(origValue, function (candidate) {
 							gotCandidate(candidate);
-						});
+						}, banCoercion);
 					} else {
-						var candidate = this.createValueObject();
+						var candidate = this.createValueObject(origValue, undefined, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
@@ -753,7 +863,38 @@ SchemaList.prototype = {
 		}
 		return gotCandidate(chosenCandidate);
 	},
-	createValueNumber: function () {
+	createValueBoolean: function (origValue, banCoercion) {
+		if (origValue === undefined) {
+			return true;
+		}
+		if (banCoercion && typeof origValue !== 'boolean') {
+			return undefined;
+		}
+		return !!origValue;
+	},
+	createValueNumber: function (origValue, banCoercion) {
+		if (!banCoercion && typeof origValue === 'string') {
+			var asNumber = parseFloat(origValue);
+			if (!isNaN(asNumber)) {
+				origValue = asNumber;
+			} else {
+				return undefined;
+			}
+		}
+		if (typeof origValue === 'number') {
+			if (interval != undefined) {
+				if (origValue % interval != 0) {
+					origValue = Math.round(origValue/interval)*interval;
+				}
+			}
+			if (minimum == undefined || origValue > minimum || (origValue == minimum && !exclusiveMinimum)) {
+				if (maximum == undefined || origValue < maximum || (origValue == maximum && exclusiveMaximum)) {
+					return origValue;
+				}
+			}
+		} else if (typeof origValue !== 'undefined') {
+			return undefined;
+		}
 		var exclusiveMinimum = this.exclusiveMinimum();
 		var minimum = this.minimum();
 		var maximum = this.maximum();
@@ -804,80 +945,249 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueString: function () {
-		var candidate = "";
-		return candidate;
+	createValueString: function (origValue, banCoercion) {
+		var candidates = [""];
+		if (typeof origValue !== 'undefined') {
+			if (typeof origValue === 'string') {
+				candidates.unshift(origValue);
+			} else if (banCoercion) {
+				return undefined;
+			} else if (typeof origValue === 'number') {
+				candidates.unshift("" + origValue);
+			} else if (typeof origValue === 'boolean') {
+				candidates.unshift(origValue ? 'true' : 'false');
+			} else {
+				return undefined;
+			}
+		}
+		var minLength = this.minLength();
+		var maxLength = this.maxLength()
+		var patterns = this.patterns();
+		if (maxLength != null && minLength > maxLength) {
+			return undefined;
+		}
+		for (var i = 0; i < candidates.length; i++) {
+			var candidate = candidates[i];
+			if (candidate.length < minLength) {
+				var extraChar = '?';
+				candidate += (new Array(minLength - candidate.length + 1)).join(extraChar);
+			} else if (candidate.length > maxLength) {
+				candidate = candidate.substring(0, maxLength);
+			}
+			for (var j = 0; j < patterns.length; j++) {
+				if (!patterns[j].test(candidate)) {
+					continue;
+				}
+			}
+			return candidate;
+		}
 	},
-	createValueArray: function (callback) {
+	createValueArray: function (origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (typeof origValue !== 'undefined' && !Array.isArray(origValue)) {
+			return undefined;
+		}
 		var thisSchemaSet = this;
 		var candidate = [];
 		var minItems = this.minItems();
-		if (!minItems) {
-			if (callback) {
-				callback(candidate);
-			}
-			return candidate;
+		var maxItems = this.maxItems();
+		if (maxItems != null && minItems > maxItems) {
+			return;
 		}
-		var pending = minItems;
-		for (var i = 0; i < minItems; i++) {
+		var pending = 1;
+		for (var i = 0; candidate && i < minItems; i++) {
 			(function (i) {
+				pending++;
+				var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 				if (callback) {
-					thisSchemaSet.createValueForIndex(i, function (value) {
-						candidate[i] = value;
+					thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
+						if (typeof value === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[i] = value;
+						}
 						pending--;
 						if (pending == 0) {
 							callback(candidate);
 						}
-					});
+					}, banCoercion || undefined);
 				} else {
-					candidate[i] = thisSchemaSet.createValueForIndex(i);
+					var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
+					if (typeof itemValue === 'undefined') {
+						candidate = undefined;
+					} else if (candidate) {
+						candidate[i] = itemValue;
+					}
 				}
 			})(i);
 		}
+		if (candidate && Array.isArray(origValue)) {
+			if (maxItems != null && origValue.length > maxItems) {
+				origValue = origValue.slice(0, maxItems);
+			} else {
+				maxItems = origValue.length;
+			}
+			for (var i = minItems; candidate && i <= origValue.length && i < maxItems; i++) {
+				(function (i) {
+					pending++;
+					var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
+					if (callback) {
+						thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
+							if (candidate && typeof value !== 'undefined' && i < maxItems) {
+								candidate[i] = value;
+							} else if (banCoercion) {
+								candidate = undefined;
+							} else if (i < maxItems) {
+								maxItems = i;
+							}
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						}, banCoercion || undefined);
+					} else {
+						var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
+						if (candidate && typeof itemValue !== 'undefined') {
+							candidate[i] = itemValue;
+						} else if (banCoercion) {
+							candidate = undefined;
+						} else if (i < maxItems) {
+							maxItems = i;
+						}
+					}
+				})(i);
+			}
+		}
+		pending--;
+		if (callback && pending == 0) {
+			callback(candidate);
+		}
 		return candidate;
 	},
-	createValueObject: function (callback) {
+	createValueObject: function (origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (typeof origValue !== 'undefined' && (typeof origValue !== 'object' || Array.isArray(origValue))) {
+			return undefined;
+		}
 		var thisSchemaSet = this;
 		var candidate = {};
+		var pending = 1;
 		var requiredProperties = this.requiredProperties();
-		if (requiredProperties.length == 0) {
-			if (callback) {
-				callback(candidate);
-			}
-			return candidate;
-		}
-		var pending = requiredProperties.length;
-		for (var i = 0; i < requiredProperties.length; i++) {
+		for (var i = 0; candidate && i < requiredProperties.length; i++) {
 			(function (key) {
+				pending++;
+				var origPropValue = (typeof origValue == 'object' && !Array.isArray(origValue)) ? origValue[key] : undefined;
 				if (callback) {
-					thisSchemaSet.createValueForProperty(key, function (value) {
-						candidate[key] = value;
+					thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
+						if (typeof value === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[key] = value;
+						}
 						pending--;
 						if (pending == 0) {
 							callback(candidate);
 						}
-					});
+					}, banCoercion || undefined);
 				} else {
-					candidate[key] = thisSchemaSet.createValueForProperty(key);
+					var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
+					if (typeof propValue === 'undefined') {
+						candidate = undefined;
+					} else if (candidate) {
+						candidate[key] = propValue;
+					}
 				}
 			})(requiredProperties[i]);
 		}
+		if (candidate && typeof origValue === 'object' && !Array.isArray(origValue)) {
+			var definedProperties = this.definedProperties();
+			for (var i = 0; candidate && i < definedProperties.length; i++) {
+				var key = definedProperties[i];
+				if (!candidate || typeof candidate[key] !== 'undefined') {
+					continue;
+				}
+				(function (key) {
+					pending++;
+					var origPropValue = origValue[key];
+					if (callback) {
+						thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
+							if (candidate && typeof value !== 'undefined') {
+								candidate[key] = value;
+							} else if (banCoercion) {
+								candidate = undefined;
+							}
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						}, banCoercion || undefined);
+					} else {
+						var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
+						if (candidate && typeof propValue !== 'undefined') {
+							candidate[key] = propValue;
+						} else if (banCoercion) {
+							candidate = undefined;
+						}
+					}
+				})(key);
+			}
+		}
+		pending--;
+		if (callback && pending == 0) {
+			callback(candidate);
+		}
 		return candidate;
 	},
-	createValueForIndex: function(index, callback) {
+	createValueForIndex: function(index, origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
 		var indexSchemas = this.indexSchemas(index);
-		return indexSchemas.createValue(callback);
+		return indexSchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
 	},
-	createData: function (callback) {
+	createValueForProperty: function(key, origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		var propertySchemas = this.propertySchemas(key);
+		return propertySchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
+	},
+	createData: function (origValue, callback) {
 		var thisSchemaSet = this;
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue == origValue.value();
+		}
 		if (callback) {
-			this.createValue(function (value) {
-				var data = publicApi.create(value).addSchema(thisSchemaSet);
+			this.createValue(origValue, function (value) {
+				var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
 				callback(data);
 			});
 			return this;
 		}
-		return publicApi.create(this.createValue()).addSchema(this);
+		return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
 	},
 	indexSchemas: function(index) {
 		var result = new SchemaList();
@@ -892,10 +1202,6 @@ SchemaList.prototype = {
 			result = Math.max(result, this[i].tupleTyping());
 		}
 		return result;
-	},
-	createValueForProperty: function(key, callback) {
-		var propertySchemas = this.propertySchemas(key);
-		return propertySchemas.createValue(callback);
 	},
 	propertySchemas: function(key) {
 		var result = new SchemaList();
@@ -989,6 +1295,9 @@ SchemaList.prototype = {
 		}
 		return result;
 	},
+	containsFormat: function (formatString) {
+		return this.formats().indexOf(formatString) !== -1;
+	},
 	xorSchemas: function () {
 		var result = [];
 		for (var i = 0; i < this.length; i++) {
@@ -1014,6 +1323,10 @@ publicApi.extendSchemaList = function (obj) {
 		}
 	}
 };
+var customValueCreationFunctions = [];
+publicApi.extendCreateValue = function (creationFunction) {
+	customValueCreationFunctions.push(creationFunction);
+}
 
 publicApi.createSchemaList = function (schemas) {
 	if (!Array.isArray(schemas)) {

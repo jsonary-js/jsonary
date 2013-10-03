@@ -83,6 +83,9 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 
 		var itemSchemas = data.schemas().indexSchemas(0).getFull();
 		var recursionLimit = (itemSchemas.knownProperties().length >= 8) ? 0 : 1;
+		if (data.schemas().displayAsTable()) {
+			recursionLimit = 2;
+		}
 		addColumnsFromSchemas(itemSchemas, '', recursionLimit);
 		return renderer;
 	},

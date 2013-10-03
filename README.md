@@ -88,8 +88,14 @@ data.renderTo(document.getElementById('render-container'));
 
 ## Main site
 
-More information can be found at: [jsonary.com](http://jsonary.com/).
+More information can be found at: [jsonary.com](http://jsonary.com/), although this is now slightly out-of-date.
 
 There is a [quick feature tour](http://jsonary.com/feature-tour/), walkthroughs for [creating a generic browser](http://jsonary.com/walkthrough-basic/) or [creating a Facebook client](http://jsonary.com/walkthrough-facebook/) (incomplete).
 
 There is also a demo of how the default editable interface deals with various JSON Schema validation keywords [here](http://jsonary.com/documentation/json-schema/).
+
+## License
+
+Jsonary is released under an [MIT License](http://jsonary.com/LICENSE.txt).
+
+The files in the directory `renderers/separate-license` may have separate licenses.  To keep the licensing for Jsonary clean, they are not included in any of the bundles.

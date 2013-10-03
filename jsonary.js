@@ -1,5 +1,5 @@
 /**
-Copyright (C) 2012 Geraint Luff
+Copyright (C) 2012-2013 Geraint Luff
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -3099,7 +3099,14 @@ function Data(document, secrets, parent, parentKey) {
 	};
 	
 	secrets.schemas = new SchemaSet(this);
-	this.schemas = function () {
+	this.schemas = function (forceForUndefined) {
+		if (forceForUndefined && basicType == undefined && parent) {
+			if (parent.basicType() === 'array' && isIndex(parentKey)) {
+				return parent.schemas(true).indexSchemas(parentKey);
+			} else if (parent.basicType() === 'object') {
+				return parent.schemas(true).propertySchemas(parentKey);
+			}
+		}
 		document.access();
 		return secrets.schemas.getSchemas();
 	};
@@ -3851,6 +3858,13 @@ Schema.prototype = {
 	maxLength: function () {
 		return this.data.propertyValue("maxLength");
 	},
+	pattern: function () {
+		var patternString = this.data.propertyValue("pattern");
+		if (patternString !== undefined) {
+			return new RegExp(patternString);
+		}
+		return null;
+	},
 	numberInterval: function() {
 		return this.data.propertyValue("divisibleBy");
 	},
@@ -4187,17 +4201,21 @@ ActiveLink.prototype = {
 	toString: function() {
 		return this.href;
 	},
-	createSubmissionData: function(callback) {
+	createSubmissionData: function(origData, callback) {
+		if (typeof origData === 'function') {
+			callback = origData;
+			origData = undefined;
+		}
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
 		if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 			Jsonary.getData(this.href, function (data) {
-				callback(data.editableCopy());
+				callback(origData || data.editableCopy());
 			})
 			return this;
 		}
 		if (callback != undefined) {
-			submissionSchemas.createValue(function (value) {
+			submissionSchemas.createValue(origData, function (value) {
 				var data = publicApi.create(value, hrefBase);
 				for (var i = 0; i < submissionSchemas.length; i++) {
 					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -4205,7 +4223,7 @@ ActiveLink.prototype = {
 				callback(data);
 			});
 		} else {
-			var value = submissionSchemas.createValue();
+			var value = submissionSchemas.createValue(origData);
 			var data = publicApi.create(value, hrefBase);
 			for (var i = 0; i < submissionSchemas.length; i++) {
 				data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -5242,6 +5260,16 @@ SchemaList.prototype = {
 		});
 		return maxLength;
 	},
+	patterns: function () {
+		var result = [];
+		for (var i = 0; i < this.length; i++) {
+			var regex = this[i].pattern();
+			if (regex) {
+				result.push(regex);
+			}
+		}
+		return result;
+	},
 	minItems: function () {
 		var minItems = 0;
 		for (var i = 0; i < this.length; i++) {
@@ -5472,7 +5500,96 @@ SchemaList.prototype = {
 		}
 		return totalCombos;
 	},
-	createValue: function(callback, ignoreChoices) {
+	createValue: function(origValue, callback, ignoreChoices, ignoreDefaults, banCoercion) {
+		var thisSchemaSet = this;
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		
+		if (typeof banCoercion === 'undefined') {
+			if (callback) {
+				this.createValue(origValue, function (value) {
+					if (typeof value === 'undefined') {
+						thisSchemaSet.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
+					} else {
+						callback(value);
+					}
+				}, ignoreChoices, ignoreDefaults, true)
+				return;
+			}
+			var value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, true);
+			if (typeof value === 'undefined') {
+				value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
+			}
+			return value;
+		}
+		
+		if (!ignoreDefaults) {
+			var nextOrigValue = function () {
+				nextOrigValue = tryDefaults;
+				return origValue;
+			};
+			var defaultPos = 0;
+			var tryDefaults = function () {
+				while (defaultPos < thisSchemaSet.length) {
+					var schema = thisSchemaSet[defaultPos++];
+					if (schema.hasDefault()) {
+						return schema.defaultValue();
+					}
+				}
+				nextOrigValue = tryCustomValueCreation;
+			};
+			var customValuePos = 0;
+			var tryCustomValueCreation = function () {
+				while (customValuePos < customValueCreationFunctions.length) {
+					var func = customValueCreationFunctions[customValuePos++];
+					return func(thisSchemaSet);
+				}
+				nextOrigValue = null;
+			};
+			if (callback) {
+				var handleValue = function (value) {
+					if (typeof value !== 'undefined') {
+						return callback(value);
+					}
+					while (nextOrigValue) {
+						var initialValue = nextOrigValue();
+						if (typeof initialValue !== 'undefined') {
+							return thisSchemaSet.createValue(initialValue, handleValue, ignoreChoices, true, banCoercion);
+						}
+					}
+					if (!banCoercion) {
+						// Ignore supplied value, and try creating from scratch
+						thisSchemaSet.createValue(callback, undefined, ignoreChoices, true, banCoercion);
+					} else {
+						callback(undefined);
+					}
+				};
+				return handleValue(undefined);
+			} else {
+				while (nextOrigValue) {
+					var initialValue = nextOrigValue();
+					if (typeof initialValue !== 'undefined') {
+						var createdValue = this.createValue(initialValue, undefined, ignoreChoices, true, banCoercion);
+						if (typeof createdValue !== 'undefined') {
+							return createdValue;
+						}
+					}
+				}
+				if (!banCoercion) {
+					// Ignore supplied value, and try creating from scratch
+					return this.createValue(undefined, undefined, ignoreChoices, true, banCoercion);
+				} else {
+					return undefined;
+				}
+			}
+		}
+
 		if (!ignoreChoices) {
 			if (callback != null) {
 				this.allCombinations(function (allCombinations) {
@@ -5480,13 +5597,13 @@ SchemaList.prototype = {
 						if (index >= allCombinations.length) {
 							return callback(undefined);
 						}
-						allCombinations[index].createValue(function (value) {
-							if (value !== undefined) {
+						allCombinations[index].createValue(origValue, function (value) {
+							if (typeof value !== 'undefined') {
 								callback(value);
 							} else {
 								nextOption(index + 1);
 							}
-						}, true);
+						}, true, ignoreDefaults, banCoercion);
 					}
 					nextOption(0);
 				});
@@ -5495,7 +5612,7 @@ SchemaList.prototype = {
 			// Synchronous version
 			var allCombinations = this.allCombinations();
 			for (var i = 0; i < allCombinations.length; i++) {
-				var value = allCombinations[i].createValue(null, true);
+				var value = allCombinations[i].createValue(origValue, undefined, true, ignoreDefaults, banCoercion);
 				if (value !== undefined) {
 					return value;
 				}
@@ -5525,63 +5642,74 @@ SchemaList.prototype = {
 			}
 		}
 
-		for (var i = 0; i < this.length; i++) {
-			if (this[i].hasDefault()) {
-				pending++;
-				if (gotCandidate(this[i].defaultValue())) {
-					return chosenCandidate;
-				}
-			}
-		}
-		
 		var enumValues = this.enumValues();
 		if (enumValues != undefined) {
-			pending += enumValues.length;
 			for (var i = 0; i < enumValues.length; i++) {
+				if (typeof origValue !== 'undefined' && !Utils.recursiveCompare(origValue, enumValues[i])) {
+					continue;
+				}
+				pending++;
 				if (gotCandidate(enumValues[i])) {
 					return chosenCandidate;
 				}
 			}
 		} else {
-			pending += basicTypes.length;
-			for (var i = 0; i < basicTypes.length; i++) {
+			if (typeof origValue !== 'undefined') {
+				var basicType = Utils.guessBasicType(origValue);
+				if (basicType == 'integer') {
+					// pull "number" to front first, so it goes "integer", "number", ...
+					var numberIndex = basicTypes.indexOf('number');
+					if (numberIndex !== -1) {
+						basicTypes.splice(numberIndex, 1);
+						basicTypes.unshift('number');
+					}
+				}
+				var index = basicTypes.indexOf(basicType);
+				if (index !== -1) {
+					basicTypes.splice(index, 1);
+					basicTypes.unshift(basicType);
+				}
+			}
+			for (var i = 0; (typeof chosenCandidate === 'undefined') && i < basicTypes.length; i++) {
+				pending++;
 				var basicType = basicTypes[i];
 				if (basicType == "null") {
 					if (gotCandidate(null)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "boolean") {
-					if (gotCandidate(true)) {
+					var candidate = this.createValueBoolean(origValue, banCoercion);
+					if (gotCandidate(candidate)) {
 						return true;
 					}
 				} else if (basicType == "integer" || basicType == "number") {
-					var candidate = this.createValueNumber();
+					var candidate = this.createValueNumber(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "string") {
-					var candidate = this.createValueString();
+					var candidate = this.createValueString(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "array") {
 					if (callback) {
-						this.createValueArray(function (candidate) {
+						this.createValueArray(origValue, function (candidate) {
 							gotCandidate(candidate);
-						});
+						}, banCoercion);
 					} else {
-						var candidate = this.createValueArray();
+						var candidate = this.createValueArray(origValue, undefined, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
 					}
 				} else if (basicType == "object") {
 					if (callback) {
-						var candidate = this.createValueObject(function (candidate) {
+						var candidate = this.createValueObject(origValue, function (candidate) {
 							gotCandidate(candidate);
-						});
+						}, banCoercion);
 					} else {
-						var candidate = this.createValueObject();
+						var candidate = this.createValueObject(origValue, undefined, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
@@ -5591,7 +5719,38 @@ SchemaList.prototype = {
 		}
 		return gotCandidate(chosenCandidate);
 	},
-	createValueNumber: function () {
+	createValueBoolean: function (origValue, banCoercion) {
+		if (origValue === undefined) {
+			return true;
+		}
+		if (banCoercion && typeof origValue !== 'boolean') {
+			return undefined;
+		}
+		return !!origValue;
+	},
+	createValueNumber: function (origValue, banCoercion) {
+		if (!banCoercion && typeof origValue === 'string') {
+			var asNumber = parseFloat(origValue);
+			if (!isNaN(asNumber)) {
+				origValue = asNumber;
+			} else {
+				return undefined;
+			}
+		}
+		if (typeof origValue === 'number') {
+			if (interval != undefined) {
+				if (origValue % interval != 0) {
+					origValue = Math.round(origValue/interval)*interval;
+				}
+			}
+			if (minimum == undefined || origValue > minimum || (origValue == minimum && !exclusiveMinimum)) {
+				if (maximum == undefined || origValue < maximum || (origValue == maximum && exclusiveMaximum)) {
+					return origValue;
+				}
+			}
+		} else if (typeof origValue !== 'undefined') {
+			return undefined;
+		}
 		var exclusiveMinimum = this.exclusiveMinimum();
 		var minimum = this.minimum();
 		var maximum = this.maximum();
@@ -5642,80 +5801,249 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueString: function () {
-		var candidate = "";
-		return candidate;
+	createValueString: function (origValue, banCoercion) {
+		var candidates = [""];
+		if (typeof origValue !== 'undefined') {
+			if (typeof origValue === 'string') {
+				candidates.unshift(origValue);
+			} else if (banCoercion) {
+				return undefined;
+			} else if (typeof origValue === 'number') {
+				candidates.unshift("" + origValue);
+			} else if (typeof origValue === 'boolean') {
+				candidates.unshift(origValue ? 'true' : 'false');
+			} else {
+				return undefined;
+			}
+		}
+		var minLength = this.minLength();
+		var maxLength = this.maxLength()
+		var patterns = this.patterns();
+		if (maxLength != null && minLength > maxLength) {
+			return undefined;
+		}
+		for (var i = 0; i < candidates.length; i++) {
+			var candidate = candidates[i];
+			if (candidate.length < minLength) {
+				var extraChar = '?';
+				candidate += (new Array(minLength - candidate.length + 1)).join(extraChar);
+			} else if (candidate.length > maxLength) {
+				candidate = candidate.substring(0, maxLength);
+			}
+			for (var j = 0; j < patterns.length; j++) {
+				if (!patterns[j].test(candidate)) {
+					continue;
+				}
+			}
+			return candidate;
+		}
 	},
-	createValueArray: function (callback) {
+	createValueArray: function (origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (typeof origValue !== 'undefined' && !Array.isArray(origValue)) {
+			return undefined;
+		}
 		var thisSchemaSet = this;
 		var candidate = [];
 		var minItems = this.minItems();
-		if (!minItems) {
-			if (callback) {
-				callback(candidate);
-			}
-			return candidate;
+		var maxItems = this.maxItems();
+		if (maxItems != null && minItems > maxItems) {
+			return;
 		}
-		var pending = minItems;
-		for (var i = 0; i < minItems; i++) {
+		var pending = 1;
+		for (var i = 0; candidate && i < minItems; i++) {
 			(function (i) {
+				pending++;
+				var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 				if (callback) {
-					thisSchemaSet.createValueForIndex(i, function (value) {
-						candidate[i] = value;
+					thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
+						if (typeof value === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[i] = value;
+						}
 						pending--;
 						if (pending == 0) {
 							callback(candidate);
 						}
-					});
+					}, banCoercion || undefined);
 				} else {
-					candidate[i] = thisSchemaSet.createValueForIndex(i);
+					var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
+					if (typeof itemValue === 'undefined') {
+						candidate = undefined;
+					} else if (candidate) {
+						candidate[i] = itemValue;
+					}
 				}
 			})(i);
 		}
+		if (candidate && Array.isArray(origValue)) {
+			if (maxItems != null && origValue.length > maxItems) {
+				origValue = origValue.slice(0, maxItems);
+			} else {
+				maxItems = origValue.length;
+			}
+			for (var i = minItems; candidate && i <= origValue.length && i < maxItems; i++) {
+				(function (i) {
+					pending++;
+					var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
+					if (callback) {
+						thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
+							if (candidate && typeof value !== 'undefined' && i < maxItems) {
+								candidate[i] = value;
+							} else if (banCoercion) {
+								candidate = undefined;
+							} else if (i < maxItems) {
+								maxItems = i;
+							}
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						}, banCoercion || undefined);
+					} else {
+						var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
+						if (candidate && typeof itemValue !== 'undefined') {
+							candidate[i] = itemValue;
+						} else if (banCoercion) {
+							candidate = undefined;
+						} else if (i < maxItems) {
+							maxItems = i;
+						}
+					}
+				})(i);
+			}
+		}
+		pending--;
+		if (callback && pending == 0) {
+			callback(candidate);
+		}
 		return candidate;
 	},
-	createValueObject: function (callback) {
+	createValueObject: function (origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (typeof origValue !== 'undefined' && (typeof origValue !== 'object' || Array.isArray(origValue))) {
+			return undefined;
+		}
 		var thisSchemaSet = this;
 		var candidate = {};
+		var pending = 1;
 		var requiredProperties = this.requiredProperties();
-		if (requiredProperties.length == 0) {
-			if (callback) {
-				callback(candidate);
-			}
-			return candidate;
-		}
-		var pending = requiredProperties.length;
-		for (var i = 0; i < requiredProperties.length; i++) {
+		for (var i = 0; candidate && i < requiredProperties.length; i++) {
 			(function (key) {
+				pending++;
+				var origPropValue = (typeof origValue == 'object' && !Array.isArray(origValue)) ? origValue[key] : undefined;
 				if (callback) {
-					thisSchemaSet.createValueForProperty(key, function (value) {
-						candidate[key] = value;
+					thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
+						if (typeof value === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[key] = value;
+						}
 						pending--;
 						if (pending == 0) {
 							callback(candidate);
 						}
-					});
+					}, banCoercion || undefined);
 				} else {
-					candidate[key] = thisSchemaSet.createValueForProperty(key);
+					var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
+					if (typeof propValue === 'undefined') {
+						candidate = undefined;
+					} else if (candidate) {
+						candidate[key] = propValue;
+					}
 				}
 			})(requiredProperties[i]);
 		}
+		if (candidate && typeof origValue === 'object' && !Array.isArray(origValue)) {
+			var definedProperties = this.definedProperties();
+			for (var i = 0; candidate && i < definedProperties.length; i++) {
+				var key = definedProperties[i];
+				if (!candidate || typeof candidate[key] !== 'undefined') {
+					continue;
+				}
+				(function (key) {
+					pending++;
+					var origPropValue = origValue[key];
+					if (callback) {
+						thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
+							if (candidate && typeof value !== 'undefined') {
+								candidate[key] = value;
+							} else if (banCoercion) {
+								candidate = undefined;
+							}
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						}, banCoercion || undefined);
+					} else {
+						var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
+						if (candidate && typeof propValue !== 'undefined') {
+							candidate[key] = propValue;
+						} else if (banCoercion) {
+							candidate = undefined;
+						}
+					}
+				})(key);
+			}
+		}
+		pending--;
+		if (callback && pending == 0) {
+			callback(candidate);
+		}
 		return candidate;
 	},
-	createValueForIndex: function(index, callback) {
+	createValueForIndex: function(index, origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
 		var indexSchemas = this.indexSchemas(index);
-		return indexSchemas.createValue(callback);
+		return indexSchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
 	},
-	createData: function (callback) {
+	createValueForProperty: function(key, origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		var propertySchemas = this.propertySchemas(key);
+		return propertySchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
+	},
+	createData: function (origValue, callback) {
 		var thisSchemaSet = this;
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue == origValue.value();
+		}
 		if (callback) {
-			this.createValue(function (value) {
-				var data = publicApi.create(value).addSchema(thisSchemaSet);
+			this.createValue(origValue, function (value) {
+				var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
 				callback(data);
 			});
 			return this;
 		}
-		return publicApi.create(this.createValue()).addSchema(this);
+		return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
 	},
 	indexSchemas: function(index) {
 		var result = new SchemaList();
@@ -5730,10 +6058,6 @@ SchemaList.prototype = {
 			result = Math.max(result, this[i].tupleTyping());
 		}
 		return result;
-	},
-	createValueForProperty: function(key, callback) {
-		var propertySchemas = this.propertySchemas(key);
-		return propertySchemas.createValue(callback);
 	},
 	propertySchemas: function(key) {
 		var result = new SchemaList();
@@ -5827,6 +6151,9 @@ SchemaList.prototype = {
 		}
 		return result;
 	},
+	containsFormat: function (formatString) {
+		return this.formats().indexOf(formatString) !== -1;
+	},
 	xorSchemas: function () {
 		var result = [];
 		for (var i = 0; i < this.length; i++) {
@@ -5852,6 +6179,10 @@ publicApi.extendSchemaList = function (obj) {
 		}
 	}
 };
+var customValueCreationFunctions = [];
+publicApi.extendCreateValue = function (creationFunction) {
+	customValueCreationFunctions.push(creationFunction);
+}
 
 publicApi.createSchemaList = function (schemas) {
 	if (!Array.isArray(schemas)) {
@@ -6592,7 +6923,7 @@ publicApi.UriTemplate = UriTemplate;
 					var uniqueId = data.uniqueId;
 					var elementIds = elementIdLookup[uniqueId];
 					for (var i = 0; i < elementIds.length; i++) {
-						var element = document.getElementById(elementIds[i]);
+						var element = render.getElementById(elementIds[i]);
 						if (element == undefined) {
 							continue;
 						}
@@ -6703,6 +7034,96 @@ publicApi.UriTemplate = UriTemplate;
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
 		},
+<<<<<<< HEAD
+=======
+		saveCompleteState: function (skipEnhancements) {
+			var state = {};
+			state.rendererId = this.renderer ? this.renderer.uniqueId : null;
+			state.sub = {};
+
+			var result = {
+				actions: {},
+				inputs: {},
+				rootContext: this.uniqueId,
+				contexts: {},
+				documents: {}
+			};
+			result.contexts[this.uniqueId] = state;
+			for (var key in this.subContexts) {
+				var subContext = this.subContexts[key];
+				state.sub[key] = subContext.uniqueId;
+				var subResult = subContext.saveCompleteState(true);
+				for (var subKey in subResult.contexts) {
+					result.contexts[subKey] = subResult.contexts[subKey];
+				}
+				for (var subKey in subResult.documents) {
+					result.documents[subKey] = subResult.documents[subKey];
+				}
+			}
+			for (var key in this.oldSubContexts) {
+				var subContext = this.oldSubContexts[key];
+				state.sub[key] = subContext.uniqueId;
+				var subResult = subContext.saveCompleteState(true);
+				for (var subKey in subResult.contexts) {
+					result.contexts[subKey] = subResult.contexts[subKey];
+				}
+				for (var subKey in subResult.documents) {
+					result.documents[subKey] = subResult.documents[subKey];
+				}
+			}
+
+			if (!this.data) {
+				state.data = null;
+			} else {
+				state.data = {
+					path: this.data.pointerPath(),
+					document: this.data.document.uniqueId
+				};
+				if (!result.documents[this.data.document.uniqueId]) {
+					result.documents[this.data.document.uniqueId] = this.data.document.deflate(true);
+				}
+			}
+			
+			if (!skipEnhancements) {
+				for (var key in this.enhancementActions) {
+					var enhancement = this.enhancementActions[key];
+					result.actions[key] = {
+						context: enhancement.context.uniqueId,
+						name: enhancement.actionName,
+						params: enhancement.params
+					};
+					var c = enhancement.context;
+					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
+						result.contexts[c.uniqueId].keep = true;
+						c = c.baseContext;
+					}
+				}
+				for (var key in this.enhancementInputs) {
+					var enhancement = this.enhancementInputs[key];
+					result.inputs[key] = {
+						context: enhancement.context.uniqueId,
+						name: enhancement.actionName,
+						params: enhancement.params
+					};
+					var c = enhancement.context;
+					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
+						result.contexts[c.uniqueId].keep = true;
+						c = c.baseContext;
+					}
+				}
+				var newContexts = {};
+				for (var key in result.contexts) {
+					if (result.contexts[key].keep) {
+						newContexts[key] = result.contexts[key];
+						delete newContexts[key].keep;
+					}
+				}
+				result.contexts = newContexts;
+				result.uiState = this.saveUiState();
+			}
+			return result;
+		},
+>>>>>>> master
 		getSubContext: function (elementId, data, label, uiStartingState) {
 			if (typeof label == "object" && label != null) {
 				throw new Error('Label cannot be an object');
@@ -6767,7 +7188,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (this.parent && !this.elementId) {
 				return this.parent.rerender();
 			}
-			var element = document.getElementById(this.elementId);
+			var element = render.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
 				this.clearOldSubContexts();
@@ -6869,7 +7290,7 @@ publicApi.UriTemplate = UriTemplate;
 						rendered = true;
 						data = actualData;
 					} else {
-						var element = document.getElementById(elementId);
+						var element = render.getElementById(elementId);
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
@@ -6956,7 +7377,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			var elementIds = elementIds.slice(0);
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element == undefined) {
 					continue;
 				}
@@ -7146,7 +7567,7 @@ publicApi.UriTemplate = UriTemplate;
 			var elementIds = pageContext.elementLookup[key];
 			var found = false;
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element) {
 					found = true;
 					break;
@@ -7199,7 +7620,7 @@ publicApi.UriTemplate = UriTemplate;
 
 	function render(element, data, uiStartingState) {
 		if (typeof element == 'string') {
-			element = document.getElementById(element);
+			element = render.getElementById(element);
 		}
 		var innerElement = document.createElement('span');
 		innerElement.className = "jsonary";
@@ -7253,7 +7674,7 @@ publicApi.UriTemplate = UriTemplate;
 		var elementIds = pageContext.elementLookup[uniqueId];
 		for (var i = 0; i < elementIds.length; i++) {
 			var elementId = elementIds[i];
-			var element = document.getElementById(elementId);
+			var element = render.getElementById(elementId);
 			if (element) {
 				return true;
 			}
@@ -7341,7 +7762,7 @@ publicApi.UriTemplate = UriTemplate;
 				elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
 			}
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element == undefined) {
 					continue;
 				}
@@ -7606,6 +8027,32 @@ publicApi.UriTemplate = UriTemplate;
 	}
 	render.register = register;
 	render.deregister = deregister;
+
+	if (typeof document !== 'undefined') {
+		// Lets us look up elements across multiple documents
+		// This means that we can use a single Jsonary instance across multiple windows, as long as they add/remove their documents correctly (see the "popup" plugin)
+		var documentList = [document];
+		render.addDocument = function (doc) {
+			documentList.push(doc);
+			return this;
+		};
+		render.removeDocument = function (doc) {
+			var index = documentList.indexOf(doc);
+			if (index !== -1) {
+				documentList.splice(index, 1);
+			}
+			return this;
+		}
+		render.getElementById = function (id) {
+			for (var i = 0; i < documentList.length; i++) {
+				var element = documentList[i].getElementById(id);
+				if (element) {
+					return element;
+				}
+			}
+			return null;
+		};
+	}
 	
 	var actionHandlers = [];
 	render.addActionHandler = function (callback) {
@@ -7699,7 +8146,7 @@ publicApi.UriTemplate = UriTemplate;
 	Jsonary.extendData({
 		renderTo: function (element, uiState) {
 			if (typeof element == "string") {
-				element = document.getElementById(element);
+				element = render.getElementById(element);
 			}
 			render(element, this, uiState);
 		}
@@ -7714,7 +8161,7 @@ publicApi.UriTemplate = UriTemplate;
 				elementIds = elementIds.concat(ids);
 			}
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element && element.jsonaryContext) {
 					element.jsonaryContext.data.document.access();
 				}

@@ -294,11 +294,6 @@
 		});
 		config.cellAction.remove = function (data, context, actionName) {
 			if (actionName == "remove") {
-				console.log({
-					value: data.value(),
-					pointerPath: data.pointerPath(),
-					parentKey: data.parentKey()
-				});
 				data.remove();
 				return false;
 			}

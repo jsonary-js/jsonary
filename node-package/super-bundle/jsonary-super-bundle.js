@@ -1,4 +1,4 @@
-/* Bundled on Fri Sep 27 2013 18:10:51 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Thu Oct 03 2013 18:46:35 GMT+0100 (GMT Daylight Time)*/
 (function() {
 
 
@@ -692,6 +692,16 @@
 			}
 			if (this.fragment != null) {
 				result += "#" + this.fragment;
+			}
+			return result;
+		},
+		queryObj: function () {
+			var result = {};
+			if (this.query) {
+				for (var i = 0; i < this.query.length; i++) {
+					var pair = this.query[i];
+					result[pair.key] = pair.value;
+				}
 			}
 			return result;
 		},
@@ -3119,7 +3129,14 @@
 		};
 		
 		secrets.schemas = new SchemaSet(this);
-		this.schemas = function () {
+		this.schemas = function (forceForUndefined) {
+			if (forceForUndefined && basicType == undefined && parent) {
+				if (parent.basicType() === 'array' && isIndex(parentKey)) {
+					return parent.schemas(true).indexSchemas(parentKey);
+				} else if (parent.basicType() === 'object') {
+					return parent.schemas(true).propertySchemas(parentKey);
+				}
+			}
 			document.access();
 			return secrets.schemas.getSchemas();
 		};
@@ -3874,6 +3891,13 @@
 		maxLength: function () {
 			return this.data.propertyValue("maxLength");
 		},
+		pattern: function () {
+			var patternString = this.data.propertyValue("pattern");
+			if (patternString !== undefined) {
+				return new RegExp(patternString);
+			}
+			return null;
+		},
 		numberInterval: function() {
 			return this.data.propertyValue("divisibleBy");
 		},
@@ -4210,17 +4234,21 @@
 		toString: function() {
 			return this.href;
 		},
-		createSubmissionData: function(callback) {
+		createSubmissionData: function(origData, callback) {
+			if (typeof origData === 'function') {
+				callback = origData;
+				origData = undefined;
+			}
 			var hrefBase = this.hrefBase;
 			var submissionSchemas = this.submissionSchemas;
 			if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 				Jsonary.getData(this.href, function (data) {
-					callback(data.editableCopy());
+					callback(origData || data.editableCopy());
 				})
 				return this;
 			}
 			if (callback != undefined) {
-				submissionSchemas.createValue(function (value) {
+				submissionSchemas.createValue(origData, function (value) {
 					var data = publicApi.create(value, hrefBase);
 					for (var i = 0; i < submissionSchemas.length; i++) {
 						data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -4228,7 +4256,7 @@
 					callback(data);
 				});
 			} else {
-				var value = submissionSchemas.createValue();
+				var value = submissionSchemas.createValue(origData);
 				var data = publicApi.create(value, hrefBase);
 				for (var i = 0; i < submissionSchemas.length; i++) {
 					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -5271,6 +5299,16 @@
 			});
 			return maxLength;
 		},
+		patterns: function () {
+			var result = [];
+			for (var i = 0; i < this.length; i++) {
+				var regex = this[i].pattern();
+				if (regex) {
+					result.push(regex);
+				}
+			}
+			return result;
+		},
 		minItems: function () {
 			var minItems = 0;
 			for (var i = 0; i < this.length; i++) {
@@ -5501,7 +5539,96 @@
 			}
 			return totalCombos;
 		},
-		createValue: function(callback, ignoreChoices) {
+		createValue: function(origValue, callback, ignoreChoices, ignoreDefaults, banCoercion) {
+			var thisSchemaSet = this;
+			if (typeof origValue === 'function') {
+				var tmp = origValue;
+				origValue = callback;
+				callback = tmp;
+			}
+			if (publicApi.isData(origValue)) {
+				origValue = origValue.value();
+			}
+			
+			if (typeof banCoercion === 'undefined') {
+				if (callback) {
+					this.createValue(origValue, function (value) {
+						if (typeof value === 'undefined') {
+							thisSchemaSet.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
+						} else {
+							callback(value);
+						}
+					}, ignoreChoices, ignoreDefaults, true)
+					return;
+				}
+				var value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, true);
+				if (typeof value === 'undefined') {
+					value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
+				}
+				return value;
+			}
+			
+			if (!ignoreDefaults) {
+				var nextOrigValue = function () {
+					nextOrigValue = tryDefaults;
+					return origValue;
+				};
+				var defaultPos = 0;
+				var tryDefaults = function () {
+					while (defaultPos < thisSchemaSet.length) {
+						var schema = thisSchemaSet[defaultPos++];
+						if (schema.hasDefault()) {
+							return schema.defaultValue();
+						}
+					}
+					nextOrigValue = tryCustomValueCreation;
+				};
+				var customValuePos = 0;
+				var tryCustomValueCreation = function () {
+					while (customValuePos < customValueCreationFunctions.length) {
+						var func = customValueCreationFunctions[customValuePos++];
+						return func(thisSchemaSet);
+					}
+					nextOrigValue = null;
+				};
+				if (callback) {
+					var handleValue = function (value) {
+						if (typeof value !== 'undefined') {
+							return callback(value);
+						}
+						while (nextOrigValue) {
+							var initialValue = nextOrigValue();
+							if (typeof initialValue !== 'undefined') {
+								return thisSchemaSet.createValue(initialValue, handleValue, ignoreChoices, true, banCoercion);
+							}
+						}
+						if (!banCoercion) {
+							// Ignore supplied value, and try creating from scratch
+							thisSchemaSet.createValue(callback, undefined, ignoreChoices, true, banCoercion);
+						} else {
+							callback(undefined);
+						}
+					};
+					return handleValue(undefined);
+				} else {
+					while (nextOrigValue) {
+						var initialValue = nextOrigValue();
+						if (typeof initialValue !== 'undefined') {
+							var createdValue = this.createValue(initialValue, undefined, ignoreChoices, true, banCoercion);
+							if (typeof createdValue !== 'undefined') {
+								return createdValue;
+							}
+						}
+					}
+					if (!banCoercion) {
+						// Ignore supplied value, and try creating from scratch
+						return this.createValue(undefined, undefined, ignoreChoices, true, banCoercion);
+					} else {
+						return undefined;
+					}
+				}
+			}
+	
 			if (!ignoreChoices) {
 				if (callback != null) {
 					this.allCombinations(function (allCombinations) {
@@ -5509,13 +5636,13 @@
 							if (index >= allCombinations.length) {
 								return callback(undefined);
 							}
-							allCombinations[index].createValue(function (value) {
-								if (value !== undefined) {
+							allCombinations[index].createValue(origValue, function (value) {
+								if (typeof value !== 'undefined') {
 									callback(value);
 								} else {
 									nextOption(index + 1);
 								}
-							}, true);
+							}, true, ignoreDefaults, banCoercion);
 						}
 						nextOption(0);
 					});
@@ -5524,7 +5651,7 @@
 				// Synchronous version
 				var allCombinations = this.allCombinations();
 				for (var i = 0; i < allCombinations.length; i++) {
-					var value = allCombinations[i].createValue(null, true);
+					var value = allCombinations[i].createValue(origValue, undefined, true, ignoreDefaults, banCoercion);
 					if (value !== undefined) {
 						return value;
 					}
@@ -5554,63 +5681,74 @@
 				}
 			}
 	
-			for (var i = 0; i < this.length; i++) {
-				if (this[i].hasDefault()) {
-					pending++;
-					if (gotCandidate(this[i].defaultValue())) {
-						return chosenCandidate;
-					}
-				}
-			}
-			
 			var enumValues = this.enumValues();
 			if (enumValues != undefined) {
-				pending += enumValues.length;
 				for (var i = 0; i < enumValues.length; i++) {
+					if (typeof origValue !== 'undefined' && !Utils.recursiveCompare(origValue, enumValues[i])) {
+						continue;
+					}
+					pending++;
 					if (gotCandidate(enumValues[i])) {
 						return chosenCandidate;
 					}
 				}
 			} else {
-				pending += basicTypes.length;
-				for (var i = 0; i < basicTypes.length; i++) {
+				if (typeof origValue !== 'undefined') {
+					var basicType = Utils.guessBasicType(origValue);
+					if (basicType == 'integer') {
+						// pull "number" to front first, so it goes "integer", "number", ...
+						var numberIndex = basicTypes.indexOf('number');
+						if (numberIndex !== -1) {
+							basicTypes.splice(numberIndex, 1);
+							basicTypes.unshift('number');
+						}
+					}
+					var index = basicTypes.indexOf(basicType);
+					if (index !== -1) {
+						basicTypes.splice(index, 1);
+						basicTypes.unshift(basicType);
+					}
+				}
+				for (var i = 0; (typeof chosenCandidate === 'undefined') && i < basicTypes.length; i++) {
+					pending++;
 					var basicType = basicTypes[i];
 					if (basicType == "null") {
 						if (gotCandidate(null)) {
 							return chosenCandidate;
 						}
 					} else if (basicType == "boolean") {
-						if (gotCandidate(true)) {
+						var candidate = this.createValueBoolean(origValue, banCoercion);
+						if (gotCandidate(candidate)) {
 							return true;
 						}
 					} else if (basicType == "integer" || basicType == "number") {
-						var candidate = this.createValueNumber();
+						var candidate = this.createValueNumber(origValue, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
 					} else if (basicType == "string") {
-						var candidate = this.createValueString();
+						var candidate = this.createValueString(origValue, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
 					} else if (basicType == "array") {
 						if (callback) {
-							this.createValueArray(function (candidate) {
+							this.createValueArray(origValue, function (candidate) {
 								gotCandidate(candidate);
-							});
+							}, banCoercion);
 						} else {
-							var candidate = this.createValueArray();
+							var candidate = this.createValueArray(origValue, undefined, banCoercion);
 							if (gotCandidate(candidate)) {
 								return chosenCandidate;
 							}
 						}
 					} else if (basicType == "object") {
 						if (callback) {
-							var candidate = this.createValueObject(function (candidate) {
+							var candidate = this.createValueObject(origValue, function (candidate) {
 								gotCandidate(candidate);
-							});
+							}, banCoercion);
 						} else {
-							var candidate = this.createValueObject();
+							var candidate = this.createValueObject(origValue, undefined, banCoercion);
 							if (gotCandidate(candidate)) {
 								return chosenCandidate;
 							}
@@ -5620,7 +5758,38 @@
 			}
 			return gotCandidate(chosenCandidate);
 		},
-		createValueNumber: function () {
+		createValueBoolean: function (origValue, banCoercion) {
+			if (origValue === undefined) {
+				return true;
+			}
+			if (banCoercion && typeof origValue !== 'boolean') {
+				return undefined;
+			}
+			return !!origValue;
+		},
+		createValueNumber: function (origValue, banCoercion) {
+			if (!banCoercion && typeof origValue === 'string') {
+				var asNumber = parseFloat(origValue);
+				if (!isNaN(asNumber)) {
+					origValue = asNumber;
+				} else {
+					return undefined;
+				}
+			}
+			if (typeof origValue === 'number') {
+				if (interval != undefined) {
+					if (origValue % interval != 0) {
+						origValue = Math.round(origValue/interval)*interval;
+					}
+				}
+				if (minimum == undefined || origValue > minimum || (origValue == minimum && !exclusiveMinimum)) {
+					if (maximum == undefined || origValue < maximum || (origValue == maximum && exclusiveMaximum)) {
+						return origValue;
+					}
+				}
+			} else if (typeof origValue !== 'undefined') {
+				return undefined;
+			}
 			var exclusiveMinimum = this.exclusiveMinimum();
 			var minimum = this.minimum();
 			var maximum = this.maximum();
@@ -5671,80 +5840,249 @@
 			}
 			return candidate;
 		},
-		createValueString: function () {
-			var candidate = "";
-			return candidate;
+		createValueString: function (origValue, banCoercion) {
+			var candidates = [""];
+			if (typeof origValue !== 'undefined') {
+				if (typeof origValue === 'string') {
+					candidates.unshift(origValue);
+				} else if (banCoercion) {
+					return undefined;
+				} else if (typeof origValue === 'number') {
+					candidates.unshift("" + origValue);
+				} else if (typeof origValue === 'boolean') {
+					candidates.unshift(origValue ? 'true' : 'false');
+				} else {
+					return undefined;
+				}
+			}
+			var minLength = this.minLength();
+			var maxLength = this.maxLength()
+			var patterns = this.patterns();
+			if (maxLength != null && minLength > maxLength) {
+				return undefined;
+			}
+			for (var i = 0; i < candidates.length; i++) {
+				var candidate = candidates[i];
+				if (candidate.length < minLength) {
+					var extraChar = '?';
+					candidate += (new Array(minLength - candidate.length + 1)).join(extraChar);
+				} else if (candidate.length > maxLength) {
+					candidate = candidate.substring(0, maxLength);
+				}
+				for (var j = 0; j < patterns.length; j++) {
+					if (!patterns[j].test(candidate)) {
+						continue;
+					}
+				}
+				return candidate;
+			}
 		},
-		createValueArray: function (callback) {
+		createValueArray: function (origValue, callback, banCoercion) {
+			if (typeof origValue === 'function') {
+				var tmp = origValue;
+				origValue = callback;
+				callback = tmp;
+			}
+			if (typeof origValue !== 'undefined' && !Array.isArray(origValue)) {
+				return undefined;
+			}
 			var thisSchemaSet = this;
 			var candidate = [];
 			var minItems = this.minItems();
-			if (!minItems) {
-				if (callback) {
-					callback(candidate);
-				}
-				return candidate;
+			var maxItems = this.maxItems();
+			if (maxItems != null && minItems > maxItems) {
+				return;
 			}
-			var pending = minItems;
-			for (var i = 0; i < minItems; i++) {
+			var pending = 1;
+			for (var i = 0; candidate && i < minItems; i++) {
 				(function (i) {
+					pending++;
+					var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 					if (callback) {
-						thisSchemaSet.createValueForIndex(i, function (value) {
-							candidate[i] = value;
+						thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
+							if (typeof value === 'undefined') {
+								candidate = undefined;
+							} else if (candidate) {
+								candidate[i] = value;
+							}
 							pending--;
 							if (pending == 0) {
 								callback(candidate);
 							}
-						});
+						}, banCoercion || undefined);
 					} else {
-						candidate[i] = thisSchemaSet.createValueForIndex(i);
+						var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
+						if (typeof itemValue === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[i] = itemValue;
+						}
 					}
 				})(i);
 			}
+			if (candidate && Array.isArray(origValue)) {
+				if (maxItems != null && origValue.length > maxItems) {
+					origValue = origValue.slice(0, maxItems);
+				} else {
+					maxItems = origValue.length;
+				}
+				for (var i = minItems; candidate && i <= origValue.length && i < maxItems; i++) {
+					(function (i) {
+						pending++;
+						var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
+						if (callback) {
+							thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
+								if (candidate && typeof value !== 'undefined' && i < maxItems) {
+									candidate[i] = value;
+								} else if (banCoercion) {
+									candidate = undefined;
+								} else if (i < maxItems) {
+									maxItems = i;
+								}
+								pending--;
+								if (pending == 0) {
+									callback(candidate);
+								}
+							}, banCoercion || undefined);
+						} else {
+							var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
+							if (candidate && typeof itemValue !== 'undefined') {
+								candidate[i] = itemValue;
+							} else if (banCoercion) {
+								candidate = undefined;
+							} else if (i < maxItems) {
+								maxItems = i;
+							}
+						}
+					})(i);
+				}
+			}
+			pending--;
+			if (callback && pending == 0) {
+				callback(candidate);
+			}
 			return candidate;
 		},
-		createValueObject: function (callback) {
+		createValueObject: function (origValue, callback, banCoercion) {
+			if (typeof origValue === 'function') {
+				var tmp = origValue;
+				origValue = callback;
+				callback = tmp;
+			}
+			if (typeof origValue !== 'undefined' && (typeof origValue !== 'object' || Array.isArray(origValue))) {
+				return undefined;
+			}
 			var thisSchemaSet = this;
 			var candidate = {};
+			var pending = 1;
 			var requiredProperties = this.requiredProperties();
-			if (requiredProperties.length == 0) {
-				if (callback) {
-					callback(candidate);
-				}
-				return candidate;
-			}
-			var pending = requiredProperties.length;
-			for (var i = 0; i < requiredProperties.length; i++) {
+			for (var i = 0; candidate && i < requiredProperties.length; i++) {
 				(function (key) {
+					pending++;
+					var origPropValue = (typeof origValue == 'object' && !Array.isArray(origValue)) ? origValue[key] : undefined;
 					if (callback) {
-						thisSchemaSet.createValueForProperty(key, function (value) {
-							candidate[key] = value;
+						thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
+							if (typeof value === 'undefined') {
+								candidate = undefined;
+							} else if (candidate) {
+								candidate[key] = value;
+							}
 							pending--;
 							if (pending == 0) {
 								callback(candidate);
 							}
-						});
+						}, banCoercion || undefined);
 					} else {
-						candidate[key] = thisSchemaSet.createValueForProperty(key);
+						var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
+						if (typeof propValue === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[key] = propValue;
+						}
 					}
 				})(requiredProperties[i]);
 			}
+			if (candidate && typeof origValue === 'object' && !Array.isArray(origValue)) {
+				var definedProperties = this.definedProperties();
+				for (var i = 0; candidate && i < definedProperties.length; i++) {
+					var key = definedProperties[i];
+					if (!candidate || typeof candidate[key] !== 'undefined') {
+						continue;
+					}
+					(function (key) {
+						pending++;
+						var origPropValue = origValue[key];
+						if (callback) {
+							thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
+								if (candidate && typeof value !== 'undefined') {
+									candidate[key] = value;
+								} else if (banCoercion) {
+									candidate = undefined;
+								}
+								pending--;
+								if (pending == 0) {
+									callback(candidate);
+								}
+							}, banCoercion || undefined);
+						} else {
+							var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
+							if (candidate && typeof propValue !== 'undefined') {
+								candidate[key] = propValue;
+							} else if (banCoercion) {
+								candidate = undefined;
+							}
+						}
+					})(key);
+				}
+			}
+			pending--;
+			if (callback && pending == 0) {
+				callback(candidate);
+			}
 			return candidate;
 		},
-		createValueForIndex: function(index, callback) {
+		createValueForIndex: function(index, origValue, callback, banCoercion) {
+			if (typeof origValue === 'function') {
+				var tmp = origValue;
+				origValue = callback;
+				callback = tmp;
+			}
+			if (publicApi.isData(origValue)) {
+				origValue = origValue.value();
+			}
 			var indexSchemas = this.indexSchemas(index);
-			return indexSchemas.createValue(callback);
+			return indexSchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
 		},
-		createData: function (callback) {
+		createValueForProperty: function(key, origValue, callback, banCoercion) {
+			if (typeof origValue === 'function') {
+				var tmp = origValue;
+				origValue = callback;
+				callback = tmp;
+			}
+			if (publicApi.isData(origValue)) {
+				origValue = origValue.value();
+			}
+			var propertySchemas = this.propertySchemas(key);
+			return propertySchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
+		},
+		createData: function (origValue, callback) {
 			var thisSchemaSet = this;
+			if (typeof origValue === 'function') {
+				var tmp = origValue;
+				origValue = callback;
+				callback = tmp;
+			}
+			if (publicApi.isData(origValue)) {
+				origValue == origValue.value();
+			}
 			if (callback) {
-				this.createValue(function (value) {
-					var data = publicApi.create(value).addSchema(thisSchemaSet);
+				this.createValue(origValue, function (value) {
+					var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
 					callback(data);
 				});
 				return this;
 			}
-			return publicApi.create(this.createValue()).addSchema(this);
+			return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
 		},
 		indexSchemas: function(index) {
 			var result = new SchemaList();
@@ -5759,10 +6097,6 @@
 				result = Math.max(result, this[i].tupleTyping());
 			}
 			return result;
-		},
-		createValueForProperty: function(key, callback) {
-			var propertySchemas = this.propertySchemas(key);
-			return propertySchemas.createValue(callback);
 		},
 		propertySchemas: function(key) {
 			var result = new SchemaList();
@@ -5856,6 +6190,9 @@
 			}
 			return result;
 		},
+		containsFormat: function (formatString) {
+			return this.formats().indexOf(formatString) !== -1;
+		},
 		xorSchemas: function () {
 			var result = [];
 			for (var i = 0; i < this.length; i++) {
@@ -5881,6 +6218,10 @@
 			}
 		}
 	};
+	var customValueCreationFunctions = [];
+	publicApi.extendCreateValue = function (creationFunction) {
+		customValueCreationFunctions.push(creationFunction);
+	}
 	
 	publicApi.createSchemaList = function (schemas) {
 		if (!Array.isArray(schemas)) {
@@ -6630,7 +6971,7 @@
 						var uniqueId = data.uniqueId;
 						var elementIds = elementIdLookup[uniqueId];
 						for (var i = 0; i < elementIds.length; i++) {
-							var element = document.getElementById(elementIds[i]);
+							var element = render.getElementById(elementIds[i]);
 							if (element == undefined) {
 								continue;
 							}
@@ -6805,7 +7146,7 @@
 				if (this.parent && !this.elementId) {
 					return this.parent.rerender();
 				}
-				var element = document.getElementById(this.elementId);
+				var element = render.getElementById(this.elementId);
 				if (element != null) {
 					this.renderer.render(element, this.data, this);
 					this.clearOldSubContexts();
@@ -6907,7 +7248,7 @@
 							rendered = true;
 							data = actualData;
 						} else {
-							var element = document.getElementById(elementId);
+							var element = render.getElementById(elementId);
 							if (element) {
 								thisContext.render(element, actualData, label, uiStartingState);
 							} else {
@@ -6994,7 +7335,7 @@
 				}
 				var elementIds = elementIds.slice(0);
 				for (var i = 0; i < elementIds.length; i++) {
-					var element = document.getElementById(elementIds[i]);
+					var element = render.getElementById(elementIds[i]);
 					if (element == undefined) {
 						continue;
 					}
@@ -7184,7 +7525,7 @@
 				var elementIds = pageContext.elementLookup[key];
 				var found = false;
 				for (var i = 0; i < elementIds.length; i++) {
-					var element = document.getElementById(elementIds[i]);
+					var element = render.getElementById(elementIds[i]);
 					if (element) {
 						found = true;
 						break;
@@ -7237,7 +7578,7 @@
 	
 		function render(element, data, uiStartingState) {
 			if (typeof element == 'string') {
-				element = document.getElementById(element);
+				element = render.getElementById(element);
 			}
 			var innerElement = document.createElement('span');
 			innerElement.className = "jsonary";
@@ -7291,7 +7632,7 @@
 			var elementIds = pageContext.elementLookup[uniqueId];
 			for (var i = 0; i < elementIds.length; i++) {
 				var elementId = elementIds[i];
-				var element = document.getElementById(elementId);
+				var element = render.getElementById(elementId);
 				if (element) {
 					return true;
 				}
@@ -7379,7 +7720,7 @@
 					elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
 				}
 				for (var i = 0; i < elementIds.length; i++) {
-					var element = document.getElementById(elementIds[i]);
+					var element = render.getElementById(elementIds[i]);
 					if (element == undefined) {
 						continue;
 					}
@@ -7644,6 +7985,32 @@
 		}
 		render.register = register;
 		render.deregister = deregister;
+	
+		if (typeof document !== 'undefined') {
+			// Lets us look up elements across multiple documents
+			// This means that we can use a single Jsonary instance across multiple windows, as long as they add/remove their documents correctly (see the "popup" plugin)
+			var documentList = [document];
+			render.addDocument = function (doc) {
+				documentList.push(doc);
+				return this;
+			};
+			render.removeDocument = function (doc) {
+				var index = documentList.indexOf(doc);
+				if (index !== -1) {
+					documentList.splice(index, 1);
+				}
+				return this;
+			}
+			render.getElementById = function (id) {
+				for (var i = 0; i < documentList.length; i++) {
+					var element = documentList[i].getElementById(id);
+					if (element) {
+						return element;
+					}
+				}
+				return null;
+			};
+		}
 		
 		var actionHandlers = [];
 		render.addActionHandler = function (callback) {
@@ -7737,7 +8104,7 @@
 		Jsonary.extendData({
 			renderTo: function (element, uiState) {
 				if (typeof element == "string") {
-					element = document.getElementById(element);
+					element = render.getElementById(element);
 				}
 				render(element, this, uiState);
 			}
@@ -7752,7 +8119,7 @@
 					elementIds = elementIds.concat(ids);
 				}
 				for (var i = 0; i < elementIds.length; i++) {
-					var element = document.getElementById(elementIds[i]);
+					var element = render.getElementById(elementIds[i]);
 					if (element && element.jsonaryContext) {
 						element.jsonaryContext.data.document.access();
 					}
@@ -9331,6 +9698,161 @@
 	})(this);
 	
 
+/**** ../plugins/jsonary.popup.js ****/
+
+	if (typeof window !== 'undefined') {
+		function escapeHtml(text) {
+			text += "";
+			return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+		}
+		
+		(function (window) {
+			function copyStyle(oldDoc, newDoc) {
+				var links = oldDoc.getElementsByTagName('link');
+				for (var i = 0; i < links.length; i++) {
+					var oldElement = links[i];
+					newDoc.write('<link href="' + escapeHtml(oldElement.href) + '" rel="' + escapeHtml(oldElement.rel || "") + '">');
+				}
+				var styles = oldDoc.getElementsByTagName('style');
+				for (var i = 0; i < styles.length; i++) {
+					var oldElement = styles[i];
+					newDoc.write('<style>' + oldElement.innerHTML + '</style>');
+				}
+			}
+	
+			var scriptConditions = [];
+			function shouldIncludeScript(url) {
+				for (var i = 0; i < scriptConditions.length; i++) {
+					if (scriptConditions[i].call(null, url)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			
+			function copyScripts(oldDoc, newDoc) {
+				var scripts = oldDoc.getElementsByTagName('script');
+				for (var i = 0; i < scripts.length; i++) {
+					var oldElement = scripts[i];
+					if (oldElement.src && shouldIncludeScript(oldElement.src)) {
+						newDoc.write('<script src="' + escapeHtml(oldElement.src) + '"></script>');
+					}
+				}
+			}
+			
+			var setupFunctions = [];
+			var preSetupFunctions = [];
+			
+			Jsonary.popup = function (params, title, openCallback, closeCallback, closeWithParent) {
+				if (closeWithParent === undefined) {
+					closeWithParent = true;
+				}
+				if (typeof params === 'object') {
+					var newParams = [];
+					for (var key in params) {
+						if (typeof params[key] == 'boolean') {
+							newParams.push(key + '=' + (params[key] ? 'yes' : 'no'));
+						} else {
+							newParams.push(key + '=' + params[key]);
+						}
+					}
+					params = newParams.join(',');
+				}
+				var subWindow = window.open(null, null, params);
+				subWindow.document.open();
+				subWindow.document.write('<html><head><title>' + escapeHtml(title || "Popup") + '</title>');
+				copyStyle(window.document, subWindow.document);
+				copyScripts(window.document, subWindow.document);
+				subWindow.document.write('</head><body class="jsonary popup"></body></html>');
+				subWindow.document.close();
+				Jsonary.render.addDocument(subWindow.document);
+				
+				var parentBeforeUnloadListener = function (evt) {
+					if (closeWithParent) {
+						subWindow.close();
+					}
+					Jsonary.render.removeDocument(window.document);
+				};
+				var beforeUnloadListener = function (evt) {
+					evt = evt || window.event;
+					Jsonary.render.removeDocument(subWindow.document);
+					// Remove parent's unload listener, as that will leak the sub-window (including the entire document tree)
+					if (window.removeEventListener) {
+						window.removeEventListener('beforeunload', parentBeforeUnloadListener, false);
+					} else if (window.detachEvent) {
+						window.detachEvent('onbeforeunload', parentBeforeUnloadListener);
+					}
+					if (closeCallback) {
+						var result = closeCallback(evt);
+						if (evt) {
+							evt.returnValue = result;
+						}
+						return result;
+					}
+				}
+				var onLoadListener = function (evt) {
+					evt = evt || window.event;
+					for (var i = 0; i < setupFunctions.length; i++) {
+						setupFunctions[i].call(subWindow.window, subWindow.window, subWindow.document);
+					}
+					if (openCallback) {
+						return openCallback.call(subWindow.window, subWindow.window, subWindow.document);
+					}
+				};
+				if (subWindow.addEventListener) {
+					subWindow.addEventListener('load', onLoadListener, false); 
+					subWindow.addEventListener('beforeunload', beforeUnloadListener, false); 
+					window.addEventListener('beforeunload', parentBeforeUnloadListener, false);
+				} else if (subWindow.attachEvent)  {
+					subWindow.attachEvent('onload', onLoadListener);
+					subWindow.attachEvent('onbeforeunload', beforeUnloadListener);
+					window.attachEvent('onbeforeunload', parentBeforeUnloadListener);
+				}
+				
+				for (var i = 0; i < preSetupFunctions.length; i++) {
+					preSetupFunctions[i].call(subWindow.window, subWindow.window);
+				}
+	
+				return subWindow;
+			};
+			
+			Jsonary.popup.addScripts = function (scripts) {
+				if (typeof scripts == 'boolean') {
+					scriptConditions.push(function () {
+						return scripts;
+					});
+				}
+				if (typeof scripts == 'function') {
+					scriptConditions.push(scripts);
+				}
+				for (var i = 0; i < scripts.length; i++) {
+					(function (search) {
+						if (search instanceof RegExp) {
+							scriptConditions.push(function (url) {
+								return search.test(url);
+							});
+						} else {
+							scriptConditions.push(function (url) {
+								return url.indexOf('search') !== -1;
+							});
+						}
+					})(scripts[i]);
+				}
+				return this;
+			};
+			
+			Jsonary.popup.addPreSetup = function (callback) {
+				preSetupFunctions.push(callback);
+				return this;
+			};
+	
+			Jsonary.popup.addSetup = function (callback) {
+				setupFunctions.push(callback);
+				return this;
+			};
+		})(window);
+	}
+
 /**** ../plugins/jsonary.undo.js ****/
 
 	(function () {
@@ -10699,6 +11221,9 @@
 	
 			var itemSchemas = data.schemas().indexSchemas(0).getFull();
 			var recursionLimit = (itemSchemas.knownProperties().length >= 8) ? 0 : 1;
+			if (data.schemas().displayAsTable()) {
+				recursionLimit = 2;
+			}
 			addColumnsFromSchemas(itemSchemas, '', recursionLimit);
 			return renderer;
 		},

@@ -36,6 +36,7 @@ masterBundle.compileCss('../node-package/core/jsonary-core.css');
 	
 	// Plugins
 masterBundle.js('../plugins/jsonary.location.js')
+	.js('../plugins/jsonary.popup.js')
 	.js('../plugins/jsonary.undo.js')
 	.js('../plugins/jsonary.jstl.js')
 	.js('../plugins/jsonary.render.table.js')

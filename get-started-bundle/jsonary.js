@@ -1,5 +1,5 @@
 /**
-Copyright (C) 2012 Geraint Luff
+Copyright (C) 2012-2013 Geraint Luff
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -1174,7 +1174,6 @@ function UriTemplate(template) {
 		for (var i = 0; i < textParts.length; i++) {
 			var part = textParts[i];
 			if (substituted.substring(0, part.length) !== part) {
-				console.log([substituted, part]);
 				return undefined;
 			}
 			substituted = substituted.substring(part.length);
@@ -2122,10 +2121,8 @@ Request.prototype = {
 			if (partName == "") {
 				continue;
 			}
-			console.log(remainder)
 			if (remainder.charAt(0) === '"') {
 				partValue = /^"([^\\"]|\\.)*("|$)/.exec(remainder)[0];
-				console.log(partValue);
 				remainder = remainder.substring(partValue.length).trim();
 				// Slight hack, perhaps
 				try {
@@ -3079,7 +3076,14 @@ function Data(document, secrets, parent, parentKey) {
 	};
 	
 	secrets.schemas = new SchemaSet(this);
-	this.schemas = function () {
+	this.schemas = function (forceForUndefined) {
+		if (forceForUndefined && basicType == undefined && parent) {
+			if (parent.basicType() === 'array' && isIndex(parentKey)) {
+				return parent.schemas(true).indexSchemas(parentKey);
+			} else if (parent.basicType() === 'object') {
+				return parent.schemas(true).propertySchemas(parentKey);
+			}
+		}
 		document.access();
 		return secrets.schemas.getSchemas();
 	};
@@ -3823,6 +3827,13 @@ Schema.prototype = {
 	},
 	maxLength: function () {
 		return this.data.propertyValue("maxLength");
+	},
+	pattern: function () {
+		var patternString = this.data.propertyValue("pattern");
+		if (patternString !== undefined) {
+			return new RegExp(patternString);
+		}
+		return null;
 	},
 	numberInterval: function() {
 		return this.data.propertyValue("divisibleBy");
@@ -5215,6 +5226,16 @@ SchemaList.prototype = {
 		});
 		return maxLength;
 	},
+	patterns: function () {
+		var result = [];
+		for (var i = 0; i < this.length; i++) {
+			var regex = this[i].pattern();
+			if (regex) {
+				result.push(regex);
+			}
+		}
+		return result;
+	},
 	minItems: function () {
 		var minItems = 0;
 		for (var i = 0; i < this.length; i++) {
@@ -5445,7 +5466,11 @@ SchemaList.prototype = {
 		}
 		return totalCombos;
 	},
-	createValue: function(callback, ignoreChoices) {
+	createValue: function(callback, origValue, ignoreChoices, ignoreDefaults) {
+		if (typeof callback !== 'undefined' && typeof callback !== 'function') {
+			origValue = callback;
+			callback = null;
+		}
 		if (!ignoreChoices) {
 			if (callback != null) {
 				this.allCombinations(function (allCombinations) {
@@ -5454,12 +5479,12 @@ SchemaList.prototype = {
 							return callback(undefined);
 						}
 						allCombinations[index].createValue(function (value) {
-							if (value !== undefined) {
+							if (typeof value !== 'undefined') {
 								callback(value);
 							} else {
 								nextOption(index + 1);
 							}
-						}, true);
+						}, origValue, true, ignoreDefaults);
 					}
 					nextOption(0);
 				});
@@ -5468,12 +5493,63 @@ SchemaList.prototype = {
 			// Synchronous version
 			var allCombinations = this.allCombinations();
 			for (var i = 0; i < allCombinations.length; i++) {
-				var value = allCombinations[i].createValue(null, true);
+				var value = allCombinations[i].createValue(undefined, origValue, true, ignoreDefaults);
 				if (value !== undefined) {
 					return value;
 				}
 			}
 			return;
+		}
+
+		if (!ignoreDefaults) {
+			var thisSchemaSet = this;
+			var nextOrigValue = function () {
+				nextOrigValue = tryDefaults;
+				return origValue;
+			};
+			var defaultPos = 0;
+			var tryDefaults = function () {
+				while (defaultPos < thisSchemaSet.length) {
+					var schema = thisSchemaSet[defaultPos++];
+					if (schema.hasDefault()) {
+						return schema.defaultValue();
+					}
+				}
+				nextOrigValue = tryCustomValueCreation;
+			};
+			var customValuePos = 0;
+			var tryCustomValueCreation = function () {
+				while (customValuePos < customValueCreationFunctions.length) {
+					var func = customValueCreationFunctions[customValuePos++];
+					return func(thisSchemaSet);
+				}
+				nextOrigValue = null;
+			};
+			if (callback) {
+				var handleValue = function (value) {
+					if (typeof value !== 'undefined') {
+						return callback(value);
+					}
+					while (nextOrigValue) {
+						var initialValue = nextOrigValue();
+						if (typeof initialValue !== 'undefined') {
+							return thisSchemaSet.createValue(handleValue, initialValue, true, true);
+						}
+					}
+					thisSchemaSet.createValue(callback, undefined, true, true);
+				};
+				return handleValue(undefined);
+			} else {
+				while (nextOrigValue) {
+					var initialValue = nextOrigValue();
+					if (typeof initialValue !== 'undefined') {
+						var createdValue = this.createValue(undefined, initialValue, true, true);
+						if (typeof createdValue !== 'undefined') {
+							return createdValue;
+						}
+					}
+				}
+			}
 		}
 
 		var basicTypes = this.basicTypes();
@@ -5498,15 +5574,7 @@ SchemaList.prototype = {
 			}
 		}
 
-		for (var i = 0; i < this.length; i++) {
-			if (this[i].hasDefault()) {
-				pending++;
-				if (gotCandidate(this[i].defaultValue())) {
-					return chosenCandidate;
-				}
-			}
-		}
-		
+		// TODO: move up above, to the "if (!ignoreDefaults) {" section
 		var enumValues = this.enumValues();
 		if (enumValues != undefined) {
 			pending += enumValues.length;
@@ -5516,8 +5584,23 @@ SchemaList.prototype = {
 				}
 			}
 		} else {
-			pending += basicTypes.length;
-			for (var i = 0; i < basicTypes.length; i++) {
+			if (typeof origValue !== 'undefined') {
+				var basicType = Utils.guessBasicType(origValue);
+				var index = basicTypes.indexOf(basicType);
+				if (index === -1 && basicType == 'integer') {
+					index = basicTypes.indexOf('number');
+				}
+				if (ignoreDefaults) {
+					basicTypes = (index === -1) ? [] : [basicType];
+				} else {
+					if (index !== -1) {
+						basicTypes.splice(index, 1);
+						basicTypes.unshift(basicType);
+					}
+				}
+			}
+			for (var i = 0; (typeof chosenCandidate === 'undefined') && i < basicTypes.length; i++) {
+				pending++;
 				var basicType = basicTypes[i];
 				if (basicType == "null") {
 					if (gotCandidate(null)) {
@@ -5528,12 +5611,12 @@ SchemaList.prototype = {
 						return true;
 					}
 				} else if (basicType == "integer" || basicType == "number") {
-					var candidate = this.createValueNumber();
+					var candidate = this.createValueNumber(origValue);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "string") {
-					var candidate = this.createValueString();
+					var candidate = this.createValueString(origValue);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
@@ -5541,9 +5624,9 @@ SchemaList.prototype = {
 					if (callback) {
 						this.createValueArray(function (candidate) {
 							gotCandidate(candidate);
-						});
+						}, origValue);
 					} else {
-						var candidate = this.createValueArray();
+						var candidate = this.createValueArray(undefined, origValue);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
@@ -5552,9 +5635,9 @@ SchemaList.prototype = {
 					if (callback) {
 						var candidate = this.createValueObject(function (candidate) {
 							gotCandidate(candidate);
-						});
+						}, origValue);
 					} else {
-						var candidate = this.createValueObject();
+						var candidate = this.createValueObject(undefined, origValue);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
@@ -5564,13 +5647,31 @@ SchemaList.prototype = {
 		}
 		return gotCandidate(chosenCandidate);
 	},
-	createValueNumber: function () {
+	createValueNumber: function (origValue) {
 		var exclusiveMinimum = this.exclusiveMinimum();
 		var minimum = this.minimum();
 		var maximum = this.maximum();
 		var exclusiveMaximum = this.exclusiveMaximum();
 		var interval = this.numberInterval();
 		var candidate = undefined;
+		if (typeof origValue === 'string') {
+			var asNumber = parseFloat(origValue);
+			if (!isNaN(asNumber)) {
+				origValue = asNumber;
+			}
+		}
+		if (typeof origValue === 'number') {
+			if (interval != undefined) {
+				if (origValue % interval != 0) {
+					origValue = Math.round(origValue/interval)*interval;
+				}
+			}
+			if (minimum == undefined || origValue > minimum || (origValue == minimum && !exclusiveMinimum)) {
+				if (maximum == undefined || origValue < maximum || (origValue == maximum && exclusiveMaximum)) {
+					return origValue;
+				}
+			}
+		}
 		if (minimum != undefined && maximum != undefined) {
 			if (minimum > maximum || (minimum == maximum && (exclusiveMinimum || exclusiveMaximum))) {
 				return;
@@ -5615,80 +5716,200 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueString: function () {
-		var candidate = "";
-		return candidate;
+	createValueString: function (origValue) {
+		var minLength = this.minLength();
+		var maxLength = this.maxLength()
+		var patterns = this.patterns();
+		if (maxLength != null && minLength > maxLength) {
+			return undefined;
+		}
+		var candidates = [""];
+		if (typeof origValue === 'string') {
+			candidates.unshift(origValue);
+		} else if (typeof origValue === 'number') {
+			candidates.unshift("" + origValue);
+		} else if (typeof origValue === 'boolean') {
+			candidates.unshift(origValue ? 'true' : 'false');
+		}
+		for (var i = 0; i < candidates.length; i++) {
+			var candidate = candidates[i];
+			if (candidate.length < minLength) {
+				var extraChar = '?';
+				candidate += (new Array(minLength - candidate.length + 1)).join(extraChar);
+			} else if (candidate.length > maxLength) {
+				candidate = candidate.substring(0, maxLength);
+			}
+			for (var j = 0; j < patterns.length; j++) {
+				if (!patterns[j].test(candidate)) {
+					continue;
+				}
+			}
+			return candidate;
+		}
 	},
-	createValueArray: function (callback) {
+	createValueArray: function (callback, origValue) {
 		var thisSchemaSet = this;
 		var candidate = [];
 		var minItems = this.minItems();
-		if (!minItems) {
-			if (callback) {
-				callback(candidate);
-			}
-			return candidate;
+		var maxItems = this.maxItems();
+		if (maxItems != null && minItems > maxItems) {
+			return;
 		}
-		var pending = minItems;
-		for (var i = 0; i < minItems; i++) {
+		var pending = 1;
+		for (var i = 0; candidate && i < minItems; i++) {
 			(function (i) {
+				pending++;
+				var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 				if (callback) {
 					thisSchemaSet.createValueForIndex(i, function (value) {
-						candidate[i] = value;
+						if (typeof value === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[i] = value;
+						}
 						pending--;
 						if (pending == 0) {
 							callback(candidate);
 						}
-					});
+					}, origItemValue);
 				} else {
-					candidate[i] = thisSchemaSet.createValueForIndex(i);
+					var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+					if (typeof itemValue === 'undefined') {
+						candidate = undefined;
+					} else if (candidate) {
+						candidate[i] = itemValue;
+					}
 				}
 			})(i);
 		}
+		if (candidate && Array.isArray(origValue)) {
+			if (maxItems != null && origValue.length > maxItems) {
+				origValue = origValue.slice(0, maxItems);
+			} else {
+				maxItems = origValue.length;
+			}
+			for (var i = minItems; candidate && i <= origValue.length && i < maxItems; i++) {
+				(function (i) {
+					pending++;
+					var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
+					if (callback) {
+						thisSchemaSet.createValueForIndex(i, function (value) {
+							if (candidate && typeof value !== 'undefined' && i < maxItems) {
+								candidate[i] = value;
+							} else if (i < maxItems) {
+								maxItems = i;
+							}
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						}, origItemValue);
+					} else {
+						var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+						if (candidate && typeof itemValue !== 'undefined') {
+							candidate[i] = itemValue;
+						} else if (i < maxItems) {
+							maxItems = i;
+						}
+					}
+				})(i);
+			}
+		}
+		pending--;
+		if (callback && pending == 0) {
+			callback(candidate);
+		}
 		return candidate;
 	},
-	createValueObject: function (callback) {
+	createValueObject: function (callback, origValue) {
 		var thisSchemaSet = this;
 		var candidate = {};
 		var requiredProperties = this.requiredProperties();
-		if (requiredProperties.length == 0) {
-			if (callback) {
-				callback(candidate);
-			}
-			return candidate;
-		}
-		var pending = requiredProperties.length;
-		for (var i = 0; i < requiredProperties.length; i++) {
+		var pending = 1;
+		for (var i = 0; candidate && i < requiredProperties.length; i++) {
 			(function (key) {
+				pending++;
+				var origPropValue = (typeof origValue == 'object' && !Array.isArray(origValue)) ? origValue[key] : undefined;
 				if (callback) {
 					thisSchemaSet.createValueForProperty(key, function (value) {
-						candidate[key] = value;
+						if (typeof value === 'undefined') {
+							candidate = undefined;
+						} else if (candidate) {
+							candidate[key] = value;
+						}
 						pending--;
 						if (pending == 0) {
 							callback(candidate);
 						}
-					});
+					}, origPropValue);
 				} else {
-					candidate[key] = thisSchemaSet.createValueForProperty(key);
+					var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+					if (typeof propValue === 'undefined') {
+						candidate = undefined;
+					} else if (candidate) {
+						candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+					}
 				}
 			})(requiredProperties[i]);
 		}
+		if (candidate && typeof origValue === 'object' && !Array.isArray(origValue)) {
+			for (var key in origValue) {
+				if (!candidate || typeof candidate[key] !== 'undefined') {
+					continue;
+				}
+				(function (key) {
+					pending++;
+					var origPropValue = origValue[key];
+					if (callback) {
+						thisSchemaSet.createValueForProperty(key, function (value) {
+							if (candidate && typeof value !== 'undefined') {
+								candidate[key] = value;
+							}
+							pending--;
+							if (pending == 0) {
+								callback(candidate);
+							}
+						}, origPropValue);
+					} else {
+						var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						if (candidate && typeof propValue !== 'undefined') {
+							candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						}
+					}
+				})(key);
+			}
+		}
+		pending--;
+		if (callback && pending == 0) {
+			callback(candidate);
+		}
 		return candidate;
 	},
-	createValueForIndex: function(index, callback) {
+	createValueForIndex: function(index, callback, origValue) {
 		var indexSchemas = this.indexSchemas(index);
-		return indexSchemas.createValue(callback);
+		return indexSchemas.createValue(callback, origValue);
 	},
-	createData: function (callback) {
+	createValueForProperty: function(key, callback, origValue) {
+		var propertySchemas = this.propertySchemas(key);
+		return propertySchemas.createValue(callback, origValue);
+	},
+	createData: function (callback, origValue) {
 		var thisSchemaSet = this;
+		if (typeof callback !== 'undefined' && typeof callback !== 'function') {
+			origValue = callback;
+			callback = null;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue == origValue.value();
+		}
 		if (callback) {
 			this.createValue(function (value) {
-				var data = publicApi.create(value).addSchema(thisSchemaSet);
+				var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
 				callback(data);
-			});
+			}, origValue);
 			return this;
 		}
-		return publicApi.create(this.createValue()).addSchema(this);
+		return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
 	},
 	indexSchemas: function(index) {
 		var result = new SchemaList();
@@ -5703,10 +5924,6 @@ SchemaList.prototype = {
 			result = Math.max(result, this[i].tupleTyping());
 		}
 		return result;
-	},
-	createValueForProperty: function(key, callback) {
-		var propertySchemas = this.propertySchemas(key);
-		return propertySchemas.createValue(callback);
 	},
 	propertySchemas: function(key) {
 		var result = new SchemaList();
@@ -5800,6 +6017,9 @@ SchemaList.prototype = {
 		}
 		return result;
 	},
+	containsFormat: function (formatString) {
+		return this.formats().indexOf(formatString) !== -1;
+	},
 	xorSchemas: function () {
 		var result = [];
 		for (var i = 0; i < this.length; i++) {
@@ -5825,6 +6045,10 @@ publicApi.extendSchemaList = function (obj) {
 		}
 	}
 };
+var customValueCreationFunctions = [];
+publicApi.extendCreateValue = function (creationFunction) {
+	customValueCreationFunctions.push(creationFunction);
+}
 
 publicApi.createSchemaList = function (schemas) {
 	if (!Array.isArray(schemas)) {
@@ -6564,7 +6788,7 @@ publicApi.UriTemplate = UriTemplate;
 					var uniqueId = data.uniqueId;
 					var elementIds = elementIdLookup[uniqueId];
 					for (var i = 0; i < elementIds.length; i++) {
-						var element = document.getElementById(elementIds[i]);
+						var element = render.getElementById(elementIds[i]);
 						if (element == undefined) {
 							continue;
 						}
@@ -6640,20 +6864,20 @@ publicApi.UriTemplate = UriTemplate;
 			return subContext;
 		},
 		subContextSavedStates: {},
-		saveState: function () {
+		saveUiState: function () {
 			var subStates = {};
 			for (var key in this.subContexts) {
-				subStates[key] = this.subContexts[key].saveState();
+				subStates[key] = this.subContexts[key].saveUiState();
 			}
 			for (var key in this.oldSubContexts) {
-				subStates[key] = this.oldSubContexts[key].saveState();
+				subStates[key] = this.oldSubContexts[key].saveUiState();
 			}
 			
-			var saveStateFunction = this.renderer ? this.renderer.saveState : Renderer.prototype.saveState;
+			var saveStateFunction = this.renderer ? this.renderer.saveUiState : Renderer.prototype.saveUiState;
 			return saveStateFunction.call(this.renderer, this.uiState, subStates, this.data);
 		},
-		loadState: function (savedState) {
-			var loadStateFunction = this.renderer ? this.renderer.loadState : Renderer.prototype.loadState;
+		loadUiState: function (savedState) {
+			var loadStateFunction = this.renderer ? this.renderer.loadUiState : Renderer.prototype.loadUiState;
 			var result = loadStateFunction.call(this.renderer, savedState);
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
@@ -6741,7 +6965,7 @@ publicApi.UriTemplate = UriTemplate;
 					}
 				}
 				result.contexts = newContexts;
-				result.uiState = this.saveState();
+				result.uiState = this.saveUiState();
 			}
 			return result;
 		},
@@ -6809,7 +7033,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (this.parent && !this.elementId) {
 				return this.parent.rerender();
 			}
-			var element = document.getElementById(this.elementId);
+			var element = render.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
 				this.clearOldSubContexts();
@@ -6910,7 +7134,7 @@ publicApi.UriTemplate = UriTemplate;
 						rendered = true;
 						data = actualData;
 					} else {
-						var element = document.getElementById(elementId);
+						var element = render.getElementById(elementId);
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
@@ -6997,7 +7221,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			var elementIds = elementIds.slice(0);
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element == undefined) {
 					continue;
 				}
@@ -7151,6 +7375,10 @@ publicApi.UriTemplate = UriTemplate;
 			element = null;
 		}
 	};
+	// TODO: this is for compatability - remove it
+	RenderContext.prototype.saveState = RenderContext.prototype.saveUiState;
+	RenderContext.prototype.loadState = RenderContext.prototype.loadUiState;
+	
 	var pageContext = new RenderContext();
 	render.loadDocumentsFromState = function (saved, callback) {
 		var documents = {};
@@ -7248,7 +7476,7 @@ publicApi.UriTemplate = UriTemplate;
 			var elementIds = pageContext.elementLookup[key];
 			var found = false;
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element) {
 					found = true;
 					break;
@@ -7301,7 +7529,7 @@ publicApi.UriTemplate = UriTemplate;
 
 	function render(element, data, uiStartingState) {
 		if (typeof element == 'string') {
-			element = document.getElementById(element);
+			element = render.getElementById(element);
 		}
 		var innerElement = document.createElement('span');
 		innerElement.className = "jsonary";
@@ -7351,7 +7579,7 @@ publicApi.UriTemplate = UriTemplate;
 		var elementIds = pageContext.elementLookup[uniqueId];
 		for (var i = 0; i < elementIds.length; i++) {
 			var elementId = elementIds[i];
-			var element = document.getElementById(elementId);
+			var element = render.getElementById(elementId);
 			if (element) {
 				return true;
 			}
@@ -7425,11 +7653,11 @@ publicApi.UriTemplate = UriTemplate;
 		}
 		// TODO: remove this.component
 		this.component = this.filterObj.component = sourceComponent;
-		if (sourceObj.saveState) {
-			this.saveState = sourceObj.saveState;
+		if (sourceObj.saveState || sourceObj.saveUiState) {
+			this.saveUiState = sourceObj.saveState || sourceObj.saveUiState;
 		}
-		if (sourceObj.loadState) {
-			this.loadState = sourceObj.loadState;
+		if (sourceObj.loadState || sourceObj.loadUiState) {
+			this.loadUiState = sourceObj.loadState || sourceObj.loadUiState;
 		}
 	}
 	Renderer.prototype = {
@@ -7439,7 +7667,7 @@ publicApi.UriTemplate = UriTemplate;
 				elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
 			}
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element == undefined) {
 					continue;
 				}
@@ -7570,7 +7798,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			return redraw;
 		},
-		saveState: function (uiState, subStates, data) {
+		saveUiState: function (uiState, subStates, data) {
 			var result = {};
 			for (key in uiState) {
 				result[key] = uiState[key];
@@ -7598,7 +7826,7 @@ publicApi.UriTemplate = UriTemplate;
 			data.saveStateId = data.saveStateId || randomId();
 			return render.saveData(data, data.saveStateId) || data.saveStateId;
 		},
-		loadState: function (savedState) {
+		loadUiState: function (savedState) {
 			var uiState = {};
 			var subStates = {};
 			for (var key in savedState) {
@@ -7704,6 +7932,32 @@ publicApi.UriTemplate = UriTemplate;
 	}
 	render.register = register;
 	render.deregister = deregister;
+
+	if (typeof document !== 'undefined') {
+		// Lets us look up elements across multiple documents
+		// This means that we can use a single Jsonary instance across multiple windows, as long as they add/remove their documents correctly (see the "popup" plugin)
+		var documentList = [document];
+		render.addDocument = function (doc) {
+			documentList.push(doc);
+			return this;
+		};
+		render.removeDocument = function (doc) {
+			var index = documentList.indexOf(doc);
+			if (index !== -1) {
+				documentList.splice(index, 1);
+			}
+			return this;
+		}
+		render.getElementById = function (id) {
+			for (var i = 0; i < documentList.length; i++) {
+				var element = documentList[i].getElementById(id);
+				if (element) {
+					return element;
+				}
+			}
+			return null;
+		};
+	}
 	
 	var actionHandlers = [];
 	render.addActionHandler = function (callback) {
@@ -7797,7 +8051,7 @@ publicApi.UriTemplate = UriTemplate;
 	Jsonary.extendData({
 		renderTo: function (element, uiState) {
 			if (typeof element == "string") {
-				element = document.getElementById(element);
+				element = render.getElementById(element);
 			}
 			render(element, this, uiState);
 		}
@@ -7812,7 +8066,7 @@ publicApi.UriTemplate = UriTemplate;
 				elementIds = elementIds.concat(ids);
 			}
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element && element.jsonaryContext) {
 					element.jsonaryContext.data.document.access();
 				}

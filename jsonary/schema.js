@@ -365,6 +365,13 @@ Schema.prototype = {
 	maxLength: function () {
 		return this.data.propertyValue("maxLength");
 	},
+	pattern: function () {
+		var patternString = this.data.propertyValue("pattern");
+		if (patternString !== undefined) {
+			return new RegExp(patternString);
+		}
+		return null;
+	},
 	numberInterval: function() {
 		return this.data.propertyValue("divisibleBy");
 	},
@@ -701,17 +708,21 @@ ActiveLink.prototype = {
 	toString: function() {
 		return this.href;
 	},
-	createSubmissionData: function(callback) {
+	createSubmissionData: function(origData, callback) {
+		if (typeof origData === 'function') {
+			callback = origData;
+			origData = undefined;
+		}
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
 		if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 			Jsonary.getData(this.href, function (data) {
-				callback(data.editableCopy());
+				callback(origData || data.editableCopy());
 			})
 			return this;
 		}
 		if (callback != undefined) {
-			submissionSchemas.createValue(function (value) {
+			submissionSchemas.createValue(origData, function (value) {
 				var data = publicApi.create(value, hrefBase);
 				for (var i = 0; i < submissionSchemas.length; i++) {
 					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -719,7 +730,7 @@ ActiveLink.prototype = {
 				callback(data);
 			});
 		} else {
-			var value = submissionSchemas.createValue();
+			var value = submissionSchemas.createValue(origData);
 			var data = publicApi.create(value, hrefBase);
 			for (var i = 0; i < submissionSchemas.length; i++) {
 				data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);

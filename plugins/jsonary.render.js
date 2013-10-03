@@ -97,7 +97,7 @@
 					var uniqueId = data.uniqueId;
 					var elementIds = elementIdLookup[uniqueId];
 					for (var i = 0; i < elementIds.length; i++) {
-						var element = document.getElementById(elementIds[i]);
+						var element = render.getElementById(elementIds[i]);
 						if (element == undefined) {
 							continue;
 						}
@@ -272,7 +272,7 @@
 			if (this.parent && !this.elementId) {
 				return this.parent.rerender();
 			}
-			var element = document.getElementById(this.elementId);
+			var element = render.getElementById(this.elementId);
 			if (element != null) {
 				this.renderer.render(element, this.data, this);
 				this.clearOldSubContexts();
@@ -374,7 +374,7 @@
 						rendered = true;
 						data = actualData;
 					} else {
-						var element = document.getElementById(elementId);
+						var element = render.getElementById(elementId);
 						if (element) {
 							thisContext.render(element, actualData, label, uiStartingState);
 						} else {
@@ -461,7 +461,7 @@
 			}
 			var elementIds = elementIds.slice(0);
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element == undefined) {
 					continue;
 				}
@@ -651,7 +651,7 @@
 			var elementIds = pageContext.elementLookup[key];
 			var found = false;
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element) {
 					found = true;
 					break;
@@ -704,7 +704,7 @@
 
 	function render(element, data, uiStartingState) {
 		if (typeof element == 'string') {
-			element = document.getElementById(element);
+			element = render.getElementById(element);
 		}
 		var innerElement = document.createElement('span');
 		innerElement.className = "jsonary";
@@ -758,7 +758,7 @@
 		var elementIds = pageContext.elementLookup[uniqueId];
 		for (var i = 0; i < elementIds.length; i++) {
 			var elementId = elementIds[i];
-			var element = document.getElementById(elementId);
+			var element = render.getElementById(elementId);
 			if (element) {
 				return true;
 			}
@@ -846,7 +846,7 @@
 				elementIds = elementIds.concat(pageContext.elementLookup[uniqueId]);
 			}
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element == undefined) {
 					continue;
 				}
@@ -1111,6 +1111,32 @@
 	}
 	render.register = register;
 	render.deregister = deregister;
+
+	if (typeof document !== 'undefined') {
+		// Lets us look up elements across multiple documents
+		// This means that we can use a single Jsonary instance across multiple windows, as long as they add/remove their documents correctly (see the "popup" plugin)
+		var documentList = [document];
+		render.addDocument = function (doc) {
+			documentList.push(doc);
+			return this;
+		};
+		render.removeDocument = function (doc) {
+			var index = documentList.indexOf(doc);
+			if (index !== -1) {
+				documentList.splice(index, 1);
+			}
+			return this;
+		}
+		render.getElementById = function (id) {
+			for (var i = 0; i < documentList.length; i++) {
+				var element = documentList[i].getElementById(id);
+				if (element) {
+					return element;
+				}
+			}
+			return null;
+		};
+	}
 	
 	var actionHandlers = [];
 	render.addActionHandler = function (callback) {
@@ -1204,7 +1230,7 @@
 	Jsonary.extendData({
 		renderTo: function (element, uiState) {
 			if (typeof element == "string") {
-				element = document.getElementById(element);
+				element = render.getElementById(element);
 			}
 			render(element, this, uiState);
 		}
@@ -1219,7 +1245,7 @@
 				elementIds = elementIds.concat(ids);
 			}
 			for (var i = 0; i < elementIds.length; i++) {
-				var element = document.getElementById(elementIds[i]);
+				var element = render.getElementById(elementIds[i]);
 				if (element && element.jsonaryContext) {
 					element.jsonaryContext.data.document.access();
 				}
