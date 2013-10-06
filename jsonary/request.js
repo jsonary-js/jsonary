@@ -264,8 +264,6 @@ publicApi.isRequest = function (obj) {
 	return (obj instanceof Request) || (obj instanceof FragmentRequest);
 }
 
-var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
-
 function HttpError (code) {
 	this.httpCode = code;
 	this.message = "HTTP Status: " + code;
@@ -393,14 +391,14 @@ Request.prototype = {
 
 		thisRequest.document.setRaw(data);
 		thisRequest.profileUrl = null;
-		thisRequest.document.raw.removeSchema(PROFILE_SCHEMA_KEY);
+		thisRequest.document.raw.removeSchema(SCHEMA_SET_FIXED_KEY);
 		if (contentTypeParameters["profile"] != undefined) {
 			var schemaUrl = contentTypeParameters["profile"];
 			schemaUrl = Utils.resolveRelativeUri(thisRequest.url, schemaUrl);
 			thisRequest.profileUrl = schemaUrl;
-			thisRequest.document.raw.addSchema(schemaUrl, PROFILE_SCHEMA_KEY);
+			thisRequest.document.raw.addSchema(schemaUrl, SCHEMA_SET_FIXED_KEY);
 		} else if (hintSchema != undefined) {
-			thisRequest.document.raw.addSchema(hintSchema, PROFILE_SCHEMA_KEY);
+			thisRequest.document.raw.addSchema(hintSchema, SCHEMA_SET_FIXED_KEY);
 		}
 		if (contentTypeParameters["root"] != undefined) {
 			var link = {

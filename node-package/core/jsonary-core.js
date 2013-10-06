@@ -1,4 +1,4 @@
-/* Bundled on Thu Oct 03 2013 18:46:33 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Sun Oct 06 2013 12:13:49 GMT+0100 (BST)*/
 (function() {
 
 
@@ -2047,8 +2047,6 @@
 		return (obj instanceof Request) || (obj instanceof FragmentRequest);
 	}
 	
-	var PROFILE_SCHEMA_KEY = Utils.getUniqueKey();
-	
 	function HttpError (code) {
 		this.httpCode = code;
 		this.message = "HTTP Status: " + code;
@@ -2176,14 +2174,14 @@
 	
 			thisRequest.document.setRaw(data);
 			thisRequest.profileUrl = null;
-			thisRequest.document.raw.removeSchema(PROFILE_SCHEMA_KEY);
+			thisRequest.document.raw.removeSchema(SCHEMA_SET_FIXED_KEY);
 			if (contentTypeParameters["profile"] != undefined) {
 				var schemaUrl = contentTypeParameters["profile"];
 				schemaUrl = Utils.resolveRelativeUri(thisRequest.url, schemaUrl);
 				thisRequest.profileUrl = schemaUrl;
-				thisRequest.document.raw.addSchema(schemaUrl, PROFILE_SCHEMA_KEY);
+				thisRequest.document.raw.addSchema(schemaUrl, SCHEMA_SET_FIXED_KEY);
 			} else if (hintSchema != undefined) {
-				thisRequest.document.raw.addSchema(hintSchema, PROFILE_SCHEMA_KEY);
+				thisRequest.document.raw.addSchema(hintSchema, SCHEMA_SET_FIXED_KEY);
 			}
 			if (contentTypeParameters["root"] != undefined) {
 				var link = {
