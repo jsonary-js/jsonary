@@ -43,26 +43,30 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 					}
 				}
 				var knownProperties = schemas.knownProperties();
+				var knownPropertyIndices = [];
 				// Sort object properties by displayOrder
 				var knownPropertyOrder = {};
 				for (var i = 0; i < knownProperties.length; i++) {
+					knownPropertyIndices.push(i);
 					var key = knownProperties[i];
 					knownPropertyOrder[key] = schemas.propertySchemas(key).displayOrder();
 				}
-				knownProperties.sort(function (keyA, keyB) {
+				knownPropertyIndices.sort(function (indexA, indexB) {
+					var keyA = knownProperties[indexA];
+					var keyB = knownProperties[indexB];
 					if (knownPropertyOrder[keyA] == null) {
 						if (knownPropertyOrder[keyB] == null) {
-							return (keyA > keyB) ? 1 : ((keyA < keyB) ? -1 : 0);
+							return indexA - indexB;
 						}
 						return 1;
 					} else if (knownPropertyOrder[keyB] == null) {
 						return -1;
 					}
-					return knownPropertyOrder[keyA] = knownPropertyOrder[keyB];
+					return knownPropertyOrder[keyA] - knownPropertyOrder[keyB];
 				});
 				// Iterate over the potential properties
-				for (var i = 0; i < knownProperties.length; i++) {
-					var key = knownProperties[i];
+				for (var i = 0; i < knownPropertyIndices.length; i++) {
+					var key = knownProperties[knownPropertyIndices[i]];
 					addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]), depthRemaining - 1);
 				}
 			}

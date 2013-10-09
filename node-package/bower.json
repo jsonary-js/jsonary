@@ -1,0 +1,12 @@
+{
+  "name": "jsonary",
+  "version": "0.0.3",
+  "main": "super-bundle/jsonary-super-bundle.min.js",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

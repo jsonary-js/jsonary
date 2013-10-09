@@ -265,6 +265,26 @@
 				config.sort[key] = config.defaultSort;
 			}
 		}
+		
+		if (typeof config.rowsPerPage !== 'function') {
+			if (config.serverSide && config.serverSide.rowsPerPage) {
+				config.rowsPerPage = function () {
+					var value = this.serverSide.rowsPerPage.apply(this, arguments);
+					if (!value) {
+						return [];
+					}
+					return Array.isArray(value) ? value : [value];
+				};
+			} else {
+				var rowsPerPageStaticValue = config.rowsPerPage || [];
+				if (!Array.isArray(rowsPerPageStaticValue)) {
+					rowsPerPageStaticValue = [rowsPerPageStaticValue];
+				}
+				config.rowsPerPage = function () {
+					return rowsPerPageStaticValue.slice(0);
+				};
+			}
+		}
 
 		TableRenderer.call(this, config);
 		
@@ -449,8 +469,25 @@
 			}
 			return 0;
 		},
+		serverSide: {},
 		rowOrder: function (data, context) {
 			var thisConfig = this;
+			
+			if (thisConfig.serverSide && thisConfig.serverSide.currentSort) {
+				var sortResult = thisConfig.serverSide.currentSort.call(this, data, context);
+				if (Array.isArray(sortResult)) {
+					context.uiState.sort = sortResult;
+				} else if (typeof sortResult === 'string') {
+					context.uiState.sort = [sortResult];
+				}
+				var result = [];
+				var length = data.length();
+				while (result.length < length) {
+					result.push(result.length);
+				}
+				return result;
+			}
+			
 			var sortFunctions = [];
 			context.uiState.sort = context.uiState.sort || [];
 			
@@ -490,13 +527,31 @@
 			return indices;
 		},
 		rowsPerPage: null,
-		pages: function (rowOrder) {
-			if (this.rowsPerPage == null) {
+		pages: function (rowOrder, data, context) {
+			if (this.serverSide && this.serverSide.currentPage && this.serverSide.totalPages) {
+				var current = this.serverSide.currentPage.call(this, data, context) || 1;
+				var total = this.serverSide.totalPages.call(this, data, context);
+				if (typeof total !== 'undefined') {
+					context.uiState.page = current;
+					var result = [];
+					for (var i = 1; !(i > total); i++) {
+						if (i === current) {
+							result.push(rowOrder);
+						} else {
+							result.push([]);
+						}
+					}
+					return result;
+				}
+			}
+
+			var rowsPerPage = context.uiState.rowsPerPage || this.rowsPerPage(data, context)[0];
+			if (!rowsPerPage) {
 				return [rowOrder];
 			}
 			var pages = [];
 			while (rowOrder.length) {
-				pages.push(rowOrder.splice(0, this.rowsPerPage));
+				pages.push(rowOrder.splice(0, rowsPerPage));
 			}
 			return pages;
 		},
@@ -504,9 +559,12 @@
 			var result = '<thead>';
 			var rowOrder = this.rowOrder(data, context);
 			var pages = this.pages(rowOrder, data, context);
-			if (pages.length > 1) {
+
+			var rowsPerPageOptions = this.rowsPerPage(data, context);
+			if (pages.length > 1 || rowsPerPageOptions.length > 1) {
 				var page = context.uiState.page || 1;
 				result += '<tr><th colspan="' + this.columns.length + '" class="json-array-table-pages">';
+				// Left arrows
 				if (page > 1) {
 					result += context.actionHtml('<span class="button">&lt;&lt;</span>', 'page', 1);
 					result += context.actionHtml('<span class="button">&lt;</span>', 'page', page - 1);
@@ -514,6 +572,8 @@
 					result += '<span class="button disabled">&lt;&lt;</span>';
 					result += '<span class="button disabled">&lt;</span>';
 				}
+				
+				// Page selector
 				result += 'page <select name="' + context.inputNameForAction('page') + '">';
 				for (var i = 1; i <= pages.length; i++) {
 					if (i == page) {
@@ -523,6 +583,24 @@
 					}
 				}
 				result += '</select>/' + pages.length;
+
+				// Rows-per-page selector
+				if (rowsPerPageOptions.length > 1) {
+					context.uiState.rowsPerPage = context.uiState.rowsPerPage || rowsPerPageOptions[0];
+					result += ', <select name="' + context.inputNameForAction('rowsPerPage') + '">';
+					rowsPerPageOptions.sort(function (a, b) {return a - b});
+					for (var i = 0; i < rowsPerPageOptions.length; i++) {
+						if (rowsPerPageOption[i] === rowsPerPageOption[i - 1]) {
+							continue;
+						}
+						var iHtml = Jsonary.escapeHtml(rowsPerPageOptions[i]);
+						var selected = (rowsPerPageOptions[i] == context.uiState.rowsPerPage) ? ' selected' : '';
+						result += '<option value="' + iHtml + '"' + selected + '>' + iHtml + '</option>';
+					}
+					result += '</select> per page';
+				}
+
+				// Right arrows
 				if (page < pages.length) {
 					result += context.actionHtml('<span class="button">&gt;</span>', 'page', page + 1);
 					result += context.actionHtml('<span class="button">&gt;&gt;</span>', 'page', pages.length);
@@ -583,9 +661,26 @@
 					}
 					context.uiState.sort.unshift("asc" + arg1);
 				}
+				if (this.serverSide && this.serverSide.action) {
+					return this.serverSide.action.apply(this, arguments);
+				}
 				return true;
 			} else if (actionName == "page") {
-				context.uiState.page = parseInt(arg1);
+				context.uiState.page = parseInt(arg1, 10);
+				if (this.serverSide && this.serverSide.action) {
+					return this.serverSide.action.apply(this, arguments);
+				}
+				return true;
+			} else if (actionName == "rowsPerPage") {
+				var oldRowsPerPage = context.uiState.rowsPerPage;
+				var newRowsPerPage = parseInt(arg1, 10);
+				if (oldRowsPerPage) {
+					context.uiState.page = Math.round(((context.uiState.page || 1) - 1)*oldRowsPerPage/newRowsPerPage) + 1;
+				}
+				context.uiState.rowsPerPage = newRowsPerPage;
+				if (this.serverSide && this.serverSide.action) {
+					return this.serverSide.action.apply(this, arguments);
+				}
 				return true;
 			} else if (actionName == "move-select") {
 				var index = arg1;
@@ -604,23 +699,26 @@
 			return TableRenderer.defaults.action.apply(this, arguments);
 		},
 		defaultTitleHtml: function (data, context, columnKey) {
-			if (data.readOnly() && columnKey.charAt(0) == "/" && this.sort[columnKey]) {
+			if (data.readOnly()) {
 				var result = '<th>';
 				context.uiState.sort = context.uiState.sort || [];
+				var titleHtml = Jsonary.escapeHtml(this.titles[columnKey] != undefined ? this.titles[columnKey] : columnKey);
 				if (context.uiState.sort[0] == "asc" + columnKey) {
 					result += '<div class="json-array-table-sort-asc">';
-					result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+					result += context.actionHtml(titleHtml, 'sort', columnKey);
 					result += '<span class="json-array-table-sort-text">up</span>';
 					result += '</div>';
 				} else if (context.uiState.sort[0] == "desc" + columnKey) {
 					result += '<div class="json-array-table-sort-desc">';
-					result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+					result += context.actionHtml(titleHtml, 'sort', columnKey);
 					result += '<span class="json-array-table-sort-text">down</span>';
 					result += '</div>';
-				} else {
+				} else if (columnKey.charAt(0) == "/" && this.sort[columnKey]) {
 					result += '<div class="json-array-table-sort">';
-					result += context.actionHtml(Jsonary.escapeHtml(this.titles[columnKey]), 'sort', columnKey);
+					result += context.actionHtml(titleHtml, 'sort', columnKey);
 					result += '</div>';
+				} else {
+					return TableRenderer.defaults.defaultTitleHtml.call(this, data, context, columnKey);
 				}
 				return result + '</th>'
 			}

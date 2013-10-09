@@ -10,6 +10,10 @@
 		"sections": {
 			"type": "array",
 			"items": {"$ref": "#/definitions/section"}
+		},
+		"stringArray": {
+			"type": "array",
+			"items": {"type": "string"}
 		}
 	},
 	"required": ["title", "sections"],

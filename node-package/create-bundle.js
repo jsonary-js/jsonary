@@ -5,18 +5,23 @@ var cleanCss = require('clean-css');
 var mime = require('mime');
 
 function Bundle() {
+	this.baseDir = '.';
 	this.jsCode = [];
 	this.cssJsCode = [];
 	this.cssCode = [];
 }
 Bundle.prototype = {
+	base: function (baseDir) {
+		this.baseDir = baseDir;
+		return this;
+	},
 	css: function (filenames) {
 		if (typeof filenames == 'string') {
 			filenames = [filenames];
 		}
 		var jsCode = "";
 		for (var i = 0; i < filenames.length; i++) {
-			var filename = filenames[i];
+			var filename = path.join(this.baseDir, filenames[i]);
 			var cssCode = fs.readFileSync(filename, {enc:'utf8'}).toString();
 			// Replace each URI(...) with a base64-encoded data URI
 			cssCode = cssCode.replace(/((:|\s)url\()\s*(.*)\s*\)/gi, function (fullString, prefix, spacing, uri) {
@@ -60,7 +65,7 @@ Bundle.prototype = {
 		}
 		code = "";
 		for (var i = 0; i < filenames.length; i++) {
-			var filename = filenames[i];
+			var filename = path.join(this.baseDir, filenames[i]);
 			code += '\n\n/**** ' + filename + ' ****/\n\n\t';
 			code += fs.readFileSync(filename, {enc:'utf8'}).toString().replace(/\n/g, "\n\t");
 		}
@@ -78,12 +83,25 @@ Bundle.prototype = {
 		code = code.replace(/\r\n/g, "\n");
 		
 		if (outputFile) {
+			outputFile = path.join(this.baseDir, outputFile);
 			// Timestamp line also keeps line numbers in sync between bundle file and anonymous function in Node
 			var fileCode = '/* Bundled on ' + (new Date) + '*/\n' + code + '.call(this);';
 			if (minify) {
-				fileCode = uglify.minify(fileCode, {fromString: true}).code;
+				var outputDir = path.dirname(outputFile);
+				var outputBasename = path.basename(outputFile);
+				var mapFile = outputBasename + ".map";
+				var minifiedFile = outputBasename.replace(/\.js$/i, '.min.js');
+				var oldCwd = process.cwd();
+				process.chdir(outputDir);
+				fs.writeFileSync(outputBasename, fileCode, {enc:'utf8'});
+				var uglifyResult = uglify.minify(outputBasename, {outSourceMap: mapFile, prefix: outputDir});
+				fs.writeFileSync(minifiedFile, uglifyResult.code, {enc:'utf8'});
+				fs.writeFileSync(mapFile, uglifyResult.map, {enc:'utf8'});
+				var uglifyResult = uglify.minify(fileCode, {fromString: true});
+				process.chdir(oldCwd);
+			} else {
+				fs.writeFileSync(outputFile, fileCode, {enc:'utf8'});
 			}
-			fs.writeFileSync(outputFile, fileCode, {enc:'utf8'});
 		}
 		
 		var functionCode = 'return ' + code + '.call({}); // to set "this" in case any of the renderers/code expect a global context\n';
@@ -96,12 +114,17 @@ Bundle.prototype = {
 			cssCode = cleanCss.process(cssCode);
 		}
 		if (outputFile) {
+			outputFile = path.join(this.baseDir, outputFile);
 			fs.writeFileSync(outputFile, cssCode, {enc:'utf8'});
 		}
 		return cssCode;
 	}
 };
 Bundle.prototype.compile = Bundle.prototype.compileCss;
+
+exports.base = function (baseDir) {
+	return (new Bundle).base(baseDir);
+}
 
 exports.js = function (filenames) {
 	var bundle = new Bundle();

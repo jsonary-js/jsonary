@@ -693,6 +693,16 @@ Uri.prototype = {
 		}
 		return result;
 	},
+	queryObj: function () {
+		var result = {};
+		if (this.query) {
+			for (var i = 0; i < this.query.length; i++) {
+				var pair = this.query[i];
+				result[pair.key] = pair.value;
+			}
+		}
+		return result;
+	},
 	resolve: function (relative) {
 		var result = new Uri(relative + "");
 		if (result.scheme == null) {
@@ -1535,9 +1545,10 @@ var Utils = {
 		}
 		return result;
 	},
-	escapeHtml: function(text) {
+	escapeHtml: function(text, singleQuotesOnly) {
 		text += "";
-		return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+		var escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;");
+		return singleQuotesOnly ? escaped : escaped.replace(/"/g, "&quot;");
 	},
 	encodePointerComponent: function (component) {
 		return component.toString().replace("~", "~0").replace("/", "~1");
@@ -1840,9 +1851,11 @@ publicApi.ajaxFunction = function (params, callback) {
 (function () {
 	var cacheData = {};
 	var cacheTimes = {};
+	/* empty() doesn't do anything, and this makes Node scripts never-ending (need timer.unref())
 	var emptyTimeout = setInterval(function () {
 		defaultCache.empty();
 	}, 10*1000);
+	*/
 
 	var defaultCache = function (cacheKey, insertData) {
 		if (insertData !== undefined) {
@@ -2048,8 +2061,7 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 	this.fetched = false;
 	this.fetchData(url, method, data, encType, hintSchema);
 	this.invalidate = function() {
-		var thisRequest = this;
-		this.document.whenAccessed(function () {
+		var makeRequest = function () {
 			if (thisRequest.successful == null) {
 				// We've already got a pending request
 				return;
@@ -2057,7 +2069,14 @@ function Request(url, method, data, encType, hintSchema, executeImmediately) {
 			if (method == "GET") {
 				thisRequest.fetchData(url, method, data, encType, hintSchema);
 			}
-		});
+		};
+		var thisRequest = this;
+		this.document.whenAccessed(makeRequest);
+		this.document.whenStable = function (callback) {
+			delete thisRequest.document.whenStable;
+			makeRequest();
+			return thisRequest.document.whenStable(callback);
+		}
 	};
 }
 Request.prototype = {
@@ -2215,6 +2234,13 @@ Request.prototype = {
 		});
 	},
 	fetchData: function(url, method, data, encType, hintSchema) {
+		Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + this.document.uniqueId + " is unstable");
+		var stableListeners = new ListenerSet(this);
+		this.document.whenStable = function (callback) {
+			stableListeners.add(callback);
+			return this;
+		};
+		
 		var thisRequest = this;
 		this.successful = null;
 		var xhrUrl = url;
@@ -2253,6 +2279,9 @@ Request.prototype = {
 			} else {
 				thisRequest.ajaxError(error, data);
 			}
+			Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + thisRequest.document.uniqueId + " is stable");
+			delete thisRequest.document.whenStable;
+			stableListeners.notify(thisRequest.document);
 		});
 	}
 };
@@ -2731,6 +2760,10 @@ Document.prototype = {
 		var patch = new Patch();
 		patch.move(source, target);
 		this.patch(patch);
+		return this;
+	},
+	whenStable: function (callback) {
+		callback.call(this, this);
 		return this;
 	}
 }
@@ -3364,6 +3397,13 @@ Data.prototype = {
 	},
 	json: function () {
 		return JSON.stringify(this.value());
+	},
+	whenStable: function (callback) {
+		var thisData = this;
+		this.document.whenStable(function () {
+			callback.call(thisData, thisData);
+		});
+		return this;
 	}
 };
 Data.prototype.indices = Data.prototype.items;
@@ -4171,17 +4211,21 @@ ActiveLink.prototype = {
 	toString: function() {
 		return this.href;
 	},
-	createSubmissionData: function(callback) {
+	createSubmissionData: function(origData, callback) {
+		if (typeof origData === 'function') {
+			callback = origData;
+			origData = undefined;
+		}
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas;
 		if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 			Jsonary.getData(this.href, function (data) {
-				callback(data.editableCopy());
+				callback(origData || data.editableCopy());
 			})
 			return this;
 		}
 		if (callback != undefined) {
-			submissionSchemas.createValue(function (value) {
+			submissionSchemas.createValue(origData, function (value) {
 				var data = publicApi.create(value, hrefBase);
 				for (var i = 0; i < submissionSchemas.length; i++) {
 					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -4189,7 +4233,7 @@ ActiveLink.prototype = {
 				callback(data);
 			});
 		} else {
-			var value = submissionSchemas.createValue();
+			var value = submissionSchemas.createValue(origData);
 			var data = publicApi.create(value, hrefBase);
 			for (var i = 0; i < submissionSchemas.length; i++) {
 				data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
@@ -5043,7 +5087,7 @@ SchemaList.prototype = {
 			}
 			return newList;
 		};
-		return result;
+		return result.slice(0);
 	},
 	knownProperties: function (ignoreList) {
 		if (ignoreList) {
@@ -5052,11 +5096,11 @@ SchemaList.prototype = {
 		}
 		var result;
 		if (this.allowedAdditionalProperties()) {
-			result = this.definedProperties().slice(0);
-			var requiredProperties = this.requiredProperties();
-			for (var i = 0; i < requiredProperties.length; i++) {
-				if (result.indexOf(requiredProperties[i]) == -1) {
-					result.push(requiredProperties[i]);
+			result = this.requiredProperties();
+			var definedProperties = this.definedProperties();
+			for (var i = 0; i < definedProperties.length; i++) {
+				if (result.indexOf(definedProperties[i]) == -1) {
+					result.push(definedProperties[i]);
 				}
 			}
 		} else {
@@ -5466,43 +5510,36 @@ SchemaList.prototype = {
 		}
 		return totalCombos;
 	},
-	createValue: function(callback, origValue, ignoreChoices, ignoreDefaults) {
-		if (typeof callback !== 'undefined' && typeof callback !== 'function') {
+	createValue: function(origValue, callback, ignoreChoices, ignoreDefaults, banCoercion) {
+		var thisSchemaSet = this;
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
 			origValue = callback;
-			callback = null;
+			callback = tmp;
 		}
-		if (!ignoreChoices) {
-			if (callback != null) {
-				this.allCombinations(function (allCombinations) {
-					function nextOption(index) {
-						if (index >= allCombinations.length) {
-							return callback(undefined);
-						}
-						allCombinations[index].createValue(function (value) {
-							if (typeof value !== 'undefined') {
-								callback(value);
-							} else {
-								nextOption(index + 1);
-							}
-						}, origValue, true, ignoreDefaults);
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		
+		if (typeof banCoercion === 'undefined') {
+			if (callback) {
+				this.createValue(origValue, function (value) {
+					if (typeof value === 'undefined') {
+						thisSchemaSet.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
+					} else {
+						callback(value);
 					}
-					nextOption(0);
-				});
+				}, ignoreChoices, ignoreDefaults, true)
 				return;
 			}
-			// Synchronous version
-			var allCombinations = this.allCombinations();
-			for (var i = 0; i < allCombinations.length; i++) {
-				var value = allCombinations[i].createValue(undefined, origValue, true, ignoreDefaults);
-				if (value !== undefined) {
-					return value;
-				}
+			var value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, true);
+			if (typeof value === 'undefined') {
+				value = this.createValue(origValue, callback, ignoreChoices, ignoreDefaults, false);
 			}
-			return;
+			return value;
 		}
-
+		
 		if (!ignoreDefaults) {
-			var thisSchemaSet = this;
 			var nextOrigValue = function () {
 				nextOrigValue = tryDefaults;
 				return origValue;
@@ -5533,23 +5570,64 @@ SchemaList.prototype = {
 					while (nextOrigValue) {
 						var initialValue = nextOrigValue();
 						if (typeof initialValue !== 'undefined') {
-							return thisSchemaSet.createValue(handleValue, initialValue, true, true);
+							return thisSchemaSet.createValue(initialValue, handleValue, ignoreChoices, true, banCoercion);
 						}
 					}
-					thisSchemaSet.createValue(callback, undefined, true, true);
+					if (!banCoercion) {
+						// Ignore supplied value, and try creating from scratch
+						thisSchemaSet.createValue(callback, undefined, ignoreChoices, true, banCoercion);
+					} else {
+						callback(undefined);
+					}
 				};
 				return handleValue(undefined);
 			} else {
 				while (nextOrigValue) {
 					var initialValue = nextOrigValue();
 					if (typeof initialValue !== 'undefined') {
-						var createdValue = this.createValue(undefined, initialValue, true, true);
+						var createdValue = this.createValue(initialValue, undefined, ignoreChoices, true, banCoercion);
 						if (typeof createdValue !== 'undefined') {
 							return createdValue;
 						}
 					}
 				}
+				if (!banCoercion) {
+					// Ignore supplied value, and try creating from scratch
+					return this.createValue(undefined, undefined, ignoreChoices, true, banCoercion);
+				} else {
+					return undefined;
+				}
 			}
+		}
+
+		if (!ignoreChoices) {
+			if (callback != null) {
+				this.allCombinations(function (allCombinations) {
+					function nextOption(index) {
+						if (index >= allCombinations.length) {
+							return callback(undefined);
+						}
+						allCombinations[index].createValue(origValue, function (value) {
+							if (typeof value !== 'undefined') {
+								callback(value);
+							} else {
+								nextOption(index + 1);
+							}
+						}, true, ignoreDefaults, banCoercion);
+					}
+					nextOption(0);
+				});
+				return;
+			}
+			// Synchronous version
+			var allCombinations = this.allCombinations();
+			for (var i = 0; i < allCombinations.length; i++) {
+				var value = allCombinations[i].createValue(origValue, undefined, true, ignoreDefaults, banCoercion);
+				if (value !== undefined) {
+					return value;
+				}
+			}
+			return;
 		}
 
 		var basicTypes = this.basicTypes();
@@ -5574,11 +5652,13 @@ SchemaList.prototype = {
 			}
 		}
 
-		// TODO: move up above, to the "if (!ignoreDefaults) {" section
 		var enumValues = this.enumValues();
 		if (enumValues != undefined) {
-			pending += enumValues.length;
 			for (var i = 0; i < enumValues.length; i++) {
+				if (typeof origValue !== 'undefined' && !Utils.recursiveCompare(origValue, enumValues[i])) {
+					continue;
+				}
+				pending++;
 				if (gotCandidate(enumValues[i])) {
 					return chosenCandidate;
 				}
@@ -5586,17 +5666,18 @@ SchemaList.prototype = {
 		} else {
 			if (typeof origValue !== 'undefined') {
 				var basicType = Utils.guessBasicType(origValue);
-				var index = basicTypes.indexOf(basicType);
-				if (index === -1 && basicType == 'integer') {
-					index = basicTypes.indexOf('number');
-				}
-				if (ignoreDefaults) {
-					basicTypes = (index === -1) ? [] : [basicType];
-				} else {
-					if (index !== -1) {
-						basicTypes.splice(index, 1);
-						basicTypes.unshift(basicType);
+				if (basicType == 'integer') {
+					// pull "number" to front first, so it goes "integer", "number", ...
+					var numberIndex = basicTypes.indexOf('number');
+					if (numberIndex !== -1) {
+						basicTypes.splice(numberIndex, 1);
+						basicTypes.unshift('number');
 					}
+				}
+				var index = basicTypes.indexOf(basicType);
+				if (index !== -1) {
+					basicTypes.splice(index, 1);
+					basicTypes.unshift(basicType);
 				}
 			}
 			for (var i = 0; (typeof chosenCandidate === 'undefined') && i < basicTypes.length; i++) {
@@ -5607,37 +5688,38 @@ SchemaList.prototype = {
 						return chosenCandidate;
 					}
 				} else if (basicType == "boolean") {
-					if (gotCandidate(true)) {
+					var candidate = this.createValueBoolean(origValue, banCoercion);
+					if (gotCandidate(candidate)) {
 						return true;
 					}
 				} else if (basicType == "integer" || basicType == "number") {
-					var candidate = this.createValueNumber(origValue);
+					var candidate = this.createValueNumber(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "string") {
-					var candidate = this.createValueString(origValue);
+					var candidate = this.createValueString(origValue, banCoercion);
 					if (gotCandidate(candidate)) {
 						return chosenCandidate;
 					}
 				} else if (basicType == "array") {
 					if (callback) {
-						this.createValueArray(function (candidate) {
+						this.createValueArray(origValue, function (candidate) {
 							gotCandidate(candidate);
-						}, origValue);
+						}, banCoercion);
 					} else {
-						var candidate = this.createValueArray(undefined, origValue);
+						var candidate = this.createValueArray(origValue, undefined, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
 					}
 				} else if (basicType == "object") {
 					if (callback) {
-						var candidate = this.createValueObject(function (candidate) {
+						var candidate = this.createValueObject(origValue, function (candidate) {
 							gotCandidate(candidate);
-						}, origValue);
+						}, banCoercion);
 					} else {
-						var candidate = this.createValueObject(undefined, origValue);
+						var candidate = this.createValueObject(origValue, undefined, banCoercion);
 						if (gotCandidate(candidate)) {
 							return chosenCandidate;
 						}
@@ -5647,17 +5729,22 @@ SchemaList.prototype = {
 		}
 		return gotCandidate(chosenCandidate);
 	},
-	createValueNumber: function (origValue) {
-		var exclusiveMinimum = this.exclusiveMinimum();
-		var minimum = this.minimum();
-		var maximum = this.maximum();
-		var exclusiveMaximum = this.exclusiveMaximum();
-		var interval = this.numberInterval();
-		var candidate = undefined;
-		if (typeof origValue === 'string') {
+	createValueBoolean: function (origValue, banCoercion) {
+		if (origValue === undefined) {
+			return true;
+		}
+		if (banCoercion && typeof origValue !== 'boolean') {
+			return undefined;
+		}
+		return !!origValue;
+	},
+	createValueNumber: function (origValue, banCoercion) {
+		if (!banCoercion && typeof origValue === 'string') {
 			var asNumber = parseFloat(origValue);
 			if (!isNaN(asNumber)) {
 				origValue = asNumber;
+			} else {
+				return undefined;
 			}
 		}
 		if (typeof origValue === 'number') {
@@ -5671,7 +5758,15 @@ SchemaList.prototype = {
 					return origValue;
 				}
 			}
+		} else if (typeof origValue !== 'undefined') {
+			return undefined;
 		}
+		var exclusiveMinimum = this.exclusiveMinimum();
+		var minimum = this.minimum();
+		var maximum = this.maximum();
+		var exclusiveMaximum = this.exclusiveMaximum();
+		var interval = this.numberInterval();
+		var candidate = undefined;
 		if (minimum != undefined && maximum != undefined) {
 			if (minimum > maximum || (minimum == maximum && (exclusiveMinimum || exclusiveMaximum))) {
 				return;
@@ -5716,20 +5811,26 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueString: function (origValue) {
+	createValueString: function (origValue, banCoercion) {
+		var candidates = [""];
+		if (typeof origValue !== 'undefined') {
+			if (typeof origValue === 'string') {
+				candidates.unshift(origValue);
+			} else if (banCoercion) {
+				return undefined;
+			} else if (typeof origValue === 'number') {
+				candidates.unshift("" + origValue);
+			} else if (typeof origValue === 'boolean') {
+				candidates.unshift(origValue ? 'true' : 'false');
+			} else {
+				return undefined;
+			}
+		}
 		var minLength = this.minLength();
 		var maxLength = this.maxLength()
 		var patterns = this.patterns();
 		if (maxLength != null && minLength > maxLength) {
 			return undefined;
-		}
-		var candidates = [""];
-		if (typeof origValue === 'string') {
-			candidates.unshift(origValue);
-		} else if (typeof origValue === 'number') {
-			candidates.unshift("" + origValue);
-		} else if (typeof origValue === 'boolean') {
-			candidates.unshift(origValue ? 'true' : 'false');
 		}
 		for (var i = 0; i < candidates.length; i++) {
 			var candidate = candidates[i];
@@ -5747,7 +5848,15 @@ SchemaList.prototype = {
 			return candidate;
 		}
 	},
-	createValueArray: function (callback, origValue) {
+	createValueArray: function (origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (typeof origValue !== 'undefined' && !Array.isArray(origValue)) {
+			return undefined;
+		}
 		var thisSchemaSet = this;
 		var candidate = [];
 		var minItems = this.minItems();
@@ -5761,7 +5870,7 @@ SchemaList.prototype = {
 				pending++;
 				var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 				if (callback) {
-					thisSchemaSet.createValueForIndex(i, function (value) {
+					thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
 						if (typeof value === 'undefined') {
 							candidate = undefined;
 						} else if (candidate) {
@@ -5771,9 +5880,9 @@ SchemaList.prototype = {
 						if (pending == 0) {
 							callback(candidate);
 						}
-					}, origItemValue);
+					}, banCoercion || undefined);
 				} else {
-					var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+					var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
 					if (typeof itemValue === 'undefined') {
 						candidate = undefined;
 					} else if (candidate) {
@@ -5793,9 +5902,11 @@ SchemaList.prototype = {
 					pending++;
 					var origItemValue = Array.isArray(origValue) ? origValue[i] : undefined;
 					if (callback) {
-						thisSchemaSet.createValueForIndex(i, function (value) {
+						thisSchemaSet.createValueForIndex(i, origItemValue, function (value) {
 							if (candidate && typeof value !== 'undefined' && i < maxItems) {
 								candidate[i] = value;
+							} else if (banCoercion) {
+								candidate = undefined;
 							} else if (i < maxItems) {
 								maxItems = i;
 							}
@@ -5803,11 +5914,13 @@ SchemaList.prototype = {
 							if (pending == 0) {
 								callback(candidate);
 							}
-						}, origItemValue);
+						}, banCoercion || undefined);
 					} else {
-						var itemValue = thisSchemaSet.createValueForIndex(i, undefined, origItemValue);
+						var itemValue = thisSchemaSet.createValueForIndex(i, origItemValue, undefined, banCoercion || undefined);
 						if (candidate && typeof itemValue !== 'undefined') {
 							candidate[i] = itemValue;
+						} else if (banCoercion) {
+							candidate = undefined;
 						} else if (i < maxItems) {
 							maxItems = i;
 						}
@@ -5821,17 +5934,25 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueObject: function (callback, origValue) {
+	createValueObject: function (origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (typeof origValue !== 'undefined' && (typeof origValue !== 'object' || Array.isArray(origValue))) {
+			return undefined;
+		}
 		var thisSchemaSet = this;
 		var candidate = {};
-		var requiredProperties = this.requiredProperties();
 		var pending = 1;
+		var requiredProperties = this.requiredProperties();
 		for (var i = 0; candidate && i < requiredProperties.length; i++) {
 			(function (key) {
 				pending++;
 				var origPropValue = (typeof origValue == 'object' && !Array.isArray(origValue)) ? origValue[key] : undefined;
 				if (callback) {
-					thisSchemaSet.createValueForProperty(key, function (value) {
+					thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 						if (typeof value === 'undefined') {
 							candidate = undefined;
 						} else if (candidate) {
@@ -5841,19 +5962,21 @@ SchemaList.prototype = {
 						if (pending == 0) {
 							callback(candidate);
 						}
-					}, origPropValue);
+					}, banCoercion || undefined);
 				} else {
-					var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+					var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 					if (typeof propValue === 'undefined') {
 						candidate = undefined;
 					} else if (candidate) {
-						candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						candidate[key] = propValue;
 					}
 				}
 			})(requiredProperties[i]);
 		}
 		if (candidate && typeof origValue === 'object' && !Array.isArray(origValue)) {
-			for (var key in origValue) {
+			var definedProperties = this.definedProperties();
+			for (var i = 0; candidate && i < definedProperties.length; i++) {
+				var key = definedProperties[i];
 				if (!candidate || typeof candidate[key] !== 'undefined') {
 					continue;
 				}
@@ -5861,19 +5984,23 @@ SchemaList.prototype = {
 					pending++;
 					var origPropValue = origValue[key];
 					if (callback) {
-						thisSchemaSet.createValueForProperty(key, function (value) {
+						thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 							if (candidate && typeof value !== 'undefined') {
 								candidate[key] = value;
+							} else if (banCoercion) {
+								candidate = undefined;
 							}
 							pending--;
 							if (pending == 0) {
 								callback(candidate);
 							}
-						}, origPropValue);
+						}, banCoercion || undefined);
 					} else {
-						var propValue = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+						var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 						if (candidate && typeof propValue !== 'undefined') {
-							candidate[key] = thisSchemaSet.createValueForProperty(key, undefined, origPropValue);
+							candidate[key] = propValue;
+						} else if (banCoercion) {
+							candidate = undefined;
 						}
 					}
 				})(key);
@@ -5885,28 +6012,45 @@ SchemaList.prototype = {
 		}
 		return candidate;
 	},
-	createValueForIndex: function(index, callback, origValue) {
-		var indexSchemas = this.indexSchemas(index);
-		return indexSchemas.createValue(callback, origValue);
-	},
-	createValueForProperty: function(key, callback, origValue) {
-		var propertySchemas = this.propertySchemas(key);
-		return propertySchemas.createValue(callback, origValue);
-	},
-	createData: function (callback, origValue) {
-		var thisSchemaSet = this;
-		if (typeof callback !== 'undefined' && typeof callback !== 'function') {
+	createValueForIndex: function(index, origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
 			origValue = callback;
-			callback = null;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		var indexSchemas = this.indexSchemas(index);
+		return indexSchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
+	},
+	createValueForProperty: function(key, origValue, callback, banCoercion) {
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
+		}
+		if (publicApi.isData(origValue)) {
+			origValue = origValue.value();
+		}
+		var propertySchemas = this.propertySchemas(key);
+		return propertySchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
+	},
+	createData: function (origValue, callback) {
+		var thisSchemaSet = this;
+		if (typeof origValue === 'function') {
+			var tmp = origValue;
+			origValue = callback;
+			callback = tmp;
 		}
 		if (publicApi.isData(origValue)) {
 			origValue == origValue.value();
 		}
 		if (callback) {
-			this.createValue(function (value) {
+			this.createValue(origValue, function (value) {
 				var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
 				callback(data);
-			}, origValue);
+			});
 			return this;
 		}
 		return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
@@ -6058,6 +6202,7 @@ publicApi.createSchemaList = function (schemas) {
 };
 
 var SCHEMA_SET_UPDATE_KEY = Utils.getUniqueKey();
+var SCHEMA_SET_FIXED_KEY = Utils.getUniqueKey();
 
 function SchemaSet(dataObj) {
 	var thisSchemaSet = this;
@@ -6345,7 +6490,7 @@ SchemaSet.prototype = {
 			publicApi.invalidate(invalidateUrl);
 			return;
 		}
-		var schemaKey = Utils.getUniqueKey();
+		var schemaKey = SCHEMA_SET_FIXED_KEY;
 		var linkData = publicApi.create(rawLink);
 		var potentialLink = new PotentialLink(linkData);
 		this.addLinks([potentialLink], schemaKey);
@@ -6362,7 +6507,7 @@ SchemaSet.prototype = {
 					var schema = publicApi.createSchema({
 						"$ref": rawLink.href
 					});
-					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, false);
+					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
 				}
 			});
 		}
@@ -6687,7 +6832,7 @@ publicApi.config = {
 publicApi.UriTemplate = UriTemplate;
 
 // Puts it in "exports" if it exists, otherwise create this.Jsonary (this == window, probably)
-})((typeof module !== 'undefined' && module.exports) ? exports : (this.Jsonary = {}, this.Jsonary));
+})(this.Jsonary = {});
 
 (function (global) {
 	var Jsonary = global.Jsonary;
@@ -6729,7 +6874,9 @@ publicApi.UriTemplate = UriTemplate;
 				}
 			}
 			this[newName] = newName;
-			if (typeof beforeName == 'number') {
+			if (beforeName === false) {
+				return;
+			} else if (typeof beforeName == 'number') {
 				var index = Math.max(0, Math.min(componentList.length - 1, Math.round(beforeName)));
 				componentList.splice(index, 0, this[newName]);
 			} else if (componentList.indexOf(beforeName) != -1) {
@@ -6739,6 +6886,7 @@ publicApi.UriTemplate = UriTemplate;
 			} else {
 				componentList.splice(componentList.length - 1, 0, this[newName]);
 			}
+			return newName;
 		}
 	};
 	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
@@ -6794,7 +6942,7 @@ publicApi.UriTemplate = UriTemplate;
 						}
 						var prevContext = element.jsonaryContext;
 						var prevUiState = copyValue(this.uiStartingState);
-						var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+						var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents);
 						if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 							renderer.render(element, data, prevContext);
 						} else {
@@ -6807,11 +6955,29 @@ publicApi.UriTemplate = UriTemplate;
 		this.rootContext = this;
 		this.subContexts = {};
 		this.oldSubContexts = {};
+		this.missingComponents = componentList;
 	}
 	RenderContext.prototype = {
-		usedComponents: [],
+		missingComponents: [],
 		rootContext: null,
 		baseContext: null,
+		labelSequence: function () {
+			if (!this.parent || this.parent == pageContext) {
+				return [];
+			}
+			return this.parent.labelSequence().concat([this.label]);
+		},
+		labelSequenceContext: function (seq) {
+			var result = this;
+			for (var i = 0; i < seq.length; i++) {
+				var label = seq[i];
+				result = result.subContexts[label] || result.oldSubContexts[label];
+				if (!result) {
+					return null;
+				}
+			}
+			return result;
+		},
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
 				var selfLink = data.getLink('self');
@@ -6882,91 +7048,41 @@ publicApi.UriTemplate = UriTemplate;
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
 		},
-		saveCompleteState: function (skipEnhancements) {
-			var state = {};
-			state.rendererId = this.renderer ? this.renderer.uniqueId : null;
-			state.sub = {};
+		withComponent: function (components) {
+			if (!Array.isArray(components)) {
+				components = [components];
+			}
+			var actualGetSubContext = this.getSubContext;
 
-			var result = {
-				actions: {},
-				inputs: {},
-				rootContext: this.uniqueId,
-				contexts: {},
-				documents: {}
+			var result = Object.create(this);
+			result.getSubContext = function () {
+				var subContext = actualGetSubContext.apply(this, arguments);
+				for (var i = 0; i < components.length; i++) {
+					if (subContext.missingComponents.indexOf(components[i]) === -1) {
+						subContext.missingComponents.unshift(components[i]);
+					}
+				}
+				return subContext;
 			};
-			result.contexts[this.uniqueId] = state;
-			for (var key in this.subContexts) {
-				var subContext = this.subContexts[key];
-				state.sub[key] = subContext.uniqueId;
-				var subResult = subContext.saveCompleteState(true);
-				for (var subKey in subResult.contexts) {
-					result.contexts[subKey] = subResult.contexts[subKey];
-				}
-				for (var subKey in subResult.documents) {
-					result.documents[subKey] = subResult.documents[subKey];
-				}
+			return result;
+		},
+		withoutComponent: function (components) {
+			if (!Array.isArray(components)) {
+				components = [components];
 			}
-			for (var key in this.oldSubContexts) {
-				var subContext = this.oldSubContexts[key];
-				state.sub[key] = subContext.uniqueId;
-				var subResult = subContext.saveCompleteState(true);
-				for (var subKey in subResult.contexts) {
-					result.contexts[subKey] = subResult.contexts[subKey];
-				}
-				for (var subKey in subResult.documents) {
-					result.documents[subKey] = subResult.documents[subKey];
-				}
-			}
+			var actualGetSubContext = this.getSubContext;
 
-			if (!this.data) {
-				state.data = null;
-			} else {
-				state.data = {
-					path: this.data.pointerPath(),
-					document: this.data.document.uniqueId
-				};
-				if (!result.documents[this.data.document.uniqueId]) {
-					result.documents[this.data.document.uniqueId] = this.data.document.deflate(true);
-				}
-			}
-			
-			if (!skipEnhancements) {
-				for (var key in this.enhancementActions) {
-					var enhancement = this.enhancementActions[key];
-					result.actions[key] = {
-						context: enhancement.context.uniqueId,
-						name: enhancement.actionName,
-						params: enhancement.params
-					};
-					var c = enhancement.context;
-					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
-						result.contexts[c.uniqueId].keep = true;
-						c = c.baseContext;
+			var result = Object.create(this);
+			result.getSubContext = function () {
+				var subContext = actualGetSubContext.apply(this, arguments);
+				for (var i = 0; i < components.length; i++) {
+					var componentIndex = subContext.missingComponents.indexOf(components[i]);
+					if (componentIndex !== -1) {
+						subContext.missingComponents.splice(componentIndex, 1);
 					}
 				}
-				for (var key in this.enhancementInputs) {
-					var enhancement = this.enhancementInputs[key];
-					result.inputs[key] = {
-						context: enhancement.context.uniqueId,
-						name: enhancement.actionName,
-						params: enhancement.params
-					};
-					var c = enhancement.context;
-					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
-						result.contexts[c.uniqueId].keep = true;
-						c = c.baseContext;
-					}
-				}
-				var newContexts = {};
-				for (var key in result.contexts) {
-					if (result.contexts[key].keep) {
-						newContexts[key] = result.contexts[key];
-						delete newContexts[key].keep;
-					}
-				}
-				result.contexts = newContexts;
-				result.uiState = this.saveUiState();
-			}
+				return subContext;
+			};
 			return result;
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
@@ -6996,29 +7112,36 @@ publicApi.UriTemplate = UriTemplate;
 				delete this.subContextSavedStates[labelKey];
 			}
 			if (this.subContexts[labelKey] == undefined) {
-				var usedComponents = [];
+				var missingComponents;
 				if (this.data == data) {
-					usedComponents = this.usedComponents.slice(0);
+					missingComponents = this.missingComponents.slice(0);
 					if (this.renderer != undefined) {
-						usedComponents = usedComponents.concat(this.renderer.filterObj.component);
+						for (var i = 0; i < this.renderer.filterObj.component.length; i++) {
+							var componentIndex = missingComponents.indexOf(this.renderer.filterObj.component[i]);
+							if (componentIndex !== -1) {
+								missingComponents.splice(componentIndex, 1);
+							}
+						}
 					}
+				} else {
+					missingComponents = componentList.slice(0);
 				}
 				if (typeof elementId == "object") {
 					elementId = elementId.id;
 				}
-				function Context(rootContext, baseContext, label, data, uiState, usedComponents) {
+				function Context(rootContext, baseContext, label, data, uiState, missingComponents) {
 					this.uniqueId = contextIdCounter++;
 					this.rootContext = rootContext;
 					this.baseContext = baseContext;
 					this.label = label;
 					this.data = data;
 					this.uiStartingState = copyValue(uiState || {});
-					this.usedComponents = usedComponents;
+					this.missingComponents = missingComponents;
 					this.subContexts = {};
 					this.oldSubContexts = {};
 				}
 				Context.prototype = this.rootContext;
-				this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, usedComponents);
+				this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, missingComponents);
 			}
 			var subContext = this.subContexts[labelKey];
 			subContext.elementId = elementId;
@@ -7046,16 +7169,16 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			
 			var renderer = this.renderer;
-			var data = this.data;
-			
-			renderer.asyncRenderHtml(data, this, function (error, innerHtml) {
-				if (error) {
-					return htmlCallback(error, innerHtml, thisContext);
-				}
-				thisContext.clearOldSubContexts();
+			this.data.whenStable(function (data) {
+				renderer.asyncRenderHtml(data, thisContext, function (error, innerHtml) {
+					if (error) {
+						return htmlCallback(error, innerHtml, thisContext);
+					}
+					thisContext.clearOldSubContexts();
 
-				innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
-				htmlCallback(null, innerHtml, thisContext);
+					innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
+					htmlCallback(null, innerHtml, thisContext);
+				});
 			});
 		},
 
@@ -7104,7 +7227,7 @@ publicApi.UriTemplate = UriTemplate;
 			if (this.elementLookup[uniqueId].indexOf(element.id) == -1) {
 				this.elementLookup[uniqueId].push(element.id);
 			}
-			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+			var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 			if (renderer != undefined) {
 				subContext.renderer = renderer;
 				if (subContext.uiState == undefined) {
@@ -7156,7 +7279,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 
-			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+			var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 			subContext.renderer = renderer;
 			if (subContext.uiState == undefined) {
 				subContext.loadState(subContext.uiStartingState);
@@ -7201,7 +7324,7 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 
-			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+			var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 			subContext.renderer = renderer;
 			if (subContext.uiState == undefined) {
 				subContext.loadState(subContext.uiStartingState);
@@ -7229,7 +7352,7 @@ publicApi.UriTemplate = UriTemplate;
 				// If so, check the enhancement contexts.
 				var prevContext = element.jsonaryContext || this.enhancementContexts[elementIds[i]];
 				var prevUiState = copyValue(this.uiStartingState);
-				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+				var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
@@ -7240,10 +7363,10 @@ publicApi.UriTemplate = UriTemplate;
 		actionHtml: function(innerHtml, actionName) {
 			var startingIndex = 2;
 			var historyChange = false;
-			var linkUrl = Jsonary.render.actionUrl(this, actionName);
+			var linkUrl = null;
 			if (typeof actionName == "boolean") {
 				historyChange = arguments[1];
-				linkUrl = arguments[2] || linkUrl;
+				linkUrl = arguments[2] || null;
 				actionName = arguments[3];
 				startingIndex += 2;
 			}
@@ -7253,7 +7376,15 @@ publicApi.UriTemplate = UriTemplate;
 			}
 			var elementId = this.getElementId();
 			this.addEnhancementAction(elementId, actionName, this, params, historyChange);
-			return Jsonary.render.actionHtml(elementId, linkUrl, innerHtml);
+			var argsObject = {
+				context: this,
+				linkUrl: linkUrl,
+				actionName: actionName,
+				params: params,
+				historyChange: historyChange
+			};
+			argsObject.linkUrl = linkUrl || Jsonary.render.actionUrl(argsObject);
+			return Jsonary.render.actionHtml(elementId, innerHtml, argsObject);
 		},
 		inputNameForAction: function (actionName) {
 			var historyChange = false;
@@ -7267,7 +7398,11 @@ publicApi.UriTemplate = UriTemplate;
 			for (var i = startIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
-			var name = this.getElementId();
+			var argsObject = {
+				context: this,
+				actionName: actionName,
+			};
+			var name = Jsonary.render.actionInputName(argsObject);
 			this.enhancementInputs[name] = {
 				inputName: name,
 				actionName: actionName,
@@ -7320,6 +7455,17 @@ publicApi.UriTemplate = UriTemplate;
 				element = element.nextSibling;
 			}
 		},
+		action: function (actionName) {
+			var args = [this];
+			for (var i = 0; i < arguments.length; i++) {
+				args.push(arguments[i]);
+			}
+			return this.renderer.action.apply(this.renderer, args);
+		},
+		actionArgs: function (actionName, args) {
+			args = [this, actionName].concat(args || []);
+			return this.renderer.action.apply(this.renderer, args);
+		},
 		enhanceElementSingle: function (element) {
 			var elementId = element.id;
 			var context = this.enhancementContexts[elementId];
@@ -7337,8 +7483,8 @@ publicApi.UriTemplate = UriTemplate;
 				element.onclick = function () {
 					var redrawElementId = action.context.elementId;
 					var actionContext = action.context;
-					var args = [actionContext, action.actionName].concat(action.params);
-					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
+					var args = [action.actionName].concat(action.params);
+					if (actionContext.action.apply(actionContext, args)) {
 						// Action returned positive - we should force a re-render
 						actionContext.rerender();
 					}
@@ -7365,8 +7511,8 @@ publicApi.UriTemplate = UriTemplate;
 					}
 					var redrawElementId = inputAction.context.elementId;
 					var inputContext = inputAction.context;
-					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
-					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
+					var args = [inputAction.actionName, value].concat(inputAction.params);
+					if (inputContext.action.apply(inputContext, args)) {
 						inputContext.rerender();
 					}
 					notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
@@ -7380,94 +7526,6 @@ publicApi.UriTemplate = UriTemplate;
 	RenderContext.prototype.loadState = RenderContext.prototype.loadUiState;
 	
 	var pageContext = new RenderContext();
-	render.loadDocumentsFromState = function (saved, callback) {
-		var documents = {};
-		var counter = 0;
-		var error = null;
-		for (var key in saved.documents) {
-			counter++;
-			documents[key] = Jsonary.inflate(saved.documents[key], function (err, document) {
-				error = error || err;
-				counter--;
-				if (counter == 0 && callback) {
-					callback(error, documents);
-				}
-			});
-		}
-		saved.parsedDocuments = function () {
-			return documents;
-		};
-		return documents;
-	};
-	render.loadCompleteState = function (saved) {
-		var contexts = {};
-		if (!saved.parsedDocuments) {
-			render.loadDocumentsFromState(saved);
-		}
-		var documents = saved.parsedDocuments();
-		
-		function contextData(id) {
-			var state = saved.contexts[id];
-			if (state.data) {
-				var document = documents[state.data.document];
-				return document.root.subPath(state.data.path);
-			}
-			return null;
-		}
-		
-		function loadContext(context, id) {
-			var state = saved.contexts[id];
-			contexts[id] = context;
-			
-			var renderer = rendererLookup[state.rendererId];
-			context.renderer = renderer;
-			context.loadState(context.uiStartingState);
-			if (state.sub) {
-				for (var key in state.sub) {
-					var savedId = state.sub[key];
-					if (contexts[savedId] || !saved.contexts[savedId]) {
-						continue;
-					}
-					var data = contextData(savedId);
-					var subContext = context.getSubContext("", data, key);
-					loadContext(subContext, savedId);
-				}
-			}
-		}
-		var rootContextId = saved.rootContext;
-		var rootData = contextData(rootContextId);
-		var rootContext = pageContext.getSubContext('', rootData, null, saved.uiState);
-		loadContext(rootContext, rootContextId);
-
-		var actions = {};		
-		for (var key in saved.actions) {
-			(function (key, action) {
-				var action = saved.actions[key];
-				var actionContext = contexts[action.context];
-				actions[key] = function () {
-					var args = [actionContext, action.name].concat(action.params || []);
-					return actionContext.renderer.action.apply(actionContext.renderer, args);
-				};
-			})(key, saved.actions[key]);
-		}
-		var inputs = {};
-		for (var key in saved.inputs) {
-			(function (key, input) {
-				var input = saved.inputs[key];
-				var inputContext = contexts[input.context];
-				inputs[key] = function (value) {
-					var args = [inputContext, input.name, value].concat(input.params || []);
-					return inputContext.renderer.action.apply(inputContext.renderer, args);
-				};
-			})(key, saved.inputs[key]);
-		}
-
-		return {
-			context: rootContext,
-			actions: actions,
-			inputs: inputs
-		};
-	};
 	
 	function cleanup() {
 		// Clean-up sweep of pageContext's element lookup
@@ -7527,6 +7585,8 @@ publicApi.UriTemplate = UriTemplate;
 		Jsonary.cleanup = cleanup;
 	}
 
+	var initialComponents = [];
+	
 	function render(element, data, uiStartingState) {
 		if (typeof element == 'string') {
 			element = render.getElementById(element);
@@ -7535,19 +7595,19 @@ publicApi.UriTemplate = UriTemplate;
 		innerElement.className = "jsonary";
 		element.innerHTML = "";
 		element.appendChild(innerElement);
-		var context = pageContext.subContext(Math.random());
+		var context = pageContext.withComponent(initialComponents).subContext(Math.random());
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return context.render(innerElement, data, 'render', uiStartingState);
 	}
 	function renderHtml(data, uiStartingState) {
-		var innerHtml = pageContext.renderHtml(data, null, uiStartingState);
+		var innerHtml = pageContext.withComponent(initialComponents).renderHtml(data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return '<span class="jsonary">' + innerHtml + '</span>';
 	}
 	function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-		return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
+		return pageContext.withComponent(initialComponents).asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
 			if (error) {
 				htmlCallback(error, innerHtml, renderContext);
 			}
@@ -7565,11 +7625,20 @@ publicApi.UriTemplate = UriTemplate;
 		};
 	}
 	render.Components = componentNames;
-	render.actionUrl = function (context, actionName) {
+	render.addInitialComponent = function (component) {
+		componentNames.add(component, false);
+		initialComponents.push(component);
+		return this;
+	};
+	render.actionInputName = function (args) {
+		var context = args.context;
+		return context.getElementId();
+	};
+	render.actionUrl = function (args) {
 		return "javascript:void(0)";
 	};
-	render.actionHtml = function (elementId, linkUrl, innerHtml) {
-		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
+	render.actionHtml = function (elementId, innerHtml, args) {
+		return '<a href="' + Jsonary.escapeHtml(args.linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
 	};
 	render.rendered = function (data) {
 		var uniqueId = data.uniqueId;
@@ -7635,6 +7704,19 @@ publicApi.UriTemplate = UriTemplate;
 		} else {
 			this.filterObj = sourceObj.filter || {};
 			this.filterFunction = this.filterObj.filter;
+		}
+		if (this.filterObj.schema) {
+			var possibleSchemas = this.filterObj.schema;
+			this.filterFunction = (function (oldFilterFunction) {
+				return function (data, schemas) {
+					for (var i = 0; i < possibleSchemas.length; i++) {
+						if (schemas.containsUrl(possibleSchemas)) {
+							return oldFilterFunction ? oldFilterFunction.apply(this, arguments) : true;
+						}
+					}
+					return false;
+				};
+			})(this.filterFunction);
 		}
 		this.actionFunction = sourceObj.action;
 		for (var key in sourceObj) {
@@ -7877,7 +7959,18 @@ publicApi.UriTemplate = UriTemplate;
 	Renderer.prototype.super_ = Renderer.prototype;
 
 	var rendererLookup = {};
-	var rendererListByType = { // Index first by type, then component
+	// Index first by read-only status, then type, then component
+	var rendererListByTypeReadOnly = {
+		'undefined': {},
+		'null': {},
+		'boolean': {},
+		'integer': {},
+		'number': {},
+		'string' :{},
+		'object': {},
+		'array': {}
+	};
+	var rendererListByTypeEditable = {
 		'undefined': {},
 		'null': {},
 		'boolean': {},
@@ -7891,6 +7984,7 @@ publicApi.UriTemplate = UriTemplate;
 		var renderer = new Renderer(obj);
 		rendererLookup[renderer.uniqueId] = renderer;
 		
+		var readOnly = renderer.filterObj.readOnly;
 		var types = renderer.filterObj.type || ['undefined', 'null', 'boolean', 'integer', 'number', 'string', 'object', 'array'];
 		var components = renderer.filterObj.component;
 		if (!Array.isArray(types)) {
@@ -7901,14 +7995,24 @@ publicApi.UriTemplate = UriTemplate;
 		}
 		for (var i = 0; i < types.length; i++) {
 			var type = types[i];
-			if (!rendererListByType[type]) {
+			if (!rendererListByTypeReadOnly[type]) {
 				throw new Error('Invalid type(s): ' + type);
 			}
-			var rendererListByComponent = rendererListByType[type];
-			for (var j = 0; j < components.length; j++) {
-				var component = components[j];
-				rendererListByComponent[component] = rendererListByComponent[component] || [];
-				rendererListByComponent[component].push(renderer);
+			if (readOnly || typeof readOnly === 'undefined') {
+				var rendererListByComponent = rendererListByTypeReadOnly[type];
+				for (var j = 0; j < components.length; j++) {
+					var component = components[j];
+					rendererListByComponent[component] = rendererListByComponent[component] || [];
+					rendererListByComponent[component].push(renderer);
+				}
+			}
+			if (!readOnly) {
+				var rendererListByComponent = rendererListByTypeEditable[type];
+				for (var j = 0; j < components.length; j++) {
+					var component = components[j];
+					rendererListByComponent[component] = rendererListByComponent[component] || [];
+					rendererListByComponent[component].push(renderer);
+				}
 			}
 		}
 		return renderer;
@@ -7918,13 +8022,16 @@ publicApi.UriTemplate = UriTemplate;
 			rendererId = rendererId.uniqueId;
 		}
 		delete rendererLookup[rendererId];
-		for (var type in rendererListByType) {
-			for (var component in rendererListByType[type]) {
-				var rendererList = rendererListByType[type][component];
-				for (var i = 0; i < rendererList.length; i++) {
-					if (rendererList[i].uniqueId == rendererId) {
-						rendererList.splice(i, 1);
-						i--;
+		for (var i = 0; i < 2; i++) {
+			var rendererListByType = i ? rendererListByTypeEditable : rendererListByTypeReadOnly;
+			for (var type in rendererListByType) {
+				for (var component in rendererListByType[type]) {
+					var rendererList = rendererListByType[type][component];
+					for (var i = 0; i < rendererList.length; i++) {
+						if (rendererList[i].uniqueId == rendererId) {
+							rendererList.splice(i, 1);
+							i--;
+						}
 					}
 				}
 			}
@@ -7978,26 +8085,27 @@ publicApi.UriTemplate = UriTemplate;
 		return rendererLookup[rendererId];
 	}
 
-	function selectRenderer(data, uiStartingState, usedComponents) {
+	function selectRenderer(data, uiStartingState, missingComponents) {
 		var schemas = data.schemas();
 		var basicType = data.basicType();
-		for (var j = 0; j < componentList.length; j++) {
-			if (usedComponents.indexOf(componentList[j]) == -1) {
-				var component = componentList[j];
-				var rendererListByComponent = rendererListByType[basicType];
-				if (rendererListByComponent[component]) {
-					var rendererList = rendererListByComponent[component];
-					for (var i = rendererList.length - 1; i >= 0; i--) {
-						var renderer = rendererList[i];
-						if (renderer.canRender(data, schemas, uiStartingState)) {
-							return renderer;
-						}
+		var readOnly = data.readOnly();
+		var rendererListByType = readOnly ? rendererListByTypeReadOnly : rendererListByTypeEditable;
+		for (var j = 0; j < missingComponents.length; j++) {
+			var component = missingComponents[j];
+			var rendererListByComponent = rendererListByType[basicType];
+			if (rendererListByComponent[component]) {
+				var rendererList = rendererListByComponent[component];
+				for (var i = rendererList.length - 1; i >= 0; i--) {
+					var renderer = rendererList[i];
+					if (renderer.canRender(data, schemas, uiStartingState)) {
+						return renderer;
 					}
 				}
 			}
 		}
 	}
 
+	// TODO: this doesn't seem that useful - remove?
 	if (typeof global.jQuery != "undefined") {
 		var jQueryRender = function (data, uiStartingState) {
 			var element = this[0];
@@ -8033,11 +8141,6 @@ publicApi.UriTemplate = UriTemplate;
 				}
 			}
 			render.register(jQueryObj);
-		};
-		jQueryRender.empty = function (query) {
-			query.each(function (index, element) {
-				render.empty(element);
-			});
 		};
 		jQuery.fn.extend({renderJson: jQueryRender});
 		jQuery.extend({renderJson: jQueryRender});

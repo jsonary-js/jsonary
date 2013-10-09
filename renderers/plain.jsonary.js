@@ -90,8 +90,8 @@
 		update: function (element, data, context, operation) {
 			return data.defined() == !!context.uiState.undefined;
 		},
-		filter: function (data) {
-			return !data.readOnly();
+		filter: {
+			readOnly: false
 		},
 		saveState: function (uiState, subStates) {
 			return subStates.data || {};
@@ -112,7 +112,6 @@
 			var enums = data.schemas().enumValues();
 			var basicTypes = data.schemas().basicTypes();
 			if (basicTypes.length > 1 && enums == null) {
-				console.log(basicTypes);
 				result += '<select name="' + context.inputNameForAction('select-basic-type') + '">';
 				for (var i = 0; i < basicTypes.length; i++) {
 					if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
@@ -145,8 +144,8 @@
 		update: function (element, data, context, operation) {
 			return false;
 		},
-		filter: function (data) {
-			return !data.readOnly();
+		filter: {
+			readOnly: false
 		},
 		saveState: function (uiState, subStates) {
 			var result = {};
@@ -317,8 +316,8 @@
 		update: function (element, data, context, operation) {
 			return false;
 		},
-		filter: function (data) {
-			return !data.readOnly();
+		filter: {
+			readOnly: false
 		},
 		saveState: function (uiState, subStates) {
 			var result = {};
@@ -363,9 +362,6 @@
 				return "";
 			}
 			return '<span class="json-raw">' + escapeHtml(JSON.stringify(data.value())) + '</span>';
-		},
-		filter: function (data) {
-			return true;
 		}
 	});
 	
@@ -375,8 +371,8 @@
 		renderHtml: function (data, context) {
 			return '<span class="json-null">null</span>';
 		},
-		filter: function (data) {
-			return data.basicType() == "null";
+		filter: {
+			type: 'null'
 		}
 	});
 	
@@ -525,8 +521,8 @@
 				}
 			}
 		},
-		filter: function (data) {
-			return data.basicType() == "object";
+		filter: {
+			type: 'object'
 		}
 	});
 
@@ -559,8 +555,8 @@
 				});
 			}
 		},
-		filter: function (data) {
-			return data.basicType() == "array";
+		filter: {
+			type: 'array'
 		}
 	});
 	
@@ -570,8 +566,9 @@
 		renderHtml: function (data, context) {
 			return '<span class="json-string">' + escapeHtml(data.value()) + '</span>';
 		},
-		filter: function (data) {
-			return data.basicType() == "string" && data.readOnly();
+		filter: {
+			type: 'string',
+			readOnly: true
 		}
 	});
 
@@ -748,8 +745,9 @@
 				return true;
 			}
 		},
-		filter: function (data) {
-			return data.basicType() == "string" && !data.readOnly();
+		filter: {
+			type: 'string',
+			readOnly: false
 		}
 	});
 
@@ -773,8 +771,8 @@
 				context.data.setValue(!!arg1);
 			}
 		},
-		filter: function (data) {
-			return data.basicType() == "boolean";
+		filter: {
+			type: 'boolean'
 		}
 	});
 	
@@ -861,8 +859,9 @@
 				}
 			}
 		},
-		filter: function (data) {
-			return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
+		filter: {
+			type: ['number', 'integer'],
+			readOnly: false
 		}
 	});
 
@@ -904,8 +903,11 @@
 			element.appendChild(select);
 			element = select = option = null;
 		},
-		filter: function (data) {
-			return !data.readOnly() && data.schemas().enumValues() != null;
+		filter: {
+			readOnly: false,
+			filter: function (data, schemas) {
+				return schemas.enumValues() != null;
+			}
 		}
 	});
 

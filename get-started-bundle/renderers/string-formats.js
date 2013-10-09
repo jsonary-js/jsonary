@@ -9,8 +9,12 @@
 				return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
 			}
 		},
-		filter: function (data, schemas) {
-			return data.basicType() == "string" && data.readOnly() && schemas.formats().indexOf("date-time") != -1;
+		filter: {
+			type: 'string',
+			readOnly: true,
+			filter: function (data, schemas) {
+				return schemas.formats().indexOf("date-time") != -1;
+			}
 		}
 	});
 	
@@ -36,8 +40,11 @@
 				context.data.setValue(arg1);
 			}
 		},
-		filter: function (data, schemas) {
-			return data.basicType() == "string" && schemas.formats().indexOf("password") != -1;
+		filter: {
+			type: 'string',
+			filter: function (data, schemas) {
+				return schemas.formats().indexOf("password") != -1;
+			}
 		}
 	});
 })();

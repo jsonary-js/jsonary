@@ -274,9 +274,10 @@ textarea {
 textarea.json-string {
 	font-size: inherit;
 	font-weight: inherit;
+	font-family: inherit;
 	background-color: #FFF;
 	background-color: rgba(255, 255, 255, 0.5);
-	width: 30%;
+	width: 90%;
 }
 
 .json-string-notice {

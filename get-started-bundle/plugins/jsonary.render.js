@@ -38,7 +38,9 @@
 				}
 			}
 			this[newName] = newName;
-			if (typeof beforeName == 'number') {
+			if (beforeName === false) {
+				return;
+			} else if (typeof beforeName == 'number') {
 				var index = Math.max(0, Math.min(componentList.length - 1, Math.round(beforeName)));
 				componentList.splice(index, 0, this[newName]);
 			} else if (componentList.indexOf(beforeName) != -1) {
@@ -48,6 +50,7 @@
 			} else {
 				componentList.splice(componentList.length - 1, 0, this[newName]);
 			}
+			return newName;
 		}
 	};
 	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
@@ -103,7 +106,7 @@
 						}
 						var prevContext = element.jsonaryContext;
 						var prevUiState = copyValue(this.uiStartingState);
-						var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+						var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents);
 						if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 							renderer.render(element, data, prevContext);
 						} else {
@@ -116,11 +119,29 @@
 		this.rootContext = this;
 		this.subContexts = {};
 		this.oldSubContexts = {};
+		this.missingComponents = componentList;
 	}
 	RenderContext.prototype = {
-		usedComponents: [],
+		missingComponents: [],
 		rootContext: null,
 		baseContext: null,
+		labelSequence: function () {
+			if (!this.parent || this.parent == pageContext) {
+				return [];
+			}
+			return this.parent.labelSequence().concat([this.label]);
+		},
+		labelSequenceContext: function (seq) {
+			var result = this;
+			for (var i = 0; i < seq.length; i++) {
+				var label = seq[i];
+				result = result.subContexts[label] || result.oldSubContexts[label];
+				if (!result) {
+					return null;
+				}
+			}
+			return result;
+		},
 		labelForData: function (data) {
 			if (this.data && data.document.isDefinitive) {
 				var selfLink = data.getLink('self');
@@ -191,91 +212,41 @@
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
 		},
-		saveCompleteState: function (skipEnhancements) {
-			var state = {};
-			state.rendererId = this.renderer ? this.renderer.uniqueId : null;
-			state.sub = {};
+		withComponent: function (components) {
+			if (!Array.isArray(components)) {
+				components = [components];
+			}
+			var actualGetSubContext = this.getSubContext;
 
-			var result = {
-				actions: {},
-				inputs: {},
-				rootContext: this.uniqueId,
-				contexts: {},
-				documents: {}
+			var result = Object.create(this);
+			result.getSubContext = function () {
+				var subContext = actualGetSubContext.apply(this, arguments);
+				for (var i = 0; i < components.length; i++) {
+					if (subContext.missingComponents.indexOf(components[i]) === -1) {
+						subContext.missingComponents.unshift(components[i]);
+					}
+				}
+				return subContext;
 			};
-			result.contexts[this.uniqueId] = state;
-			for (var key in this.subContexts) {
-				var subContext = this.subContexts[key];
-				state.sub[key] = subContext.uniqueId;
-				var subResult = subContext.saveCompleteState(true);
-				for (var subKey in subResult.contexts) {
-					result.contexts[subKey] = subResult.contexts[subKey];
-				}
-				for (var subKey in subResult.documents) {
-					result.documents[subKey] = subResult.documents[subKey];
-				}
+			return result;
+		},
+		withoutComponent: function (components) {
+			if (!Array.isArray(components)) {
+				components = [components];
 			}
-			for (var key in this.oldSubContexts) {
-				var subContext = this.oldSubContexts[key];
-				state.sub[key] = subContext.uniqueId;
-				var subResult = subContext.saveCompleteState(true);
-				for (var subKey in subResult.contexts) {
-					result.contexts[subKey] = subResult.contexts[subKey];
-				}
-				for (var subKey in subResult.documents) {
-					result.documents[subKey] = subResult.documents[subKey];
-				}
-			}
+			var actualGetSubContext = this.getSubContext;
 
-			if (!this.data) {
-				state.data = null;
-			} else {
-				state.data = {
-					path: this.data.pointerPath(),
-					document: this.data.document.uniqueId
-				};
-				if (!result.documents[this.data.document.uniqueId]) {
-					result.documents[this.data.document.uniqueId] = this.data.document.deflate(true);
-				}
-			}
-			
-			if (!skipEnhancements) {
-				for (var key in this.enhancementActions) {
-					var enhancement = this.enhancementActions[key];
-					result.actions[key] = {
-						context: enhancement.context.uniqueId,
-						name: enhancement.actionName,
-						params: enhancement.params
-					};
-					var c = enhancement.context;
-					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
-						result.contexts[c.uniqueId].keep = true;
-						c = c.baseContext;
+			var result = Object.create(this);
+			result.getSubContext = function () {
+				var subContext = actualGetSubContext.apply(this, arguments);
+				for (var i = 0; i < components.length; i++) {
+					var componentIndex = subContext.missingComponents.indexOf(components[i]);
+					if (componentIndex !== -1) {
+						subContext.missingComponents.splice(componentIndex, 1);
 					}
 				}
-				for (var key in this.enhancementInputs) {
-					var enhancement = this.enhancementInputs[key];
-					result.inputs[key] = {
-						context: enhancement.context.uniqueId,
-						name: enhancement.actionName,
-						params: enhancement.params
-					};
-					var c = enhancement.context;
-					while (c && c.baseContext != c && result.contexts[c.uniqueId]) {
-						result.contexts[c.uniqueId].keep = true;
-						c = c.baseContext;
-					}
-				}
-				var newContexts = {};
-				for (var key in result.contexts) {
-					if (result.contexts[key].keep) {
-						newContexts[key] = result.contexts[key];
-						delete newContexts[key].keep;
-					}
-				}
-				result.contexts = newContexts;
-				result.uiState = this.saveUiState();
-			}
+				return subContext;
+			};
 			return result;
 		},
 		getSubContext: function (elementId, data, label, uiStartingState) {
@@ -305,29 +276,36 @@
 				delete this.subContextSavedStates[labelKey];
 			}
 			if (this.subContexts[labelKey] == undefined) {
-				var usedComponents = [];
+				var missingComponents;
 				if (this.data == data) {
-					usedComponents = this.usedComponents.slice(0);
+					missingComponents = this.missingComponents.slice(0);
 					if (this.renderer != undefined) {
-						usedComponents = usedComponents.concat(this.renderer.filterObj.component);
+						for (var i = 0; i < this.renderer.filterObj.component.length; i++) {
+							var componentIndex = missingComponents.indexOf(this.renderer.filterObj.component[i]);
+							if (componentIndex !== -1) {
+								missingComponents.splice(componentIndex, 1);
+							}
+						}
 					}
+				} else {
+					missingComponents = componentList.slice(0);
 				}
 				if (typeof elementId == "object") {
 					elementId = elementId.id;
 				}
-				function Context(rootContext, baseContext, label, data, uiState, usedComponents) {
+				function Context(rootContext, baseContext, label, data, uiState, missingComponents) {
 					this.uniqueId = contextIdCounter++;
 					this.rootContext = rootContext;
 					this.baseContext = baseContext;
 					this.label = label;
 					this.data = data;
 					this.uiStartingState = copyValue(uiState || {});
-					this.usedComponents = usedComponents;
+					this.missingComponents = missingComponents;
 					this.subContexts = {};
 					this.oldSubContexts = {};
 				}
 				Context.prototype = this.rootContext;
-				this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, usedComponents);
+				this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, missingComponents);
 			}
 			var subContext = this.subContexts[labelKey];
 			subContext.elementId = elementId;
@@ -355,16 +333,16 @@
 			}
 			
 			var renderer = this.renderer;
-			var data = this.data;
-			
-			renderer.asyncRenderHtml(data, this, function (error, innerHtml) {
-				if (error) {
-					return htmlCallback(error, innerHtml, thisContext);
-				}
-				thisContext.clearOldSubContexts();
+			this.data.whenStable(function (data) {
+				renderer.asyncRenderHtml(data, thisContext, function (error, innerHtml) {
+					if (error) {
+						return htmlCallback(error, innerHtml, thisContext);
+					}
+					thisContext.clearOldSubContexts();
 
-				innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
-				htmlCallback(null, innerHtml, thisContext);
+					innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
+					htmlCallback(null, innerHtml, thisContext);
+				});
 			});
 		},
 
@@ -413,7 +391,7 @@
 			if (this.elementLookup[uniqueId].indexOf(element.id) == -1) {
 				this.elementLookup[uniqueId].push(element.id);
 			}
-			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+			var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 			if (renderer != undefined) {
 				subContext.renderer = renderer;
 				if (subContext.uiState == undefined) {
@@ -465,7 +443,7 @@
 			}
 			var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 
-			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+			var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 			subContext.renderer = renderer;
 			if (subContext.uiState == undefined) {
 				subContext.loadState(subContext.uiStartingState);
@@ -510,7 +488,7 @@
 			}
 			var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 
-			var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+			var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 			subContext.renderer = renderer;
 			if (subContext.uiState == undefined) {
 				subContext.loadState(subContext.uiStartingState);
@@ -538,7 +516,7 @@
 				// If so, check the enhancement contexts.
 				var prevContext = element.jsonaryContext || this.enhancementContexts[elementIds[i]];
 				var prevUiState = copyValue(this.uiStartingState);
-				var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+				var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents);
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
@@ -549,10 +527,10 @@
 		actionHtml: function(innerHtml, actionName) {
 			var startingIndex = 2;
 			var historyChange = false;
-			var linkUrl = Jsonary.render.actionUrl(this, actionName);
+			var linkUrl = null;
 			if (typeof actionName == "boolean") {
 				historyChange = arguments[1];
-				linkUrl = arguments[2] || linkUrl;
+				linkUrl = arguments[2] || null;
 				actionName = arguments[3];
 				startingIndex += 2;
 			}
@@ -562,7 +540,15 @@
 			}
 			var elementId = this.getElementId();
 			this.addEnhancementAction(elementId, actionName, this, params, historyChange);
-			return Jsonary.render.actionHtml(elementId, linkUrl, innerHtml);
+			var argsObject = {
+				context: this,
+				linkUrl: linkUrl,
+				actionName: actionName,
+				params: params,
+				historyChange: historyChange
+			};
+			argsObject.linkUrl = linkUrl || Jsonary.render.actionUrl(argsObject);
+			return Jsonary.render.actionHtml(elementId, innerHtml, argsObject);
 		},
 		inputNameForAction: function (actionName) {
 			var historyChange = false;
@@ -576,7 +562,11 @@
 			for (var i = startIndex; i < arguments.length; i++) {
 				params.push(arguments[i]);
 			}
-			var name = this.getElementId();
+			var argsObject = {
+				context: this,
+				actionName: actionName,
+			};
+			var name = Jsonary.render.actionInputName(argsObject);
 			this.enhancementInputs[name] = {
 				inputName: name,
 				actionName: actionName,
@@ -629,6 +619,17 @@
 				element = element.nextSibling;
 			}
 		},
+		action: function (actionName) {
+			var args = [this];
+			for (var i = 0; i < arguments.length; i++) {
+				args.push(arguments[i]);
+			}
+			return this.renderer.action.apply(this.renderer, args);
+		},
+		actionArgs: function (actionName, args) {
+			args = [this, actionName].concat(args || []);
+			return this.renderer.action.apply(this.renderer, args);
+		},
 		enhanceElementSingle: function (element) {
 			var elementId = element.id;
 			var context = this.enhancementContexts[elementId];
@@ -646,8 +647,8 @@
 				element.onclick = function () {
 					var redrawElementId = action.context.elementId;
 					var actionContext = action.context;
-					var args = [actionContext, action.actionName].concat(action.params);
-					if (actionContext.renderer.action.apply(actionContext.renderer, args)) {
+					var args = [action.actionName].concat(action.params);
+					if (actionContext.action.apply(actionContext, args)) {
 						// Action returned positive - we should force a re-render
 						actionContext.rerender();
 					}
@@ -674,8 +675,8 @@
 					}
 					var redrawElementId = inputAction.context.elementId;
 					var inputContext = inputAction.context;
-					var args = [inputContext, inputAction.actionName, value].concat(inputAction.params);
-					if (inputContext.renderer.action.apply(inputContext.renderer, args)) {
+					var args = [inputAction.actionName, value].concat(inputAction.params);
+					if (inputContext.action.apply(inputContext, args)) {
 						inputContext.rerender();
 					}
 					notifyActionHandlers(inputContext.data, inputContext, inputAction.actionName, inputAction.historyChange);
@@ -689,94 +690,6 @@
 	RenderContext.prototype.loadState = RenderContext.prototype.loadUiState;
 	
 	var pageContext = new RenderContext();
-	render.loadDocumentsFromState = function (saved, callback) {
-		var documents = {};
-		var counter = 0;
-		var error = null;
-		for (var key in saved.documents) {
-			counter++;
-			documents[key] = Jsonary.inflate(saved.documents[key], function (err, document) {
-				error = error || err;
-				counter--;
-				if (counter == 0 && callback) {
-					callback(error, documents);
-				}
-			});
-		}
-		saved.parsedDocuments = function () {
-			return documents;
-		};
-		return documents;
-	};
-	render.loadCompleteState = function (saved) {
-		var contexts = {};
-		if (!saved.parsedDocuments) {
-			render.loadDocumentsFromState(saved);
-		}
-		var documents = saved.parsedDocuments();
-		
-		function contextData(id) {
-			var state = saved.contexts[id];
-			if (state.data) {
-				var document = documents[state.data.document];
-				return document.root.subPath(state.data.path);
-			}
-			return null;
-		}
-		
-		function loadContext(context, id) {
-			var state = saved.contexts[id];
-			contexts[id] = context;
-			
-			var renderer = rendererLookup[state.rendererId];
-			context.renderer = renderer;
-			context.loadState(context.uiStartingState);
-			if (state.sub) {
-				for (var key in state.sub) {
-					var savedId = state.sub[key];
-					if (contexts[savedId] || !saved.contexts[savedId]) {
-						continue;
-					}
-					var data = contextData(savedId);
-					var subContext = context.getSubContext("", data, key);
-					loadContext(subContext, savedId);
-				}
-			}
-		}
-		var rootContextId = saved.rootContext;
-		var rootData = contextData(rootContextId);
-		var rootContext = pageContext.getSubContext('', rootData, null, saved.uiState);
-		loadContext(rootContext, rootContextId);
-
-		var actions = {};		
-		for (var key in saved.actions) {
-			(function (key, action) {
-				var action = saved.actions[key];
-				var actionContext = contexts[action.context];
-				actions[key] = function () {
-					var args = [actionContext, action.name].concat(action.params || []);
-					return actionContext.renderer.action.apply(actionContext.renderer, args);
-				};
-			})(key, saved.actions[key]);
-		}
-		var inputs = {};
-		for (var key in saved.inputs) {
-			(function (key, input) {
-				var input = saved.inputs[key];
-				var inputContext = contexts[input.context];
-				inputs[key] = function (value) {
-					var args = [inputContext, input.name, value].concat(input.params || []);
-					return inputContext.renderer.action.apply(inputContext.renderer, args);
-				};
-			})(key, saved.inputs[key]);
-		}
-
-		return {
-			context: rootContext,
-			actions: actions,
-			inputs: inputs
-		};
-	};
 	
 	function cleanup() {
 		// Clean-up sweep of pageContext's element lookup
@@ -836,6 +749,8 @@
 		Jsonary.cleanup = cleanup;
 	}
 
+	var initialComponents = [];
+	
 	function render(element, data, uiStartingState) {
 		if (typeof element == 'string') {
 			element = render.getElementById(element);
@@ -844,19 +759,19 @@
 		innerElement.className = "jsonary";
 		element.innerHTML = "";
 		element.appendChild(innerElement);
-		var context = pageContext.subContext(Math.random());
+		var context = pageContext.withComponent(initialComponents).subContext(Math.random());
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return context.render(innerElement, data, 'render', uiStartingState);
 	}
 	function renderHtml(data, uiStartingState) {
-		var innerHtml = pageContext.renderHtml(data, null, uiStartingState);
+		var innerHtml = pageContext.withComponent(initialComponents).renderHtml(data, null, uiStartingState);
 		pageContext.oldSubContexts = {};
 		pageContext.subContexts = {};
 		return '<span class="jsonary">' + innerHtml + '</span>';
 	}
 	function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-		return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
+		return pageContext.withComponent(initialComponents).asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
 			if (error) {
 				htmlCallback(error, innerHtml, renderContext);
 			}
@@ -874,11 +789,20 @@
 		};
 	}
 	render.Components = componentNames;
-	render.actionUrl = function (context, actionName) {
+	render.addInitialComponent = function (component) {
+		componentNames.add(component, false);
+		initialComponents.push(component);
+		return this;
+	};
+	render.actionInputName = function (args) {
+		var context = args.context;
+		return context.getElementId();
+	};
+	render.actionUrl = function (args) {
 		return "javascript:void(0)";
 	};
-	render.actionHtml = function (elementId, linkUrl, innerHtml) {
-		return '<a href="' + Jsonary.escapeHtml(linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
+	render.actionHtml = function (elementId, innerHtml, args) {
+		return '<a href="' + Jsonary.escapeHtml(args.linkUrl) + '" id="' + elementId + '" class="jsonary-action">' + innerHtml + '</a>';
 	};
 	render.rendered = function (data) {
 		var uniqueId = data.uniqueId;
@@ -944,6 +868,19 @@
 		} else {
 			this.filterObj = sourceObj.filter || {};
 			this.filterFunction = this.filterObj.filter;
+		}
+		if (this.filterObj.schema) {
+			var possibleSchemas = this.filterObj.schema;
+			this.filterFunction = (function (oldFilterFunction) {
+				return function (data, schemas) {
+					for (var i = 0; i < possibleSchemas.length; i++) {
+						if (schemas.containsUrl(possibleSchemas)) {
+							return oldFilterFunction ? oldFilterFunction.apply(this, arguments) : true;
+						}
+					}
+					return false;
+				};
+			})(this.filterFunction);
 		}
 		this.actionFunction = sourceObj.action;
 		for (var key in sourceObj) {
@@ -1186,7 +1123,18 @@
 	Renderer.prototype.super_ = Renderer.prototype;
 
 	var rendererLookup = {};
-	var rendererListByType = { // Index first by type, then component
+	// Index first by read-only status, then type, then component
+	var rendererListByTypeReadOnly = {
+		'undefined': {},
+		'null': {},
+		'boolean': {},
+		'integer': {},
+		'number': {},
+		'string' :{},
+		'object': {},
+		'array': {}
+	};
+	var rendererListByTypeEditable = {
 		'undefined': {},
 		'null': {},
 		'boolean': {},
@@ -1200,6 +1148,7 @@
 		var renderer = new Renderer(obj);
 		rendererLookup[renderer.uniqueId] = renderer;
 		
+		var readOnly = renderer.filterObj.readOnly;
 		var types = renderer.filterObj.type || ['undefined', 'null', 'boolean', 'integer', 'number', 'string', 'object', 'array'];
 		var components = renderer.filterObj.component;
 		if (!Array.isArray(types)) {
@@ -1210,14 +1159,24 @@
 		}
 		for (var i = 0; i < types.length; i++) {
 			var type = types[i];
-			if (!rendererListByType[type]) {
+			if (!rendererListByTypeReadOnly[type]) {
 				throw new Error('Invalid type(s): ' + type);
 			}
-			var rendererListByComponent = rendererListByType[type];
-			for (var j = 0; j < components.length; j++) {
-				var component = components[j];
-				rendererListByComponent[component] = rendererListByComponent[component] || [];
-				rendererListByComponent[component].push(renderer);
+			if (readOnly || typeof readOnly === 'undefined') {
+				var rendererListByComponent = rendererListByTypeReadOnly[type];
+				for (var j = 0; j < components.length; j++) {
+					var component = components[j];
+					rendererListByComponent[component] = rendererListByComponent[component] || [];
+					rendererListByComponent[component].push(renderer);
+				}
+			}
+			if (!readOnly) {
+				var rendererListByComponent = rendererListByTypeEditable[type];
+				for (var j = 0; j < components.length; j++) {
+					var component = components[j];
+					rendererListByComponent[component] = rendererListByComponent[component] || [];
+					rendererListByComponent[component].push(renderer);
+				}
 			}
 		}
 		return renderer;
@@ -1227,13 +1186,16 @@
 			rendererId = rendererId.uniqueId;
 		}
 		delete rendererLookup[rendererId];
-		for (var type in rendererListByType) {
-			for (var component in rendererListByType[type]) {
-				var rendererList = rendererListByType[type][component];
-				for (var i = 0; i < rendererList.length; i++) {
-					if (rendererList[i].uniqueId == rendererId) {
-						rendererList.splice(i, 1);
-						i--;
+		for (var i = 0; i < 2; i++) {
+			var rendererListByType = i ? rendererListByTypeEditable : rendererListByTypeReadOnly;
+			for (var type in rendererListByType) {
+				for (var component in rendererListByType[type]) {
+					var rendererList = rendererListByType[type][component];
+					for (var i = 0; i < rendererList.length; i++) {
+						if (rendererList[i].uniqueId == rendererId) {
+							rendererList.splice(i, 1);
+							i--;
+						}
 					}
 				}
 			}
@@ -1287,26 +1249,27 @@
 		return rendererLookup[rendererId];
 	}
 
-	function selectRenderer(data, uiStartingState, usedComponents) {
+	function selectRenderer(data, uiStartingState, missingComponents) {
 		var schemas = data.schemas();
 		var basicType = data.basicType();
-		for (var j = 0; j < componentList.length; j++) {
-			if (usedComponents.indexOf(componentList[j]) == -1) {
-				var component = componentList[j];
-				var rendererListByComponent = rendererListByType[basicType];
-				if (rendererListByComponent[component]) {
-					var rendererList = rendererListByComponent[component];
-					for (var i = rendererList.length - 1; i >= 0; i--) {
-						var renderer = rendererList[i];
-						if (renderer.canRender(data, schemas, uiStartingState)) {
-							return renderer;
-						}
+		var readOnly = data.readOnly();
+		var rendererListByType = readOnly ? rendererListByTypeReadOnly : rendererListByTypeEditable;
+		for (var j = 0; j < missingComponents.length; j++) {
+			var component = missingComponents[j];
+			var rendererListByComponent = rendererListByType[basicType];
+			if (rendererListByComponent[component]) {
+				var rendererList = rendererListByComponent[component];
+				for (var i = rendererList.length - 1; i >= 0; i--) {
+					var renderer = rendererList[i];
+					if (renderer.canRender(data, schemas, uiStartingState)) {
+						return renderer;
 					}
 				}
 			}
 		}
 	}
 
+	// TODO: this doesn't seem that useful - remove?
 	if (typeof global.jQuery != "undefined") {
 		var jQueryRender = function (data, uiStartingState) {
 			var element = this[0];
@@ -1342,11 +1305,6 @@
 				}
 			}
 			render.register(jQueryObj);
-		};
-		jQueryRender.empty = function (query) {
-			query.each(function (index, element) {
-				render.empty(element);
-			});
 		};
 		jQuery.fn.extend({renderJson: jQueryRender});
 		jQuery.extend({renderJson: jQueryRender});

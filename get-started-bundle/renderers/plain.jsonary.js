@@ -90,8 +90,8 @@
 		update: function (element, data, context, operation) {
 			return data.defined() == !!context.uiState.undefined;
 		},
-		filter: function (data) {
-			return !data.readOnly();
+		filter: {
+			readOnly: false
 		},
 		saveState: function (uiState, subStates) {
 			return subStates.data || {};
@@ -144,8 +144,8 @@
 		update: function (element, data, context, operation) {
 			return false;
 		},
-		filter: function (data) {
-			return !data.readOnly();
+		filter: {
+			readOnly: false
 		},
 		saveState: function (uiState, subStates) {
 			var result = {};
@@ -316,8 +316,8 @@
 		update: function (element, data, context, operation) {
 			return false;
 		},
-		filter: function (data) {
-			return !data.readOnly();
+		filter: {
+			readOnly: false
 		},
 		saveState: function (uiState, subStates) {
 			var result = {};
@@ -362,9 +362,6 @@
 				return "";
 			}
 			return '<span class="json-raw">' + escapeHtml(JSON.stringify(data.value())) + '</span>';
-		},
-		filter: function (data) {
-			return true;
 		}
 	});
 	
@@ -374,8 +371,8 @@
 		renderHtml: function (data, context) {
 			return '<span class="json-null">null</span>';
 		},
-		filter: function (data) {
-			return data.basicType() == "null";
+		filter: {
+			type: 'null'
 		}
 	});
 	
@@ -524,8 +521,8 @@
 				}
 			}
 		},
-		filter: function (data) {
-			return data.basicType() == "object";
+		filter: {
+			type: 'object'
 		}
 	});
 
@@ -558,8 +555,8 @@
 				});
 			}
 		},
-		filter: function (data) {
-			return data.basicType() == "array";
+		filter: {
+			type: 'array'
 		}
 	});
 	
@@ -569,8 +566,9 @@
 		renderHtml: function (data, context) {
 			return '<span class="json-string">' + escapeHtml(data.value()) + '</span>';
 		},
-		filter: function (data) {
-			return data.basicType() == "string" && data.readOnly();
+		filter: {
+			type: 'string',
+			readOnly: true
 		}
 	});
 
@@ -640,10 +638,8 @@
 		renderHtml: function (data, context) {
 			var maxLength = data.schemas().maxLength();
 			var inputName = context.inputNameForAction('new-value');
-			var valueHtml = escapeHtml(data.value()).replace('"', '&quot;');
-			var style = "";
-			style += "width: 90%";
-			return '<textarea class="json-string" name="' + inputName + '" style="' + style + '">'
+			var valueHtml = escapeHtml(data.value());
+			return '<textarea class="json-string" name="' + inputName + '">'
 				+ valueHtml
 				+ '</textarea>';
 		},
@@ -749,8 +745,9 @@
 				return true;
 			}
 		},
-		filter: function (data) {
-			return data.basicType() == "string" && !data.readOnly();
+		filter: {
+			type: 'string',
+			readOnly: false
 		}
 	});
 
@@ -774,8 +771,8 @@
 				context.data.setValue(!!arg1);
 			}
 		},
-		filter: function (data) {
-			return data.basicType() == "boolean";
+		filter: {
+			type: 'boolean'
 		}
 	});
 	
@@ -862,8 +859,9 @@
 				}
 			}
 		},
-		filter: function (data) {
-			return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
+		filter: {
+			type: ['number', 'integer'],
+			readOnly: false
 		}
 	});
 
@@ -905,8 +903,11 @@
 			element.appendChild(select);
 			element = select = option = null;
 		},
-		filter: function (data) {
-			return !data.readOnly() && data.schemas().enumValues() != null;
+		filter: {
+			readOnly: false,
+			filter: function (data, schemas) {
+				return schemas.enumValues() != null;
+			}
 		}
 	});
 

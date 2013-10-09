@@ -38,9 +38,6 @@
 				delete context.uiState.viewSchema;
 				return true;
 			}
-		},
-		filter: function () {
-			return true;
 		}
 	});
 })(Jsonary);

@@ -1,8 +1,8 @@
-/* Bundled on Thu Oct 03 2013 18:46:33 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Wed Oct 09 2013 18:40:26 GMT+0100 (GMT Daylight Time)*/
 (function() {
 
 
-/**** ../jsonary/_compatability.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\_compatability.js ****/
 
 	if (typeof window != "undefined" && typeof localStorage == "undefined") {
 		window.localStorage = {};
@@ -564,7 +564,7 @@
 	}());
 	
 
-/**** ../jsonary/_header.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\_header.js ****/
 
 	(function(publicApi) { // Global wrapper
 	
@@ -581,7 +581,7 @@
 	
 	
 
-/**** ../jsonary/uri.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\uri.js ****/
 
 	function Uri(str) {
 		var scheme = str.match(/^[a-zA-Z\-]+:/);
@@ -852,7 +852,7 @@
 	publicApi.Uri = Uri;
 	
 
-/**** ../jsonary/uri-template.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\uri-template.js ****/
 
 	var uriTemplateGlobalModifiers = {
 		"+": true,
@@ -1243,7 +1243,7 @@
 	};
 	
 
-/**** ../jsonary/utils.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\utils.js ****/
 
 	var Utils = {
 		guessBasicType: function (data, prevType) {
@@ -1666,7 +1666,7 @@
 	}
 	
 
-/**** ../jsonary/monitors.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\monitors.js ****/
 
 	function MonitorSet(context) {
 		this.contents = {};
@@ -1779,7 +1779,7 @@
 	};
 	
 
-/**** ../jsonary/request.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\request.js ****/
 
 	if (typeof XMLHttpRequest == "undefined") {
 		XMLHttpRequest = function () {
@@ -2338,7 +2338,7 @@
 	
 	
 
-/**** ../jsonary/patch.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\patch.js ****/
 
 	function Patch(prefix) {
 		this.operations = [];
@@ -2585,7 +2585,7 @@
 	
 	
 
-/**** ../jsonary/data.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\data.js ****/
 
 	var changeListeners = [];
 	publicApi.registerChangeListener = function (listener) {
@@ -3522,7 +3522,7 @@
 	};
 	
 
-/**** ../jsonary/schema.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\schema.js ****/
 
 	function getSchema(url, callback) {
 		return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
@@ -4363,7 +4363,7 @@
 	
 	
 
-/**** ../jsonary/schemamatch.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\schemamatch.js ****/
 
 	function SchemaMatch(monitorKey, data, schema, impatientCallbacks) {
 		var thisSchemaMatch = this;
@@ -4891,7 +4891,7 @@
 	};
 	
 
-/**** ../jsonary/schemaset.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\schemaset.js ****/
 
 	var schemaChangeListeners = [];
 	publicApi.registerSchemaChangeListener = function (listener) {
@@ -6839,7 +6839,7 @@
 	};
 	
 
-/**** ../jsonary/main.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\main.js ****/
 
 	//Tidying
 	// TODO: check all " == undefined", in case they should be " === undefined" instead (null-safety)
@@ -6862,7 +6862,7 @@
 		debug: false
 	}
 
-/**** ../jsonary/_footer.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\_footer.js ****/
 
 	publicApi.UriTemplate = UriTemplate;
 	
@@ -6870,7 +6870,7 @@
 	})(this.Jsonary = {});
 	
 
-/**** ../plugins/jsonary.render.js ****/
+/**** D:\web\htdocs\git\jsonary\plugins\jsonary.render.js ****/
 
 	(function (global) {
 		var Jsonary = global.Jsonary;
@@ -6912,7 +6912,9 @@
 					}
 				}
 				this[newName] = newName;
-				if (typeof beforeName == 'number') {
+				if (beforeName === false) {
+					return;
+				} else if (typeof beforeName == 'number') {
 					var index = Math.max(0, Math.min(componentList.length - 1, Math.round(beforeName)));
 					componentList.splice(index, 0, this[newName]);
 				} else if (componentList.indexOf(beforeName) != -1) {
@@ -6922,6 +6924,7 @@
 				} else {
 					componentList.splice(componentList.length - 1, 0, this[newName]);
 				}
+				return newName;
 			}
 		};
 		var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
@@ -6977,7 +6980,7 @@
 							}
 							var prevContext = element.jsonaryContext;
 							var prevUiState = copyValue(this.uiStartingState);
-							var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+							var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents);
 							if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 								renderer.render(element, data, prevContext);
 							} else {
@@ -6990,9 +6993,10 @@
 			this.rootContext = this;
 			this.subContexts = {};
 			this.oldSubContexts = {};
+			this.missingComponents = componentList;
 		}
 		RenderContext.prototype = {
-			usedComponents: [],
+			missingComponents: [],
 			rootContext: null,
 			baseContext: null,
 			labelSequence: function () {
@@ -7082,6 +7086,43 @@
 				this.uiState = result[0];
 				this.subContextSavedStates = result[1];
 			},
+			withComponent: function (components) {
+				if (!Array.isArray(components)) {
+					components = [components];
+				}
+				var actualGetSubContext = this.getSubContext;
+	
+				var result = Object.create(this);
+				result.getSubContext = function () {
+					var subContext = actualGetSubContext.apply(this, arguments);
+					for (var i = 0; i < components.length; i++) {
+						if (subContext.missingComponents.indexOf(components[i]) === -1) {
+							subContext.missingComponents.unshift(components[i]);
+						}
+					}
+					return subContext;
+				};
+				return result;
+			},
+			withoutComponent: function (components) {
+				if (!Array.isArray(components)) {
+					components = [components];
+				}
+				var actualGetSubContext = this.getSubContext;
+	
+				var result = Object.create(this);
+				result.getSubContext = function () {
+					var subContext = actualGetSubContext.apply(this, arguments);
+					for (var i = 0; i < components.length; i++) {
+						var componentIndex = subContext.missingComponents.indexOf(components[i]);
+						if (componentIndex !== -1) {
+							subContext.missingComponents.splice(componentIndex, 1);
+						}
+					}
+					return subContext;
+				};
+				return result;
+			},
 			getSubContext: function (elementId, data, label, uiStartingState) {
 				if (typeof label == "object" && label != null) {
 					throw new Error('Label cannot be an object');
@@ -7109,29 +7150,36 @@
 					delete this.subContextSavedStates[labelKey];
 				}
 				if (this.subContexts[labelKey] == undefined) {
-					var usedComponents = [];
+					var missingComponents;
 					if (this.data == data) {
-						usedComponents = this.usedComponents.slice(0);
+						missingComponents = this.missingComponents.slice(0);
 						if (this.renderer != undefined) {
-							usedComponents = usedComponents.concat(this.renderer.filterObj.component);
+							for (var i = 0; i < this.renderer.filterObj.component.length; i++) {
+								var componentIndex = missingComponents.indexOf(this.renderer.filterObj.component[i]);
+								if (componentIndex !== -1) {
+									missingComponents.splice(componentIndex, 1);
+								}
+							}
 						}
+					} else {
+						missingComponents = componentList.slice(0);
 					}
 					if (typeof elementId == "object") {
 						elementId = elementId.id;
 					}
-					function Context(rootContext, baseContext, label, data, uiState, usedComponents) {
+					function Context(rootContext, baseContext, label, data, uiState, missingComponents) {
 						this.uniqueId = contextIdCounter++;
 						this.rootContext = rootContext;
 						this.baseContext = baseContext;
 						this.label = label;
 						this.data = data;
 						this.uiStartingState = copyValue(uiState || {});
-						this.usedComponents = usedComponents;
+						this.missingComponents = missingComponents;
 						this.subContexts = {};
 						this.oldSubContexts = {};
 					}
 					Context.prototype = this.rootContext;
-					this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, usedComponents);
+					this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, missingComponents);
 				}
 				var subContext = this.subContexts[labelKey];
 				subContext.elementId = elementId;
@@ -7159,7 +7207,6 @@
 				}
 				
 				var renderer = this.renderer;
-				console.log("async rendering from document " + this.data.document.uniqueId);
 				this.data.whenStable(function (data) {
 					renderer.asyncRenderHtml(data, thisContext, function (error, innerHtml) {
 						if (error) {
@@ -7218,7 +7265,7 @@
 				if (this.elementLookup[uniqueId].indexOf(element.id) == -1) {
 					this.elementLookup[uniqueId].push(element.id);
 				}
-				var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 				if (renderer != undefined) {
 					subContext.renderer = renderer;
 					if (subContext.uiState == undefined) {
@@ -7270,7 +7317,7 @@
 				}
 				var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 	
-				var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 				subContext.renderer = renderer;
 				if (subContext.uiState == undefined) {
 					subContext.loadState(subContext.uiStartingState);
@@ -7315,7 +7362,7 @@
 				}
 				var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 	
-				var renderer = selectRenderer(data, uiStartingState, subContext.usedComponents);
+				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
 				subContext.renderer = renderer;
 				if (subContext.uiState == undefined) {
 					subContext.loadState(subContext.uiStartingState);
@@ -7343,7 +7390,7 @@
 					// If so, check the enhancement contexts.
 					var prevContext = element.jsonaryContext || this.enhancementContexts[elementIds[i]];
 					var prevUiState = copyValue(this.uiStartingState);
-					var renderer = selectRenderer(data, prevUiState, prevContext.usedComponents);
+					var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents);
 					if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 						renderer.update(element, data, prevContext, operation);
 					} else {
@@ -7576,6 +7623,8 @@
 			Jsonary.cleanup = cleanup;
 		}
 	
+		var initialComponents = [];
+		
 		function render(element, data, uiStartingState) {
 			if (typeof element == 'string') {
 				element = render.getElementById(element);
@@ -7584,19 +7633,19 @@
 			innerElement.className = "jsonary";
 			element.innerHTML = "";
 			element.appendChild(innerElement);
-			var context = pageContext.subContext(Math.random());
+			var context = pageContext.withComponent(initialComponents).subContext(Math.random());
 			pageContext.oldSubContexts = {};
 			pageContext.subContexts = {};
 			return context.render(innerElement, data, 'render', uiStartingState);
 		}
 		function renderHtml(data, uiStartingState) {
-			var innerHtml = pageContext.renderHtml(data, null, uiStartingState);
+			var innerHtml = pageContext.withComponent(initialComponents).renderHtml(data, null, uiStartingState);
 			pageContext.oldSubContexts = {};
 			pageContext.subContexts = {};
 			return '<span class="jsonary">' + innerHtml + '</span>';
 		}
 		function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-			return pageContext.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
+			return pageContext.withComponent(initialComponents).asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
 				if (error) {
 					htmlCallback(error, innerHtml, renderContext);
 				}
@@ -7614,6 +7663,11 @@
 			};
 		}
 		render.Components = componentNames;
+		render.addInitialComponent = function (component) {
+			componentNames.add(component, false);
+			initialComponents.push(component);
+			return this;
+		};
 		render.actionInputName = function (args) {
 			var context = args.context;
 			return context.getElementId();
@@ -7688,6 +7742,19 @@
 			} else {
 				this.filterObj = sourceObj.filter || {};
 				this.filterFunction = this.filterObj.filter;
+			}
+			if (this.filterObj.schema) {
+				var possibleSchemas = this.filterObj.schema;
+				this.filterFunction = (function (oldFilterFunction) {
+					return function (data, schemas) {
+						for (var i = 0; i < possibleSchemas.length; i++) {
+							if (schemas.containsUrl(possibleSchemas)) {
+								return oldFilterFunction ? oldFilterFunction.apply(this, arguments) : true;
+							}
+						}
+						return false;
+					};
+				})(this.filterFunction);
 			}
 			this.actionFunction = sourceObj.action;
 			for (var key in sourceObj) {
@@ -7930,7 +7997,18 @@
 		Renderer.prototype.super_ = Renderer.prototype;
 	
 		var rendererLookup = {};
-		var rendererListByType = { // Index first by type, then component
+		// Index first by read-only status, then type, then component
+		var rendererListByTypeReadOnly = {
+			'undefined': {},
+			'null': {},
+			'boolean': {},
+			'integer': {},
+			'number': {},
+			'string' :{},
+			'object': {},
+			'array': {}
+		};
+		var rendererListByTypeEditable = {
 			'undefined': {},
 			'null': {},
 			'boolean': {},
@@ -7944,6 +8022,7 @@
 			var renderer = new Renderer(obj);
 			rendererLookup[renderer.uniqueId] = renderer;
 			
+			var readOnly = renderer.filterObj.readOnly;
 			var types = renderer.filterObj.type || ['undefined', 'null', 'boolean', 'integer', 'number', 'string', 'object', 'array'];
 			var components = renderer.filterObj.component;
 			if (!Array.isArray(types)) {
@@ -7954,14 +8033,24 @@
 			}
 			for (var i = 0; i < types.length; i++) {
 				var type = types[i];
-				if (!rendererListByType[type]) {
+				if (!rendererListByTypeReadOnly[type]) {
 					throw new Error('Invalid type(s): ' + type);
 				}
-				var rendererListByComponent = rendererListByType[type];
-				for (var j = 0; j < components.length; j++) {
-					var component = components[j];
-					rendererListByComponent[component] = rendererListByComponent[component] || [];
-					rendererListByComponent[component].push(renderer);
+				if (readOnly || typeof readOnly === 'undefined') {
+					var rendererListByComponent = rendererListByTypeReadOnly[type];
+					for (var j = 0; j < components.length; j++) {
+						var component = components[j];
+						rendererListByComponent[component] = rendererListByComponent[component] || [];
+						rendererListByComponent[component].push(renderer);
+					}
+				}
+				if (!readOnly) {
+					var rendererListByComponent = rendererListByTypeEditable[type];
+					for (var j = 0; j < components.length; j++) {
+						var component = components[j];
+						rendererListByComponent[component] = rendererListByComponent[component] || [];
+						rendererListByComponent[component].push(renderer);
+					}
 				}
 			}
 			return renderer;
@@ -7971,13 +8060,16 @@
 				rendererId = rendererId.uniqueId;
 			}
 			delete rendererLookup[rendererId];
-			for (var type in rendererListByType) {
-				for (var component in rendererListByType[type]) {
-					var rendererList = rendererListByType[type][component];
-					for (var i = 0; i < rendererList.length; i++) {
-						if (rendererList[i].uniqueId == rendererId) {
-							rendererList.splice(i, 1);
-							i--;
+			for (var i = 0; i < 2; i++) {
+				var rendererListByType = i ? rendererListByTypeEditable : rendererListByTypeReadOnly;
+				for (var type in rendererListByType) {
+					for (var component in rendererListByType[type]) {
+						var rendererList = rendererListByType[type][component];
+						for (var i = 0; i < rendererList.length; i++) {
+							if (rendererList[i].uniqueId == rendererId) {
+								rendererList.splice(i, 1);
+								i--;
+							}
 						}
 					}
 				}
@@ -8031,26 +8123,27 @@
 			return rendererLookup[rendererId];
 		}
 	
-		function selectRenderer(data, uiStartingState, usedComponents) {
+		function selectRenderer(data, uiStartingState, missingComponents) {
 			var schemas = data.schemas();
 			var basicType = data.basicType();
-			for (var j = 0; j < componentList.length; j++) {
-				if (usedComponents.indexOf(componentList[j]) == -1) {
-					var component = componentList[j];
-					var rendererListByComponent = rendererListByType[basicType];
-					if (rendererListByComponent[component]) {
-						var rendererList = rendererListByComponent[component];
-						for (var i = rendererList.length - 1; i >= 0; i--) {
-							var renderer = rendererList[i];
-							if (renderer.canRender(data, schemas, uiStartingState)) {
-								return renderer;
-							}
+			var readOnly = data.readOnly();
+			var rendererListByType = readOnly ? rendererListByTypeReadOnly : rendererListByTypeEditable;
+			for (var j = 0; j < missingComponents.length; j++) {
+				var component = missingComponents[j];
+				var rendererListByComponent = rendererListByType[basicType];
+				if (rendererListByComponent[component]) {
+					var rendererList = rendererListByComponent[component];
+					for (var i = rendererList.length - 1; i >= 0; i--) {
+						var renderer = rendererList[i];
+						if (renderer.canRender(data, schemas, uiStartingState)) {
+							return renderer;
 						}
 					}
 				}
 			}
 		}
 	
+		// TODO: this doesn't seem that useful - remove?
 		if (typeof global.jQuery != "undefined") {
 			var jQueryRender = function (data, uiStartingState) {
 				var element = this[0];
@@ -8086,11 +8179,6 @@
 					}
 				}
 				render.register(jQueryObj);
-			};
-			jQueryRender.empty = function (query) {
-				query.each(function (index, element) {
-					render.empty(element);
-				});
 			};
 			jQuery.fn.extend({renderJson: jQueryRender});
 			jQuery.extend({renderJson: jQueryRender});
@@ -8130,7 +8218,7 @@
 	})(this);
 	var Jsonary = this.Jsonary;
 
-/**** ../jsonary/_cache-json-schema-org.js ****/
+/**** D:\web\htdocs\git\jsonary\jsonary\_cache-json-schema-org.js ****/
 
 	// Modified versions of the meta-schemas
 	
@@ -8462,7 +8550,7 @@
 	Jsonary.addToCache('http://json-schema.org/hyper-schema', {allOf: [{"$ref": "draft-04/hyper-schema"}]});
 	Jsonary.addToCache('http://json-schema.org/draft-04/hyper-schema', hyperSchema);
 
-/**** ../renderers/list-links.js ****/
+/**** D:\web\htdocs\git\jsonary\renderers\list-links.js ****/
 
 	(function (Jsonary) {
 	
@@ -8530,7 +8618,6 @@
 					}
 					context.uiState.submitLink = arg1;
 					if (link.method == "PUT" && link.submissionSchemas.length == 0) {
-						console.log(link);
 						context.uiState.editing = context.data.editableCopy();
 						context.uiState.submissionData = context.data.editableCopy();
 					} else {
@@ -8556,9 +8643,6 @@
 					delete context.uiState.submissionData;
 					return true;
 				}
-			},
-			filter: function () {
-				return true;
 			},
 			saveState: function (uiState, subStates) {
 				var result = {};
@@ -8613,7 +8697,7 @@
 	})(Jsonary);
 	
 
-/**** ../renderers/plain.jsonary.js ****/
+/**** D:\web\htdocs\git\jsonary\renderers\plain.jsonary.js ****/
 
 	(function (global) {
 		var escapeHtml = Jsonary.escapeHtml;
@@ -8707,8 +8791,8 @@
 			update: function (element, data, context, operation) {
 				return data.defined() == !!context.uiState.undefined;
 			},
-			filter: function (data) {
-				return !data.readOnly();
+			filter: {
+				readOnly: false
 			},
 			saveState: function (uiState, subStates) {
 				return subStates.data || {};
@@ -8729,7 +8813,6 @@
 				var enums = data.schemas().enumValues();
 				var basicTypes = data.schemas().basicTypes();
 				if (basicTypes.length > 1 && enums == null) {
-					console.log(basicTypes);
 					result += '<select name="' + context.inputNameForAction('select-basic-type') + '">';
 					for (var i = 0; i < basicTypes.length; i++) {
 						if (basicTypes[i] == "integer" && basicTypes.indexOf("number") != -1) {
@@ -8762,8 +8845,8 @@
 			update: function (element, data, context, operation) {
 				return false;
 			},
-			filter: function (data) {
-				return !data.readOnly();
+			filter: {
+				readOnly: false
 			},
 			saveState: function (uiState, subStates) {
 				var result = {};
@@ -8934,8 +9017,8 @@
 			update: function (element, data, context, operation) {
 				return false;
 			},
-			filter: function (data) {
-				return !data.readOnly();
+			filter: {
+				readOnly: false
 			},
 			saveState: function (uiState, subStates) {
 				var result = {};
@@ -8980,9 +9063,6 @@
 					return "";
 				}
 				return '<span class="json-raw">' + escapeHtml(JSON.stringify(data.value())) + '</span>';
-			},
-			filter: function (data) {
-				return true;
 			}
 		});
 		
@@ -8992,8 +9072,8 @@
 			renderHtml: function (data, context) {
 				return '<span class="json-null">null</span>';
 			},
-			filter: function (data) {
-				return data.basicType() == "null";
+			filter: {
+				type: 'null'
 			}
 		});
 		
@@ -9142,8 +9222,8 @@
 					}
 				}
 			},
-			filter: function (data) {
-				return data.basicType() == "object";
+			filter: {
+				type: 'object'
 			}
 		});
 	
@@ -9176,8 +9256,8 @@
 					});
 				}
 			},
-			filter: function (data) {
-				return data.basicType() == "array";
+			filter: {
+				type: 'array'
 			}
 		});
 		
@@ -9187,8 +9267,9 @@
 			renderHtml: function (data, context) {
 				return '<span class="json-string">' + escapeHtml(data.value()) + '</span>';
 			},
-			filter: function (data) {
-				return data.basicType() == "string" && data.readOnly();
+			filter: {
+				type: 'string',
+				readOnly: true
 			}
 		});
 	
@@ -9365,8 +9446,9 @@
 					return true;
 				}
 			},
-			filter: function (data) {
-				return data.basicType() == "string" && !data.readOnly();
+			filter: {
+				type: 'string',
+				readOnly: false
 			}
 		});
 	
@@ -9390,8 +9472,8 @@
 					context.data.setValue(!!arg1);
 				}
 			},
-			filter: function (data) {
-				return data.basicType() == "boolean";
+			filter: {
+				type: 'boolean'
 			}
 		});
 		
@@ -9478,8 +9560,9 @@
 					}
 				}
 			},
-			filter: function (data) {
-				return (data.basicType() == "number" || data.basicType() == "integer") && !data.readOnly();
+			filter: {
+				type: ['number', 'integer'],
+				readOnly: false
 			}
 		});
 	
@@ -9521,8 +9604,11 @@
 				element.appendChild(select);
 				element = select = option = null;
 			},
-			filter: function (data) {
-				return !data.readOnly() && data.schemas().enumValues() != null;
+			filter: {
+				readOnly: false,
+				filter: function (data, schemas) {
+					return schemas.enumValues() != null;
+				}
 			}
 		});
 	

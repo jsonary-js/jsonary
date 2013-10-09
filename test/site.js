@@ -2,7 +2,7 @@ var express = require('express');
 var url = require('url');
 var http = require('http');
 var https = require('https');
-require('./assemble-super-bundle'); // reset all bundles
+require('../assemble-bundles'); // reset all bundles
 var jsonaryBundle = require('../node-package/jsonary-bundle');
 
 var app = express();
@@ -11,7 +11,6 @@ app.use(express.bodyParser());
 var jsonaryJsBundle;
 function createBundles() {
 	var bundle = jsonaryBundle.fresh();
-	bundle.add('renderers/site');
 	// extra plugins and renderers
 	bundle.add('../plugins/jsonary.location');
 	bundle.add('../plugins/jsonary.undo');
@@ -23,6 +22,9 @@ function createBundles() {
 	bundle.add('../renderers/contributed/full-instances');
 	bundle.add('../renderers/contributed/adaptive-table');
 	bundle.add('../renderers/contributed/markdown');
+
+	// Site-specific renderers
+	bundle.add('renderers/site');
 	
 	bundle.writeCss('bundle.css');
 	//bundle.writeCss('bundle.min.css', true);
@@ -35,6 +37,8 @@ var jsonaryJsBundle = createBundles();
 var createJsonary = function () {
 	var Jsonary = jsonaryJsBundle.instance();
 	Jsonary.baseUri = 'http://localhost:8080/';
+	
+	Jsonary.render.addInitialComponent('WHOLE_PAGE');
 	var buttons = [];
 	Jsonary.render.clearButtons = function () {
 		buttons = [];
@@ -283,6 +287,7 @@ app.all('/', function (request, response) {
 		html += '<hr><div id="jsonary-target"></div>';
 		html += '<script src="bundle.js"></script>';
 		html += '<script>';
+		html += 	'Jsonary.render.addInitialComponent("WHOLE_PAGE");';
 		html += 	'Jsonary.location.queryVariant = ' + JSON.stringify(Jsonary.location.queryVariant) + ';';
 		html += 	'Jsonary.location.replace(' + JSON.stringify(urlForUiState(savedUiState)) + ');'
 		html += 	'var renderContext;';

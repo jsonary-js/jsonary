@@ -64,7 +64,6 @@
 				}
 				context.uiState.submitLink = arg1;
 				if (link.method == "PUT" && link.submissionSchemas.length == 0) {
-					console.log(link);
 					context.uiState.editing = context.data.editableCopy();
 					context.uiState.submissionData = context.data.editableCopy();
 				} else {
@@ -90,9 +89,6 @@
 				delete context.uiState.submissionData;
 				return true;
 			}
-		},
-		filter: function () {
-			return true;
 		},
 		saveState: function (uiState, subStates) {
 			var result = {};
