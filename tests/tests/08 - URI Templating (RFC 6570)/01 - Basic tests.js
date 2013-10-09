@@ -51,7 +51,7 @@ var examples = {
 	"{/var}": "/value",
 	"{/var,x}/here": "/value/1024/here",
 	"{;x,y}": ";x=1024;y=768",
-	"{;x,y,empty}": ";x=1024;y=768;empty=",
+	"{;x,y,empty}": ";x=1024;y=768;empty",
 	"{?x,y}": "?x=1024&y=768",
 	"{?x,y,empty}": "?x=1024&y=768&empty=",
 	"?fixed=yes{&x}": "?fixed=yes&x=1024",

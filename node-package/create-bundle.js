@@ -27,8 +27,9 @@ Bundle.prototype = {
 		}
 		var jsCode = "";
 		for (var i = 0; i < filenames.length; i++) {
-			var filename = this.filename(filenames[i]);
-			var cssCode = fs.readFileSync(filename, {enc:'utf8'}).toString();
+			var filename = filenames[i];
+			var resolvedFilename = this.filename(filenames[i]);
+			var cssCode = fs.readFileSync(resolvedFilename, {enc:'utf8'}).toString();
 			// Replace each URI(...) with a base64-encoded data URI
 			cssCode = cssCode.replace(/((:|\s)url\()\s*(.*)\s*\)/gi, function (fullString, prefix, spacing, uri) {
 				if (uri.substring(0, 10).replace(/^('|")/, '').toLowerCase().substring(0, 5) == "data:") {
@@ -38,7 +39,7 @@ Bundle.prototype = {
 				if (uri.charAt(0) == '"' || uri.charAt(0) == "'") {
 					uri = uri.substring(1, (uri.charAt(uri.length - 1) === uri.charAt(0)) ? uri.length - 1 : uri.length);
 				}
-				var resourcePath = path.resolve(path.dirname(filename), uri);
+				var resourcePath = path.resolve(path.dirname(resolvedFilename), uri);
 				var base64 = fs.readFileSync(resourcePath).toString('base64');
 				var mimeType = mime.lookup(resourcePath);
 				var dataUri = "data:" + mimeType + ";base64," + base64;
@@ -71,9 +72,10 @@ Bundle.prototype = {
 		}
 		var code = "";
 		for (var i = 0; i < filenames.length; i++) {
-			var filename = this.filename(filenames[i]);
+			var filename = filenames[i];
+			var resolvedFilename = this.filename(filenames[i]);
 			code += '\n\n/**** ' + filename + ' ****/\n\n\t';
-			code += fs.readFileSync(filename, {enc:'utf8'}).toString().replace(/\n/g, "\n\t");
+			code += fs.readFileSync(resolvedFilename, {enc:'utf8'}).toString().replace(/\n/g, "\n\t");
 		}
 		this.jsCode.push(code);
 		return this;

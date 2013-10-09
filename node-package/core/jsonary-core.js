@@ -1,8 +1,8 @@
-/* Bundled on Wed Oct 09 2013 18:52:01 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Wed Oct 09 2013 23:27:39 GMT+0100 (BST)*/
 (function() {
 
 
-/**** D:\web\htdocs\git\jsonary\jsonary\_compatability.js ****/
+/**** jsonary/_compatability.js ****/
 
 	if (typeof window != "undefined" && typeof localStorage == "undefined") {
 		window.localStorage = {};
@@ -564,7 +564,7 @@
 	}());
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\_header.js ****/
+/**** jsonary/_header.js ****/
 
 	(function(publicApi) { // Global wrapper
 	
@@ -581,7 +581,7 @@
 	
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\uri.js ****/
+/**** jsonary/uri.js ****/
 
 	function Uri(str) {
 		var scheme = str.match(/^[a-zA-Z\-]+:/);
@@ -852,7 +852,7 @@
 	publicApi.Uri = Uri;
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\uri-template.js ****/
+/**** jsonary/uri-template.js ****/
 
 	var uriTemplateGlobalModifiers = {
 		"+": true,
@@ -1189,6 +1189,7 @@
 			for (var i = 0; i < textParts.length; i++) {
 				var part = textParts[i];
 				if (substituted.substring(0, part.length) !== part) {
+					console.log([substituted, part]);
 					return undefined;
 				}
 				substituted = substituted.substring(part.length);
@@ -1202,14 +1203,7 @@
 				var nextPart = textParts[i + 1];
 				var offset = i;
 				while (true) {
-					if (offset == textParts.length - 2) {
-						var endPart = substituted.substring(substituted.length - nextPart.length);
-						if (endPart !== nextPart) {
-							return undefined;
-						}
-						var stringValue = substituted.substring(0, substituted.length - nextPart.length);
-						substituted = endPart;
-					} else if (nextPart) {
+					if (nextPart) {
 						var nextPartPos = substituted.indexOf(nextPart);
 						var stringValue = substituted.substring(0, nextPartPos);
 						substituted = substituted.substring(nextPartPos);
@@ -1243,7 +1237,7 @@
 	};
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\utils.js ****/
+/**** jsonary/utils.js ****/
 
 	var Utils = {
 		guessBasicType: function (data, prevType) {
@@ -1666,7 +1660,7 @@
 	}
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\monitors.js ****/
+/**** jsonary/monitors.js ****/
 
 	function MonitorSet(context) {
 		this.contents = {};
@@ -1779,7 +1773,7 @@
 	};
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\request.js ****/
+/**** jsonary/request.js ****/
 
 	if (typeof XMLHttpRequest == "undefined") {
 		XMLHttpRequest = function () {
@@ -2336,7 +2330,7 @@
 	
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\patch.js ****/
+/**** jsonary/patch.js ****/
 
 	function Patch(prefix) {
 		this.operations = [];
@@ -2583,7 +2577,7 @@
 	
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\data.js ****/
+/**** jsonary/data.js ****/
 
 	var changeListeners = [];
 	publicApi.registerChangeListener = function (listener) {
@@ -3520,7 +3514,7 @@
 	};
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\schema.js ****/
+/**** jsonary/schema.js ****/
 
 	function getSchema(url, callback) {
 		return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
@@ -4361,7 +4355,7 @@
 	
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\schemamatch.js ****/
+/**** jsonary/schemamatch.js ****/
 
 	function SchemaMatch(monitorKey, data, schema, impatientCallbacks) {
 		var thisSchemaMatch = this;
@@ -4889,7 +4883,7 @@
 	};
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\schemaset.js ****/
+/**** jsonary/schemaset.js ****/
 
 	var schemaChangeListeners = [];
 	publicApi.registerSchemaChangeListener = function (listener) {
@@ -6837,7 +6831,7 @@
 	};
 	
 
-/**** D:\web\htdocs\git\jsonary\jsonary\main.js ****/
+/**** jsonary/main.js ****/
 
 	//Tidying
 	// TODO: check all " == undefined", in case they should be " === undefined" instead (null-safety)
@@ -6860,7 +6854,7 @@
 		debug: false
 	}
 
-/**** D:\web\htdocs\git\jsonary\jsonary\_footer.js ****/
+/**** jsonary/_footer.js ****/
 
 	publicApi.UriTemplate = UriTemplate;
 	
@@ -6868,7 +6862,7 @@
 	})(this.Jsonary = {});
 	
 
-/**** D:\web\htdocs\git\jsonary\plugins\jsonary.render.js ****/
+/**** plugins/jsonary.render.js ****/
 
 	(function (global) {
 		var Jsonary = global.Jsonary;
@@ -6998,7 +6992,8 @@
 			rootContext: null,
 			baseContext: null,
 			labelSequence: function () {
-				if (!this.parent || this.parent == pageContext) {
+				// Top-level is always one level below pageContext
+				if (!this.parent || !this.parent.parent || this.parent == pageContext) {
 					return [];
 				}
 				return this.parent.labelSequence().concat([this.label]);
@@ -7894,8 +7889,12 @@
 				return this;
 			},
 			action: function (context, actionName) {
-				var result = this.actionFunction.apply(this, arguments);
-				return result;
+				if (typeof this.actionFunction == 'function') {
+					var result = this.actionFunction.apply(this, arguments);
+					return result;
+				} else {
+					Jsonary.log(Jsonary.logLevel.WARNING, 'Renderer ' + this.name + ' has no actions (attempted ' + actionName + ')');
+				}
 			},
 			canRender: function (data, schemas, uiState) {
 				if (this.filterFunction != undefined) {
@@ -8216,7 +8215,7 @@
 	})(this);
 	var Jsonary = this.Jsonary;
 
-/**** D:\web\htdocs\git\jsonary\jsonary\_cache-json-schema-org.js ****/
+/**** jsonary/_cache-json-schema-org.js ****/
 
 	// Modified versions of the meta-schemas
 	
@@ -8548,7 +8547,7 @@
 	Jsonary.addToCache('http://json-schema.org/hyper-schema', {allOf: [{"$ref": "draft-04/hyper-schema"}]});
 	Jsonary.addToCache('http://json-schema.org/draft-04/hyper-schema', hyperSchema);
 
-/**** D:\web\htdocs\git\jsonary\renderers\list-links.js ****/
+/**** renderers/list-links.js ****/
 
 	(function (Jsonary) {
 	
@@ -8695,7 +8694,7 @@
 	})(Jsonary);
 	
 
-/**** D:\web\htdocs\git\jsonary\renderers\plain.jsonary.js ****/
+/**** renderers/plain.jsonary.js ****/
 
 	(function (global) {
 		var escapeHtml = Jsonary.escapeHtml;

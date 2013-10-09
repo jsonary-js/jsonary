@@ -131,19 +131,14 @@ app.all('/', function (request, response) {
 	}
 
 	var timer = LogTimer('request');
-	// Reset bundles on every request
-	//*/
-	createBundles();
-	timer.event('bundle Jsonary (ignoring)');
-	timer.reset();
-	//*/
 	
 	response.setHeader('Content-Type', 'text/html');
 	var Jsonary = createJsonary();
 	timer.event('create Jsonary');
 
 	var renderContext;
-	response.write('<pre><code>' + Jsonary.escapeHtml(JSON.stringify(request.body, null, 4)) + '</code></pre>');
+	response.write('<pre>GET: <code>' + Jsonary.escapeHtml(JSON.stringify(request.query, null, 4)) + '</code></pre>');
+	response.write('<pre>POST: <code>' + Jsonary.escapeHtml(JSON.stringify(request.body, null, 4)) + '</code></pre>');
 	var savedData = {};
 	if (request.body['Jsonary.data']) {
 		try {

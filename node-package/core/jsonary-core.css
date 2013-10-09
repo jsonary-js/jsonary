@@ -1,7 +1,7 @@
-/* Bundled on Wed Oct 09 2013 18:52:04 GMT+0100 (GMT Daylight Time)*/
+/* Bundled on Wed Oct 09 2013 23:27:16 GMT+0100 (BST)*/
 
 
-/**** D:\web\htdocs\git\jsonary\renderers\common.css ****/
+/**** renderers/common.css ****/
 
 .jsonary .loading {
 	margin: 0px;
@@ -295,7 +295,7 @@
 	cursor: default;
 }
 
-/**** D:\web\htdocs\git\jsonary\renderers\plain.jsonary.css ****/
+/**** renderers/plain.jsonary.css ****/
 
 .json-schema, .json-link {
 	margin-right: 0.5em;
