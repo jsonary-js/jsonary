@@ -15,13 +15,19 @@ Bundle.prototype = {
 		this.baseDir = baseDir;
 		return this;
 	},
+	filename: function (filename) {
+		if (filename.charAt(0) == '/') {
+			return filename;
+		}
+		return path.join(this.baseDir, filename);
+	},
 	css: function (filenames) {
 		if (typeof filenames == 'string') {
 			filenames = [filenames];
 		}
 		var jsCode = "";
 		for (var i = 0; i < filenames.length; i++) {
-			var filename = path.join(this.baseDir, filenames[i]);
+			var filename = this.filename(filenames[i]);
 			var cssCode = fs.readFileSync(filename, {enc:'utf8'}).toString();
 			// Replace each URI(...) with a base64-encoded data URI
 			cssCode = cssCode.replace(/((:|\s)url\()\s*(.*)\s*\)/gi, function (fullString, prefix, spacing, uri) {
@@ -65,7 +71,7 @@ Bundle.prototype = {
 		}
 		var code = "";
 		for (var i = 0; i < filenames.length; i++) {
-			var filename = path.join(this.baseDir, filenames[i]);
+			var filename = this.filename(filenames[i]);
 			code += '\n\n/**** ' + filename + ' ****/\n\n\t';
 			code += fs.readFileSync(filename, {enc:'utf8'}).toString().replace(/\n/g, "\n\t");
 		}
@@ -83,7 +89,7 @@ Bundle.prototype = {
 		code = code.replace(/\r\n/g, "\n");
 		
 		if (outputFile) {
-			outputFile = path.join(this.baseDir, outputFile);
+			outputFile = this.filename(outputFile);
 			// Timestamp line also keeps line numbers in sync between bundle file and anonymous function in Node
 			var fileCode = '/* Bundled on ' + (new Date) + '*/\n' + code + '.call(this);';
 			if (minify) {
@@ -114,7 +120,7 @@ Bundle.prototype = {
 			cssCode = cleanCss.process(cssCode);
 		}
 		if (outputFile) {
-			outputFile = path.join(this.baseDir, outputFile);
+			outputFile = this.filename(outputFile);
 			fs.writeFileSync(outputFile, cssCode, {enc:'utf8'});
 		}
 		return cssCode;

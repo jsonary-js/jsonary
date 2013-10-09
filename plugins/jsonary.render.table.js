@@ -459,6 +459,7 @@
 
 	FancyTableRenderer.defaults = {
 		sort: {},
+		// TODO: "natural" sort
 		defaultSort: function (a, b) {
 			if (a == null) {
 				return (b == null) ? 0 : -1;
