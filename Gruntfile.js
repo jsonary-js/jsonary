@@ -56,6 +56,7 @@ module.exports = function(grunt) {
 			tests: [],
 			allTestsDone: function () {
 				grunt.log.writeln('\n' + this.tests.length + ' tests completed');
+				grunt.file.delete('test-bundle.js');
 				thisTaskDone();
 			},
 			addSection: function (title) {
