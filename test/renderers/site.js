@@ -42,7 +42,6 @@ Jsonary.plugins.FancyTableRenderer()
 Jsonary.render.register({
 	component: 'WHOLE_PAGE',
 	renderHtml: function (data, context) {
-		console.log(context.missingComponents);
 		var title = "Page title";
 		var result = '<h1>' + Jsonary.escapeHtml(title) + '</h1>';
 		result += '<hr>';

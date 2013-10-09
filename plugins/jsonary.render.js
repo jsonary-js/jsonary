@@ -126,7 +126,8 @@
 		rootContext: null,
 		baseContext: null,
 		labelSequence: function () {
-			if (!this.parent || this.parent == pageContext) {
+			// Top-level is always one level below pageContext
+			if (!this.parent || !this.parent.parent || this.parent == pageContext) {
 				return [];
 			}
 			return this.parent.labelSequence().concat([this.label]);
@@ -1022,8 +1023,12 @@
 			return this;
 		},
 		action: function (context, actionName) {
-			var result = this.actionFunction.apply(this, arguments);
-			return result;
+			if (typeof this.actionFunction == 'function') {
+				var result = this.actionFunction.apply(this, arguments);
+				return result;
+			} else {
+				Jsonary.log(Jsonary.logLevel.WARNING, 'Renderer ' + this.name + ' has no actions (attempted ' + actionName + ')');
+			}
 		},
 		canRender: function (data, schemas, uiState) {
 			if (this.filterFunction != undefined) {

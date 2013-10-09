@@ -2,7 +2,7 @@ var express = require('express');
 var url = require('url');
 var http = require('http');
 var https = require('https');
-require('../assemble-bundles'); // reset all bundles
+//require('../assemble-bundles'); // reset all bundles
 var jsonaryBundle = require('../node-package/jsonary-bundle');
 
 var app = express();

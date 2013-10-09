@@ -63,7 +63,7 @@ Bundle.prototype = {
 		if (typeof filenames == 'string') {
 			filenames = [filenames];
 		}
-		code = "";
+		var code = "";
 		for (var i = 0; i < filenames.length; i++) {
 			var filename = path.join(this.baseDir, filenames[i]);
 			code += '\n\n/**** ' + filename + ' ****/\n\n\t';
