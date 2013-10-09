@@ -1,10 +1,10 @@
-/* Bundled on Wed Oct 09 2013 23:28:31 GMT+0100 (BST)*/
+/* Bundled on Thu Oct 10 2013 00:11:21 GMT+0100 (BST)*/
 (function() {
 
 
 /**** /Users/geraint/Sites/jsonary/node-package/core/jsonary-core.js ****/
 
-	/* Bundled on Wed Oct 09 2013 23:27:39 GMT+0100 (BST)*/
+	/* Bundled on Thu Oct 10 2013 00:10:43 GMT+0100 (BST)*/
 	(function() {
 	
 	
@@ -1855,6 +1855,22 @@
 					}
 				}
 			};
+			if (params.headers) {
+				for (var key in params.headers) {
+					var parts = key.split('-');
+					for (var i = 0; i < parts.length; i++) {
+						if (parts[i].length > 0) {
+							parts[i] = parts[i].charAt(0).toUpperCase() + parts[i].substring(1).toLowerCase();
+						}
+					}
+					key = parts.join('-');
+					var values = params.headers[key];
+					if (!Array.isArray(values)) {
+						values = [values];
+					}
+					xhr.setRequestHeader(key, values.join(", "));
+				}
+			}
 			xhr.open(params.method, xhrUrl, true);
 			xhr.setRequestHeader("Content-Type", encType);
 			xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
@@ -1954,7 +1970,14 @@
 		FragmentRequest.prototype = {
 		}
 		
-		function requestJson(url, method, data, encType, cacheFunction, hintSchema) {
+		function requestJson(url, method, data, encType, cacheFunction, hintSchema, oldHeaders) {
+			var headers = {};
+			if (oldHeaders) {
+				for (var key in oldHeaders) {
+					headers[key.toLowerCase()] = oldHeaders[key];
+				}
+			}
+		
 			if (url == undefined) {
 				throw new Error("URL cannot be undefined");
 			}
@@ -2012,7 +2035,7 @@
 					};
 				}
 			}
-			var request = new Request(url, method, data, encType, hintSchema, function (request) {
+			var request = new Request(url, method, data, encType, hintSchema, headers, function (request) {
 				if (cacheable) {
 					cacheFunction(cacheKey, request);
 				}
@@ -2037,7 +2060,7 @@
 			if (typeof params == "string") {
 				params = {url: params};
 			}
-			var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema).fragmentRequest;
+			var request = requestJson(params.url, params.method, params.data, params.encType, null, hintSchema, params.headers).fragmentRequest;
 			if (callback != undefined) {
 				request.getData(callback);
 			}
@@ -2054,7 +2077,7 @@
 		HttpError.prototype = new Error();
 		publicApi.HttpError = HttpError;
 		
-		function Request(url, method, data, encType, hintSchema, executeImmediately) {
+		function Request(url, method, data, encType, hintSchema, headers, executeImmediately) {
 			executeImmediately(this);
 			url = Utils.resolveRelativeUri(url);
 		
@@ -2071,7 +2094,7 @@
 			this.document = new Document(url, isDefinitive, true);
 		
 			this.fetched = false;
-			this.fetchData(url, method, data, encType, hintSchema);
+			this.fetchData(url, method, data, encType, hintSchema, headers);
 			this.invalidate = function() {
 				var makeRequest = function () {
 					if (thisRequest.successful == null) {
@@ -2079,7 +2102,7 @@
 						return;
 					}
 					if (method == "GET") {
-						thisRequest.fetchData(url, method, data, encType, hintSchema);
+						thisRequest.fetchData(url, method, data, encType, hintSchema, headers);
 					}
 				};
 				var thisRequest = this;
@@ -2245,7 +2268,7 @@
 					thisRequest.document.setRoot("");
 				});
 			},
-			fetchData: function(url, method, data, encType, hintSchema) {
+			fetchData: function(url, method, data, encType, hintSchema, headers) {
 				Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + this.document.uniqueId + " is unstable");
 				var stableListeners = new ListenerSet(this);
 				this.document.whenStable = function (callback) {
@@ -2279,7 +2302,8 @@
 					url: xhrUrl,
 					data: xhrData,
 					encType: encType,
-					method: method
+					method: method,
+					headers: headers || {}
 				};
 				publicApi.ajaxFunction(params, function (error, data, headers) {
 					if (!error) {

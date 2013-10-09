@@ -59,6 +59,9 @@ module.exports = function(grunt) {
 				thisTaskDone();
 			},
 			addSection: function (title) {
+				if (title.length > 60) {
+					title = "..." + title.substring(title.length - 57);
+				}
 				this.tests.push({
 					title: "\t" + title + ":",
 					run: function (onComplete) {
@@ -135,14 +138,20 @@ module.exports = function(grunt) {
 				} else if (filename.match(/\.js$/i)) {
 					testSet.addSection(resolvedFilename);
 					var code = grunt.file.read(resolvedFilename);
-					var fileFunction = new Function('tests', 'recursiveCompare', 'Jsonary', code);
-					var Jsonary = jsonaryBundle.instance();
-					Jsonary.ajaxFunction = function (params, callback) {
-						process.nextTick(function () {
-							callback(null, {"test": "Test data"}, "Content-Type: application/json");
-						});
-					};
-					fileFunction(testSet, recursiveCompare, Jsonary);
+					try {
+						var fileFunction = new Function('tests', 'recursiveCompare', 'Jsonary', code);
+						var Jsonary = jsonaryBundle.instance();
+						Jsonary.ajaxFunction = function (params, callback) {
+							process.nextTick(function () {
+								callback(null, {"test": "Test data"}, "Content-Type: application/json");
+							});
+						};
+						fileFunction(testSet, recursiveCompare, Jsonary);
+					} catch (e) {
+						console.log("Error in test file: " + resolvedFilename);
+						console.log(e.stack || e);
+						grunt.fail.warn("Invalid test file: " + resolvedFilename);
+					}
 				}
 			});
 		}
