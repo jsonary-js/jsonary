@@ -232,6 +232,7 @@ app.all('/', function (request, response) {
 		}
 		for (var key in request.query) {
 			if (key == 'Jsonary.action') {
+				needsReRender = true;
 				var base64 = request.query['Jsonary.action'];
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
@@ -283,7 +284,7 @@ app.all('/', function (request, response) {
 		html += '</form>';
 		timer.event('saved state');
 		
-		//*/
+		/*/
 		html += '<hr><div id="jsonary-target"></div>';
 		html += '<script src="bundle.js"></script>';
 		html += '<script>';
@@ -349,29 +350,38 @@ app.use('/json/schemas/', function (request, response, next) {
 });
 app.use('/json/schemas/', express.static(__dirname + '/json/schemas'));
 
+var jsonData = {
+	"title": "Jsonary",
+	"topContent": "[download](https://github.com/geraintluff/jsonary/raw/master/get-started-bundle.zip) and get started",
+	"sections": [
+		{
+			"title": "Features and goals",
+			"tabs": "pages/features-and-goals"
+		},
+		{
+			"title": "Examples",
+			"tabs": "pages/examples"
+		},
+		{
+			"title": "API",
+			"tabs": "api/"
+		}
+	]
+};
 app.get('/json/', function (request, response, next) {
 	response.set('Content-Type', 'application/json');
 	response.links({
 		describedby: "schemas/site"
 	});
-	response.json({
-		"title": "Jsonary",
-		"topContent": "[download](https://github.com/geraintluff/jsonary/raw/master/get-started-bundle.zip) and get started",
-		"sections": [
-			{
-				"title": "Features and goals",
-				"tabs": "pages/features-and-goals"
-			},
-			{
-				"title": "Examples",
-				"tabs": "pages/examples"
-			},
-			{
-				"title": "API",
-				"tabs": "api/"
-			}
-		]
+	response.json(jsonData);
+});
+app.put('/json/', function (request, response, next) {
+	response.set('Content-Type', 'application/json');
+	jsonData = request.body;
+	response.links({
+		describedby: "schemas/site"
 	});
+	response.json(jsonData);
 });
 
 app.use('/json/', function (request, response) {
