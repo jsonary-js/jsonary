@@ -1,6 +1,6 @@
 {
   "name": "jsonary",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Geraint Luff",
   "description": "Server-side Jsonary",
   "dependencies": {
