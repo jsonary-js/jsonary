@@ -103,7 +103,7 @@ function modifyJsonaryForServer(Jsonary) {
 	Jsonary.ajaxFunction = function (params, callback) {
 		requestCount++;
 		var options = urlModule.parse(params.url);
-		var isHttps = (options.protocol == 'https');
+		var isHttps = (options.protocol == 'https' || options.protocol == 'https:');
 		var httpModule = isHttps ? https : http;
 		options.method = params.method;
 		var cookieString = Jsonary.server.cookies.cookieStringForRequest(options.domain, options.path, isHttps);
