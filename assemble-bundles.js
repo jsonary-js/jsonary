@@ -1,7 +1,11 @@
 var path = require('path');
+var fs = require('fs');
+
+var licenseText = fs.readFileSync('LICENSE.txt', {enc: 'utf-8'});
 
 var bundle = require('./node-package/create-bundle.js');
 var masterBundle = bundle.base(__dirname)
+	.code('/* ' + licenseText + ' */')
 	.js([
 		// Replacement for jsonary.js, assembled from individual files
 		'jsonary/_compatability.js',
@@ -54,3 +58,5 @@ masterBundle.js('plugins/jsonary.location.js')
 console.log("Writing jsonary-super-bundle");
 masterBundle.compileJs('node-package/super-bundle/jsonary-super-bundle.js', true, true);
 console.log("Jsonary bundles complete");
+
+fs.writeFileSync('node-package/LICENSE.txt', licenseText, {enc: 'utf-8'});
