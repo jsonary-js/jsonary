@@ -70,7 +70,7 @@ Schema.prototype = {
 		var refUrl = this.data.propertyValue("$ref");
 		return refUrl === undefined;
 	},
-	getFull: function (callback) {
+	getFull: function (callback, pastUrls) {
 		var refUrl = this.data.propertyValue("$ref");
 		if (refUrl === undefined) {
 			if (callback) {
@@ -78,15 +78,26 @@ Schema.prototype = {
 			}
 			return this;
 		}
+		pastUrls = pastUrls || [];
 		refUrl = this.data.resolveUrl(refUrl);
+		if (pastUrls.indexOf(refUrl) !== -1) {
+			Jsonary.log(Jsonary.logLevel.ERROR, "Circular $ref cycle: " + JSON.stringify(pastUrls));
+			var schema = Jsonary.createSchema({title: "Circular $ref cycle", description: JSON.stringify(pastUrls)});
+			if (callback) {
+				callback.call(schema, schema, undefined);
+			}
+			return schema;
+		}
+		pastUrls.push(refUrl);
 		if (refUrl.charAt(0) == "#" && (refUrl.length == 1 || refUrl.charAt(1) == "/")) {
 			var documentRoot = this.data.document.root;
 			var pointerPath = decodeURIComponent(refUrl.substring(1));
 			var schema = documentRoot.subPath(pointerPath).asSchema();
 			if (callback) {
+				schema.getFull(callback, pastUrls);
 				callback.call(schema, schema, null);
 			} else {
-				return schema;
+				return schema.getFull(null, pastUrls);
 			}
 		} else if (callback) {
 			if (refUrl.charAt(0) == "#") {
@@ -103,7 +114,7 @@ Schema.prototype = {
 			var result = this;
 			this.getFull(function (fullResult) {
 				result = fullResult;
-			});
+			}); // We don't pass in pastUrls here - the with-callback will do that for us
 			return result;
 		}
 	},
@@ -200,6 +211,9 @@ Schema.prototype = {
 		}
 		return 0;
 	},
+	uniqueItems: function () {
+		return !!this.data.property('uniqueItems');
+	},
 	andSchemas: function () {
 		var result = [];
 		var extData = this.data.property("extends");
@@ -244,7 +258,7 @@ Schema.prototype = {
 		var typeData = this.data.property("type");
 		if (typeData.defined()) {
 			if (typeData.basicType() === "string") {
-				if (typeData.value() == "all") {
+				if (typeData.value() == "all" || typeData.value() == "any") {
 					return ALL_TYPES.slice(0);
 				}
 				return [typeData.value()];
@@ -270,23 +284,6 @@ Schema.prototype = {
 	},
 	xorSchemas: function () {
 		var result = [];
-		var typeData = this.data.property("type");
-		if (typeData.defined()) {
-			for (var i = 0; i < typeData.length(); i++) {
-				if (typeData.item(i).basicType() != "string") {
-					var xorGroup = [];
-					typeData.items(function (index, subData) {
-						if (subData.basicType() == "string") {
-							xorGroup.push(getTypeSchema(subData.value()));
-						} else {
-							xorGroup.push(subData.asSchema());
-						}
-					});
-					result.push(xorGroup);
-					break;
-				}
-			}
-		}
 		if (this.data.property("oneOf").defined()) {
 			var xorGroup = [];
 			this.data.property("oneOf").items(function (index, subData) {
@@ -299,6 +296,22 @@ Schema.prototype = {
 	orSchemas: function () {
 		var result = [];
 		var typeData = this.data.property("type");
+		if (typeData.defined()) {
+			for (var i = 0; i < typeData.length(); i++) {
+				if (typeData.item(i).basicType() != "string") {
+					var orGroup = [];
+					typeData.items(function (index, subData) {
+						if (subData.basicType() == "string") {
+							orGroup.push(getTypeSchema(subData.value()));
+						} else {
+							orGroup.push(subData.asSchema());
+						}
+					});
+					result.push(orGroup);
+					break;
+				}
+			}
+		}
 		if (this.data.property("anyOf").defined()) {
 			var orGroup = [];
 			this.data.property("anyOf").items(function (index, subData) {
@@ -347,7 +360,14 @@ Schema.prototype = {
 		return result;
 	},
 	maxItems: function () {
-		return this.data.propertyValue("maxItems");
+		var maxItems = this.data.propertyValue("maxItems");
+		// If tuple typing is enabled, then "additionalItems" provides a length constraint
+		if (this.tupleTyping() && this.data.propertyValue("additionalItems") === false) {
+			if (!(this.tupleTypingLength() >= maxItems)) {
+				maxItems = this.tupleTypingLength();
+			}
+		}
+		return maxItems;
 	},
 	tupleTypingLength: function () {
 		if (this.data.property("items").basicType() != "array") {
@@ -372,8 +392,15 @@ Schema.prototype = {
 		}
 		return null;
 	},
+	patternString: function () {
+		return this.data.propertyValue("pattern");
+	},
 	numberInterval: function() {
-		return this.data.propertyValue("divisibleBy");
+		var result = this.data.propertyValue("multipleOf");
+		if (result == undefined) {
+			result = this.data.propertyValue("divisibleBy");
+		}
+		return result;
 	},
 	minimum: function () {
 		return this.data.propertyValue("minimum");
@@ -456,6 +483,19 @@ Schema.prototype = {
 			});
 		}
 		return requiredKeys;
+	},
+	isAdditionalProperty: function (key) {
+		if (this.data.property("properties").property(key).defined()) {
+			return false;
+		}
+		var patterns = this.data.property("patternProperties").keys();
+		for (var i = 0; i < patterns.length; i++) {
+			var regEx = new RegExp(patterns[i]);
+			if (regEx.test(key)) {
+				return false;
+			}
+		}
+		return true;
 	},
 	allowedAdditionalProperties: function () {
 		return !(this.data.propertyValue("additionalProperties") === false);

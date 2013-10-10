@@ -1203,6 +1203,13 @@ SchemaList.prototype = {
 		}
 		return result;
 	},
+	uniqueItems: function () {
+		var result = false;
+		for (var i = 0; i < this.length; i++) {
+			result = result || this[i].uniqueItems();
+		}
+		return result;
+	},
 	propertySchemas: function(key) {
 		var result = new SchemaList();
 		for (var i = 0; i < this.length; i++) {
@@ -1335,8 +1342,8 @@ publicApi.createSchemaList = function (schemas) {
 	return new SchemaList(schemas);
 };
 
-var SCHEMA_SET_UPDATE_KEY = Utils.getUniqueKey();
 var SCHEMA_SET_FIXED_KEY = Utils.getUniqueKey();
+var SCHEMA_SET_VALIDATION_KEY = Utils.getUniqueKey();
 
 function SchemaSet(dataObj) {
 	var thisSchemaSet = this;
@@ -1522,6 +1529,9 @@ SchemaSet.prototype = {
 				return;
 			}
 			DelayedCallbacks.increment();
+			if (fixed && thisSchemaSet.validation) {
+				thisSchemaSet.validation.addSchema(schema, schemaKey);
+			}
 
 			thisSchemaSet.schemas[schemaKey].push(schema);
 			thisSchemaSet.schemasFixed[schemaKey] = thisSchemaSet.schemasFixed[schemaKey] || fixed;
@@ -1655,7 +1665,25 @@ SchemaSet.prototype = {
 		schemaMatch.addMonitor(monitor, executeImmediately);
 		return schemaMatch;
 	},
+	validate: function () {
+		this.validation = new SchemaSetValidation(this);
+		// Add existing schemas
+		for (var schemaKey in this.schemas) {
+			if (this.schemasFixed[schemaKey]) {
+				for (var i = 0; i < this.schemas[schemaKey].length; i++) {
+					this.validation.addSchema(this.schemas[schemaKey][i], schemaKey);
+				}
+			}
+		}
+		
+		var result = this.validation.publicVersion;
+		cacheResult(this, {validate: result});
+		return result;
+	},
 	removeSchema: function (schemaKey) {
+		if (this.validation) {
+			this.validation.removeSchema(schemaKey);
+		}
 		//Utils.log(Utils.logLevel.DEBUG, "Actually removing schema:" + schemaKey);
 		DelayedCallbacks.increment();
 
@@ -1899,6 +1927,7 @@ function OrSchemaApplier(options, schemaKey, schemaKeyHistory, schemaSet) {
 			optionsApplied[i] = found;
 		}
 		if (selectedOptions.length == 0 && options.length > 0) {
+			optionsApplied[0] = true;
 			schemaSet.addSchema(options[0], inferredSchemaKeys[0], schemaKeyHistory, false);
 		}
 	});
@@ -1940,5 +1969,58 @@ DependencyApplier.prototype = {
 		} else {
 			this.schemaSet.removeSchema(this.inferredSchemaKeys[key]);
 		}
+	}
+};
+
+function SchemaSetValidationPublic(validation, dataObj) {
+	var thisValidationPublic = this;
+	this.errors = [];
+	this.valid = true;
+	var updateMonitors = new MonitorSet(dataObj);
+	this.onChange = function (onChangeCallback, executeImmediately) {
+		var key = Utils.getKeyVariant(SCHEMA_SET_VALIDATION_KEY);
+		updateMonitors.add(key, onChangeCallback);
+		if (executeImmediately !== false) {
+			onChangeCallback.call(dataObj, this);
+		}
+	};
+	validation.updateMonitors.add(SCHEMA_SET_VALIDATION_KEY, function () {
+		thisValidationPublic.errors = [];
+		for (var key in validation.matchErrors) {
+			thisValidationPublic.errors = thisValidationPublic.errors.concat(validation.matchErrors[key]);
+		}
+		thisValidationPublic.valid = (thisValidationPublic.errors.length === 0);
+		updateMonitors.notify(thisValidationPublic);
+	});
+};
+SchemaSetValidationPublic.prototype = {
+};
+
+function SchemaSetValidation(schemaSet) {
+	this.schemaSet = schemaSet;
+	this.matchErrors = {};
+	this.updateMonitors = new MonitorSet(this);
+	this.publicVersion = new SchemaSetValidationPublic(this, schemaSet.dataObj);
+}
+SchemaSetValidation.prototype = {
+	addSchema: function (schema, schemaKey) {
+		var thisValidation = this;
+		var monitorKey = Utils.getKeyVariant(SCHEMA_SET_VALIDATION_KEY + '.' + schemaKey);
+		this.matchErrors[monitorKey] = [];
+		var match = this.schemaSet.addSchemaMatchMonitor(monitorKey, schema, function () {
+			thisValidation.updateMatch(match, monitorKey);
+		}, false);
+		this.updateMatch(match, monitorKey);
+	},
+	removeSchema: function (schemaKey) {
+		var monitorKey = SCHEMA_SET_VALIDATION_KEY + '.' + schemaKey;
+		delete this.matchErrors[monitorKey];
+	},
+	updateMatch: function (match, monitorKey) {
+		this.matchErrors[monitorKey] = [];
+		if (!match.match) {
+			this.matchErrors[monitorKey].push(match.matchFailReason);
+		}
+		this.updateMonitors.notify(match, monitorKey);
 	}
 };

@@ -291,6 +291,7 @@ SchemaMatch.prototype = {
 	matchAgainstImmediateConstraints: function () {
 		this.matchAgainstEnums();
 		this.matchAgainstNumberConstraints();
+		this.matchAgainstStringConstraints();
 		this.matchAgainstArrayConstraints();
 		this.matchAgainstObjectConstraints();
 	},
@@ -313,8 +314,8 @@ SchemaMatch.prototype = {
 		var value = this.data.value();
 		var interval = this.schema.numberInterval();
 		if (interval != undefined) {
-			if (value%interval != 0) {
-				throw new SchemaMatchFailReason("Number must be divisible by " + interval);
+			if ((value/interval)%1 != 0) { // *slightly* less prone to floating-point errors than a simple modulo, for some reason?
+				throw new SchemaMatchFailReason("Number must be multiple of " + interval);
 			}
 		}
 		var minimum = this.schema.minimum();
@@ -338,6 +339,25 @@ SchemaMatch.prototype = {
 			}
 		}
 	},
+	matchAgainstStringConstraints: function () {
+		if (this.data.basicType() != "string") {
+			return;
+		}
+		var minLength = this.schema.minLength();
+		if (this.data.value().length < minLength) {
+			throw new SchemaMatchFailReason("String must be at least " + minLength + " chars");
+		}
+		var maxLength = this.schema.maxLength();
+		if (maxLength != null) {
+			if (this.data.value().length > maxLength) {
+				throw new SchemaMatchFailReason("String must be at most " + maxLength + " chars");
+			}
+		}
+		var pattern = this.schema.pattern();
+		if (pattern && !pattern.test(this.data.value())) {
+			throw new SchemaMatchFailReason("String must match pattern: " + this.schema.patternString());
+		}
+	},
 	matchAgainstArrayConstraints: function () {
 		if (this.data.basicType() != "array") {
 			return;
@@ -349,6 +369,16 @@ SchemaMatch.prototype = {
 		var maxItems = this.schema.maxItems();
 		if (maxItems !== undefined && maxItems < this.data.length()) {
 			throw new SchemaMatchFailReason("Data is too long - maximum length is " + maxItems, this.schema);
+		}
+		if (this.schema.uniqueItems()) {
+			var dataLength = this.data.length();
+			for (var index1 = 0; index1 < dataLength; index1++) {
+				for (var index2 = index1 + 1; index2 < dataLength; index2++) {
+					if (this.data.item(index1).equals(this.data.item(index2))) {
+						throw new SchemaMatchFailReason("Items must be unique (items " + index1 + " and " + index2 + ")", this.schema);
+					}
+				}
+			}
 		}
 	},
 	matchAgainstObjectConstraints: function () {
@@ -362,14 +392,23 @@ SchemaMatch.prototype = {
 				throw new SchemaMatchFailReason("Missing key " + JSON.stringify(key), this.schema);
 			}
 		}
+		var dataKeys = this.data.keys();
 		if (this.schema.allowedAdditionalProperties() == false) {
-			var definedKeys = this.schema.definedProperties();
-			var dataKeys = this.data.keys();
 			for (var i = 0; i < dataKeys.length; i++) {
-				if (definedKeys.indexOf(dataKeys[i]) == -1) {
+				if (this.schema.isAdditionalProperty(dataKeys[i])) {
 					throw new SchemaMatchFailReason("Not allowed additional property: " + JSON.stringify(key), this.schema);
 				}
 			}
+		}
+		var maxProperties = this.schema.maxProperties();
+		if (maxProperties != null) {
+			if (dataKeys.length > maxProperties) {
+				throw new SchemaMatchFailReason("Too many properties (> " + maxProperties + ")", this.schema);
+			}
+		}
+		var minProperties = this.schema.minProperties();
+		if (dataKeys.length < minProperties) {
+			throw new SchemaMatchFailReason("Too few properties (< " + minProperties + ")", this.schema);
 		}
 		this.matchAgainstDependencies();
 	},

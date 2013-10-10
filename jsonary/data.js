@@ -582,9 +582,14 @@ function Data(document, secrets, parent, parentKey) {
 		secrets.schemas.removeSchema(schemaKey);
 		return this;
 	};
+	// TODO: remove this
 	this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
 		document.access();
 		return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately, impatientCallbacks);
+	};
+	this.validate = function () {
+		document.access();
+		return secrets.schemas.validate();
 	};
 }
 Data.prototype = {
@@ -835,6 +840,9 @@ Data.prototype = {
 			callback.call(thisData, thisData);
 		});
 		return this;
+	},
+	valid: function () {
+		return this.validate().valid;
 	}
 };
 Data.prototype.indices = Data.prototype.items;

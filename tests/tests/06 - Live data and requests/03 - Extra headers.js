@@ -4,7 +4,6 @@ tests.add("Extra headers from request options", function () {
 	Jsonary.ajaxFunction = (function (oldFunction) {
 		return function (params, callback) {
 			thisTest.assert(params.headers, 'headers defined');
-			console.log(params.headers);
 			thisTest.assert(params.headers['x-test'] === 'test-value', '"X-Test" headers set to correct value');
 			thisTest.pass();
 			return oldFunction.call(null, params, callback);

@@ -34,8 +34,10 @@ var exampleTypeB = {
 
 var exampleSchema = {
 	"type": [
-	exampleTypeA,
-	exampleTypeB, "string"]
+		exampleTypeA,
+		exampleTypeB,
+		"string"
+	]
 };
 
 tests.add("schemas.containsUrl()", function () {

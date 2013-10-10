@@ -8,12 +8,12 @@ module.exports = function(grunt) {
 		pkg: grunt.file.readJSON('package.json')
 	});
 
-	grunt.registerTask('assemble', 'Assemble the bundles', function () {
+	grunt.registerTask('assemble-bundles', 'Assemble the bundles', function () {
 		require('./assemble-bundles.js');
 	});
 
 	// Hacky adapter around the test-suite format
-	grunt.registerTask('test', 'Assemble and test', function () {
+	grunt.registerTask('test-core', 'Assemble and test', function () {
 		var thisTask = this;
 		thisTaskDone = this.async();
 	
@@ -55,7 +55,8 @@ module.exports = function(grunt) {
 		var testSet = {
 			tests: [],
 			allTestsDone: function () {
-				grunt.log.writeln('\n' + this.tests.length + ' tests completed');
+				grunt.log.writeln(' done');
+				grunt.log.ok('\n' + this.tests.length + ' tests completed');
 				grunt.file.delete('test-bundle.js');
 				thisTaskDone();
 			},
@@ -81,7 +82,7 @@ module.exports = function(grunt) {
 					run: function (onComplete) {
 						this.pass = function () {
 							this.pass = this.fail = function () {};
-							grunt.log.writeln('\t\t\tpassed');
+							grunt.verbose.writeln('\t\t\tpassed');
 							process.nextTick(onComplete);
 						};
 						try {
@@ -98,8 +99,9 @@ module.exports = function(grunt) {
 						}
 					},
 					fail: function (reason) {
-						console.log("Test failed: " + title);
-						console.log(reason + "\n");
+						grunt.log.writeln('');
+						grunt.log.error("Test failed: " + title);
+						grunt.log.writeln(reason + "\n");
 						if (reason.stack) {
 							console.log(reason.stack);
 						}
@@ -117,7 +119,8 @@ module.exports = function(grunt) {
 						return thisTestSet.allTestsDone();
 					}
 					var test = tests[testIndex++];
-					grunt.log.subhead(test.title);
+					grunt.verbose.subhead(test.title);
+					grunt.log.notverbose.write('.');
 					test.run(runNextTest);
 				};
 				runNextTest();
@@ -140,14 +143,14 @@ module.exports = function(grunt) {
 					testSet.addSection(resolvedFilename);
 					var code = grunt.file.read(resolvedFilename);
 					try {
-						var fileFunction = new Function('tests', 'recursiveCompare', 'Jsonary', code);
+						var fileFunction = new Function('tests', 'recursiveCompare', 'Jsonary', 'require', '__filename', '__dirname', code);
 						var Jsonary = jsonaryBundle.instance();
 						Jsonary.ajaxFunction = function (params, callback) {
 							process.nextTick(function () {
 								callback(null, {"test": "Test data"}, "Content-Type: application/json");
 							});
 						};
-						fileFunction(testSet, recursiveCompare, Jsonary);
+						fileFunction(testSet, recursiveCompare, Jsonary, require, resolvedFilename, resolvedDir);
 					} catch (e) {
 						console.log("Error in test file: " + resolvedFilename);
 						console.log(e.stack || e);
@@ -158,11 +161,11 @@ module.exports = function(grunt) {
 		}
 		
 		walkForTests('tests/tests');
-		grunt.log.writeln(testSet.tests.length + " tests");
 		testSet.run();
 	});
 
+	grunt.registerTask('test', ['assemble-bundles', 'test-core']);
 	// Default task(s).
-	grunt.registerTask('default', ['assemble', 'test']);
+	grunt.registerTask('default', ['test']);
 
 };

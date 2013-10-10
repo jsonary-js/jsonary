@@ -66,14 +66,14 @@ var exampleSchema2 = {
 	exampleTypeB2, "string"]
 };
 
-tests.add("Listing \"xor\" options (v3-style)", function () {
+tests.add("Listing \"or\" options (v3-style)", function () {
 	var data = Jsonary.create(exampleData);
 	var schema = Jsonary.createSchema(exampleSchema);
 	data.addSchema(schema);
 	var schemas = data.schemas();
-	var xorSchemas = schema.xorSchemas();
-	this.assert(xorSchemas.length == 1, "orSchemas.length should be 1, was " + xorSchemas.length);
-	this.assert(xorSchemas[0].length == 3, "orSchemas[0].length should be 3, was " + xorSchemas.length);
+	var orSchemas = schema.orSchemas();
+	this.assert(orSchemas.length == 1, "orSchemas.length should be 1, was " + orSchemas.length);
+	this.assert(orSchemas[0].length == 3, "orSchemas[0].length should be 3, was " + orSchemas.length);
 	return true;
 });
 
