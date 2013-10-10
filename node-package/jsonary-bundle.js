@@ -23,6 +23,7 @@ function JsonaryBundle() {
 			}
 		}
 		knownPaths = dirs.concat(knownPaths);
+		return this;
 	};
 	this.addPath(pathModule.join(__dirname, 'renderers'));
 	this.addPath(pathModule.join(__dirname, 'plugins'));
