@@ -94,7 +94,7 @@ function includeDir($directory) {
     <div id="test-container">
     </div>
     <script src="js/jquery.js"></script>
-    <script src="../jsonary.js.php"></script>
+    <script src="../node-package/core/jsonary-core.js"></script>
     <script src="js/test-set.js"></script>
     <script src="js/render.test-set.js"></script>
     <?php
