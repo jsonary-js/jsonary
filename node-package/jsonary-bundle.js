@@ -1,7 +1,7 @@
 var fs = require('fs');
 var http = require('http');
 var https = require('https');
-var path = require('path');
+var pathModule = require('path');
 var urlModule = require('url');
 
 var cookieClient = require('cookie-client');
@@ -10,6 +10,23 @@ var bundleModule = require('./create-bundle.js');
 
 function JsonaryBundle() {
 	var bundle = bundleModule.js();
+	
+	var knownPaths = [];
+	this.addPath = function (dirs) {
+		if (!Array.isArray(dirs)) {
+			dirs = [dirs];
+		}
+		for (var i = 0; i < dirs.length; i++) {
+			var dir = dirs[i];
+			if (knownPaths.indexOf(dir) !== -1) {
+				knownPaths.splice(knownPaths.indexOf(dir), 1);
+			}
+		}
+		knownPaths = dirs.concat(knownPaths);
+	};
+	this.addPath(pathModule.join(__dirname, 'renderers'));
+	this.addPath(pathModule.join(__dirname, 'plugins'));
+	this.addPath('.');
 	
 	this.writeJs = function (filename, minified) {
 		var compiledJs = bundle.compileJs(filename, minified);
@@ -24,33 +41,43 @@ function JsonaryBundle() {
 		bundle.compileCss(filename, minified);
 		return this;
 	};
-	this.add = function (path) {
-		if (Array.isArray(path)) {
-			for (var i = 0; i < path.length; i++) {
-				this.add(path[i]);
+	this.add = function (includePath) {
+		if (Array.isArray(includePath)) {
+			for (var i = 0; i < includePath.length; i++) {
+				this.add(includePath[i]);
 			}
 			return this;
 		}
-		if (fs.existsSync(path)) {
-			if (/\.css$/i.test(path)) {
-				bundle.css(path);
-			} else if (/\.js$/i.test(path)) {
-				bundle.js(path);
+		var found = false;
+		for (var i = 0; !found && i < knownPaths.length; i++) {
+			var path = pathModule.join(knownPaths[i], includePath);
+			if (fs.existsSync(path)) {
+				if (/\.css$/i.test(path)) {
+					bundle.css(path);
+				} else if (/\.js$/i.test(path)) {
+					bundle.js(path);
+				} else {
+					throw new Error("Unrecognised extension (expected .js/.css): " + path);
+				}
+				found = true;
 			} else {
-				throw new Error("Unrecognised extension (expected .js/.css): " + path);
+				if (fs.existsSync(path + ".js")) {
+					bundle.js(path + ".js");
+					found = true;
+				}
+				if (fs.existsSync(path + ".css")) {
+					bundle.css(path + ".css");
+					found = true;
+				}
 			}
-		} else {
-			if (fs.existsSync(path + ".js")) {
-				bundle.js(path + ".js");
-			}
-			if (fs.existsSync(path + ".css")) {
-				bundle.css(path + ".css");
-			}
+		}
+		if (!found) {
+			throw new Error("Could not find Jsonary plugin/renderer: " + includePath);
 		}
 		return this;
 	};
 
-	this.add(path.join(__dirname, 'core/jsonary-core'));
+	this.add('../core/jsonary-core');
 	// Make "Jsonary" available in scope for any additional files
 	bundle.code('var Jsonary = this.Jsonary;');
 }

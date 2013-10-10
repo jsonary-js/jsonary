@@ -1,5 +1,6 @@
 var path = require('path');
 var fs = require('fs');
+var wrench = require('wrench');
 
 var licenseText = fs.readFileSync('LICENSE.txt', {enc: 'utf-8'});
 
@@ -22,7 +23,7 @@ var masterBundle = bundle.base(__dirname)
 		'jsonary/schemaset.js',
 		'jsonary/main.js',
 		'jsonary/_footer.js',
-		'plugins/jsonary.render.js'
+		'jsonary/jsonary.render.js'
 	])
 	.code('var Jsonary = this.Jsonary;')
 
@@ -59,4 +60,16 @@ console.log("Writing jsonary-super-bundle");
 masterBundle.compileJs('node-package/super-bundle/jsonary-super-bundle.js', true, true);
 console.log("Jsonary bundles complete");
 
+console.log("Copying files");
+// copy license
 fs.writeFileSync('node-package/LICENSE.txt', licenseText, {enc: 'utf-8'});
+// copy plugins
+wrench.copyDirSyncRecursive('plugins', 'node-package/plugins', {
+	forceDelete: true,
+	excludeHiddenUnix: true
+});
+// copy renderers
+wrench.copyDirSyncRecursive('renderers/contributed', 'node-package/renderers', {
+	forceDelete: true,
+	excludeHiddenUnix: true
+});

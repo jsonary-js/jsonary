@@ -8,8 +8,8 @@ module.exports = function(grunt) {
 		pkg: grunt.file.readJSON('package.json')
 	});
 
-	grunt.registerTask('assemble-bundles', 'Assemble the bundles', function () {
-		require('./assemble-bundles.js');
+	grunt.registerTask('assemble-package', 'Assemble the Node package', function () {
+		require('./assemble-package.js');
 	});
 
 	// Hacky adapter around the test-suite format
@@ -164,7 +164,7 @@ module.exports = function(grunt) {
 		testSet.run();
 	});
 
-	grunt.registerTask('test', ['assemble-bundles', 'test-core']);
+	grunt.registerTask('test', ['assemble-package', 'test-core']);
 	// Default task(s).
 	grunt.registerTask('default', ['test']);
 
