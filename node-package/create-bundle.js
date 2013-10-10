@@ -93,7 +93,11 @@ Bundle.prototype = {
 		if (outputFile) {
 			outputFile = this.filename(outputFile);
 			// Timestamp line also keeps line numbers in sync between bundle file and anonymous function in Node
-			var fileCode = '/* Bundled on ' + (new Date) + '*/\n' + code + '.call(this);';
+			var today = new Date();
+			function pad(n) {
+				return (n < 10) ? '0' + n : '' + n
+			}
+			var fileCode = '/* Bundled on ' + today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDay()) + ' */\n' + code + '.call(this);';
 			if (minify) {
 				var outputDir = path.dirname(outputFile);
 				var outputBasename = path.basename(outputFile);
@@ -116,7 +120,11 @@ Bundle.prototype = {
 		return new Function(functionCode);
 	},
 	compileCss: function (outputFile, minify) {
-		var cssCode = '/* Bundled on ' + (new Date) + '*/\n';
+		var today = new Date();
+		function pad(n) {
+			return (n < 10) ? '0' + n : '' + n
+		}
+		var cssCode = '/* Bundled on ' + today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDay()) + ' */\n';
 		cssCode += this.cssCode.join("");
 		if (minify) {
 			cssCode = cleanCss.process(cssCode);

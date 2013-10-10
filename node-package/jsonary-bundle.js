@@ -110,6 +110,9 @@ function modifyJsonaryForServer(Jsonary) {
 		options.headers = {
 			'content-type': params.encType,
 		};
+		for (var key in params.headers) {
+			options.headers[key] = params.headers[key];
+		}
 		if (cookieString) {
 			options.headers['cookie'] = cookieString;
 		}

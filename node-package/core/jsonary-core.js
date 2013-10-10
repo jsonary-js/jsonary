@@ -1,4 +1,4 @@
-/* Bundled on Thu Oct 10 2013 00:14:22 GMT+0100 (BST)*/
+/* Bundled on 2013-10-04 */
 (function() {
 
 
@@ -1189,7 +1189,6 @@
 			for (var i = 0; i < textParts.length; i++) {
 				var part = textParts[i];
 				if (substituted.substring(0, part.length) !== part) {
-					console.log([substituted, part]);
 					return undefined;
 				}
 				substituted = substituted.substring(part.length);
