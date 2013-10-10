@@ -1,8 +1,8 @@
 {
   "name": "jsonary",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "Geraint Luff",
-  "description": "Server-side Jsonary",
+  "description": "Jsonary - use JSON Schema in your client",
   "dependencies": {
     "clean-css": "1.0.x",
     "uglify-js": "2.3.x",

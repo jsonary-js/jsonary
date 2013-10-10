@@ -1,13 +1,6 @@
-/* Bundled on 2013-10-04 */
+/* Bundled on 2013-10-10 */
 (function() {
-/* Copyright (C) 2012-2013 Geraint Luff
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
 
 /**** jsonary/_compatability.js ****/
 
@@ -1209,7 +1202,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var nextPart = textParts[i + 1];
 				var offset = i;
 				while (true) {
-					if (nextPart) {
+					if (offset == textParts.length - 2) {
+						var endPart = substituted.substring(substituted.length - nextPart.length);
+						if (endPart !== nextPart) {
+							return undefined;
+						}
+						var stringValue = substituted.substring(0, substituted.length - nextPart.length);
+						substituted = endPart;
+					} else if (nextPart) {
 						var nextPartPos = substituted.indexOf(nextPart);
 						var stringValue = substituted.substring(0, nextPartPos);
 						substituted = substituted.substring(nextPartPos);
@@ -1623,7 +1623,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	publicApi.getMonitorKey = Utils.getUniqueKey;
 	publicApi.getKeyVariant = function (baseKey, variantName) {
-		return Utils.getKeyVariant(baseKey, "~" + variantName);
+		return Utils.getKeyVariant(baseKey, variantName ? ("~" + variantName) : undefined);
 	};
 	publicApi.keyIsVariant = Utils.keyIsVariant;
 	publicApi.log = function (level, message) {
@@ -3193,9 +3193,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			secrets.schemas.removeSchema(schemaKey);
 			return this;
 		};
+		// TODO: remove this
 		this.addSchemaMatchMonitor = function (monitorKey, schema, monitor, executeImmediately, impatientCallbacks) {
 			document.access();
 			return secrets.schemas.addSchemaMatchMonitor(monitorKey, schema, monitor, executeImmediately, impatientCallbacks);
+		};
+		this.validate = function () {
+			document.access();
+			return secrets.schemas.validate();
 		};
 	}
 	Data.prototype = {
@@ -3446,6 +3451,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				callback.call(thisData, thisData);
 			});
 			return this;
+		},
+		valid: function () {
+			return this.validate().valid;
 		}
 	};
 	Data.prototype.indices = Data.prototype.items;
@@ -3618,7 +3626,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var refUrl = this.data.propertyValue("$ref");
 			return refUrl === undefined;
 		},
-		getFull: function (callback) {
+		getFull: function (callback, pastUrls) {
 			var refUrl = this.data.propertyValue("$ref");
 			if (refUrl === undefined) {
 				if (callback) {
@@ -3626,15 +3634,26 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				return this;
 			}
+			pastUrls = pastUrls || [];
 			refUrl = this.data.resolveUrl(refUrl);
+			if (pastUrls.indexOf(refUrl) !== -1) {
+				Jsonary.log(Jsonary.logLevel.ERROR, "Circular $ref cycle: " + JSON.stringify(pastUrls));
+				var schema = Jsonary.createSchema({title: "Circular $ref cycle", description: JSON.stringify(pastUrls)});
+				if (callback) {
+					callback.call(schema, schema, undefined);
+				}
+				return schema;
+			}
+			pastUrls.push(refUrl);
 			if (refUrl.charAt(0) == "#" && (refUrl.length == 1 || refUrl.charAt(1) == "/")) {
 				var documentRoot = this.data.document.root;
 				var pointerPath = decodeURIComponent(refUrl.substring(1));
 				var schema = documentRoot.subPath(pointerPath).asSchema();
 				if (callback) {
+					schema.getFull(callback, pastUrls);
 					callback.call(schema, schema, null);
 				} else {
-					return schema;
+					return schema.getFull(null, pastUrls);
 				}
 			} else if (callback) {
 				if (refUrl.charAt(0) == "#") {
@@ -3651,7 +3670,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var result = this;
 				this.getFull(function (fullResult) {
 					result = fullResult;
-				});
+				}); // We don't pass in pastUrls here - the with-callback will do that for us
 				return result;
 			}
 		},
@@ -3748,6 +3767,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 			return 0;
 		},
+		uniqueItems: function () {
+			return !!this.data.property('uniqueItems');
+		},
 		andSchemas: function () {
 			var result = [];
 			var extData = this.data.property("extends");
@@ -3792,7 +3814,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var typeData = this.data.property("type");
 			if (typeData.defined()) {
 				if (typeData.basicType() === "string") {
-					if (typeData.value() == "all") {
+					if (typeData.value() == "all" || typeData.value() == "any") {
 						return ALL_TYPES.slice(0);
 					}
 					return [typeData.value()];
@@ -3818,23 +3840,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		},
 		xorSchemas: function () {
 			var result = [];
-			var typeData = this.data.property("type");
-			if (typeData.defined()) {
-				for (var i = 0; i < typeData.length(); i++) {
-					if (typeData.item(i).basicType() != "string") {
-						var xorGroup = [];
-						typeData.items(function (index, subData) {
-							if (subData.basicType() == "string") {
-								xorGroup.push(getTypeSchema(subData.value()));
-							} else {
-								xorGroup.push(subData.asSchema());
-							}
-						});
-						result.push(xorGroup);
-						break;
-					}
-				}
-			}
 			if (this.data.property("oneOf").defined()) {
 				var xorGroup = [];
 				this.data.property("oneOf").items(function (index, subData) {
@@ -3847,6 +3852,22 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		orSchemas: function () {
 			var result = [];
 			var typeData = this.data.property("type");
+			if (typeData.defined()) {
+				for (var i = 0; i < typeData.length(); i++) {
+					if (typeData.item(i).basicType() != "string") {
+						var orGroup = [];
+						typeData.items(function (index, subData) {
+							if (subData.basicType() == "string") {
+								orGroup.push(getTypeSchema(subData.value()));
+							} else {
+								orGroup.push(subData.asSchema());
+							}
+						});
+						result.push(orGroup);
+						break;
+					}
+				}
+			}
 			if (this.data.property("anyOf").defined()) {
 				var orGroup = [];
 				this.data.property("anyOf").items(function (index, subData) {
@@ -3895,7 +3916,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			return result;
 		},
 		maxItems: function () {
-			return this.data.propertyValue("maxItems");
+			var maxItems = this.data.propertyValue("maxItems");
+			// If tuple typing is enabled, then "additionalItems" provides a length constraint
+			if (this.tupleTyping() && this.data.propertyValue("additionalItems") === false) {
+				if (!(this.tupleTypingLength() >= maxItems)) {
+					maxItems = this.tupleTypingLength();
+				}
+			}
+			return maxItems;
 		},
 		tupleTypingLength: function () {
 			if (this.data.property("items").basicType() != "array") {
@@ -3920,8 +3948,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 			return null;
 		},
+		patternString: function () {
+			return this.data.propertyValue("pattern");
+		},
 		numberInterval: function() {
-			return this.data.propertyValue("divisibleBy");
+			var result = this.data.propertyValue("multipleOf");
+			if (result == undefined) {
+				result = this.data.propertyValue("divisibleBy");
+			}
+			return result;
 		},
 		minimum: function () {
 			return this.data.propertyValue("minimum");
@@ -4004,6 +4039,19 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				});
 			}
 			return requiredKeys;
+		},
+		isAdditionalProperty: function (key) {
+			if (this.data.property("properties").property(key).defined()) {
+				return false;
+			}
+			var patterns = this.data.property("patternProperties").keys();
+			for (var i = 0; i < patterns.length; i++) {
+				var regEx = new RegExp(patterns[i]);
+				if (regEx.test(key)) {
+					return false;
+				}
+			}
+			return true;
 		},
 		allowedAdditionalProperties: function () {
 			return !(this.data.propertyValue("additionalProperties") === false);
@@ -4680,6 +4728,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		matchAgainstImmediateConstraints: function () {
 			this.matchAgainstEnums();
 			this.matchAgainstNumberConstraints();
+			this.matchAgainstStringConstraints();
 			this.matchAgainstArrayConstraints();
 			this.matchAgainstObjectConstraints();
 		},
@@ -4702,8 +4751,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var value = this.data.value();
 			var interval = this.schema.numberInterval();
 			if (interval != undefined) {
-				if (value%interval != 0) {
-					throw new SchemaMatchFailReason("Number must be divisible by " + interval);
+				if ((value/interval)%1 != 0) { // *slightly* less prone to floating-point errors than a simple modulo, for some reason?
+					throw new SchemaMatchFailReason("Number must be multiple of " + interval);
 				}
 			}
 			var minimum = this.schema.minimum();
@@ -4727,6 +4776,25 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 			}
 		},
+		matchAgainstStringConstraints: function () {
+			if (this.data.basicType() != "string") {
+				return;
+			}
+			var minLength = this.schema.minLength();
+			if (this.data.value().length < minLength) {
+				throw new SchemaMatchFailReason("String must be at least " + minLength + " chars");
+			}
+			var maxLength = this.schema.maxLength();
+			if (maxLength != null) {
+				if (this.data.value().length > maxLength) {
+					throw new SchemaMatchFailReason("String must be at most " + maxLength + " chars");
+				}
+			}
+			var pattern = this.schema.pattern();
+			if (pattern && !pattern.test(this.data.value())) {
+				throw new SchemaMatchFailReason("String must match pattern: " + this.schema.patternString());
+			}
+		},
 		matchAgainstArrayConstraints: function () {
 			if (this.data.basicType() != "array") {
 				return;
@@ -4738,6 +4806,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var maxItems = this.schema.maxItems();
 			if (maxItems !== undefined && maxItems < this.data.length()) {
 				throw new SchemaMatchFailReason("Data is too long - maximum length is " + maxItems, this.schema);
+			}
+			if (this.schema.uniqueItems()) {
+				var dataLength = this.data.length();
+				for (var index1 = 0; index1 < dataLength; index1++) {
+					for (var index2 = index1 + 1; index2 < dataLength; index2++) {
+						if (this.data.item(index1).equals(this.data.item(index2))) {
+							throw new SchemaMatchFailReason("Items must be unique (items " + index1 + " and " + index2 + ")", this.schema);
+						}
+					}
+				}
 			}
 		},
 		matchAgainstObjectConstraints: function () {
@@ -4751,14 +4829,23 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					throw new SchemaMatchFailReason("Missing key " + JSON.stringify(key), this.schema);
 				}
 			}
+			var dataKeys = this.data.keys();
 			if (this.schema.allowedAdditionalProperties() == false) {
-				var definedKeys = this.schema.definedProperties();
-				var dataKeys = this.data.keys();
 				for (var i = 0; i < dataKeys.length; i++) {
-					if (definedKeys.indexOf(dataKeys[i]) == -1) {
+					if (this.schema.isAdditionalProperty(dataKeys[i])) {
 						throw new SchemaMatchFailReason("Not allowed additional property: " + JSON.stringify(key), this.schema);
 					}
 				}
+			}
+			var maxProperties = this.schema.maxProperties();
+			if (maxProperties != null) {
+				if (dataKeys.length > maxProperties) {
+					throw new SchemaMatchFailReason("Too many properties (> " + maxProperties + ")", this.schema);
+				}
+			}
+			var minProperties = this.schema.minProperties();
+			if (dataKeys.length < minProperties) {
+				throw new SchemaMatchFailReason("Too few properties (< " + minProperties + ")", this.schema);
 			}
 			this.matchAgainstDependencies();
 		},
@@ -6120,6 +6207,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 			return result;
 		},
+		uniqueItems: function () {
+			var result = false;
+			for (var i = 0; i < this.length; i++) {
+				result = result || this[i].uniqueItems();
+			}
+			return result;
+		},
 		propertySchemas: function(key) {
 			var result = new SchemaList();
 			for (var i = 0; i < this.length; i++) {
@@ -6252,8 +6346,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		return new SchemaList(schemas);
 	};
 	
-	var SCHEMA_SET_UPDATE_KEY = Utils.getUniqueKey();
 	var SCHEMA_SET_FIXED_KEY = Utils.getUniqueKey();
+	var SCHEMA_SET_VALIDATION_KEY = Utils.getUniqueKey();
 	
 	function SchemaSet(dataObj) {
 		var thisSchemaSet = this;
@@ -6439,6 +6533,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					return;
 				}
 				DelayedCallbacks.increment();
+				if (fixed && thisSchemaSet.validation) {
+					thisSchemaSet.validation.addSchema(schema, schemaKey);
+				}
 	
 				thisSchemaSet.schemas[schemaKey].push(schema);
 				thisSchemaSet.schemasFixed[schemaKey] = thisSchemaSet.schemasFixed[schemaKey] || fixed;
@@ -6572,7 +6669,25 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			schemaMatch.addMonitor(monitor, executeImmediately);
 			return schemaMatch;
 		},
+		validate: function () {
+			this.validation = new SchemaSetValidation(this);
+			// Add existing schemas
+			for (var schemaKey in this.schemas) {
+				if (this.schemasFixed[schemaKey]) {
+					for (var i = 0; i < this.schemas[schemaKey].length; i++) {
+						this.validation.addSchema(this.schemas[schemaKey][i], schemaKey);
+					}
+				}
+			}
+			
+			var result = this.validation.publicVersion;
+			cacheResult(this, {validate: result});
+			return result;
+		},
 		removeSchema: function (schemaKey) {
+			if (this.validation) {
+				this.validation.removeSchema(schemaKey);
+			}
 			//Utils.log(Utils.logLevel.DEBUG, "Actually removing schema:" + schemaKey);
 			DelayedCallbacks.increment();
 	
@@ -6816,6 +6931,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				optionsApplied[i] = found;
 			}
 			if (selectedOptions.length == 0 && options.length > 0) {
+				optionsApplied[0] = true;
 				schemaSet.addSchema(options[0], inferredSchemaKeys[0], schemaKeyHistory, false);
 			}
 		});
@@ -6860,6 +6976,58 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 	};
 	
+	function SchemaSetValidationPublic(validation, dataObj) {
+		var thisValidationPublic = this;
+		this.errors = [];
+		this.valid = true;
+		var updateMonitors = new MonitorSet(dataObj);
+		this.onChange = function (onChangeCallback, executeImmediately) {
+			var key = Utils.getKeyVariant(SCHEMA_SET_VALIDATION_KEY);
+			updateMonitors.add(key, onChangeCallback);
+			if (executeImmediately !== false) {
+				onChangeCallback.call(dataObj, this);
+			}
+		};
+		validation.updateMonitors.add(SCHEMA_SET_VALIDATION_KEY, function () {
+			thisValidationPublic.errors = [];
+			for (var key in validation.matchErrors) {
+				thisValidationPublic.errors = thisValidationPublic.errors.concat(validation.matchErrors[key]);
+			}
+			thisValidationPublic.valid = (thisValidationPublic.errors.length === 0);
+			updateMonitors.notify(thisValidationPublic);
+		});
+	};
+	SchemaSetValidationPublic.prototype = {
+	};
+	
+	function SchemaSetValidation(schemaSet) {
+		this.schemaSet = schemaSet;
+		this.matchErrors = {};
+		this.updateMonitors = new MonitorSet(this);
+		this.publicVersion = new SchemaSetValidationPublic(this, schemaSet.dataObj);
+	}
+	SchemaSetValidation.prototype = {
+		addSchema: function (schema, schemaKey) {
+			var thisValidation = this;
+			var monitorKey = Utils.getKeyVariant(SCHEMA_SET_VALIDATION_KEY + '.' + schemaKey);
+			this.matchErrors[monitorKey] = [];
+			var match = this.schemaSet.addSchemaMatchMonitor(monitorKey, schema, function () {
+				thisValidation.updateMatch(match, monitorKey);
+			}, false);
+			this.updateMatch(match, monitorKey);
+		},
+		removeSchema: function (schemaKey) {
+			var monitorKey = SCHEMA_SET_VALIDATION_KEY + '.' + schemaKey;
+			delete this.matchErrors[monitorKey];
+		},
+		updateMatch: function (match, monitorKey) {
+			this.matchErrors[monitorKey] = [];
+			if (!match.match) {
+				this.matchErrors[monitorKey].push(match.matchFailReason);
+			}
+			this.updateMonitors.notify(match, monitorKey);
+		}
+	};
 
 /**** jsonary/main.js ****/
 
@@ -9355,8 +9523,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					result += child.nodeValue;
 				}
 			}
-			result = result.replace("\r\n", "\n");
+			result = result.replace(/\r\n/g, "\n");
 			result = result.replace(/\n$/, "");
+			result = result.replace(/\u00A0/g, ' '); // Non-breaking spaces are trouble.
 			return result;
 		}
 	
