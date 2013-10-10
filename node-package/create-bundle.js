@@ -97,7 +97,7 @@ Bundle.prototype = {
 			function pad(n) {
 				return (n < 10) ? '0' + n : '' + n
 			}
-			var fileCode = '/* Bundled on ' + today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDay()) + ' */\n' + code + '.call(this);';
+			var fileCode = '/* Bundled on ' + today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate()) + ' */\n' + code + '.call(this);';
 			if (minify) {
 				var outputDir = path.dirname(outputFile);
 				var outputBasename = path.basename(outputFile);
@@ -124,7 +124,7 @@ Bundle.prototype = {
 		function pad(n) {
 			return (n < 10) ? '0' + n : '' + n
 		}
-		var cssCode = '/* Bundled on ' + today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDay()) + ' */\n';
+		var cssCode = '/* Bundled on ' + today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate()) + ' */\n';
 		cssCode += this.cssCode.join("");
 		if (minify) {
 			cssCode = cleanCss.process(cssCode);

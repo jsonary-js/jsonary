@@ -591,7 +591,7 @@
 					result += ', <select name="' + context.inputNameForAction('rowsPerPage') + '">';
 					rowsPerPageOptions.sort(function (a, b) {return a - b});
 					for (var i = 0; i < rowsPerPageOptions.length; i++) {
-						if (rowsPerPageOption[i] === rowsPerPageOption[i - 1]) {
+						if (rowsPerPageOptions[i] === rowsPerPageOptions[i - 1]) {
 							continue;
 						}
 						var iHtml = Jsonary.escapeHtml(rowsPerPageOptions[i]);

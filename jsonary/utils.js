@@ -376,7 +376,7 @@ for (var logLevel in Utils.logLevel) {
 
 publicApi.getMonitorKey = Utils.getUniqueKey;
 publicApi.getKeyVariant = function (baseKey, variantName) {
-	return Utils.getKeyVariant(baseKey, "~" + variantName);
+	return Utils.getKeyVariant(baseKey, variantName ? ("~" + variantName) : undefined);
 };
 publicApi.keyIsVariant = Utils.keyIsVariant;
 publicApi.log = function (level, message) {

@@ -627,8 +627,9 @@
 				result += child.nodeValue;
 			}
 		}
-		result = result.replace("\r\n", "\n");
+		result = result.replace(/\r\n/g, "\n");
 		result = result.replace(/\n$/, "");
+		result = result.replace(/\u00A0/g, ' '); // Non-breaking spaces are trouble.
 		return result;
 	}
 
