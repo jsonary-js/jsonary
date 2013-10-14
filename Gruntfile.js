@@ -5,7 +5,11 @@ module.exports = function(grunt) {
 
 	// Project configuration.
 	grunt.initConfig({
-		pkg: grunt.file.readJSON('package.json')
+		pkg: grunt.file.readJSON('package.json'),
+		'hacky-tests': {
+			core: 'tests/tests',
+			render: 'tests/render-tests'
+		}
 	});
 
 	grunt.registerTask('assemble-package', 'Assemble the Node package', function () {
@@ -13,7 +17,7 @@ module.exports = function(grunt) {
 	});
 
 	// Hacky adapter around the test-suite format
-	grunt.registerTask('test-core', 'Assemble and test', function () {
+	grunt.registerMultiTask('hacky-tests', 'Assemble and test', function () {
 		var thisTask = this;
 		thisTaskDone = this.async();
 	
@@ -160,11 +164,15 @@ module.exports = function(grunt) {
 			});
 		}
 		
-		walkForTests('tests/tests');
+		walkForTests(this.data);
+		grunt.log.writeln(this.target + ": " + testSet.tests.length + " tests in " + this.data);
 		testSet.run();
 	});
+	
+	grunt.registerTask('test-core', ['hacky-tests:core']);
+	grunt.registerTask('test-render', ['hacky-tests:render']);
 
-	grunt.registerTask('test', ['assemble-package', 'test-core']);
+	grunt.registerTask('test', ['assemble-package', 'hacky-tests']);
 	// Default task(s).
 	grunt.registerTask('default', ['test']);
 

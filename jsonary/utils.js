@@ -417,3 +417,63 @@ function cacheResult(targetObj, map) {
 		})(key, map[key]);
 	}
 }
+
+function ResultCollector(resultCallback) {
+	if (!(this instanceof ResultCollector)) {
+		return new ResultCollector(resultCallback);
+	}
+	resultCallback = resultCallback || function (result) {return result};
+	var thisResultCollector = this;
+	
+	this.done = false;
+	function done() {
+		thisResultCollector.done = true;
+		thisResultCollector.result = function () {
+			throw Error('More results than expected in ResultCollector');
+		};
+		doneCallback.call(this, resultObj);
+		return thisResultCollector;
+	}
+
+	var resultObj = {}, pending = 0;
+	var doneCallback = null;
+	this.whenDone = function (callback) {
+		doneCallback = callback;
+		if (pending === 0) {
+			done();
+		}
+		return this;
+	};
+	
+	this.wait = function () {
+		pending++;
+		return this;
+	};
+	this.result = function () {
+		pending--;
+		var result = resultCallback.apply(this, arguments);
+		if (!!doneCallback && pending === 0) {
+			done();
+		}
+		return result;
+	};
+	this.forKey = function (key) {
+		return function () {
+			var df = doneCallback;
+			doneCallback = null;
+			var result = resultObj[key] = thisResultCollector.result.apply(this, arguments);
+			thisResultCollector.whenDone(df);
+			return result;
+		}
+	};
+}
+ResultCollector.prototype = {
+	resultForKey: function (key) {
+		var args = [];
+		while (args.length < arguments.length - 1) {
+			args[args.length] = arguments[args.length + 1];
+		}
+		return this.forKey(key).apply(this, args);
+	}
+};
+publicApi.ResultCollector = ResultCollector;

@@ -10,21 +10,15 @@
 		renderHtml: function (data, context) {
 			if (!data.defined()) {
 				context.uiState.undefined = true;
-				var title = "add";
-				var parent = data.parent();
-				if (parent && parent.basicType() == 'array') {
-					var schemas = parent.schemas().indexSchemas(data.parentKey());
-					schemas.getFull(function (s) {
-						schemas = s;
-					});
-					title = schemas.title() || title;
-				} else if (parent && parent.basicType() == 'object') {
-					var schemas = parent.schemas().propertySchemas(data.parentKey());
-					schemas.getFull(function (s) {
-						schemas = s;
-					});
-					title = schemas.title() || data.parentKey() || title;
+				var potentialSchemas = data.schemas(true);
+				if (potentialSchemas.readOnly()) {
+					return '';
 				}
+				var title = potentialSchemas.title();
+				if (!title && data.parent() && data.parent().basicType() == 'object') {
+					title = data.parentKey();
+				}
+				title = title || 'add';
 				return context.actionHtml('<span class="json-undefined-create">+ ' + Jsonary.escapeHtml(title) + '</span>', "create");
 			}
 			delete context.uiState.undefined;
