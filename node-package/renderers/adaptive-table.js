@@ -28,8 +28,10 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 							return this.defaultCellRenderHtml(data, context, column);
 						}
 					});
-					// add sorting
-					renderer.config.sort[column] = true;
+					if (basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array') {
+						// add sorting
+						renderer.config.sort[column] = true;
+					}
 				}
 			}
 

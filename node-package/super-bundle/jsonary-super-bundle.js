@@ -11562,8 +11562,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 								return this.defaultCellRenderHtml(data, context, column);
 							}
 						});
-						// add sorting
-						renderer.config.sort[column] = true;
+						if (basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array') {
+							// add sorting
+							renderer.config.sort[column] = true;
+						}
 					}
 				}
 	
