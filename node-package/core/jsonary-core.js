@@ -1,4 +1,4 @@
-/* Bundled on 2013-10-10 */
+/* Bundled on 2013-10-14 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -2202,6 +2202,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			thisRequest.contentType = contentType;
 			thisRequest.contentTypeParameters = contentTypeParameters;
 	
+			thisRequest.document.http.error = null;
+			thisRequest.document.http.headers = headers;
 			thisRequest.document.setRaw(data);
 			thisRequest.profileUrl = null;
 			thisRequest.document.raw.removeSchema(SCHEMA_SET_FIXED_KEY);
@@ -2262,13 +2264,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 			});
 		},
-		ajaxError: function (error, data) {
+		ajaxError: function (error, data, headers) {
 			this.fetched = true;
 			var thisRequest = this;
 			thisRequest.successful = false;
 			thisRequest.error = error;
 			Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + error.message + ")");
-			thisRequest.document.error = error;
+			thisRequest.document.http.error = error;
+			thisRequest.document.http.headers = headers;
 			thisRequest.document.setRaw(data);
 			thisRequest.document.raw.whenSchemasStable(function () {
 				thisRequest.checkForFullResponse();
@@ -2320,7 +2323,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						publicApi.invalidate(params.url);
 					}			
 				} else {
-					thisRequest.ajaxError(error, data);
+					thisRequest.ajaxError(error, data, headers);
 				}
 				Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + thisRequest.document.uniqueId + " is stable");
 				delete thisRequest.document.whenStable;
@@ -2649,7 +2652,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		this.readOnly = !!readOnly;
 		this.isDefinitive = !!isDefinitive;
 		this.url = url;
-		this.error = null;
+		this.http = {
+			error: null
+		};
 	
 		var rootPath = null;
 		this.rootPath = function () {
