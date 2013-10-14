@@ -1,4 +1,4 @@
-/* Bundled on 2013-10-11 */
+/* Bundled on 2013-10-14 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -2261,6 +2261,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			thisRequest.contentType = contentType;
 			thisRequest.contentTypeParameters = contentTypeParameters;
 	
+			thisRequest.document.http.error = null;
+			thisRequest.document.http.headers = headers;
 			thisRequest.document.setRaw(data);
 			thisRequest.profileUrl = null;
 			thisRequest.document.raw.removeSchema(SCHEMA_SET_FIXED_KEY);
@@ -2321,13 +2323,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 			});
 		},
-		ajaxError: function (error, data) {
+		ajaxError: function (error, data, headers) {
 			this.fetched = true;
 			var thisRequest = this;
 			thisRequest.successful = false;
 			thisRequest.error = error;
 			Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + error.message + ")");
-			thisRequest.document.error = error;
+			thisRequest.document.http.error = error;
+			thisRequest.document.http.headers = headers;
 			thisRequest.document.setRaw(data);
 			thisRequest.document.raw.whenSchemasStable(function () {
 				thisRequest.checkForFullResponse();
@@ -2379,7 +2382,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						publicApi.invalidate(params.url);
 					}			
 				} else {
-					thisRequest.ajaxError(error, data);
+					thisRequest.ajaxError(error, data, headers);
 				}
 				Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + thisRequest.document.uniqueId + " is stable");
 				delete thisRequest.document.whenStable;
@@ -2708,7 +2711,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		this.readOnly = !!readOnly;
 		this.isDefinitive = !!isDefinitive;
 		this.url = url;
-		this.error = null;
+		this.http = {
+			error: null
+		};
 	
 		var rootPath = null;
 		this.rootPath = function () {
@@ -8972,21 +8977,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			renderHtml: function (data, context) {
 				if (!data.defined()) {
 					context.uiState.undefined = true;
-					var title = "add";
-					var parent = data.parent();
-					if (parent && parent.basicType() == 'array') {
-						var schemas = parent.schemas().indexSchemas(data.parentKey());
-						schemas.getFull(function (s) {
-							schemas = s;
-						});
-						title = schemas.title() || title;
-					} else if (parent && parent.basicType() == 'object') {
-						var schemas = parent.schemas().propertySchemas(data.parentKey());
-						schemas.getFull(function (s) {
-							schemas = s;
-						});
-						title = schemas.title() || data.parentKey() || title;
+					var potentialSchemas = data.schemas(true);
+					if (potentialSchemas.readOnly()) {
+						return '';
 					}
+					var title = potentialSchemas.title();
+					if (!title && data.parent() && data.parent().basicType() == 'object') {
+						title = data.parentKey();
+					}
+					title = title || 'add';
 					return context.actionHtml('<span class="json-undefined-create">+ ' + Jsonary.escapeHtml(title) + '</span>', "create");
 				}
 				delete context.uiState.undefined;
@@ -11616,8 +11615,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 								return this.defaultCellRenderHtml(data, context, column);
 							}
 						});
-						// add sorting
-						renderer.config.sort[column] = true;
+						if (basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array') {
+							// add sorting
+							renderer.config.sort[column] = true;
+						}
 					}
 				}
 	

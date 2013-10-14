@@ -412,6 +412,8 @@ Request.prototype = {
 		thisRequest.contentType = contentType;
 		thisRequest.contentTypeParameters = contentTypeParameters;
 
+		thisRequest.document.http.error = null;
+		thisRequest.document.http.headers = headers;
 		thisRequest.document.setRaw(data);
 		thisRequest.profileUrl = null;
 		thisRequest.document.raw.removeSchema(SCHEMA_SET_FIXED_KEY);
@@ -472,13 +474,14 @@ Request.prototype = {
 			}
 		});
 	},
-	ajaxError: function (error, data) {
+	ajaxError: function (error, data, headers) {
 		this.fetched = true;
 		var thisRequest = this;
 		thisRequest.successful = false;
 		thisRequest.error = error;
 		Utils.log(Utils.logLevel.WARNING, "Error fetching: " + this.url + " (" + error.message + ")");
-		thisRequest.document.error = error;
+		thisRequest.document.http.error = error;
+		thisRequest.document.http.headers = headers;
 		thisRequest.document.setRaw(data);
 		thisRequest.document.raw.whenSchemasStable(function () {
 			thisRequest.checkForFullResponse();
@@ -530,7 +533,7 @@ Request.prototype = {
 					publicApi.invalidate(params.url);
 				}			
 			} else {
-				thisRequest.ajaxError(error, data);
+				thisRequest.ajaxError(error, data, headers);
 			}
 			Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + thisRequest.document.uniqueId + " is stable");
 			delete thisRequest.document.whenStable;

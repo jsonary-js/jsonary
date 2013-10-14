@@ -31,7 +31,9 @@ function Document(url, isDefinitive, readOnly) {
 	this.readOnly = !!readOnly;
 	this.isDefinitive = !!isDefinitive;
 	this.url = url;
-	this.error = null;
+	this.http = {
+		error: null
+	};
 
 	var rootPath = null;
 	this.rootPath = function () {
