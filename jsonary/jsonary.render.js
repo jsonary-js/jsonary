@@ -883,7 +883,28 @@
 				};
 			})(this.filterFunction);
 		}
-		this.actionFunction = sourceObj.action;
+		if (typeof sourceObj.action === 'object') {
+			this.actionFunction = function (context, actionName) {
+				if (typeof sourceObj.action[actionName] === 'function') {
+					var args = [];
+					while (args.length < arguments.length) {
+						args[args.length] = arguments[args.length];
+					}
+					args[1] = context;
+					args[0] = context.data;
+					return sourceObj.action[actionName].apply(this, args);
+				} else if (typeof sourceObj.action['_super'] === 'function') {
+					return sourceObj.action['_super'].apply(this, arguments);
+				}
+			}
+		} else {
+			this.actionFunction = sourceObj.action;
+		}
+		this.linkHandler = function () {
+			if (sourceObj.linkHandler) {
+				return sourceObj.linkHandler.apply(this, arguments);
+			}
+		};
 		for (var key in sourceObj) {
 			if (this[key] == undefined) {
 				this[key] = sourceObj[key];
@@ -1023,8 +1044,23 @@
 			return this;
 		},
 		action: function (context, actionName) {
+			// temporary link handler while executing action - travels up the context tree, giving renderers the chance to hande the link
+			var linkHandlerForContexts = function (link) {
+				var c = context;
+				while (c) {
+					if (c.renderer) {
+						var result = c.renderer.linkHandler.apply(link, arguments);
+						if (result === false) {
+							return result;
+						}
+					}
+					c = c.parent;
+				}
+			};
 			if (typeof this.actionFunction == 'function') {
+				Jsonary.addLinkHandler(linkHandlerForContexts);
 				var result = this.actionFunction.apply(this, arguments);
+				Jsonary.removeLinkHandler(linkHandlerForContexts);
 				return result;
 			} else {
 				Jsonary.log(Jsonary.logLevel.WARNING, 'Renderer ' + this.name + ' has no actions (attempted ' + actionName + ')');

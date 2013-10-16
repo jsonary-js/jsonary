@@ -169,6 +169,7 @@ module.exports = function(grunt) {
 		testSet.run();
 	});
 	
+	grunt.registerTask('assemble', ['assemble-package']);
 	grunt.registerTask('test-core', ['hacky-tests:core']);
 	grunt.registerTask('test-render', ['hacky-tests:render']);
 

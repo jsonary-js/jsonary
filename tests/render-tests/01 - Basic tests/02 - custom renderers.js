@@ -20,7 +20,6 @@ tests.add("Custom renderer (for specific value)", function() {
 	
 	Jsonary.asyncRenderHtml(data, null, function (error, html) {
 		thisTest.assert(error == null, 'No error');
-		console.log(html);
 		thisTest.assert(html.indexOf(expectedContains) !== -1, "Contains expected string");
 		thisTest.pass();
 	});

@@ -1,4 +1,4 @@
-/* Bundled on 2013-10-15 */
+/* Bundled on 2013-10-16 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -4318,6 +4318,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	publicApi.addLinkHandler = function(handler) {
 		defaultLinkHandlers.unshift(handler);
 	};
+	publicApi.removeLinkHandler = function (handler) {
+		var index = defaultLinkHandlers.indexOf(handler);
+		if (index !== -1) {
+			defaultLinkHandlers.splice(index, 1);
+		} else {
+			Utils.log(Utils.logLevel.WARNING, "Attempted to remove link handler that wasn't registered");
+		}
+	};
 	publicApi.addLinkPreHandler = function(handler) {
 		defaultLinkPreHandlers.push(handler);
 	};
@@ -8018,7 +8026,28 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					};
 				})(this.filterFunction);
 			}
-			this.actionFunction = sourceObj.action;
+			if (typeof sourceObj.action === 'object') {
+				this.actionFunction = function (context, actionName) {
+					if (typeof sourceObj.action[actionName] === 'function') {
+						var args = [];
+						while (args.length < arguments.length) {
+							args[args.length] = arguments[args.length];
+						}
+						args[1] = context;
+						args[0] = context.data;
+						return sourceObj.action[actionName].apply(this, args);
+					} else if (typeof sourceObj.action['_super'] === 'function') {
+						return sourceObj.action['_super'].apply(this, arguments);
+					}
+				}
+			} else {
+				this.actionFunction = sourceObj.action;
+			}
+			this.linkHandler = function () {
+				if (sourceObj.linkHandler) {
+					return sourceObj.linkHandler.apply(this, arguments);
+				}
+			};
 			for (var key in sourceObj) {
 				if (this[key] == undefined) {
 					this[key] = sourceObj[key];
@@ -8158,8 +8187,22 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				return this;
 			},
 			action: function (context, actionName) {
+				var linkHandlerForContexts = function (link) {
+					var c = context;
+					while (c) {
+						if (c.renderer) {
+							var result = c.renderer.linkHandler.apply(link, arguments);
+							if (result === false) {
+								return result;
+							}
+						}
+						c = c.parent;
+					}
+				};
 				if (typeof this.actionFunction == 'function') {
+					Jsonary.addLinkHandler(linkHandlerForContexts);
 					var result = this.actionFunction.apply(this, arguments);
+					Jsonary.removeLinkHandler(linkHandlerForContexts);
 					return result;
 				} else {
 					Jsonary.log(Jsonary.logLevel.WARNING, 'Renderer ' + this.name + ' has no actions (attempted ' + actionName + ')');

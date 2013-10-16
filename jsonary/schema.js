@@ -691,6 +691,14 @@ var defaultLinkPreHandlers = [];
 publicApi.addLinkHandler = function(handler) {
 	defaultLinkHandlers.unshift(handler);
 };
+publicApi.removeLinkHandler = function (handler) {
+	var index = defaultLinkHandlers.indexOf(handler);
+	if (index !== -1) {
+		defaultLinkHandlers.splice(index, 1);
+	} else {
+		Utils.log(Utils.logLevel.WARNING, "Attempted to remove link handler that wasn't registered");
+	}
+};
 publicApi.addLinkPreHandler = function(handler) {
 	defaultLinkPreHandlers.push(handler);
 };
