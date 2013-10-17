@@ -154,6 +154,11 @@
 			}
 			return this.defaultUpdate.apply(this, arguments);
 		},
+		linkHandler: function () {
+			if (this.config.linkHandler) {
+				return this.config.linkHandler.apply(this.config, arguments);
+			}
+		},
 		register: function(filterFunction) {
 			if (filterFunction) {
 				this.filter = filterFunction;
@@ -620,7 +625,6 @@
 			return result + '</thead>';
 		},
 		tableBodyRenderHtml: function (data, context) {
-			var config = this.config;
 			var result = '<tbody>';
 			var rowOrder = this.rowOrder(data, context);
 
@@ -831,9 +835,7 @@
 				var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
 				var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
 				if (link) {
-					link.follow(context.uiState.linkData, function (link, submissionData, request) {
-						return thisConfig.linkHandler(data, context, link, submissionData, request);
-					});
+					link.follow(context.uiState.linkData);
 				}
 				delete context.uiState.linkRel;
 				delete context.uiState.linkIndex;

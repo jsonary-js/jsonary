@@ -9,7 +9,7 @@ tests.add("Link handler called", function() {
 	var actionCalled = false;
 	var handlerCalled = false;
 	
-	Jsonary.render.register({
+	var renderer = Jsonary.render.register({
 		name: "Test renderer",
 		renderHtml: function (data, context) {
 			savedContext = context;
@@ -24,7 +24,9 @@ tests.add("Link handler called", function() {
 				link.follow();
 			}
 		},
-		linkHandler: function (link, submissionData, request) {
+		linkHandler: function (data, context, link, submissionData, request) {
+			thisTest.assert(this === renderer, "this === renderer");
+			thisTest.assert(Jsonary.isData(data), "data is data");
 			handlerCalled = true;
 		},
 		filter: function (d) {
