@@ -222,7 +222,7 @@
 			
 			var rowOrder = this.rowOrder(data, context);
 			for (var i = 0; i < rowOrder.length; i++) {
-				var rowData = data.item(currentPage[i]);
+				var rowData = data.item(rowOrder[i]);
 				result += this.rowRenderHtml(rowData, context);
 			}
 			
