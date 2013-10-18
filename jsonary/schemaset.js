@@ -1252,10 +1252,15 @@ SchemaList.prototype = {
 	getFull: function(callback) {
 		if (!callback) {
 			var result = [];
+			var extraSchemas = [];
 			for (var i = 0; i < this.length; i++) {
 				result[i] = this[i].getFull();
+				var extendSchemas = result[i].extendSchemas();
+				for (var j = 0; j < extendSchemas.length; j++) {
+					extraSchemas.push(extendSchemas[j]);
+				}
 			}
-			return new SchemaList(result);
+			return new SchemaList(result.concat(extraSchemas));
 		}
 		if (this.length == 0) {
 			callback.call(this, this);

@@ -1,4 +1,4 @@
-/* Bundled on 2013-10-17 */
+/* Bundled on 2013-10-18 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -3856,7 +3856,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			this.data.property("allOf").items(function (index, data) {
 				result.push(data.asSchema());
 			});
-			return new SchemaList(result);
+			return new SchemaList(result).getFull();
 		},
 		notSchemas: function () {
 			var result = [];
@@ -3879,7 +3879,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			if (this.data.property("not").defined()) {
 				result.push(this.data.property("not").asSchema());
 			}
-			return result;
+			return new SchemaList(result).getFull();
 		},
 		types: function () {
 			var typeData = this.data.property("type");
@@ -4389,7 +4389,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				origData = undefined;
 			}
 			var hrefBase = this.hrefBase;
-			var submissionSchemas = this.submissionSchemas;
+			var submissionSchemas = this.submissionSchemas.getFull();
 			if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 				Jsonary.getData(this.href, function (data) {
 					callback(origData || data.editableCopy());
@@ -6335,10 +6335,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		getFull: function(callback) {
 			if (!callback) {
 				var result = [];
+				var extraSchemas = [];
 				for (var i = 0; i < this.length; i++) {
 					result[i] = this[i].getFull();
+					var extendSchemas = result[i].extendSchemas();
+					for (var j = 0; j < extendSchemas.length; j++) {
+						extraSchemas.push(extendSchemas[j]);
+					}
 				}
-				return new SchemaList(result);
+				return new SchemaList(result.concat(extraSchemas));
 			}
 			if (this.length == 0) {
 				callback.call(this, this);
@@ -10816,7 +10821,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				
 				var rowOrder = this.rowOrder(data, context);
 				for (var i = 0; i < rowOrder.length; i++) {
-					var rowData = data.item(currentPage[i]);
+					var rowData = data.item(rowOrder[i]);
 					result += this.rowRenderHtml(rowData, context);
 				}
 				
@@ -10986,12 +10991,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				this.addColumn(columnName, title, function (data, context) {
 					if (!context.data.readOnly()) {
 						return '<td></td>';
-						return '<td></td>';
 					}
 					var result = '<td>';
 					if (!context.parent.uiState.linkRel) {
 						var link = data.subPath(subPath).links(linkRel)[0];
-						if (link) {
+						if (link && data.readOnly()) {
 							var html = (typeof linkHtml == 'function') ? linkHtml.call(this, data, context, link) : linkHtml;
 							result += context.parent.actionHtml(html, 'link', linkRel, 0, subPath || undefined);
 						}

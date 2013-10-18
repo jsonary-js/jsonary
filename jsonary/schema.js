@@ -229,7 +229,7 @@ Schema.prototype = {
 		this.data.property("allOf").items(function (index, data) {
 			result.push(data.asSchema());
 		});
-		return new SchemaList(result);
+		return new SchemaList(result).getFull();
 	},
 	notSchemas: function () {
 		var result = [];
@@ -252,7 +252,7 @@ Schema.prototype = {
 		if (this.data.property("not").defined()) {
 			result.push(this.data.property("not").asSchema());
 		}
-		return result;
+		return new SchemaList(result).getFull();
 	},
 	types: function () {
 		var typeData = this.data.property("type");
@@ -762,7 +762,7 @@ ActiveLink.prototype = {
 			origData = undefined;
 		}
 		var hrefBase = this.hrefBase;
-		var submissionSchemas = this.submissionSchemas;
+		var submissionSchemas = this.submissionSchemas.getFull();
 		if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 			Jsonary.getData(this.href, function (data) {
 				callback(origData || data.editableCopy());

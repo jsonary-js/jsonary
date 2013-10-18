@@ -392,12 +392,11 @@
 			this.addColumn(columnName, title, function (data, context) {
 				if (!context.data.readOnly()) {
 					return '<td></td>';
-					return '<td></td>';
 				}
 				var result = '<td>';
 				if (!context.parent.uiState.linkRel) {
 					var link = data.subPath(subPath).links(linkRel)[0];
-					if (link) {
+					if (link && data.readOnly()) {
 						var html = (typeof linkHtml == 'function') ? linkHtml.call(this, data, context, link) : linkHtml;
 						result += context.parent.actionHtml(html, 'link', linkRel, 0, subPath || undefined);
 					}
