@@ -3839,7 +3839,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			return 0;
 		},
 		uniqueItems: function () {
-			return !!this.data.property('uniqueItems');
+			return !!this.data.propertyValue('uniqueItems');
 		},
 		andSchemas: function () {
 			var result = [];
@@ -4140,6 +4140,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		},
 		format: function () {
 			return this.data.propertyValue("format");
+		},
+		unordered: function () {
+			return !this.tupleTyping() && this.data.propertyValue('unordered');
 		},
 		createValue: function () {
 			var list = this.asList();
@@ -6396,6 +6399,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		},
 		containsFormat: function (formatString) {
 			return this.formats().indexOf(formatString) !== -1;
+		},
+		unordered: function () {
+			if (this.tupleTyping()) {
+				return false;
+			}
+			for (var i = 0; i < this.length; i++) {
+				if (this[i].unordered()) {
+					return true;
+				}
+			}
+			return false;
 		},
 		xorSchemas: function () {
 			var result = [];

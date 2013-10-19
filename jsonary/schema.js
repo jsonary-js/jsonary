@@ -212,7 +212,7 @@ Schema.prototype = {
 		return 0;
 	},
 	uniqueItems: function () {
-		return !!this.data.property('uniqueItems');
+		return !!this.data.propertyValue('uniqueItems');
 	},
 	andSchemas: function () {
 		var result = [];
@@ -513,6 +513,9 @@ Schema.prototype = {
 	},
 	format: function () {
 		return this.data.propertyValue("format");
+	},
+	unordered: function () {
+		return !this.tupleTyping() && this.data.propertyValue('unordered');
 	},
 	createValue: function () {
 		var list = this.asList();

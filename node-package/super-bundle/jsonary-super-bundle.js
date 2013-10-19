@@ -3839,7 +3839,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			return 0;
 		},
 		uniqueItems: function () {
-			return !!this.data.property('uniqueItems');
+			return !!this.data.propertyValue('uniqueItems');
 		},
 		andSchemas: function () {
 			var result = [];
@@ -4140,6 +4140,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		},
 		format: function () {
 			return this.data.propertyValue("format");
+		},
+		unordered: function () {
+			return !this.tupleTyping() && this.data.propertyValue('unordered');
 		},
 		createValue: function () {
 			var list = this.asList();
@@ -6396,6 +6399,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		},
 		containsFormat: function (formatString) {
 			return this.formats().indexOf(formatString) !== -1;
+		},
+		unordered: function () {
+			if (this.tupleTyping()) {
+				return false;
+			}
+			for (var i = 0; i < this.length; i++) {
+				if (this[i].unordered()) {
+					return true;
+				}
+			}
+			return false;
 		},
 		xorSchemas: function () {
 			var result = [];
@@ -11829,6 +11843,55 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 	});
 
+/**** renderers/contributed/tag-list.js ****/
+
+	Jsonary.render.register({
+		renderHtml: function (data, context) {
+			var enums = data.schemas().enumDataList();
+			var result = '<div class="json-tag-list">';
+			result += '<div class="json-tag-list-current">';
+			data.items(function (index, item) {
+				result += '<span class="json-tag-list-entry">';
+				result += '<span class="json-array-delete-container">';
+				result += context.actionHtml('<span class="json-array-delete">X</span>', 'remove', index);
+				result += '</span>';
+				result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+			});
+			result += '</div>';
+			result += '<div class="json-tag-list-add">';
+			result += context.actionHtml('<span class="button">add</span>', 'add');
+			if (!context.uiState.addData) {
+				var itemSchema = data.item(data.length()).schemas(true);
+				context.uiState.addData = itemSchema.createData();
+			}
+			result += context.renderHtml(context.uiState.addData);
+			result += '</div>';
+			return result + '</div>';
+		},
+		action: {
+			add: function (data, context) {
+				var addData = context.uiState.addData;
+				if (data.schemas().uniqueItems()) {
+					for (var i = 0; i < data.length(); i++) {
+						if (data.item(i).equals(addData)) {
+							return false;
+						}
+					}
+				}
+				data.item(data.length()).setValue(addData.value());
+			},
+			remove: function (data, context, index) {
+				data.item(index).remove();
+			}
+		},
+		filter: {
+			type: 'array',
+			filter: function (data, schemas) {
+				return schemas.unordered();
+			}
+		}
+	});
+
 /**** renderers/common.css ****/
 
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
@@ -11857,6 +11920,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		(function () {
 			var style = document.createElement('style');
 			style.innerHTML = ".json-array-table{border-spacing:0;border-collapse:collapse}.json-array-table .json-array-table{width:100%;margin:-4px;width:calc(100% + 8px)}.json-array-table>thead>tr>th{background-color:#EEE;border-bottom:1px solid #666;padding:.3em;font-size:.9em;font-weight:700;text-align:center}.json-array-table>thead{border:1px solid #BBB}.json-array-table>thead>tr>th.json-array-table-pages{border-bottom:1px solid #BBB;background-color:#DDD}.json-array-table>thead>tr>th.json-array-table-pages .button{font-family:Courier New,monospace}.json-array-table>tbody>tr>td{border:1px solid #CCC;border-top-color:#DDD;border-bottom-color:#DDD;padding:3px;font-size:inherit;text-align:left}.json-array-table>tbody>tr>td.json-array-table-full{padding:.3em;background-color:#EEE}.json-array-table>tbody>tr>td.json-array-table-add{text-align:center;background-color:#F8F8F8;border:1px solid #DDD}.json-array-table-full-buttons{text-align:center}.json-array-table-full-title{text-align:center;margin:-.3em;margin-bottom:.5em;background-color:#CCC;border-bottom:1px solid #BBB;font-weight:700;padding:.2em}.json-array-table-move-select,.json-array-table-move-cancel,.json-array-table-move-to,.json-array-table-delete{display:block;width:16px;height:16px;text-indent:16px;overflow:hidden;background-position:center middle;background-repeat:no-repeat;opacity:.35}.json-array-table-move-select:hover,.json-array-table-move-cancel:hover,.json-array-table-move-to:hover,.json-array-table-delete:hover{opacity:1}.json-array-table-delete{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAApElEQVQ4y82SsQ3CMBBFHxEFAyAKF6HLCKTPHhnkJsgg2SODuDNFhJAHcIFsmhSWYgeQkeCkq/7/r7h/8G9zAcKGHhZPPmxFQgYSa0lIsCLh1raxsV42pfEuZDO8y0B4TBNV0wDgtWbfdRyHYZVJAWrA3PuewzwD4JTiNI4AZ+Aam6vS2lIAY0XwWuOUwimF1xorAmBeAT8+4ldrLH6k4lf+zTwBbL+JOS+cUboAAAAASUVORK5CYII=\")}.json-array-table-move-select{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdElEQVQ4y62Tyw2AIBBEH94oAauwB+qedrQEj3iRRBMW5TPJXAjzQnYHsLUB6XagUQFIkpKkKsQZ4V3S6zDGCLACRw1QDNcg7m/YgriWsAUJj2m3essv8PTpXOiXLxWm1WF4iNPWOKVIXVUe/kyfkFwY69IFeyZbUaKi2aEAAAAASUVORK5CYII=\")}.json-array-table-move-cancel{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAZklEQVQ4y81SwQmAQAwLDuIYjpwtOlee8XNCxTs5KaKBvtKEpi3wN2wAfMO79YzFEeGBSea6Jo4I286Na6seh1mTafHFhKRJPhLjGJmkJVmSSeZIJyxvnLIUobTE8hnLj1R+5W+wA9RyupOydS/wAAAAAElFTkSuQmCC\")}.json-array-table-move-up{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAW0lEQVQ4y+2QwQmAMAxFX4+OEKfoDp37r6MjeKwXhQomGM99kEvgPULApwL9GiOJAV1SlxRGiiNvkh7L1hrACuxR4FWOIuWr7EVKRvYiNnw7O/W+YOEfB5MJcAIH0y4k53GkLAAAAABJRU5ErkJggg==\")}.json-array-table-move-down{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAY0lEQVQ4y+2RsQnAMAwEz2VGUKbwDp7710lGSOk0MYhgB8W1H4RAcC/xgqUlSE/fJvkLwIA6WbldYMAhKbS2lAKwA2dy85CJh30GIZM33DMYmvTgLxlQJVVJLTD7+6Ls0h7CNyr1LiTNtq8FAAAAAElFTkSuQmCC\")}.json-array-table-sort,.json-array-table-sort-asc,.json-array-table-sort-desc{padding-left:15px;padding-right:15px;margin-left:-5px;margin-right:-5px}.json-array-table-sort-asc,.json-array-table-sort-desc{background-position:right center;background-repeat:no-repeat}.json-array-table-sort-text{display:block;float:right;width:0;overflow:hidden}.json-array-table-sort-asc{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAXklEQVQoz+3SuwmAQBBF0SPGNmG1lrENmCoWZGoH7pqssCyCn9gLE0xweW9g+ClpMaD5Is9IGN9ITRZilmPeHzUIWaon3IkL9iI1Fek7prriSYe+EK/OgRXb/08fOAC7tBnlR5zMuwAAAABJRU5ErkJggg==\")}.json-array-table-sort-desc{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAW0lEQVQoz2NgGAUkAUY0NgsRev4yMDD8wyaxE0nyPxL+BxXfhs9UHQYGhgVoGmF4AVQeL9BlYGBYi2T7Pyhfl9iw0GFgYNgO1byWGBvRgT4DA0MHKTZic8FwAwDm/hlxhNq1AAAAAABJRU5ErkJggg==\")}";
+			document.head.appendChild(style);
+		})();
+	}
+
+
+/**** renderers/contributed/tag-list.css ****/
+
+	if (typeof window != 'undefined' && typeof document != 'undefined') {
+		(function () {
+			var style = document.createElement('style');
+			style.innerHTML = ".json-tag-list{border:1px solid #888;border-radius:3px;background-color:#EEE}.json-tag-list-current{width:100%;overflow:auto;position:relative;padding:2px;padding-top:4px;padding-bottom:4px;border-bottom:1px solid #888;border-radius:3px;background-color:#FDFDFD}.json-tag-list-entry{display:block;float:left;margin:2px;padding:1px;padding-left:3px;padding-right:3px;background-color:#F0F2F8;border:1px solid #CCD;border-radius:3px}";
 			document.head.appendChild(style);
 		})();
 	}

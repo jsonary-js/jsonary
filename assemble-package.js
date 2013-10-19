@@ -54,7 +54,9 @@ masterBundle.js('plugins/jsonary.location.js')
 	
 	.js('renderers/contributed/full-preview.js')
 	.js('renderers/contributed/full-instances.js')
-	.js('renderers/contributed/adaptive-table.js');
+	.js('renderers/contributed/adaptive-table.js')
+	.js('renderers/contributed/tag-list.js')
+	.css('renderers/contributed/tag-list.css');
 
 console.log("Writing jsonary-super-bundle");
 masterBundle.compileJs('node-package/super-bundle/jsonary-super-bundle.js', true, true);

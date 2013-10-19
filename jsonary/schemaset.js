@@ -1314,6 +1314,17 @@ SchemaList.prototype = {
 	containsFormat: function (formatString) {
 		return this.formats().indexOf(formatString) !== -1;
 	},
+	unordered: function () {
+		if (this.tupleTyping()) {
+			return false;
+		}
+		for (var i = 0; i < this.length; i++) {
+			if (this[i].unordered()) {
+				return true;
+			}
+		}
+		return false;
+	},
 	xorSchemas: function () {
 		var result = [];
 		for (var i = 0; i < this.length; i++) {
