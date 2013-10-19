@@ -478,7 +478,7 @@ SchemaList.prototype = {
 		}
 		return readOnly;
 	},
-	enumValues: function () {
+	enumDataList: function () {
 		var enums = undefined;
 		for (var i = 0; i < this.length; i++) {
 			var enumData = this[i].enumData();
@@ -501,7 +501,11 @@ SchemaList.prototype = {
 				}
 			}
 		}
-		if (enums != undefined) {
+		return enums;
+	},
+	enumValues: function () {
+		var enums = this.enumDataList();
+		if (enums) {
 			var values = [];
 			for (var i = 0; i < enums.length; i++) {
 				values[i] = enums[i].value();

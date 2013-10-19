@@ -1,4 +1,4 @@
-/* Bundled on 2013-10-18 */
+/* Bundled on 2013-10-19 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -5561,7 +5561,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 			return readOnly;
 		},
-		enumValues: function () {
+		enumDataList: function () {
 			var enums = undefined;
 			for (var i = 0; i < this.length; i++) {
 				var enumData = this[i].enumData();
@@ -5584,7 +5584,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					}
 				}
 			}
-			if (enums != undefined) {
+			return enums;
+		},
+		enumValues: function () {
+			var enums = this.enumDataList();
+			if (enums) {
 				var values = [];
 				for (var i = 0; i < enums.length; i++) {
 					values[i] = enums[i].value();

@@ -34,6 +34,17 @@ tests.add("enumData()", function () {
 	return true;
 });
 
+tests.add("enumDataList() (for list)", function () {
+	var schemaFull = Jsonary.createSchema(exampleSchemaFull);
+	var schemaList = schemaFull.asList();
+	var enumDataList = schemaList.enumDataList();
+	
+	this.assert(enumDataList.length == schemaFull.data.property('enum').length(), 'lengths match');
+	this.assert(enumDataList[0] === schemaFull.data.property('enum').item(0), 'entries match');
+	
+	return true;
+});
+
 tests.add("basicTypes()", function () {
 	var schemaMinimal = Jsonary.createSchema(exampleSchemaMinimal);
 	var schemaFull = Jsonary.createSchema(exampleSchemaFull);
