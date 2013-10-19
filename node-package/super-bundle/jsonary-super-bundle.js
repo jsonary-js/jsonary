@@ -11852,20 +11852,26 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			result += '<div class="json-tag-list-current">';
 			data.items(function (index, item) {
 				result += '<span class="json-tag-list-entry">';
-				result += '<span class="json-array-delete-container">';
-				result += context.actionHtml('<span class="json-array-delete">X</span>', 'remove', index);
-				result += '</span>';
-				result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+				if (!data.readOnly()) {
+					result += '<span class="json-array-delete-container">';
+					result += context.actionHtml('<span class="json-array-delete">X</span>', 'remove', index);
+					result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+					result += '</span>';
+				} else {
+					result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+				}
 			});
 			result += '</div>';
-			result += '<div class="json-tag-list-add">';
-			result += context.actionHtml('<span class="button">add</span>', 'add');
-			if (!context.uiState.addData) {
-				var itemSchema = data.item(data.length()).schemas(true);
-				context.uiState.addData = itemSchema.createData();
+			if (!data.readOnly()) {
+				result += '<div class="json-tag-list-add">';
+				result += context.actionHtml('<span class="button">add</span>', 'add');
+				if (!context.uiState.addData) {
+					var itemSchema = data.item(data.length()).schemas(true);
+					context.uiState.addData = itemSchema.createData();
+				}
+				result += context.renderHtml(context.uiState.addData);
+				result += '</div>';
 			}
-			result += context.renderHtml(context.uiState.addData);
-			result += '</div>';
 			return result + '</div>';
 		},
 		action: {
@@ -11930,7 +11936,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
 			var style = document.createElement('style');
-			style.innerHTML = ".json-tag-list{border:1px solid #888;border-radius:3px;background-color:#EEE}.json-tag-list-current{width:100%;overflow:auto;position:relative;padding:2px;padding-top:4px;padding-bottom:4px;border-bottom:1px solid #888;border-radius:3px;background-color:#FDFDFD}.json-tag-list-entry{display:block;float:left;margin:2px;padding:1px;padding-left:3px;padding-right:3px;background-color:#F0F2F8;border:1px solid #CCD;border-radius:3px}";
+			style.innerHTML = ".json-tag-list{width:100%;overflow:auto;position:relative}.json-tag-list-current{width:100%;overflow:auto;position:relative}.json-tag-list-entry{display:block;float:left;padding:1px;padding-left:3px;padding-right:3px;background-color:#F0F2F8;border:1px solid #CCD;border-bottom-color:#BBB;border-top-color:#DDDDE4;border-radius:3px}.json-tag-list-add{clear:both;float:left;border-radius:4px;background-color:#EEE;border-bottom:1px solid #DDD;border-top:1px solid #F8F8F8}";
 			document.head.appendChild(style);
 		})();
 	}

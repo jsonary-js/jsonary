@@ -5,20 +5,26 @@ Jsonary.render.register({
 		result += '<div class="json-tag-list-current">';
 		data.items(function (index, item) {
 			result += '<span class="json-tag-list-entry">';
-			result += '<span class="json-array-delete-container">';
-			result += context.actionHtml('<span class="json-array-delete">X</span>', 'remove', index);
-			result += '</span>';
-			result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+			if (!data.readOnly()) {
+				result += '<span class="json-array-delete-container">';
+				result += context.actionHtml('<span class="json-array-delete">X</span>', 'remove', index);
+				result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+				result += '</span>';
+			} else {
+				result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+			}
 		});
 		result += '</div>';
-		result += '<div class="json-tag-list-add">';
-		result += context.actionHtml('<span class="button">add</span>', 'add');
-		if (!context.uiState.addData) {
-			var itemSchema = data.item(data.length()).schemas(true);
-			context.uiState.addData = itemSchema.createData();
+		if (!data.readOnly()) {
+			result += '<div class="json-tag-list-add">';
+			result += context.actionHtml('<span class="button">add</span>', 'add');
+			if (!context.uiState.addData) {
+				var itemSchema = data.item(data.length()).schemas(true);
+				context.uiState.addData = itemSchema.createData();
+			}
+			result += context.renderHtml(context.uiState.addData);
+			result += '</div>';
 		}
-		result += context.renderHtml(context.uiState.addData);
-		result += '</div>';
 		return result + '</div>';
 	},
 	action: {
