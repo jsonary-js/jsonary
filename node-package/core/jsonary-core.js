@@ -1,4 +1,4 @@
-/* Bundled on 2013-10-19 */
+/* Bundled on 2013-10-28 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -6749,15 +6749,20 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var thisSchemaSet = this;
 			var rel = linkInstance.rel();
 			if (rel === "describedby") {
+				var appliedUrl = null;
 				var subSchemaKey = Utils.getKeyVariant(schemaKey);
 				linkInstance.addMonitor(subSchemaKey, function (active) {
-					thisSchemaSet.removeSchema(subSchemaKey);
-					if (active) {
-						var rawLink = linkInstance.rawLink;
-						var schema = publicApi.createSchema({
-							"$ref": rawLink.href
-						});
-						thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
+					var rawLink = linkInstance.rawLink;
+					var newUrl = active ? rawLink.href : null;
+					if (appliedUrl !== newUrl) {
+						appliedUrl = newUrl;
+						thisSchemaSet.removeSchema(subSchemaKey);
+						if (active) {
+							var schema = publicApi.createSchema({
+								"$ref": appliedUrl
+							});
+							thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
+						}
 					}
 				});
 			}
