@@ -79,8 +79,6 @@ tests.add("ResultCollector async use with keys (1)s", function () {
 	}
 	
 	results.whenDone(function (obj) {
-		console.log(typeof obj);
-		console.log(obj);
 		thisTest.assert(obj.a === 'A', 'A match');
 		thisTest.assert(obj.b === 'B', 'B match');
 		thisTest.pass();
