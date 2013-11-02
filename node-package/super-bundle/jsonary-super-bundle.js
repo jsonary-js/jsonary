@@ -11961,7 +11961,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				} else if (context.uiState.warning) {
 					return '<div class="base64-image-warning warning">' + Jsonary.escapeHtml(context.uiState.warning) + '"</div>';
 				} else {
-					return '';
+					return '<div class="base64-image-placeholder"></div>';
 				}
 			},
 			action: {
@@ -11973,9 +11973,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				if (data.readOnly()) {
 					return;
 				}
-				function handleFileSelect(evt) {
-					var files = evt.target.files; // FileList object
-	
+				function handleFileSelect(files) {
 					// files is a FileList of File objects. List some properties.
 					var output = [];
 					if (files.length) {
@@ -12019,7 +12017,26 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var input = document.createElement('input');
 				input.setAttribute('type', 'file');
 				input.setAttribute('accept', mediaType || 'image/*');
-				input.onchange = handleFileSelect;
+				input.onchange = function (evt) {
+					var files = evt.target.files; // FileList object
+					handleFileSelect(files);
+				};
+				
+				var firstElement = null;
+				for (var i = 0; i < element.childNodes.length; i++) {
+					if (element.childNodes[i].nodeType === 1) {
+						firstElement = element.childNodes[i];
+					}
+				}
+				firstElement.addEventListener("dragover", function(e) {e.preventDefault();}, true);
+				firstElement.addEventListener("drop", function (e) {
+					e.preventDefault(); 
+					window.evt = e;
+					console.log(e);
+					var files = e.dataTransfer.files;
+					handleFileSelect(files);
+				}, true);
+				
 				element.appendChild(input);
 			},
 			filter: {
