@@ -88,7 +88,15 @@ if (typeof FileReader === 'function') {
 					firstElement = element.childNodes[i];
 				}
 			}
-			firstElement.addEventListener("dragover", function(e) {e.preventDefault();}, true);
+			firstElement.addEventListener("dragover", function (e) {
+				e.preventDefault();
+			}, true);
+			firstElement.addEventListener("dragenter", function (e) {
+				firstElement.className += " drag-hover";
+			});
+			firstElement.addEventListener("dragleave", function (e) {
+				firstElement.className = firstElement.className.replace(/(^| )drag-hover($| )/g, ' ');
+			});
 			firstElement.addEventListener("drop", function (e) {
 				e.preventDefault(); 
 				window.evt = e;
