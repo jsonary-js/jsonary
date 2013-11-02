@@ -105,6 +105,9 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 				var indexSchemas = schemas.indexSchemas(0).getFull();
 				var itemTypes = indexSchemas.basicTypes();
 				if (itemTypes.length == 1 && itemTypes[0] == "object") {
+					if (indexSchemas.additionalPropertySchemas().length > 0) {
+						return false;
+					}
 					if (indexSchemas.knownProperties().length < 20) {
 						return true;
 					}

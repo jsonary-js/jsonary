@@ -11833,6 +11833,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					var indexSchemas = schemas.indexSchemas(0).getFull();
 					var itemTypes = indexSchemas.basicTypes();
 					if (itemTypes.length == 1 && itemTypes[0] == "object") {
+						if (indexSchemas.additionalPropertySchemas().length > 0) {
+							return false;
+						}
 						if (indexSchemas.knownProperties().length < 20) {
 							return true;
 						}
@@ -11933,6 +11936,105 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 	});
 
+/**** renderers/contributed/image-picker.js ****/
+
+	// Fancy image-picker with HTML5
+	if (typeof FileReader === 'function') {
+		Jsonary.render.register({
+			component: Jsonary.render.Components.ADD_REMOVE,
+			renderHtml: function (data, context) {
+				if (data.defined()) {
+					var mediaType = null;
+					data.schemas().each(function (index, schema) {
+						if (/^image/.test(schema.data.get('/media/type'))) {
+							mediaType = schema.data.get('/media/type');
+						}
+					});
+					var dataUrl = 'data:;base64,' + data.value();
+					var result = '<div class="json-object-delete-container">';
+					if (!data.readOnly()) {
+						result += context.actionHtml('<span class="json-object-delete">X</span>', 'remove');
+					}
+					result += '<div class="base64-image-preview"><img src="' + Jsonary.escapeHtml(dataUrl) + '"></div>';
+					result += '</div>';
+					return result;
+				} else if (context.uiState.warning) {
+					return '<div class="base64-image-warning warning">' + Jsonary.escapeHtml(context.uiState.warning) + '"</div>';
+				} else {
+					return '';
+				}
+			},
+			action: {
+				remove: function (data, context) {
+					data.remove();
+				}
+			},
+			render: function (element, data, context) {
+				if (data.readOnly()) {
+					return;
+				}
+				function handleFileSelect(evt) {
+					var files = evt.target.files; // FileList object
+	
+					// files is a FileList of File objects. List some properties.
+					var output = [];
+					if (files.length) {
+						var firstFile = files[0];
+						if (!firstFile.type.match('image.*')) {
+							return;
+						}
+						var reader = new FileReader();
+	
+						reader.onload = function(loadEvent) {
+							delete context.uiState.warning;
+							var dataUrl = loadEvent.target.result;
+							var remainder = dataUrl.substring(5);
+							var mediaType = remainder.split(';', 1)[0];
+							remainder = remainder.substring(mediaType.length + 1);
+							var binaryEncoding = remainder.split(',', 1)[0];
+							remainder = remainder.substring(binaryEncoding.length + 1);
+							if (binaryEncoding !== 'base64') {
+								context.uiState.warning = "Data URL is not base64";
+								Jsonary.log(Jsonary.logLevel.ERROR, 'Data URL is not base64');
+								return context.rerender();
+							} else if (!/^image\//.test(mediaType)) {
+								context.uiState.warning = "File must be an image";
+								Jsonary.log(Jsonary.logLevel.ERROR, 'Data is not an image');
+								return context.rerender();
+							}
+							data.setValue(remainder);
+						};
+	
+						reader.readAsDataURL(firstFile);
+					}
+				}
+				
+				var mediaType = null;
+				data.schemas().each(function (index, schema) {
+					if (/^image/.test(schema.data.get('/media/type'))) {
+						mediaType = schema.data.get('/media/type');
+					}
+				});
+	
+				var input = document.createElement('input');
+				input.setAttribute('type', 'file');
+				input.setAttribute('accept', mediaType || 'image/*');
+				input.onchange = handleFileSelect;
+				element.appendChild(input);
+			},
+			filter: {
+				type: ['string', undefined],
+				filter: function (data) {
+					var schemas = data.schemas(true); // force search for potential future schemas
+					return schemas.any(function (index, schema) {
+						return (schema.data.get('/media/binaryEncoding') || "").toLowerCase() == 'base64'
+							&& /^image\//.test(schema.data.get('/media/type'));
+					});
+				}
+			}
+		});
+	}
+
 /**** renderers/common.css ****/
 
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
@@ -11972,6 +12074,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		(function () {
 			var style = document.createElement('style');
 			style.innerHTML = ".json-tag-list{width:100%;overflow:auto;position:relative}.json-tag-list-current{width:100%;overflow:auto;position:relative}.json-tag-list-entry{display:block;float:left;padding:1px;padding-left:3px;padding-right:3px;background-color:#F0F2F8;border:1px solid #CCD;border-bottom-color:#BBB;border-top-color:#DDDDE4;border-radius:3px}.json-tag-list-add{clear:both;float:left;border-radius:4px;background-color:#EEE;border-bottom:1px solid #DDD;border-top:1px solid #F8F8F8}";
+			document.head.appendChild(style);
+		})();
+	}
+
+
+/**** renderers/contributed/image-picker.css ****/
+
+	if (typeof window != 'undefined' && typeof document != 'undefined') {
+		(function () {
+			var style = document.createElement('style');
+			style.innerHTML = ".base64-image-preview{width:100px;height:100px;overflow:hidden;text-align:center;padding:2px}.base64-image-preview img{max-height:100%;max-width:100%;vertical-align:middle;border:1px solid #444;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.2)}";
 			document.head.appendChild(style);
 		})();
 	}
