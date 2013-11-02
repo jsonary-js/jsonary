@@ -146,6 +146,22 @@ SchemaList.prototype = {
 		}
 		return this;
 	},
+	all: function (callback) {
+		for (var i = 0; i < this.length; i++) {
+			if (!callback(i, this[i])) {
+				return false;
+			}
+		}
+		return true;
+	},
+	any: function (callback) {
+		for (var i = 0; i < this.length; i++) {
+			if (callback(i, this[i])) {
+				return true;
+			}
+		}
+		return false;
+	},
 	concat: function(other) {
 		var newList = [];
 		for (var i = 0; i < this.length; i++) {

@@ -240,3 +240,75 @@ tests.add("Can force schema for undefined data", function () {
 	this.assert(schemas.title() == "test", "empty propA has correct title");
 	return true;
 });
+
+tests.add("schemas.any()", function () {
+	var schema1 = Jsonary.createSchema({
+		"title": "Schema 1"
+	});
+	var schema2 = Jsonary.createSchema({
+		"title": "Schema 2"
+	});
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2]);
+	var callCount = 0;
+	var any1 = schemaList.any(function (index, schema) {
+		callCount++;
+		return schema.title() == "Schema 1";
+	});
+	this.assert(any1, "any1");
+	this.assert(callCount == 1, "callCount == 1");
+
+	callCount = 0;
+	var any2 = schemaList.any(function (index, schema) {
+		callCount++;
+		return schema.title() == "Schema 2";
+	});
+	this.assert(any2, "any2");
+	this.assert(callCount == 2, "callCount == 2");
+
+	callCount = 0;
+	var any3 = schemaList.any(function (index, schema) {
+		callCount++;
+		return schema.title() == "Schema 3";
+	});
+	this.assert(!any3, "!any3");
+	this.assert(callCount == 2, "callCount == 2");
+
+	return true;
+});
+
+tests.add("schemas.all()", function () {
+	var schema1 = Jsonary.createSchema({
+		"title": "Schema 1"
+	});
+	var schema2 = Jsonary.createSchema({
+		"title": "Schema 2"
+	});
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2]);
+	var callCount = 0;
+	var all1 = schemaList.all(function (index, schema) {
+		callCount++;
+		return schema.title() == "Schema 1";
+	});
+	this.assert(!all1, "!all1");
+	this.assert(callCount == 2, "callCount == 2");
+
+	callCount = 0;
+	var all2 = schemaList.all(function (index, schema) {
+		callCount++;
+		return schema.title() == "Schema 2";
+	});
+	this.assert(!all2, "!all2");
+	this.assert(callCount == 1, "callCount == 1");
+
+	callCount = 0;
+	var all3 = schemaList.all(function (index, schema) {
+		callCount++;
+		return schema.title() != "Schema 3";
+	});
+	this.assert(all3, "all3");
+	this.assert(callCount == 2, "callCount == 2");
+
+	return true;
+});
