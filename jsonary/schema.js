@@ -212,7 +212,7 @@ Schema.prototype = {
 		return 0;
 	},
 	uniqueItems: function () {
-		return !!this.data.property('uniqueItems');
+		return !!this.data.propertyValue('uniqueItems');
 	},
 	andSchemas: function () {
 		var result = [];
@@ -229,7 +229,7 @@ Schema.prototype = {
 		this.data.property("allOf").items(function (index, data) {
 			result.push(data.asSchema());
 		});
-		return new SchemaList(result);
+		return new SchemaList(result).getFull();
 	},
 	notSchemas: function () {
 		var result = [];
@@ -252,7 +252,7 @@ Schema.prototype = {
 		if (this.data.property("not").defined()) {
 			result.push(this.data.property("not").asSchema());
 		}
-		return result;
+		return new SchemaList(result).getFull();
 	},
 	types: function () {
 		var typeData = this.data.property("type");
@@ -514,6 +514,9 @@ Schema.prototype = {
 	format: function () {
 		return this.data.propertyValue("format");
 	},
+	unordered: function () {
+		return !this.tupleTyping() && this.data.propertyValue('unordered');
+	},
 	createValue: function () {
 		var list = this.asList();
 		return list.createValue.apply(list, arguments);
@@ -691,6 +694,14 @@ var defaultLinkPreHandlers = [];
 publicApi.addLinkHandler = function(handler) {
 	defaultLinkHandlers.unshift(handler);
 };
+publicApi.removeLinkHandler = function (handler) {
+	var index = defaultLinkHandlers.indexOf(handler);
+	if (index !== -1) {
+		defaultLinkHandlers.splice(index, 1);
+	} else {
+		Utils.log(Utils.logLevel.WARNING, "Attempted to remove link handler that wasn't registered");
+	}
+};
 publicApi.addLinkPreHandler = function(handler) {
 	defaultLinkPreHandlers.push(handler);
 };
@@ -754,7 +765,7 @@ ActiveLink.prototype = {
 			origData = undefined;
 		}
 		var hrefBase = this.hrefBase;
-		var submissionSchemas = this.submissionSchemas;
+		var submissionSchemas = this.submissionSchemas.getFull();
 		if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 			Jsonary.getData(this.href, function (data) {
 				callback(origData || data.editableCopy());

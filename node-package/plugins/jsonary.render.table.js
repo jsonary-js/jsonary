@@ -154,6 +154,11 @@
 			}
 			return this.defaultUpdate.apply(this, arguments);
 		},
+		linkHandler: function () {
+			if (this.config.linkHandler) {
+				return this.config.linkHandler.apply(this.config, arguments);
+			}
+		},
 		register: function(filterFunction) {
 			if (filterFunction) {
 				this.filter = filterFunction;
@@ -217,7 +222,7 @@
 			
 			var rowOrder = this.rowOrder(data, context);
 			for (var i = 0; i < rowOrder.length; i++) {
-				var rowData = data.item(currentPage[i]);
+				var rowData = data.item(rowOrder[i]);
 				result += this.rowRenderHtml(rowData, context);
 			}
 			
@@ -387,12 +392,11 @@
 			this.addColumn(columnName, title, function (data, context) {
 				if (!context.data.readOnly()) {
 					return '<td></td>';
-					return '<td></td>';
 				}
 				var result = '<td>';
 				if (!context.parent.uiState.linkRel) {
 					var link = data.subPath(subPath).links(linkRel)[0];
-					if (link) {
+					if (link && data.readOnly()) {
 						var html = (typeof linkHtml == 'function') ? linkHtml.call(this, data, context, link) : linkHtml;
 						result += context.parent.actionHtml(html, 'link', linkRel, 0, subPath || undefined);
 					}
@@ -620,7 +624,6 @@
 			return result + '</thead>';
 		},
 		tableBodyRenderHtml: function (data, context) {
-			var config = this.config;
 			var result = '<tbody>';
 			var rowOrder = this.rowOrder(data, context);
 
@@ -831,9 +834,7 @@
 				var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
 				var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
 				if (link) {
-					link.follow(context.uiState.linkData, function (link, submissionData, request) {
-						return thisConfig.linkHandler(data, context, link, submissionData, request);
-					});
+					link.follow(context.uiState.linkData);
 				}
 				delete context.uiState.linkRel;
 				delete context.uiState.linkIndex;

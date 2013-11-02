@@ -84,7 +84,12 @@ module.exports = function(grunt) {
 						}
 					},
 					run: function (onComplete) {
+						var thisTest = this;
+						this.timeout = setTimeout(function () {
+							thisTest.fail('Timeout - test did not terminate in 2sec');
+						}, 2000);
 						this.pass = function () {
+							clearTimeout(thisTest.timeout);
 							this.pass = this.fail = function () {};
 							grunt.verbose.writeln('\t\t\tpassed');
 							process.nextTick(onComplete);
@@ -103,6 +108,7 @@ module.exports = function(grunt) {
 						}
 					},
 					fail: function (reason) {
+						clearTimeout(this.timeout);
 						grunt.log.writeln('');
 						grunt.log.error("Test failed: " + title);
 						grunt.log.writeln(reason + "\n");
@@ -169,6 +175,7 @@ module.exports = function(grunt) {
 		testSet.run();
 	});
 	
+	grunt.registerTask('assemble', ['assemble-package']);
 	grunt.registerTask('test-core', ['hacky-tests:core']);
 	grunt.registerTask('test-render', ['hacky-tests:render']);
 

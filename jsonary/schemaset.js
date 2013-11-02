@@ -494,7 +494,7 @@ SchemaList.prototype = {
 		}
 		return readOnly;
 	},
-	enumValues: function () {
+	enumDataList: function () {
 		var enums = undefined;
 		for (var i = 0; i < this.length; i++) {
 			var enumData = this[i].enumData();
@@ -517,7 +517,11 @@ SchemaList.prototype = {
 				}
 			}
 		}
-		if (enums != undefined) {
+		return enums;
+	},
+	enumValues: function () {
+		var enums = this.enumDataList();
+		if (enums) {
 			var values = [];
 			for (var i = 0; i < enums.length; i++) {
 				values[i] = enums[i].value();
@@ -1268,10 +1272,15 @@ SchemaList.prototype = {
 	getFull: function(callback) {
 		if (!callback) {
 			var result = [];
+			var extraSchemas = [];
 			for (var i = 0; i < this.length; i++) {
 				result[i] = this[i].getFull();
+				var extendSchemas = result[i].extendSchemas();
+				for (var j = 0; j < extendSchemas.length; j++) {
+					extraSchemas.push(extendSchemas[j]);
+				}
 			}
-			return new SchemaList(result);
+			return new SchemaList(result.concat(extraSchemas));
 		}
 		if (this.length == 0) {
 			callback.call(this, this);
@@ -1320,6 +1329,17 @@ SchemaList.prototype = {
 	},
 	containsFormat: function (formatString) {
 		return this.formats().indexOf(formatString) !== -1;
+	},
+	unordered: function () {
+		if (this.tupleTyping()) {
+			return false;
+		}
+		for (var i = 0; i < this.length; i++) {
+			if (this[i].unordered()) {
+				return true;
+			}
+		}
+		return false;
 	},
 	xorSchemas: function () {
 		var result = [];
@@ -1659,15 +1679,20 @@ SchemaSet.prototype = {
 		var thisSchemaSet = this;
 		var rel = linkInstance.rel();
 		if (rel === "describedby") {
+			var appliedUrl = null;
 			var subSchemaKey = Utils.getKeyVariant(schemaKey);
 			linkInstance.addMonitor(subSchemaKey, function (active) {
-				thisSchemaSet.removeSchema(subSchemaKey);
-				if (active) {
-					var rawLink = linkInstance.rawLink;
-					var schema = publicApi.createSchema({
-						"$ref": rawLink.href
-					});
-					thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
+				var rawLink = linkInstance.rawLink;
+				var newUrl = active ? rawLink.href : null;
+				if (appliedUrl !== newUrl) {
+					appliedUrl = newUrl;
+					thisSchemaSet.removeSchema(subSchemaKey);
+					if (active) {
+						var schema = publicApi.createSchema({
+							"$ref": appliedUrl
+						});
+						thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
+					}
 				}
 			});
 		}

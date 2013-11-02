@@ -3839,7 +3839,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			return 0;
 		},
 		uniqueItems: function () {
-			return !!this.data.property('uniqueItems');
+			return !!this.data.propertyValue('uniqueItems');
 		},
 		andSchemas: function () {
 			var result = [];
@@ -3856,7 +3856,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			this.data.property("allOf").items(function (index, data) {
 				result.push(data.asSchema());
 			});
-			return new SchemaList(result);
+			return new SchemaList(result).getFull();
 		},
 		notSchemas: function () {
 			var result = [];
@@ -3879,7 +3879,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			if (this.data.property("not").defined()) {
 				result.push(this.data.property("not").asSchema());
 			}
-			return result;
+			return new SchemaList(result).getFull();
 		},
 		types: function () {
 			var typeData = this.data.property("type");
@@ -4141,6 +4141,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		format: function () {
 			return this.data.propertyValue("format");
 		},
+		unordered: function () {
+			return !this.tupleTyping() && this.data.propertyValue('unordered');
+		},
 		createValue: function () {
 			var list = this.asList();
 			return list.createValue.apply(list, arguments);
@@ -4318,6 +4321,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	publicApi.addLinkHandler = function(handler) {
 		defaultLinkHandlers.unshift(handler);
 	};
+	publicApi.removeLinkHandler = function (handler) {
+		var index = defaultLinkHandlers.indexOf(handler);
+		if (index !== -1) {
+			defaultLinkHandlers.splice(index, 1);
+		} else {
+			Utils.log(Utils.logLevel.WARNING, "Attempted to remove link handler that wasn't registered");
+		}
+	};
 	publicApi.addLinkPreHandler = function(handler) {
 		defaultLinkPreHandlers.push(handler);
 	};
@@ -4381,7 +4392,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				origData = undefined;
 			}
 			var hrefBase = this.hrefBase;
-			var submissionSchemas = this.submissionSchemas;
+			var submissionSchemas = this.submissionSchemas.getFull();
 			if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
 				Jsonary.getData(this.href, function (data) {
 					callback(origData || data.editableCopy());
@@ -5569,7 +5580,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 			return readOnly;
 		},
-		enumValues: function () {
+		enumDataList: function () {
 			var enums = undefined;
 			for (var i = 0; i < this.length; i++) {
 				var enumData = this[i].enumData();
@@ -5592,7 +5603,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					}
 				}
 			}
-			if (enums != undefined) {
+			return enums;
+		},
+		enumValues: function () {
+			var enums = this.enumDataList();
+			if (enums) {
 				var values = [];
 				for (var i = 0; i < enums.length; i++) {
 					values[i] = enums[i].value();
@@ -6343,10 +6358,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		getFull: function(callback) {
 			if (!callback) {
 				var result = [];
+				var extraSchemas = [];
 				for (var i = 0; i < this.length; i++) {
 					result[i] = this[i].getFull();
+					var extendSchemas = result[i].extendSchemas();
+					for (var j = 0; j < extendSchemas.length; j++) {
+						extraSchemas.push(extendSchemas[j]);
+					}
 				}
-				return new SchemaList(result);
+				return new SchemaList(result.concat(extraSchemas));
 			}
 			if (this.length == 0) {
 				callback.call(this, this);
@@ -6395,6 +6415,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		},
 		containsFormat: function (formatString) {
 			return this.formats().indexOf(formatString) !== -1;
+		},
+		unordered: function () {
+			if (this.tupleTyping()) {
+				return false;
+			}
+			for (var i = 0; i < this.length; i++) {
+				if (this[i].unordered()) {
+					return true;
+				}
+			}
+			return false;
 		},
 		xorSchemas: function () {
 			var result = [];
@@ -6734,15 +6765,20 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var thisSchemaSet = this;
 			var rel = linkInstance.rel();
 			if (rel === "describedby") {
+				var appliedUrl = null;
 				var subSchemaKey = Utils.getKeyVariant(schemaKey);
 				linkInstance.addMonitor(subSchemaKey, function (active) {
-					thisSchemaSet.removeSchema(subSchemaKey);
-					if (active) {
-						var rawLink = linkInstance.rawLink;
-						var schema = publicApi.createSchema({
-							"$ref": rawLink.href
-						});
-						thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
+					var rawLink = linkInstance.rawLink;
+					var newUrl = active ? rawLink.href : null;
+					if (appliedUrl !== newUrl) {
+						appliedUrl = newUrl;
+						thisSchemaSet.removeSchema(subSchemaKey);
+						if (active) {
+							var schema = publicApi.createSchema({
+								"$ref": appliedUrl
+							});
+							thisSchemaSet.addSchema(schema, subSchemaKey, schemaKeyHistory, schemaKey == SCHEMA_SET_FIXED_KEY);
+						}
 					}
 				});
 			}
@@ -7257,7 +7293,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 							}
 							var prevContext = element.jsonaryContext;
 							var prevUiState = copyValue(this.uiStartingState);
-							var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents);
+							var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents, prevContext.bannedRenderers);
 							if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 								renderer.render(element, data, prevContext);
 							} else {
@@ -7271,9 +7307,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			this.subContexts = {};
 			this.oldSubContexts = {};
 			this.missingComponents = componentList;
+			this.bannedRenderers = {};
 		}
 		RenderContext.prototype = {
-			missingComponents: [],
 			rootContext: null,
 			baseContext: null,
 			labelSequence: function () {
@@ -7428,9 +7464,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					delete this.subContextSavedStates[labelKey];
 				}
 				if (this.subContexts[labelKey] == undefined) {
-					var missingComponents;
+					var missingComponents, bannedRenderers;
 					if (this.data == data) {
 						missingComponents = this.missingComponents.slice(0);
+						bannedRenderers = Object.create(this.bannedRenderers);
 						if (this.renderer != undefined) {
 							for (var i = 0; i < this.renderer.filterObj.component.length; i++) {
 								var componentIndex = missingComponents.indexOf(this.renderer.filterObj.component[i]);
@@ -7438,14 +7475,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 									missingComponents.splice(componentIndex, 1);
 								}
 							}
+							bannedRenderers[this.renderer.uniqueId] = true;
 						}
 					} else {
 						missingComponents = componentList.slice(0);
+						bannedRenderers = {};
 					}
 					if (typeof elementId == "object") {
 						elementId = elementId.id;
 					}
-					function Context(rootContext, baseContext, label, data, uiState, missingComponents) {
+					function Context(rootContext, baseContext, label, data, uiState, missingComponents, bannedRenderers) {
 						this.uniqueId = contextIdCounter++;
 						this.rootContext = rootContext;
 						this.baseContext = baseContext;
@@ -7455,9 +7494,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						this.missingComponents = missingComponents;
 						this.subContexts = {};
 						this.oldSubContexts = {};
+						this.bannedRenderers = bannedRenderers;
 					}
 					Context.prototype = this.rootContext;
-					this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, missingComponents);
+					this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, missingComponents, bannedRenderers);
 				}
 				var subContext = this.subContexts[labelKey];
 				subContext.elementId = elementId;
@@ -7543,7 +7583,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				if (this.elementLookup[uniqueId].indexOf(element.id) == -1) {
 					this.elementLookup[uniqueId].push(element.id);
 				}
-				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
+				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents, subContext.bannedRenderers);
 				if (renderer != undefined) {
 					subContext.renderer = renderer;
 					if (subContext.uiState == undefined) {
@@ -7595,7 +7635,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 	
-				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
+				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents, subContext.bannedRenderers);
 				subContext.renderer = renderer;
 				if (subContext.uiState == undefined) {
 					subContext.loadState(subContext.uiStartingState);
@@ -7640,7 +7680,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				var subContext = this.getSubContext(elementId, data, label, uiStartingState);
 	
-				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents);
+				var renderer = selectRenderer(data, uiStartingState, subContext.missingComponents, subContext.bannedRenderers);
 				subContext.renderer = renderer;
 				if (subContext.uiState == undefined) {
 					subContext.loadState(subContext.uiStartingState);
@@ -7668,7 +7708,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					// If so, check the enhancement contexts.
 					var prevContext = element.jsonaryContext || this.enhancementContexts[elementIds[i]];
 					var prevUiState = copyValue(this.uiStartingState);
-					var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents);
+					var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents, prevContext.bannedRenderers);
 					if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 						renderer.update(element, data, prevContext, operation);
 					} else {
@@ -7903,7 +7943,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 		var initialComponents = [];
 		
-		function render(element, data, uiStartingState) {
+		function render(element, data, uiStartingState, options) {
+			options = options || {};
 			if (typeof element == 'string') {
 				element = render.getElementById(element);
 			}
@@ -7911,19 +7952,46 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			innerElement.className = "jsonary";
 			element.innerHTML = "";
 			element.appendChild(innerElement);
-			var context = pageContext.withComponent(initialComponents).subContext(Math.random());
+			var context = pageContext.withComponent(initialComponents);
+			if (options.withComponent) {
+				context = context.withComponent(options.withComponent);
+			}
+			if (options.withoutComponent) {
+				context = context.withoutComponent(options.withoutComponent);
+			}
+			context = context.subContext(Math.random());
 			pageContext.oldSubContexts = {};
 			pageContext.subContexts = {};
 			return context.render(innerElement, data, 'render', uiStartingState);
 		}
-		function renderHtml(data, uiStartingState) {
-			var innerHtml = pageContext.withComponent(initialComponents).renderHtml(data, null, uiStartingState);
+		function renderHtml(data, uiStartingState, options) {
+			options = options || {};
+			var context = pageContext.withComponent(initialComponents);
+			if (options.withComponent) {
+				context = context.withComponent(options.withComponent);
+			}
+			if (options.withoutComponent) {
+				context = context.withoutComponent(options.withoutComponent);
+			}
+			var innerHtml = context.renderHtml(data, null, uiStartingState);
 			pageContext.oldSubContexts = {};
 			pageContext.subContexts = {};
 			return '<span class="jsonary">' + innerHtml + '</span>';
 		}
 		function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-			return pageContext.withComponent(initialComponents).asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
+			options = {};
+			if (typeof htmlCallback === 'object') {
+				options = htmlCallback;
+				htmlCallback = arguments[3];
+			}
+			var context = pageContext.withComponent(initialComponents);
+			if (options.withComponent) {
+				context = context.withComponent(options.withComponent);
+			}
+			if (options.withoutComponent) {
+				context = context.withoutComponent(options.withoutComponent);
+			}
+			return context.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
 				if (error) {
 					htmlCallback(error, innerHtml, renderContext);
 				}
@@ -8034,7 +8102,28 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					};
 				})(this.filterFunction);
 			}
-			this.actionFunction = sourceObj.action;
+			if (typeof sourceObj.action === 'object') {
+				this.actionFunction = function (context, actionName) {
+					if (typeof sourceObj.action[actionName] === 'function') {
+						var args = [];
+						while (args.length < arguments.length) {
+							args[args.length] = arguments[args.length];
+						}
+						args[1] = context;
+						args[0] = context.data;
+						return sourceObj.action[actionName].apply(this, args);
+					} else if (typeof sourceObj.action['_super'] === 'function') {
+						return sourceObj.action['_super'].apply(this, arguments);
+					}
+				}
+			} else {
+				this.actionFunction = sourceObj.action;
+			}
+			this.linkHandler = function () {
+				if (sourceObj.linkHandler) {
+					return sourceObj.linkHandler.apply(this, arguments);
+				}
+			};
 			for (var key in sourceObj) {
 				if (this[key] == undefined) {
 					this[key] = sourceObj[key];
@@ -8174,8 +8263,27 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				return this;
 			},
 			action: function (context, actionName) {
+				// temporary link handler while executing action - travels up the context tree, giving renderers the chance to hande the link
+				var linkHandlerForContexts = function (link) {
+					var args = [];
+					while (args.length < arguments.length) {
+						args[args.length] = arguments[args.length];
+					}
+					var c = context;
+					while (c) {
+						if (c.renderer) {
+							var result = c.renderer.linkHandler.apply(c.renderer, [c.data, c].concat(args));
+							if (result === false) {
+								return result;
+							}
+						}
+						c = c.parent;
+					}
+				};
 				if (typeof this.actionFunction == 'function') {
+					Jsonary.addLinkHandler(linkHandlerForContexts);
 					var result = this.actionFunction.apply(this, arguments);
+					Jsonary.removeLinkHandler(linkHandlerForContexts);
 					return result;
 				} else {
 					Jsonary.log(Jsonary.logLevel.WARNING, 'Renderer ' + this.name + ' has no actions (attempted ' + actionName + ')');
@@ -8405,7 +8513,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			return rendererLookup[rendererId];
 		}
 	
-		function selectRenderer(data, uiStartingState, missingComponents) {
+		function selectRenderer(data, uiStartingState, missingComponents, bannedRenderers) {
 			var schemas = data.schemas();
 			var basicType = data.basicType();
 			var readOnly = data.readOnly();
@@ -8417,7 +8525,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					var rendererList = rendererListByComponent[component];
 					for (var i = rendererList.length - 1; i >= 0; i--) {
 						var renderer = rendererList[i];
-						if (renderer.canRender(data, schemas, uiStartingState)) {
+						if (bannedRenderers[renderer.uniqueId]) {
+							continue;
+						} else if (renderer.canRender(data, schemas, uiStartingState)) {
 							return renderer;
 						}
 					}
@@ -10682,6 +10792,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				return this.defaultUpdate.apply(this, arguments);
 			},
+			linkHandler: function () {
+				if (this.config.linkHandler) {
+					return this.config.linkHandler.apply(this.config, arguments);
+				}
+			},
 			register: function(filterFunction) {
 				if (filterFunction) {
 					this.filter = filterFunction;
@@ -10745,7 +10860,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				
 				var rowOrder = this.rowOrder(data, context);
 				for (var i = 0; i < rowOrder.length; i++) {
-					var rowData = data.item(currentPage[i]);
+					var rowData = data.item(rowOrder[i]);
 					result += this.rowRenderHtml(rowData, context);
 				}
 				
@@ -10915,12 +11030,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				this.addColumn(columnName, title, function (data, context) {
 					if (!context.data.readOnly()) {
 						return '<td></td>';
-						return '<td></td>';
 					}
 					var result = '<td>';
 					if (!context.parent.uiState.linkRel) {
 						var link = data.subPath(subPath).links(linkRel)[0];
-						if (link) {
+						if (link && data.readOnly()) {
 							var html = (typeof linkHtml == 'function') ? linkHtml.call(this, data, context, link) : linkHtml;
 							result += context.parent.actionHtml(html, 'link', linkRel, 0, subPath || undefined);
 						}
@@ -11148,7 +11262,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				return result + '</thead>';
 			},
 			tableBodyRenderHtml: function (data, context) {
-				var config = this.config;
 				var result = '<tbody>';
 				var rowOrder = this.rowOrder(data, context);
 	
@@ -11359,9 +11472,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
 					var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
 					if (link) {
-						link.follow(context.uiState.linkData, function (link, submissionData, request) {
-							return thisConfig.linkHandler(data, context, link, submissionData, request);
-						});
+						link.follow(context.uiState.linkData);
 					}
 					delete context.uiState.linkRel;
 					delete context.uiState.linkIndex;
@@ -11753,6 +11864,61 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 	});
 
+/**** renderers/contributed/tag-list.js ****/
+
+	Jsonary.render.register({
+		renderHtml: function (data, context) {
+			var enums = data.schemas().enumDataList();
+			var result = '<div class="json-tag-list">';
+			result += '<div class="json-tag-list-current">';
+			data.items(function (index, item) {
+				result += '<span class="json-tag-list-entry">';
+				if (!data.readOnly()) {
+					result += '<span class="json-array-delete-container">';
+					result += context.actionHtml('<span class="json-array-delete">X</span>', 'remove', index);
+					result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+					result += '</span>';
+				} else {
+					result += context.renderHtml(item.readOnlyCopy(), 'current' + index) + '</span>';
+				}
+			});
+			result += '</div>';
+			if (!data.readOnly()) {
+				result += '<div class="json-tag-list-add">';
+				result += context.actionHtml('<span class="button">add</span>', 'add');
+				if (!context.uiState.addData) {
+					var itemSchema = data.item(data.length()).schemas(true);
+					context.uiState.addData = itemSchema.createData();
+				}
+				result += context.renderHtml(context.uiState.addData);
+				result += '</div>';
+			}
+			return result + '</div>';
+		},
+		action: {
+			add: function (data, context) {
+				var addData = context.uiState.addData;
+				if (data.schemas().uniqueItems()) {
+					for (var i = 0; i < data.length(); i++) {
+						if (data.item(i).equals(addData)) {
+							return false;
+						}
+					}
+				}
+				data.item(data.length()).setValue(addData.value());
+			},
+			remove: function (data, context, index) {
+				data.item(index).remove();
+			}
+		},
+		filter: {
+			type: 'array',
+			filter: function (data, schemas) {
+				return schemas.unordered();
+			}
+		}
+	});
+
 /**** renderers/common.css ****/
 
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
@@ -11781,6 +11947,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		(function () {
 			var style = document.createElement('style');
 			style.innerHTML = ".json-array-table{border-spacing:0;border-collapse:collapse}.json-array-table .json-array-table{width:100%;margin:-4px;width:calc(100% + 8px)}.json-array-table>thead>tr>th{background-color:#EEE;border-bottom:1px solid #666;padding:.3em;font-size:.9em;font-weight:700;text-align:center}.json-array-table>thead{border:1px solid #BBB}.json-array-table>thead>tr>th.json-array-table-pages{border-bottom:1px solid #BBB;background-color:#DDD}.json-array-table>thead>tr>th.json-array-table-pages .button{font-family:Courier New,monospace}.json-array-table>tbody>tr>td{border:1px solid #CCC;border-top-color:#DDD;border-bottom-color:#DDD;padding:3px;font-size:inherit;text-align:left}.json-array-table>tbody>tr>td.json-array-table-full{padding:.3em;background-color:#EEE}.json-array-table>tbody>tr>td.json-array-table-add{text-align:center;background-color:#F8F8F8;border:1px solid #DDD}.json-array-table-full-buttons{text-align:center}.json-array-table-full-title{text-align:center;margin:-.3em;margin-bottom:.5em;background-color:#CCC;border-bottom:1px solid #BBB;font-weight:700;padding:.2em}.json-array-table-move-select,.json-array-table-move-cancel,.json-array-table-move-to,.json-array-table-delete{display:block;width:16px;height:16px;text-indent:16px;overflow:hidden;background-position:center middle;background-repeat:no-repeat;opacity:.35}.json-array-table-move-select:hover,.json-array-table-move-cancel:hover,.json-array-table-move-to:hover,.json-array-table-delete:hover{opacity:1}.json-array-table-delete{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAApElEQVQ4y82SsQ3CMBBFHxEFAyAKF6HLCKTPHhnkJsgg2SODuDNFhJAHcIFsmhSWYgeQkeCkq/7/r7h/8G9zAcKGHhZPPmxFQgYSa0lIsCLh1raxsV42pfEuZDO8y0B4TBNV0wDgtWbfdRyHYZVJAWrA3PuewzwD4JTiNI4AZ+Aam6vS2lIAY0XwWuOUwimF1xorAmBeAT8+4ldrLH6k4lf+zTwBbL+JOS+cUboAAAAASUVORK5CYII=\")}.json-array-table-move-select{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdElEQVQ4y62Tyw2AIBBEH94oAauwB+qedrQEj3iRRBMW5TPJXAjzQnYHsLUB6XagUQFIkpKkKsQZ4V3S6zDGCLACRw1QDNcg7m/YgriWsAUJj2m3essv8PTpXOiXLxWm1WF4iNPWOKVIXVUe/kyfkFwY69IFeyZbUaKi2aEAAAAASUVORK5CYII=\")}.json-array-table-move-cancel{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAZklEQVQ4y81SwQmAQAwLDuIYjpwtOlee8XNCxTs5KaKBvtKEpi3wN2wAfMO79YzFEeGBSea6Jo4I286Na6seh1mTafHFhKRJPhLjGJmkJVmSSeZIJyxvnLIUobTE8hnLj1R+5W+wA9RyupOydS/wAAAAAElFTkSuQmCC\")}.json-array-table-move-up{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAW0lEQVQ4y+2QwQmAMAxFX4+OEKfoDp37r6MjeKwXhQomGM99kEvgPULApwL9GiOJAV1SlxRGiiNvkh7L1hrACuxR4FWOIuWr7EVKRvYiNnw7O/W+YOEfB5MJcAIH0y4k53GkLAAAAABJRU5ErkJggg==\")}.json-array-table-move-down{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAY0lEQVQ4y+2RsQnAMAwEz2VGUKbwDp7710lGSOk0MYhgB8W1H4RAcC/xgqUlSE/fJvkLwIA6WbldYMAhKbS2lAKwA2dy85CJh30GIZM33DMYmvTgLxlQJVVJLTD7+6Ls0h7CNyr1LiTNtq8FAAAAAElFTkSuQmCC\")}.json-array-table-sort,.json-array-table-sort-asc,.json-array-table-sort-desc{padding-left:15px;padding-right:15px;margin-left:-5px;margin-right:-5px}.json-array-table-sort-asc,.json-array-table-sort-desc{background-position:right center;background-repeat:no-repeat}.json-array-table-sort-text{display:block;float:right;width:0;overflow:hidden}.json-array-table-sort-asc{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAXklEQVQoz+3SuwmAQBBF0SPGNmG1lrENmCoWZGoH7pqssCyCn9gLE0xweW9g+ClpMaD5Is9IGN9ITRZilmPeHzUIWaon3IkL9iI1Fek7prriSYe+EK/OgRXb/08fOAC7tBnlR5zMuwAAAABJRU5ErkJggg==\")}.json-array-table-sort-desc{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAW0lEQVQoz2NgGAUkAUY0NgsRev4yMDD8wyaxE0nyPxL+BxXfhs9UHQYGhgVoGmF4AVQeL9BlYGBYi2T7Pyhfl9iw0GFgYNgO1byWGBvRgT4DA0MHKTZic8FwAwDm/hlxhNq1AAAAAABJRU5ErkJggg==\")}";
+			document.head.appendChild(style);
+		})();
+	}
+
+
+/**** renderers/contributed/tag-list.css ****/
+
+	if (typeof window != 'undefined' && typeof document != 'undefined') {
+		(function () {
+			var style = document.createElement('style');
+			style.innerHTML = ".json-tag-list{width:100%;overflow:auto;position:relative}.json-tag-list-current{width:100%;overflow:auto;position:relative}.json-tag-list-entry{display:block;float:left;padding:1px;padding-left:3px;padding-right:3px;background-color:#F0F2F8;border:1px solid #CCD;border-bottom-color:#BBB;border-top-color:#DDDDE4;border-radius:3px}.json-tag-list-add{clear:both;float:left;border-radius:4px;background-color:#EEE;border-bottom:1px solid #DDD;border-top:1px solid #F8F8F8}";
 			document.head.appendChild(style);
 		})();
 	}
