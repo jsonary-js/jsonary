@@ -1237,6 +1237,13 @@ SchemaList.prototype = {
 		}
 		return result;
 	},
+	additionalPropertySchemas: function (key) {
+		var result = new SchemaList();
+		for (var i = 0; i < this.length; i++) {
+			result = result.concat(this[i].additionalPropertySchemas(key));
+		}
+		return result;
+	},
 	propertyDependencies: function(key) {
 		var result = [];
 		var stringDeps = {};

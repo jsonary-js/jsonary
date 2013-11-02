@@ -3775,6 +3775,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		defaultValue: function() {
 			return this.data.propertyValue("default");
 		},
+		additionalPropertySchemas: function () {
+			var schemas = [];
+			if (this.data.property("additionalProperties").basicType() == 'object') {
+				schemas.push(this.data.property("additionalProperties").asSchema().getFull());
+			}
+			return new SchemaList(schemas);
+		},
 		propertySchemas: function (key) {
 			var schemas = [];
 			var subSchema = this.data.property("properties").property(key);
@@ -6320,6 +6327,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var result = new SchemaList();
 			for (var i = 0; i < this.length; i++) {
 				result = result.concat(this[i].propertySchemas(key));
+			}
+			return result;
+		},
+		additionalPropertySchemas: function (key) {
+			var result = new SchemaList();
+			for (var i = 0; i < this.length; i++) {
+				result = result.concat(this[i].additionalPropertySchemas(key));
 			}
 			return result;
 		},

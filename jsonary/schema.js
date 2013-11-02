@@ -148,6 +148,13 @@ Schema.prototype = {
 	defaultValue: function() {
 		return this.data.propertyValue("default");
 	},
+	additionalPropertySchemas: function () {
+		var schemas = [];
+		if (this.data.property("additionalProperties").basicType() == 'object') {
+			schemas.push(this.data.property("additionalProperties").asSchema().getFull());
+		}
+		return new SchemaList(schemas);
+	},
 	propertySchemas: function (key) {
 		var schemas = [];
 		var subSchema = this.data.property("properties").property(key);

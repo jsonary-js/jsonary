@@ -246,6 +246,27 @@ tests.add("schemaList.readOnly()", function () {
 	return true;
 });
 
+tests.add("schemaList.additionalPropertySchemas()", function () {
+	var schema1 = Jsonary.createSchema({});
+	var schema2 = Jsonary.createSchema({
+		additionalProperties: {title: "test"}
+	});
+	var schema3 = Jsonary.createSchema({
+		additionalProperties: {title: "test"}
+	});
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2]);
+	this.assert(schemaList.additionalPropertySchemas().length == 1, "1: 1");
+	
+	var schemaList = schema1.asList();
+	this.assert(schemaList.additionalPropertySchemas().length == 0, "2: 0");
+	
+	var schemaList = Jsonary.createSchemaList([schema1, schema2, schema3]);
+	this.assert(schemaList.additionalPropertySchemas().length == 2, "3: 2");
+
+	return true;
+});
+
 tests.add("data.readOnly() from schema", function () {
 	var schema = Jsonary.createSchema({readOnly: true});
 	var data = Jsonary.create({});
