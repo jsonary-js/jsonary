@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-02 */
+/* Bundled on 2013-11-03 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -6246,7 +6246,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 							var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 							if (candidate && typeof propValue !== 'undefined') {
 								candidate[key] = propValue;
-							} else if (banCoercion) {
+							} else if (banCoercion && typeof origPropValue !== 'undefined') {
 								candidate = undefined;
 							}
 						}

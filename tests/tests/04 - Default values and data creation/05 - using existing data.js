@@ -218,3 +218,20 @@ tests.add("use default boolean value (false)", function () {
 	this.assert(createdData === false, "data matches");
 	return true;
 });
+
+tests.add("use default value even if all values not covered", function () {
+	var schema1 = Jsonary.createSchema({
+		type: "object",
+		properties: {
+			"bool": {"type": "boolean"},
+			"str": {"type": "string"}
+		},
+		'default': {"bool": true}
+	});
+	var createdData = schema1.createValue();
+	
+	this.assert(typeof createdData === 'object', "is object");
+	this.assert(typeof createdData.bool === 'boolean', ".bool is boolean");
+	this.assert(typeof createdData.str === 'undefined', ".str is undefined");
+	return true;
+});

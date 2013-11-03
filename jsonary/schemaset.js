@@ -1153,7 +1153,7 @@ SchemaList.prototype = {
 						var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 						if (candidate && typeof propValue !== 'undefined') {
 							candidate[key] = propValue;
-						} else if (banCoercion) {
+						} else if (banCoercion && typeof origPropValue !== 'undefined') {
 							candidate = undefined;
 						}
 					}
