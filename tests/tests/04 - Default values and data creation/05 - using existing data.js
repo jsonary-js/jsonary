@@ -235,3 +235,21 @@ tests.add("use default value even if all values not covered", function () {
 	this.assert(typeof createdData.str === 'undefined', ".str is undefined");
 	return true;
 });
+
+tests.add("use default value even if all values not covered (async)", function () {
+	var thisTest = this;
+	var schema1 = Jsonary.createSchema({
+		type: "object",
+		properties: {
+			"bool": {"type": "boolean"},
+			"str": {"type": "string"}
+		},
+		'default': {"bool": true}
+	});
+	schema1.createValue(function (createdData) {
+		thisTest.assert(typeof createdData === 'object', "is object");
+		thisTest.assert(typeof createdData.bool === 'boolean', ".bool is boolean");
+		thisTest.assert(typeof createdData.str === 'undefined', ".str is undefined");
+		thisTest.pass();
+	});
+});

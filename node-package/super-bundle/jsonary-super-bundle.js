@@ -6234,7 +6234,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 							thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 								if (candidate && typeof value !== 'undefined') {
 									candidate[key] = value;
-								} else if (banCoercion) {
+								} else if (banCoercion && typeof origPropValue !== 'undefined') {
 									candidate = undefined;
 								}
 								pending--;
