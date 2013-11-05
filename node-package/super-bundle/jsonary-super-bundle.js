@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-03 */
+/* Bundled on 2013-11-05 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -6294,13 +6294,23 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				origValue == origValue.value();
 			}
 			if (callback) {
+				var tempKey = Utils.getUniqueKey();
+				// Temporarily read-only
+				var tempSchema = publicApi.createSchema({readOnly: true});
+				var data = publicApi.create('...').addSchema(tempSchema, tempKey);
 				this.createValue(origValue, function (value) {
-					var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
-					callback(data);
+					DelayedCallbacks.increment();
+					data.removeSchema(tempKey);
+					data.setValue(value);
+					data.addSchema(thisSchemaSet.fixed());
+					DelayedCallbacks.decrement();
+					if (typeof callback === 'function') {
+						callback(data);
+					}
 				});
-				return this;
+				return data;
 			}
-			return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
+			return publicApi.create(this.createValue(undefined, origValue)).addSchema(this.fixed());
 		},
 		indexSchemas: function(index) {
 			var result = new SchemaList();
@@ -7992,6 +8002,23 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			pageContext.subContexts = {};
 			return '<span class="jsonary">' + innerHtml + '</span>';
 		}
+		function renderValue(target, startingValue, schema, updateFunction) {
+			if (typeof updateFunction === 'string') {
+				var element = document.getElementById(updateFunction) || document.getElementsByName(updateFunction)[0];
+				updateFunction = !element || function (newValue) {
+					element.value = JSON.stringify(newValue);
+				};
+			}
+			var data = Jsonary.create(startingValue).addSchema(Jsonary.createSchema(schema));
+			if (typeof updateFunction === 'function') {
+				data.document.registerChangeListener(function () {
+					updateFunction(data.value());
+				});
+			} else {
+				data = data.readOnlyCopy();
+			}
+			return Jsonary.render(target, data);
+		};
 		function asyncRenderHtml(data, uiStartingState, htmlCallback) {
 			options = {};
 			if (typeof htmlCallback === 'object') {
@@ -8593,6 +8620,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		Jsonary.extend({
 			render: render,
 			renderHtml: renderHtml,
+			renderValue: renderValue,
 			asyncRenderHtml: asyncRenderHtml
 		});
 		Jsonary.extendData({
