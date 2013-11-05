@@ -791,6 +791,23 @@
 		pageContext.subContexts = {};
 		return '<span class="jsonary">' + innerHtml + '</span>';
 	}
+	function renderValue(target, startingValue, schema, updateFunction) {
+		if (typeof updateFunction === 'string') {
+			var element = document.getElementById(updateFunction) || document.getElementsByName(updateFunction)[0];
+			updateFunction = !element || function (newValue) {
+				element.value = JSON.stringify(newValue);
+			};
+		}
+		var data = Jsonary.create(startingValue).addSchema(Jsonary.createSchema(schema));
+		if (typeof updateFunction === 'function') {
+			data.document.registerChangeListener(function () {
+				updateFunction(data.value());
+			});
+		} else {
+			data = data.readOnlyCopy();
+		}
+		return Jsonary.render(target, data);
+	};
 	function asyncRenderHtml(data, uiStartingState, htmlCallback) {
 		options = {};
 		if (typeof htmlCallback === 'object') {
@@ -1392,6 +1409,7 @@
 	Jsonary.extend({
 		render: render,
 		renderHtml: renderHtml,
+		renderValue: renderValue,
 		asyncRenderHtml: asyncRenderHtml
 	});
 	Jsonary.extendData({
