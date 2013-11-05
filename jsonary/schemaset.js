@@ -1201,13 +1201,23 @@ SchemaList.prototype = {
 			origValue == origValue.value();
 		}
 		if (callback) {
+			var tempKey = Utils.getUniqueKey();
+			// Temporarily read-only
+			var tempSchema = publicApi.createSchema({readOnly: true});
+			var data = publicApi.create('...').addSchema(tempSchema, tempKey);
 			this.createValue(origValue, function (value) {
-				var data = publicApi.create(value).addSchema(thisSchemaSet.fixed());
-				callback(data);
+				DelayedCallbacks.increment();
+				data.removeSchema(tempKey);
+				data.setValue(value);
+				data.addSchema(thisSchemaSet.fixed());
+				DelayedCallbacks.decrement();
+				if (typeof callback === 'function') {
+					callback(data);
+				}
 			});
-			return this;
+			return data;
 		}
-		return publicApi.create(this.createValue(undefined, origValue)).addSchema(this);
+		return publicApi.create(this.createValue(undefined, origValue)).addSchema(this.fixed());
 	},
 	indexSchemas: function(index) {
 		var result = new SchemaList();
