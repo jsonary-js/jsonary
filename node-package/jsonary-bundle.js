@@ -85,16 +85,15 @@ function JsonaryBundle() {
 JsonaryBundle.prototype = {
 	instance: function () {
 		this.writeJs(null, true);
-		return this.instance();
+		return this.instance.apply(null, arguments);
 	}
 };
 
 function modifyJsonaryForServer(baseUri, inputPrefix) {
 	var Jsonary = this;
-	if (baseUri) {
-		Jsonary.baseUri = baseUri;
-	}
+	Jsonary.baseUri = baseUri || '';
 	inputPrefix = inputPrefix || 'Jsonary';
+	var canonicalUrl = Jsonary.baseUri;
 
 	Jsonary.render.actionUrl = function (args) {
 		var inputName = new Buffer(JSON.stringify({
@@ -135,10 +134,41 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 		}
 	});
 
+	var savedData = {};
 	Jsonary.server = {
 		httpAgent: null,
 		httpsAgent: null,
-		cookies: cookieClient()
+		cookies: cookieClient(),
+		savedData: savedData
+	};
+	
+	Jsonary.server.loadSavedData = function (body) {
+		if (body['Jsonary.data']) {
+			try {
+				var loaded = JSON.parse(body[inputPrefix + '.data']);
+				savedData = Object.create(loaded);
+			} catch (e) {
+				console.log("malformed " + inputPrefix + ".data: " + body[inputPrefix + '.data']);
+			}
+		}
+	};
+	Jsonary.server.clearData = function () {
+		savedData = {};
+	};
+	Jsonary.render.loadData = function (saveDataId) {
+		var documentId = saveDataId.split(":")[0];
+		var dataPath = saveDataId.substring(documentId.length + 1);
+		if (savedData["doc" + documentId] !== undefined) {
+			var doc = Jsonary.inflate(savedData["doc" + documentId]);
+			return doc.root.subPath(dataPath);
+		}
+	}
+	Jsonary.render.saveData = function (data, saveDataId) {
+		var documentId = data.document.uniqueId;
+		if (savedData["doc" + documentId] === undefined) {
+			savedData["doc" + documentId] = data.document.deflate();
+		}
+		return documentId + ":" + data.pointerPath();
 	};
 	
 	Jsonary.server.performActions = function (context, query, body) {

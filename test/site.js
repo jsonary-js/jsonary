@@ -123,32 +123,10 @@ app.all('/', function (request, response) {
 	var Jsonary = createJsonary();
 	timer.event('create Jsonary');
 
-	var renderContext;
 	response.write('<pre>GET: <code>' + Jsonary.escapeHtml(prettyJson(request.query)) + '</code></pre>');
 	response.write('<pre>POST: <code>' + Jsonary.escapeHtml(prettyJson(request.body)) + '</code></pre>');
-	var savedData = {};
-	if (request.body['Jsonary.data']) {
-		try {
-			savedData = JSON.parse(request.body['Jsonary.data']);
-		} catch (e) {
-			console.log("malformed Jsonary.data: " + request.body['Jsonary.data']);
-		}
-	}
-	Jsonary.render.loadData = function (saveDataId) {
-		var documentId = saveDataId.split(":")[0];
-		var dataPath = saveDataId.substring(documentId.length + 1);
-		if (savedData["doc" + documentId] !== undefined) {
-			var doc = Jsonary.inflate(savedData["doc" + documentId]);
-			return doc.root.subPath(dataPath);
-		}
-	}
-	Jsonary.render.saveData = function (data, saveDataId) {
-		var documentId = data.document.uniqueId;
-		if (savedData["doc" + documentId] === undefined) {
-			savedData["doc" + documentId] = data.document.deflate();
-		}
-		return documentId + ":" + data.pointerPath();
-	};
+
+	Jsonary.server.loadSavedData(request.body);
 	timer.event('extract stored data');
 
 	var strippedUrl = request.url.replace(/&?Jsonary\.action=[^&]+/, "");
@@ -179,17 +157,17 @@ app.all('/', function (request, response) {
 	function handleInnerHtml(error, innerHtml, renderContext) {
 		timer.event('render complete');
 
-		savedData = {};
 		console.log(renderContext.saveUiState());
 
 		var html = '';
 		
 		html += '<link rel="stylesheet" href="bundle.css">';
+		Jsonary.server.clearData();
 		var savedUiState = renderContext.saveUiState();
 		html += '<form action="' + urlForUiState(savedUiState) + '" method="POST">';
 		html += innerHtml;
 		html += Jsonary.render.footerHtml();
-		html += '<input type="hidden" name="Jsonary.data" value=\'' + Jsonary.escapeHtml(JSON.stringify(savedData), true) + '\'>';
+		html += '<input type="hidden" name="Jsonary.data" value=\'' + Jsonary.escapeHtml(JSON.stringify(Jsonary.server.savedData), true) + '\'>';
 		html += '</form>';
 		timer.event('saved state');
 		
@@ -219,7 +197,7 @@ app.all('/', function (request, response) {
 		//*/
 		
 		html += '<hr><pre>';
-		html += JSON.stringify(savedData, null, '\t');
+		html += JSON.stringify(Jsonary.server.savedData, null, '\t');
 		html += '</pre>';
 		response.end(html);
 		timer.done();
