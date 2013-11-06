@@ -33,7 +33,7 @@ function JsonaryBundle() {
 		var compiledJs = bundle.compileJs(filename, minified);
 		this.instance = function () {
 			var Jsonary = compiledJs()['Jsonary'];
-			modifyJsonaryForServer(Jsonary);
+			modifyJsonaryForServer.apply(Jsonary, arguments);
 			return Jsonary;
 		};
 		return this;
@@ -89,8 +89,40 @@ JsonaryBundle.prototype = {
 	}
 };
 
-function modifyJsonaryForServer(Jsonary) {
-	// Log to console - errors only
+function modifyJsonaryForServer(baseUri, inputPrefix) {
+	var Jsonary = this;
+	if (baseUri) {
+		Jsonary.baseUri = baseUri;
+	}
+	inputPrefix = inputPrefix || 'Jsonary';
+
+	Jsonary.render.actionUrl = function (args) {
+		var inputName = new Buffer(JSON.stringify({
+			contextPath: args.context.labelSequence(),
+			action: args.actionName,
+			params: args.params
+		})).toString('base64');
+		var parts = canonicalUrl.split('#');
+		if (parts[0].indexOf('?') == -1) {
+			parts[0] += '?';
+		} else {
+			parts[0] += '&';
+		}
+		parts[0] += inputPrefix + '.action=' + inputName;
+		return parts.join('#');
+	};
+	// Yes, I know that the browser also does percent-encoding.
+	// However, if we simply escape the HTML, then any lists ([]) get interpreted as properties, and that's just a mess to undo.
+	Jsonary.render.actionInputName = function (args) {
+		var inputName = new Buffer(JSON.stringify({
+			contextPath: args.context.labelSequence(),
+			action: args.actionName,
+			params: args.params
+		})).toString('base64');
+		return inputPrefix + ".input:" + inputName;
+	};
+	
+	// Log to console - warnings and errors only
 	Jsonary.setLogFunction(function (logLevel, message) {
 		if (logLevel >= Jsonary.logLevel.WARNING) {
 			if (typeof message !== 'string') {
@@ -103,12 +135,81 @@ function modifyJsonaryForServer(Jsonary) {
 		}
 	});
 
+	Jsonary.server = {
+		httpAgent: null,
+		httpsAgent: null,
+		cookies: cookieClient()
+	};
+	
+	Jsonary.server.performActions = function (context, query, body) {
+		var needsReRender = false;
+		// Execute inputs first, then actions
+		for (var key in body) {
+			if (key.substring(0, (inputPrefix + ".input:").length) == (inputPrefix + ".input:")) {
+				needsReRender = true;
+				var base64 = key.substring((inputPrefix + ".input:").length);
+				try {
+					var actionJson = new Buffer(base64, 'base64').toString();
+					var actionArgs = JSON.parse(actionJson);
+				} catch (e) {
+					console.log("malformed " + inputPrefix + ".input:" + base64);
+					continue;
+				}
+				var actionContext = context.labelSequenceContext(actionArgs.contextPath);
+				if (actionContext) {
+					var result = actionContext.actionArgs(actionArgs.action, [body[key]].concat(actionArgs.params));
+				} else {
+					console.log("Could not find input action context for: " + actionArgs.contextPath);
+				}
+			}
+		}
+		for (var key in body) {
+			if (key.substring(0, (inputPrefix + ".action:").length) == (inputPrefix + ".action:")) {
+				needsReRender = true;
+				var base64 = key.substring((inputPrefix + ".action:").length);
+				try {
+					var actionJson = new Buffer(base64, 'base64').toString();
+					var actionArgs = JSON.parse(actionJson);
+				} catch (e) {
+					console.log("malformed " + inputPrefix + ".action:" + base64);
+					continue;
+				}
+				var actionContext = context.labelSequenceContext(actionArgs.contextPath);
+				if (actionContext) {
+					var result = actionContext.actionArgs(actionArgs.action, actionArgs.params);
+				} else {
+					console.log("Could not find action context for: " + actionArgs.contextPath);
+				}
+			}
+		}
+		for (var key in query) {
+			if (key == inputPrefix + '.action') {
+				needsReRender = true;
+				var base64 = query[inputPrefix + '.action'];
+				try {
+					var actionJson = new Buffer(base64, 'base64').toString();
+					var actionArgs = JSON.parse(actionJson);
+				} catch (e) {
+					console.log("malformed " + inputPrefix + ".action:" + base64);
+					continue;
+				}
+				var actionContext = context.labelSequenceContext(actionArgs.contextPath);
+				if (actionContext) {
+					var result = actionContext.actionArgs(actionArgs.action, actionArgs.params);
+				} else {
+					console.log("Could not find action context for: " + actionArgs.contextPath);
+				}
+			}
+		}
+		return needsReRender;
+	};
+
 	// TODO: make this part of Jsonary, so we can include things like createValue() callbacks and other async stuff
 	// Is there anything async that doesn't include a request?  Possibly not.
-	// Maybe just move it to Jsonary.server, then
+	// Maybe just keep it in Jsonary.server, then.
 	var requestCount = 0;
 	var requestCompleteCallbacks = [];
-	Jsonary.whenRequestsComplete = function (callback) {
+	Jsonary.server.whenRequestsComplete = function (callback) {
 		requestCompleteCallbacks.push(callback);
 		checkRequestsComplete();
 	};
@@ -117,14 +218,12 @@ function modifyJsonaryForServer(Jsonary) {
 			return;
 		}
 		while (requestCompleteCallbacks.length > 0) {
-			requestCompleteCallbacks.shift()();
+			process.nextTick(requestCompleteCallbacks.shift());
 		}
 	}
 	
-	Jsonary.server = {
-		httpAgent: null,
-		httpsAgent: null,
-		cookies: cookieClient()
+	Jsonary.render.getElementById = function () {
+		return null;
 	};
 	
 	// Make an actual HTTP request, defaulting to the current server if just path is given
