@@ -1,11 +1,3 @@
-Jsonary.render.Components.add('EXCITEMENT', false);
-Jsonary.render.register({
-	component: Jsonary.render.Components.EXCITEMENT,
-	renderHtml: function (data, context) {
-		return "!" + context.renderHtml(data) + "!";
-	}
-});
-
 Jsonary.render.register({
 	renderHtml: function (data, context) {
 		var result = '<div class="site">';
@@ -30,21 +22,31 @@ Jsonary.render.register({
 	}
 });
 
-Jsonary.plugins.FancyTableRenderer()
-	.addColumn('/title', null)
-	.addColumn('/tabs', null, function (data, context) {
-		return '<td>' + context.withComponent('EXCITEMENT').withoutComponent('LIST_LINKS').renderHtml(data) + '</td>';
-	})
-	.register(function (data, schemas) {
-		return data.basicType() == 'array';
-	});
-	
 Jsonary.render.register({
 	component: 'WHOLE_PAGE',
 	renderHtml: function (data, context) {
 		var title = "Page title";
 		var result = '<h1>' + Jsonary.escapeHtml(title) + '</h1>';
 		result += '<hr>';
-		return result + context.renderHtml(data);
+		var page = data;
+		data.property('sections').items(function (index, subData) {
+			if (subData.get('/tabs') == context.uiState.viewPage) {
+				page = subData.property('tabs').getLink('full').href;
+			}
+		});
+		return result + context.renderHtml(page, 'page');
+	},
+	linkHandler: function (data, context, link, submissionData, request) {
+		var found = null;
+		data.property('sections').items(function (index, subData) {
+			if (subData.property('tabs').getLink('full') == link) {
+				found = subData.get('/tabs');
+			}
+		});
+		if (found) {
+			context.uiState.viewPage = found;
+			context.rerender();
+			return false;
+		}
 	}
 });

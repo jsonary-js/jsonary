@@ -533,7 +533,11 @@
 			var startingIndex = 2;
 			var historyChange = false;
 			var linkUrl = null;
-			if (typeof actionName == "boolean") {
+			if (typeof actionName == "object") {
+				historyChange = actionName.historyChange || false;
+				linkUrl = actionName.linkUrl || null;
+				actionName = actionName.actionName;
+			} else if (typeof actionName == "boolean") {
 				historyChange = arguments[1];
 				linkUrl = arguments[2] || null;
 				actionName = arguments[3];
@@ -754,8 +758,6 @@
 		Jsonary.cleanup = cleanup;
 	}
 
-	var initialComponents = [];
-	
 	function render(element, data, uiStartingState, options) {
 		options = options || {};
 		if (typeof element == 'string') {
@@ -765,7 +767,7 @@
 		innerElement.className = "jsonary";
 		element.innerHTML = "";
 		element.appendChild(innerElement);
-		var context = pageContext.withComponent(initialComponents);
+		var context = pageContext;
 		if (options.withComponent) {
 			context = context.withComponent(options.withComponent);
 		}
@@ -779,7 +781,7 @@
 	}
 	function renderHtml(data, uiStartingState, options) {
 		options = options || {};
-		var context = pageContext.withComponent(initialComponents);
+		var context = pageContext;
 		if (options.withComponent) {
 			context = context.withComponent(options.withComponent);
 		}
@@ -808,13 +810,17 @@
 		}
 		return Jsonary.render(target, data);
 	};
-	function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-		options = {};
+	function asyncRenderHtml(data, uiStartingState, options, htmlCallback) {
+		if (typeof options === 'function') {
+			htmlCallback = optionsl
+			options = null;
+		}
+		options = options || {};
 		if (typeof htmlCallback === 'object') {
 			options = htmlCallback;
 			htmlCallback = arguments[3];
 		}
-		var context = pageContext.withComponent(initialComponents);
+		var context = pageContext;
 		if (options.withComponent) {
 			context = context.withComponent(options.withComponent);
 		}
@@ -839,11 +845,6 @@
 		};
 	}
 	render.Components = componentNames;
-	render.addInitialComponent = function (component) {
-		componentNames.add(component, false);
-		initialComponents.push(component);
-		return this;
-	};
 	render.actionInputName = function (args) {
 		var context = args.context;
 		return context.getElementId();
@@ -1068,7 +1069,7 @@
 				}
 				
 				for (var placeholder in subs) {
-					//innerHtml = innerHtml.replace(placeholder, subs[placeholder]);
+					innerHtml = innerHtml.replace(placeholder, subs[placeholder]);
 				}
 				htmlCallback(null, innerHtml, context);
 			}

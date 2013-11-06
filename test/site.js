@@ -29,30 +29,17 @@ function createBundles() {
 	bundle.writeCss('bundle.css');
 	//bundle.writeCss('bundle.min.css', true);
 	bundle.writeJs('bundle.js');
-	//masterBundle.writeJs('bundle.min.js', true);
+	//bundle.writeJs('bundle.min.js', true);
 	return bundle;
 }
 var jsonaryJsBundle = createBundles();
 
 var createJsonary = function () {
-	var Jsonary = jsonaryJsBundle.instance();
-	Jsonary.baseUri = 'http://localhost:8080/';
+	var Jsonary = jsonaryJsBundle.instance('http://localhost:8080/', 'Jsonary');
 	
-	Jsonary.render.addInitialComponent('WHOLE_PAGE');
 	var buttons = [];
 	Jsonary.render.clearButtons = function () {
 		buttons = [];
-	};
-	Jsonary.render.actionInputName = function (args) {
-		var inputName = new Buffer(JSON.stringify({
-			contextPath: args.context.labelSequence(),
-			action: args.actionName,
-			params: args.params
-		})).toString('base64');
-		return "Jsonary.input:" + inputName;
-	};
-	Jsonary.render.actionUrl = function (args) {
-		return 'javascript:void(0)';
 	};
 	Jsonary.render.actionHtml = function (elementId, innerHtml, args) {
 		var textValue = innerHtml.replace(/<.*?>/g, "");
@@ -62,7 +49,7 @@ var createJsonary = function () {
 			params: args.params
 		})).toString('base64');
 		// Yes, I know that the browser also does percent-encoding.
-		// However, if we simply escape the HTML, then any lists [] get interpreted as 
+		// However, if we simply escape the HTML, then any lists ([]) get interpreted as properties, and that's just a mess to undo.
 		var result = '<input type="submit" id="button-' + elementId + '" name="Jsonary.action:' + inputName + '" value="' + Jsonary.escapeHtml(textValue) + '"></input>';
 		buttons.push({
 			elementId: elementId,
@@ -96,7 +83,7 @@ var createJsonary = function () {
 		result += '</script>';
 		return result;
 	};
-	Jsonary.location.queryVariant = 'dotted';
+	//Jsonary.location.queryVariant = 'dotted';
 	return Jsonary;
 };
 
@@ -137,8 +124,8 @@ app.all('/', function (request, response) {
 	timer.event('create Jsonary');
 
 	var renderContext;
-	response.write('<pre>GET: <code>' + Jsonary.escapeHtml(JSON.stringify(request.query, null, 4)) + '</code></pre>');
-	response.write('<pre>POST: <code>' + Jsonary.escapeHtml(JSON.stringify(request.body, null, 4)) + '</code></pre>');
+	response.write('<pre>GET: <code>' + Jsonary.escapeHtml(prettyJson(request.query)) + '</code></pre>');
+	response.write('<pre>POST: <code>' + Jsonary.escapeHtml(prettyJson(request.body)) + '</code></pre>');
 	var savedData = {};
 	if (request.body['Jsonary.data']) {
 		try {
@@ -167,91 +154,20 @@ app.all('/', function (request, response) {
 	var strippedUrl = request.url.replace(/&?Jsonary\.action=[^&]+/, "");
 	var uiState = Jsonary.decodeData(url.parse(strippedUrl).query || '', 'application/x-www-form-urlencoded', Jsonary.location.queryVariant);
 	canonicalUrl = urlForUiState(uiState);
-	Jsonary.render.actionUrl = function (args) {
-		var inputName = new Buffer(JSON.stringify({
-			contextPath: args.context.labelSequence(),
-			action: args.actionName,
-			params: args.params
-		})).toString('base64');
-		var parts = canonicalUrl.split('#');
-		if (parts[0].indexOf('?') == -1) {
-			parts[0] += '?';
-		} else {
-			parts[0] += '&';
-		}
-		parts[0] += 'Jsonary.action=' + inputName;
-		return parts.join('#');
-	};
 	
-	Jsonary.asyncRenderHtml(defaultJsonPage, uiState, function (error, innerHtml, renderContext) {
+	Jsonary.asyncRenderHtml(defaultJsonPage, uiState, {withComponent: 'WHOLE_PAGE'}, function (error, innerHtml, renderContext) {
 		timer.event('first render');
-		var needsReRender = false;
-		// Execute inputs first, then actions
-		for (var key in request.body) {
-			if (key.substring(0, "Jsonary.input:".length) == "Jsonary.input:") {
-				needsReRender = true;
-				var base64 = key.substring("Jsonary.input:".length);
-				try {
-					var actionJson = new Buffer(base64, 'base64').toString();
-					var actionArgs = JSON.parse(actionJson);
-				} catch (e) {
-					console.log("malformed Jsonary.input:" + base64);
-					continue;
-				}
-				var actionContext = renderContext.labelSequenceContext(actionArgs.contextPath);
-				if (actionContext) {
-					var result = actionContext.actionArgs(actionArgs.action, [request.body[key]].concat(actionArgs.params));
-				} else {
-					console.log("Could not find input action context for: " + actionArgs.contextPath);
-				}
-			}
-		}
-		for (var key in request.body) {
-			if (key.substring(0, "Jsonary.action:".length) == "Jsonary.action:") {
-				needsReRender = true;
-				var base64 = key.substring("Jsonary.action:".length);
-				try {
-					var actionJson = new Buffer(base64, 'base64').toString();
-					var actionArgs = JSON.parse(actionJson);
-				} catch (e) {
-					console.log("malformed Jsonary.action:" + base64);
-					continue;
-				}
-				var actionContext = renderContext.labelSequenceContext(actionArgs.contextPath);
-				if (actionContext) {
-					var result = actionContext.actionArgs(actionArgs.action, actionArgs.params);
-				} else {
-					console.log("Could not find action context for: " + actionArgs.contextPath);
-				}
-			}
-		}
-		for (var key in request.query) {
-			if (key == 'Jsonary.action') {
-				needsReRender = true;
-				var base64 = request.query['Jsonary.action'];
-				try {
-					var actionJson = new Buffer(base64, 'base64').toString();
-					var actionArgs = JSON.parse(actionJson);
-				} catch (e) {
-					console.log("malformed Jsonary.action:" + base64);
-					continue;
-				}
-				var actionContext = renderContext.labelSequenceContext(actionArgs.contextPath);
-				if (actionContext) {
-					var result = actionContext.actionArgs(actionArgs.action, actionArgs.params);
-				} else {
-					console.log("Could not find action context for: " + actionArgs.contextPath);
-				}
-			}
-		}
+		var needsReRender = Jsonary.server.performActions(renderContext, request.query, request.body);
 		timer.event('inputs/actions');
 		
 		if (needsReRender) {
 			var uiState = renderContext.saveUiState();
+			console.log(uiState);
 			// TODO: replace link URLs *after* rendering, because rendering can actually change the uiState
 			canonicalUrl = urlForUiState(uiState);
-			Jsonary.whenRequestsComplete(function () {
+			Jsonary.server.whenRequestsComplete(function () {
 				timer.event('requests complete, starting re-render');
+				console.log(renderContext.saveUiState());
 				Jsonary.render.clearButtons();
 				renderContext.asyncRerenderHtml(handleInnerHtml);
 			});
@@ -268,8 +184,6 @@ app.all('/', function (request, response) {
 
 		var html = '';
 		
-		html += '<script src="https://cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Converter.min.js"></script>';
-		html += '<script src="https://cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Sanitizer.min.js"></script>';
 		html += '<link rel="stylesheet" href="bundle.css">';
 		var savedUiState = renderContext.saveUiState();
 		html += '<form action="' + urlForUiState(savedUiState) + '" method="POST">';
@@ -279,16 +193,19 @@ app.all('/', function (request, response) {
 		html += '</form>';
 		timer.event('saved state');
 		
-		/*/
+		//*/
 		html += '<hr><div id="jsonary-target"></div>';
+		html += '<script src="https://cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Converter.min.js"></script>';
+		html += '<script src="https://cdnjs.cloudflare.com/ajax/libs/pagedown/1.0/Markdown.Sanitizer.min.js"></script>';
 		html += '<script src="bundle.js"></script>';
 		html += '<script>';
-		html += 	'Jsonary.render.addInitialComponent("WHOLE_PAGE");';
 		html += 	'Jsonary.location.queryVariant = ' + JSON.stringify(Jsonary.location.queryVariant) + ';';
 		html += 	'Jsonary.location.replace(' + JSON.stringify(urlForUiState(savedUiState)) + ');'
 		html += 	'var renderContext;';
 		html += 	'var changeMonitor = Jsonary.location.onChange(function () {';
-		html += 		'renderContext = Jsonary.render("jsonary-target", ' + JSON.stringify(defaultJsonPage) + ', Jsonary.location.query.value());';
+		html += 		'renderContext = Jsonary.render("jsonary-target", ' + JSON.stringify(defaultJsonPage) + ', Jsonary.location.query.value(), {'
+		html += 		'withComponent: "WHOLE_PAGE"';
+		html += 	'});';
 		html += 	'});';
 		html += 	'Jsonary.render.addActionHandler(function (context, data, actionName, historyPoint) {';
 		html += 		'if (historyPoint) {';
@@ -309,7 +226,59 @@ app.all('/', function (request, response) {
 	}
 });
 
-function prettyJson(data) {
+function prettyJson(data, indent) {
+	var indent = indent || '\t';
+	if (Array.isArray(data)) {
+		if (data.length === 0) {
+			return '[]';
+		} else if (data.length === 1) {
+			return '[' + prettyJson(data[0], indent) + ']';
+		} else {
+			var singleLine = true;
+			var parts = [];
+			for (var i = 0; i < data.length; i++) {
+				var subJson = prettyJson(data[i], indent);
+				parts[i] = subJson;
+				if (subJson.indexOf('\n') !== -1) {
+					singleLine = false;
+				}
+			}
+			if (singleLine) {
+				return '[' + parts.join(', ') + ']';
+			} else {
+				var result = '[';
+				for (var i = 0; i < parts.length; i++) {
+					if (i > 0) {
+						result += ',';
+					}
+					result += '\n' + indent + parts[i].replace(/\n/g, '\n' + indent);
+				}
+				return result + '\n]';
+			}
+		}
+	} else if (data && typeof data === 'object') {
+		var keys = Object.keys(data);
+		if (keys.length === 0) {
+			return '{}';
+		}
+		if (keys.length > 10) {
+			keys.sort();
+		}
+		if (keys.length === 1) {
+			return '{' + JSON.stringify(keys[0]) + ": " + prettyJson(data[keys[0]], indent).replace(/\n/g, '\n' + indent) + '}';
+		} else {
+			var result = "{";
+			for (var i = 0; i < keys.length; i++) {
+				if (i > 0) {
+					result += ',';
+				}
+				result += '\n' + indent + JSON.stringify(keys[i]);
+				result += ': ' + prettyJson(data[keys[i]], indent).replace(/\n/g, '\n' + indent);
+			}
+			return result + '\n}';
+		}
+	}
+	return JSON.stringify(data, null, '\t');
 	var json = JSON.stringify(data, null, "\t");
 	function compactJson(json) {
 		try {
@@ -368,7 +337,7 @@ app.get('/json/', function (request, response, next) {
 	response.links({
 		describedby: "schemas/site"
 	});
-	response.json(jsonData);
+	response.send(prettyJson(jsonData));
 });
 app.put('/json/', function (request, response, next) {
 	response.set('Content-Type', 'application/json');
@@ -376,7 +345,7 @@ app.put('/json/', function (request, response, next) {
 	response.links({
 		describedby: "schemas/site"
 	});
-	response.json(jsonData);
+	response.send(prettyJson(jsonData));
 });
 
 app.use('/json/', function (request, response) {
@@ -387,7 +356,7 @@ app.use('/json/', function (request, response) {
 			exampleData = request.body;
 		}
 		response.setHeader('Content-Type', 'application/json; profile=schema');
-		response.send(prettyJson(exampleData, null, "\t"));
+		response.send(prettyJson(exampleData));
 	} else if (path == "/schema") {
 		response.setHeader('Content-Type', 'application/json; profile=schema');
 		response.send(prettyJson({
@@ -415,7 +384,7 @@ app.use('/json/', function (request, response) {
 				"enum": {"enum": ["one", "two", "three", "orange"]}
 			},
 			required: ["title", "array"]
-		}, null, "\t"));
+		}));
 	} else {
 		response.statusCode = 404;
 		response.send(JSON.stringify({
