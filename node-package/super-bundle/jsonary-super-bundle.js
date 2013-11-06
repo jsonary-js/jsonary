@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-05 */
+/* Bundled on 2013-11-06 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -2333,8 +2333,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			thisRequest.document.http.headers = headers;
 			thisRequest.document.setRaw(data);
 			thisRequest.document.raw.whenSchemasStable(function () {
-				thisRequest.checkForFullResponse();
 				thisRequest.document.setRoot("");
+				thisRequest.checkForFullResponse();
 			});
 		},
 		fetchData: function(url, method, data, encType, hintSchema, headers) {
@@ -2378,6 +2378,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				if (!error) {
 					thisRequest.ajaxSuccess(data, headers, hintSchema);
 					// Special RESTy knowledge
+					// TODO: check if result follows same schema as original - if so, assume it's the new value, to prevent extra request
+					// If we don't *have* the original, search for any rel="self" links and replace (if we have the original, these should already have been replaced)
 					if (params.method == "PUT") {
 						publicApi.invalidate(params.url);
 					}			
@@ -7744,7 +7746,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var startingIndex = 2;
 				var historyChange = false;
 				var linkUrl = null;
-				if (typeof actionName == "boolean") {
+				if (typeof actionName == "object") {
+					historyChange = actionName.historyChange || false;
+					linkUrl = actionName.linkUrl || null;
+					actionName = actionName.actionName;
+				} else if (typeof actionName == "boolean") {
 					historyChange = arguments[1];
 					linkUrl = arguments[2] || null;
 					actionName = arguments[3];
@@ -7965,8 +7971,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			Jsonary.cleanup = cleanup;
 		}
 	
-		var initialComponents = [];
-		
 		function render(element, data, uiStartingState, options) {
 			options = options || {};
 			if (typeof element == 'string') {
@@ -7976,7 +7980,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			innerElement.className = "jsonary";
 			element.innerHTML = "";
 			element.appendChild(innerElement);
-			var context = pageContext.withComponent(initialComponents);
+			var context = pageContext;
 			if (options.withComponent) {
 				context = context.withComponent(options.withComponent);
 			}
@@ -7990,7 +7994,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 		function renderHtml(data, uiStartingState, options) {
 			options = options || {};
-			var context = pageContext.withComponent(initialComponents);
+			var context = pageContext;
 			if (options.withComponent) {
 				context = context.withComponent(options.withComponent);
 			}
@@ -8019,13 +8023,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 			return Jsonary.render(target, data);
 		};
-		function asyncRenderHtml(data, uiStartingState, htmlCallback) {
-			options = {};
+		function asyncRenderHtml(data, uiStartingState, options, htmlCallback) {
+			if (typeof options === 'function') {
+				htmlCallback = options;
+				options = null;
+			}
+			options = options || {};
 			if (typeof htmlCallback === 'object') {
 				options = htmlCallback;
 				htmlCallback = arguments[3];
 			}
-			var context = pageContext.withComponent(initialComponents);
+			var context = pageContext;
 			if (options.withComponent) {
 				context = context.withComponent(options.withComponent);
 			}
@@ -8050,11 +8058,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			};
 		}
 		render.Components = componentNames;
-		render.addInitialComponent = function (component) {
-			componentNames.add(component, false);
-			initialComponents.push(component);
-			return this;
-		};
 		render.actionInputName = function (args) {
 			var context = args.context;
 			return context.getElementId();
@@ -8279,7 +8282,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					}
 					
 					for (var placeholder in subs) {
-						//innerHtml = innerHtml.replace(placeholder, subs[placeholder]);
+						innerHtml = innerHtml.replace(placeholder, subs[placeholder]);
 					}
 					htmlCallback(null, innerHtml, context);
 				}
