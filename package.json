@@ -8,6 +8,7 @@
     "wrench": "~1.5.1"
   },
   "scripts": {
-    "test": "grunt test"
+    "test": "grunt test",
+    "install": "pushd node-package; npm install; popd;"
   }
 }
