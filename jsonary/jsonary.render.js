@@ -812,7 +812,7 @@
 	};
 	function asyncRenderHtml(data, uiStartingState, options, htmlCallback) {
 		if (typeof options === 'function') {
-			htmlCallback = optionsl
+			htmlCallback = options;
 			options = null;
 		}
 		options = options || {};
