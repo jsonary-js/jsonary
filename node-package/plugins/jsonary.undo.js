@@ -10,7 +10,7 @@
 	// Register key down/up listeners to catch undo/redo key combos
 	document.onkeydown = function (e) {
 		var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
-		if (keyCode == 17) {
+		if (keyCode == 17 || keyCode == 91) {
 			modKeyDown = true;
 		} else if (keyCode == 16) {
 			shiftKeyDown = true;
@@ -41,7 +41,7 @@
 	};
 	document.onkeyup = function (e) {
 		var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
-		if (keyCode == 17) {
+		if (keyCode == 17 || keyCode == 91) {
 			modKeyDown = false;
 		} else if (keyCode == 16) {
 			shiftKeyDown = false;

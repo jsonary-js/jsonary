@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-06 */
+/* Bundled on 2013-11-07 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -9,7 +9,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/**** jsonary/_compatability.js ****/
+/**** _compatability.js ****/
 
 	if (typeof window != "undefined" && typeof localStorage == "undefined") {
 		window.localStorage = {};
@@ -571,7 +571,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}());
 	
 
-/**** jsonary/_header.js ****/
+/**** _header.js ****/
 
 	(function(publicApi) { // Global wrapper
 	
@@ -588,7 +588,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	
 
-/**** jsonary/uri.js ****/
+/**** uri.js ****/
 
 	function Uri(str) {
 		var scheme = str.match(/^[a-zA-Z\-]+:/);
@@ -859,7 +859,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	publicApi.Uri = Uri;
 	
 
-/**** jsonary/uri-template.js ****/
+/**** uri-template.js ****/
 
 	var uriTemplateGlobalModifiers = {
 		"+": true,
@@ -1250,7 +1250,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	};
 	
 
-/**** jsonary/utils.js ****/
+/**** utils.js ****/
 
 	var Utils = {
 		guessBasicType: function (data, prevType) {
@@ -1732,7 +1732,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	};
 	publicApi.ResultCollector = ResultCollector;
 
-/**** jsonary/monitors.js ****/
+/**** monitors.js ****/
 
 	function MonitorSet(context) {
 		this.contents = {};
@@ -1845,7 +1845,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	};
 	
 
-/**** jsonary/request.js ****/
+/**** request.js ****/
 
 	if (typeof XMLHttpRequest == "undefined") {
 		XMLHttpRequest = function () {
@@ -2431,7 +2431,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	
 
-/**** jsonary/patch.js ****/
+/**** patch.js ****/
 
 	function Patch(prefix) {
 		this.operations = [];
@@ -2678,7 +2678,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	
 
-/**** jsonary/data.js ****/
+/**** data.js ****/
 
 	var changeListeners = [];
 	publicApi.registerChangeListener = function (listener) {
@@ -3625,7 +3625,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	};
 	
 
-/**** jsonary/schema.js ****/
+/**** schema.js ****/
 
 	function getSchema(url, callback) {
 		return publicApi.getData(url).getRawResponse(function(data, fragmentRequest) {
@@ -4524,7 +4524,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	
 
-/**** jsonary/schemamatch.js ****/
+/**** schemamatch.js ****/
 
 	function SchemaMatch(monitorKey, data, schema, impatientCallbacks) {
 		var thisSchemaMatch = this;
@@ -5091,7 +5091,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	};
 	
 
-/**** jsonary/schemaset.js ****/
+/**** schemaset.js ****/
 
 	var schemaChangeListeners = [];
 	publicApi.registerSchemaChangeListener = function (listener) {
@@ -7178,7 +7178,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 	};
 
-/**** jsonary/main.js ****/
+/**** main.js ****/
 
 	//Tidying
 	// TODO: check all " == undefined", in case they should be " === undefined" instead (null-safety)
@@ -7201,7 +7201,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		debug: false
 	}
 
-/**** jsonary/_footer.js ****/
+/**** _footer.js ****/
 
 	publicApi.UriTemplate = UriTemplate;
 	
@@ -7209,7 +7209,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	})(this.Jsonary = {});
 	
 
-/**** jsonary/jsonary.render.js ****/
+/**** jsonary.render.js ****/
 
 	(function (global) {
 		var Jsonary = global.Jsonary;
@@ -8655,7 +8655,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	})(this);
 	var Jsonary = this.Jsonary;
 
-/**** jsonary/_cache-json-schema-org.js ****/
+/**** _cache-json-schema-org.js ****/
 
 	// Modified versions of the meta-schemas
 	
@@ -8987,7 +8987,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	Jsonary.addToCache('http://json-schema.org/hyper-schema', {allOf: [{"$ref": "draft-04/hyper-schema"}]});
 	Jsonary.addToCache('http://json-schema.org/draft-04/hyper-schema', hyperSchema);
 
-/**** renderers/list-links.js ****/
+/**** list-links.js ****/
 
 	(function (Jsonary) {
 	
@@ -9134,7 +9134,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	})(Jsonary);
 	
 
-/**** renderers/plain.jsonary.js ****/
+/**** plain.jsonary.js ****/
 
 	(function (global) {
 		var escapeHtml = Jsonary.escapeHtml;
@@ -10047,7 +10047,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	})(this);
 	
 
-/**** plugins/jsonary.location.js ****/
+/**** jsonary.location.js ****/
 
 	(function (global) {
 		var api = {
@@ -10216,7 +10216,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	})(this);
 	
 
-/**** plugins/jsonary.popup.js ****/
+/**** jsonary.popup.js ****/
 
 	if (typeof window !== 'undefined') {
 		function escapeHtml(text) {
@@ -10371,7 +10371,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		})(window);
 	}
 
-/**** plugins/jsonary.undo.js ****/
+/**** jsonary.undo.js ****/
 
 	(function () {
 		if (typeof window == 'undefined') {
@@ -10385,7 +10385,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		// Register key down/up listeners to catch undo/redo key combos
 		document.onkeydown = function (e) {
 			var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
-			if (keyCode == 17) {
+			if (keyCode == 17 || keyCode == 91) {
 				modKeyDown = true;
 			} else if (keyCode == 16) {
 				shiftKeyDown = true;
@@ -10416,7 +10416,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		};
 		document.onkeyup = function (e) {
 			var keyCode = (window.event != null) ? window.event.keyCode : e.keyCode;
-			if (keyCode == 17) {
+			if (keyCode == 17 || keyCode == 91) {
 				modKeyDown = false;
 			} else if (keyCode == 16) {
 				shiftKeyDown = false;
@@ -10483,7 +10483,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	})();
 	
 
-/**** plugins/jsonary.jstl.js ****/
+/**** jsonary.jstl.js ****/
 
 	(function (publicApi) {
 		var templateMap = {};
@@ -10679,7 +10679,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	})(Jsonary);
 	
 
-/**** plugins/jsonary.render.table.js ****/
+/**** jsonary.render.table.js ****/
 
 	(function (Jsonary) {
 	
@@ -11550,7 +11550,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		Jsonary.plugins.FancyTableRenderer = FancyTableRenderer;
 	})(Jsonary);
 
-/**** plugins/jsonary.render.generate.js ****/
+/**** jsonary.render.generate.js ****/
 
 	(function (Jsonary) {
 	
@@ -11590,7 +11590,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	})(Jsonary);
 
-/**** renderers/string-formats.js ****/
+/**** string-formats.js ****/
 
 	(function () {
 		// Display string
@@ -11644,7 +11644,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	})();
 	
 
-/**** renderers/contributed/full-preview.js ****/
+/**** full-preview.js ****/
 
 	Jsonary.render.register({
 		component: [Jsonary.render.Components.LIST_LINKS],
@@ -11676,7 +11676,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 	});
 
-/**** renderers/contributed/full-instances.js ****/
+/**** full-instances.js ****/
 
 	(function (Jsonary) {
 		Jsonary.render.register({
@@ -11755,7 +11755,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		});
 	})(Jsonary);
 
-/**** renderers/contributed/adaptive-table.js ****/
+/**** adaptive-table.js ****/
 
 	// Generic renderer for arrays
 	// Requires "render.table" and "render.generator" plugins
@@ -11912,7 +11912,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 	});
 
-/**** renderers/contributed/tag-list.js ****/
+/**** tag-list.js ****/
 
 	Jsonary.render.register({
 		renderHtml: function (data, context) {
@@ -11967,7 +11967,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 	});
 
-/**** renderers/contributed/image-picker.js ****/
+/**** image-picker.js ****/
 
 	// Fancy image-picker with HTML5
 	if (typeof FileReader === 'function') {
@@ -12091,7 +12091,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		});
 	}
 
-/**** renderers/common.css ****/
+/**** common.css ****/
 
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
@@ -12102,7 +12102,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}
 
 
-/**** renderers/plain.jsonary.css ****/
+/**** plain.jsonary.css ****/
 
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
@@ -12113,7 +12113,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}
 
 
-/**** plugins/jsonary.render.table.css ****/
+/**** jsonary.render.table.css ****/
 
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
@@ -12124,7 +12124,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}
 
 
-/**** renderers/contributed/tag-list.css ****/
+/**** tag-list.css ****/
 
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
@@ -12135,7 +12135,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}
 
 
-/**** renderers/contributed/image-picker.css ****/
+/**** image-picker.css ****/
 
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
