@@ -221,7 +221,7 @@ function prettyJson(data, indent) {
 					singleLine = false;
 				}
 			}
-			if (singleLine) {
+			if (singleLine && parts.length <= 5) {
 				return '[' + parts.join(', ') + ']';
 			} else {
 				var result = '[';
@@ -243,7 +243,12 @@ function prettyJson(data, indent) {
 			keys.sort();
 		}
 		if (keys.length === 1) {
-			return '{' + JSON.stringify(keys[0]) + ": " + prettyJson(data[keys[0]], indent).replace(/\n/g, '\n' + indent) + '}';
+			var part = prettyJson(data[keys[0]], indent);
+			if (part.indexOf('\n') === -1) {
+				return '{' + JSON.stringify(keys[0]) + ": " + part + '}';
+			} else {
+				return '{\n' + indent + JSON.stringify(keys[0]) + ": " + part.replace(/\n/g, '\n' + indent); + '\n}';
+			}
 		} else {
 			var result = "{";
 			for (var i = 0; i < keys.length; i++) {
@@ -257,31 +262,6 @@ function prettyJson(data, indent) {
 		}
 	}
 	return JSON.stringify(data, null, '\t');
-	var json = JSON.stringify(data, null, "\t");
-	function compactJson(json) {
-		try {
-			var compact = JSON.stringify(JSON.parse(json));
-			var parts = compact.split('"');
-			for (var i = 0; i < parts.length; i++) {
-				var part = parts[i];
-				part = part.replace(/:/g, ': ');
-				part = part.replace(/,/g, ', ');
-				parts[i] = part;
-				i++;
-				while (i < parts.length && parts[i].charAt(parts[i].length - 1) == "\\") {
-					i++;
-				}
-			}
-			return parts.join('"');
-		} catch (e) {
-			return json;
-		}
-	}
-	
-	json = json.replace(/\{[^\{,}]*\}/g, compactJson); // Objects with a single simple property
-	json = json.replace(/\[[^\[,\]]*\]/g, compactJson); // Arrays with a single simple item
-	json = json.replace(/\[[^\{\[\}\]]*\]/g, compactJson); // Arrays containing only scalar items
-	return json;
 }
 app.use('/json/schemas/', function (request, response, next) {
 	response.set('Content-Type', 'application/json');
