@@ -1,6 +1,6 @@
 {
   "name": "jsonary",
-  "version": "0.0.7",
+  "version": "0.0.10",
   "main": "super-bundle/jsonary-super-bundle.min.js",
   "ignore": [
     "**/.*",

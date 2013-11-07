@@ -45,9 +45,9 @@ Bundle.prototype = {
 				var dataUri = "data:" + mimeType + ";base64," + base64;
 				return prefix + JSON.stringify(dataUri) + suffix;
 			});
-			this.cssCode.push('\n\n/**** ' + filename + ' ****/\n\n' + cssCode);
+			this.cssCode.push('\n\n/**** ' + path.basename(filename) + ' ****/\n\n' + cssCode);
 			
-			jsCode += '\n\n/**** ' + filename + ' ****/\n\n';
+			jsCode += '\n\n/**** ' + path.basename(filename) + ' ****/\n\n';
 			jsCode += "	if (typeof window != 'undefined' && typeof document != 'undefined') {\n";
 			jsCode += "		(function () {\n";
 			jsCode += "			var style = document.createElement('style');\n";
@@ -74,7 +74,7 @@ Bundle.prototype = {
 		for (var i = 0; i < filenames.length; i++) {
 			var filename = filenames[i];
 			var resolvedFilename = this.filename(filenames[i]);
-			code += '\n\n/**** ' + filename + ' ****/\n\n\t';
+			code += '\n\n/**** ' + path.basename(filename) + ' ****/\n\n\t';
 			code += fs.readFileSync(resolvedFilename, {enc:'utf8'}).toString().replace(/\n/g, "\n\t");
 		}
 		this.jsCode.push(code);
