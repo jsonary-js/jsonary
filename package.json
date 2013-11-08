@@ -10,5 +10,8 @@
   "scripts": {
     "test": "grunt test",
     "install": "pushd node-package; npm install; popd;"
+  },
+  "dependencies": {
+    "grunt-contrib-compress": "~0.5.2"
   }
 }
