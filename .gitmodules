@@ -1,3 +1,6 @@
 [submodule "tests/tests/10 - Schema matching (validation)/test-suite"]
 	path = tests/tests/10 - Schema matching (validation)/test-suite
 	url = https://github.com/json-schema/JSON-Schema-Test-Suite.git
+[submodule "jsonary/uri-templates"]
+	path = jsonary/uri-templates
+	url = https://github.com/geraintluff/uri-templates.git

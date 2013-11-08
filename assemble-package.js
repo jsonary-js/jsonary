@@ -12,7 +12,7 @@ var masterBundle = bundle.base(__dirname)
 		'jsonary/_compatability.js',
 		'jsonary/_header.js',
 		'jsonary/uri.js',
-		'jsonary/uri-template.js',
+		'jsonary/uri-templates/uri-templates.js',
 		'jsonary/utils.js',
 		'jsonary/monitors.js',
 		'jsonary/request.js',
