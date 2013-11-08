@@ -1,7 +1,7 @@
-/* Bundled on 2013-11-07 */
+/* Bundled on 2013-11-08 */
 
 
-/**** renderers/common.css ****/
+/**** common.css ****/
 
 .jsonary .loading {
 	margin: 0px;
@@ -295,7 +295,7 @@
 	cursor: default;
 }
 
-/**** renderers/plain.jsonary.css ****/
+/**** plain.jsonary.css ****/
 
 .json-schema, .json-link {
 	margin-right: 0.5em;

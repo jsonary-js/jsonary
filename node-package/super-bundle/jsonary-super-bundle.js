@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-07 */
+/* Bundled on 2013-11-08 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -1516,6 +1516,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		},
 		formDecode: function (data, sepBefore, sepAfter, arrayJoin) {
 			var result = {};
+			if (data === "") {
+				return result;
+			}
 			var parts = data.split("&");
 			for (var partIndex = 0; partIndex < parts.length; partIndex++) {
 				var part = parts[partIndex];
@@ -2376,13 +2379,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			};
 			publicApi.ajaxFunction(params, function (error, data, headers) {
 				if (!error) {
-					thisRequest.ajaxSuccess(data, headers, hintSchema);
 					// Special RESTy knowledge
 					// TODO: check if result follows same schema as original - if so, assume it's the new value, to prevent extra request
 					// If we don't *have* the original, search for any rel="self" links and replace (if we have the original, these should already have been replaced)
 					if (params.method == "PUT") {
 						publicApi.invalidate(params.url);
 					}			
+	
+					thisRequest.ajaxSuccess(data, headers, hintSchema);
 				} else {
 					thisRequest.ajaxError(error, data, headers);
 				}
@@ -2748,7 +2752,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 		}
 		this.whenAccessed = function (callback) {
-			accessCallbacks.push(callback);
+			if (publicApi.config.accessImmediately) {
+				callback.call(this);
+			} else {
+				accessCallbacks.push(callback);
+			}
 		}
 	
 		this.setRaw = function (value) {
@@ -6966,9 +6974,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var thisSchemaSet = this;
 			if (!thisSchemaSet.schemasStable) {
 				thisSchemaSet.schemasStable = true;
+				// This function uses DelayedCallbacks itself, so don't need to use it twice
 				notifySchemaChangeListeners(thisSchemaSet.dataObj);
 			}
-			thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+			DelayedCallbacks.add(function () {
+				thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+			});
 			return true;
 		},
 		addSchemasForProperty: function (key, subData) {
@@ -7198,6 +7209,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	publicApi.config = {
 		antiCacheUrls: false,
+		accessImmediately: false,
 		debug: false
 	}
 
@@ -7268,6 +7280,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		};
 		var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 		
+		function TempStore() {
+			var obj = {};
+			this.get = function (key) {
+				return obj[key];
+			};
+			this.set = function (key, value) {
+				return obj[key] = value;
+			};
+		};
+		
 		var contextIdCounter = 0;
 		function RenderContext(elementIdPrefix) {
 			this.uniqueId = contextIdCounter++;
@@ -7334,6 +7356,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			this.oldSubContexts = {};
 			this.missingComponents = componentList;
 			this.bannedRenderers = {};
+			
+			// Temporary data attached to context - not stored, but preserved even across prototype-inheritance
+			var temp = new TempStore();
+			this.set = temp.set;
+			this.get = temp.get;
 		}
 		RenderContext.prototype = {
 			rootContext: null,
@@ -7408,7 +7435,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				return subContext;
 			},
 			subContextSavedStates: {},
-			saveUiState: function () {
+			saveUiState: function (report) {
 				var subStates = {};
 				for (var key in this.subContexts) {
 					subStates[key] = this.subContexts[key].saveUiState();
@@ -7476,7 +7503,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					this.subContexts[labelKey] = this.oldSubContexts[labelKey];
 				}
 				if (this.subContexts[labelKey] != undefined) {
-					if (this.subContexts[labelKey].data === null) {
+					if (data === null || this.subContexts[labelKey].data === null) {
 						// null can be used as a placeholder, to get callbacks when rendering requests/urls
 						this.subContexts[labelKey].data = data;
 					} else if (this.subContexts[labelKey].data != data) {
@@ -7521,6 +7548,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						this.subContexts = {};
 						this.oldSubContexts = {};
 						this.bannedRenderers = bannedRenderers;
+	
+						var temp = new TempStore();
+						this.set = temp.set;
+						this.get = temp.get;
 					}
 					Context.prototype = this.rootContext;
 					this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, missingComponents, bannedRenderers);
@@ -7553,13 +7584,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var renderer = this.renderer;
 				this.data.whenStable(function (data) {
 					renderer.asyncRenderHtml(data, thisContext, function (error, innerHtml) {
-						if (error) {
-							return htmlCallback(error, innerHtml, thisContext);
+						if (!error) {
+							thisContext.clearOldSubContexts();
 						}
-						thisContext.clearOldSubContexts();
 	
-						innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
-						htmlCallback(null, innerHtml, thisContext);
+						asyncRenderHtml.postTransform(error, innerHtml, thisContext, htmlCallback);
 					});
 				});
 			},
@@ -8041,12 +8070,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				context = context.withoutComponent(options.withoutComponent);
 			}
 			return context.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
-				if (error) {
-					htmlCallback(error, innerHtml, renderContext);
-				}
-				htmlCallback(null, '<span class="jsonary">' + innerHtml + '</span>', renderContext);
+				asyncRenderHtml.postTransform(error, innerHtml, renderContext, htmlCallback);
 			});
 		}
+		asyncRenderHtml.postTransform = function (error, innerHtml, renderContext, callback) {
+			if (!error) {
+				innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
+			}
+			return callback(error, innerHtml, renderContext, callback);
+		};
 	
 		if (global.jQuery != undefined) {
 			render.empty = function (element) {
@@ -10146,6 +10178,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var fragment = lastHref.split('#').slice(1).join('#');
 			var resolved = Jsonary.Uri.resolve(lastHref.split('#')[0], fragment);
 			api.resolved = resolved;
+			
+			var uri = new Jsonary.Uri(resolved);
+			uri.scheme = uri.domain = uri.port = uri.username = uri.password = uri.doubleSlash = null;
+			api.trailing = uri.toString();
 	
 			ignoreUpdate = true;
 			api.base = resolved.split('?')[0];
@@ -10763,36 +10799,36 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			},
 			action: function (context, actionName) {
 				var thisRenderer = this;
-				if (context.label.substring(0, 3) == "col" && !context.cellData) {
+				if (context.label.substring(0, 3) == "col" && !context.get('cellData')) {
 					// Recover cellData when running server-side
 					var columnPath = context.label.substring(3);
 					var rowContext = context.parent;
 					var tableContext = rowContext.parent;
 					context.data.items(function (index, rowData) {
-						if (thisRenderer.rowContext(rowData, tableContext) == rowContext) {
+						if (thisRenderer.rowContext(rowData, tableContext).uniqueId == rowContext.uniqueId) {
 							var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
 							thisRenderer.cellContext(cellData, rowContext, columnPath); // Sets cellData on the appropriate context
 						}
 					});
-				} else if (context.label.substring(0, 3) == "row" && !context.rowData) {
+				} else if (context.label.substring(0, 3) == "row" && !context.get('rowData')) {
 					// Recover rowData when running server-side
 					var tableContext = context.parent;
 					context.data.items(function (index, rowData) {
 						thisRenderer.rowContext(rowData, tableContext); // Sets rowData on the appropriate context
 					});
 				}
-				if (context.cellData) {
-					var columnPath = context.columnPath;
+				if (context.get('cellData')) {
+					var columnPath = context.get('columnPath');
 	
 					var cellAction = this.config.cellAction[columnPath];
-					var newArgs = [context.cellData];
+					var newArgs = [context.get('cellData')];
 					while (newArgs.length <= arguments.length) {
 						newArgs.push(arguments[newArgs.length - 1]);
 					}
 					return cellAction.apply(this.config, newArgs);
-				} else if (context.rowData) {
+				} else if (context.get('rowData')) {
 					var rowAction = this.config.rowAction;
-					var newArgs = [context.rowData];
+					var newArgs = [context.get('rowData')];
 					while (newArgs.length <= arguments.length) {
 						newArgs.push(arguments[newArgs.length - 1]);
 					}
@@ -10807,13 +10843,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			rowContext: function (data, context) {
 				var rowLabel = "row" + context.labelForData(data);
 				var subContext = context.subContext(rowLabel);
-				subContext.rowData = data;
+				subContext.set('rowData', data);
 				return subContext;
 			},
 			cellContext: function (data, context, columnPath) {
 				var subContext = context.subContext('col' + columnPath);
-				subContext.columnPath = columnPath;
-				subContext.cellData = data;
+				subContext.set('columnPath', columnPath);
+				subContext.set('cellData', data);
 				return subContext;
 			},
 			renderHtml: function (data, context) {
@@ -11011,10 +11047,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			// Move column for editable items
 			this.addConditionalColumn(function (data) {
 				return !data.readOnly() && data.length() > (data.schemas().tupleTypingLength() + 1);
-			}, "move", function (data, context) {
-				if (context.uiState.moveRow != undefined) {
+			}, "move", function (data, tableContext) {
+				if (tableContext.uiState.moveRow != undefined) {
 					return '<th style="padding: 0; text-align: center">'
-						+ context.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
+						+ tableContext.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
 						+ '</th>';
 				}
 				return '<th></th>';
@@ -11558,30 +11594,59 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			if (!obj.rendererForData) {
 				throw "Generator must have method rendererForData";
 			}
+			
+			obj.name = obj.name || "Generated (unknown)";
+			
+			function substituteContext(context) {
+				var replacement = Object.create(context);
+				
+				replacement.subContext = function () {
+					var result = context.subContext.apply(this, arguments);
+					result.set('generated', context.get('generated'));
+					return substituteContext(result);
+				};
+				
+				return replacement;
+			}
 		
 			obj.renderHtml = function (data, context) {
-				context.generatedRenderer = context.generatedRenderer || obj.rendererForData(data);
-				return context.generatedRenderer.renderHtml(data, context);
+				var generatedRenderer = context.get('generated') || obj.rendererForData(data);
+				context.set('generated', generatedRenderer);
+				return generatedRenderer.renderHtml(data, substituteContext(context));
 			};
 			obj.enhance = function (element, data, context) {
-				context.generatedRenderer = context.generatedRenderer || obj.rendererForData(data);
-				if (context.generatedRenderer.enhance) {
-					return context.generatedRenderer.enhance(element, data, context);
-				} else if (context.generatedRenderer.render) {
-					return context.generatedRenderer.render(element, data, context);
+				var generatedRenderer = context.get('generated');
+				if (!generatedRenderer) {
+					throw new Error("Generated renderer: cannot enhance without rendering first");
+				}
+				if (generatedRenderer.enhance) {
+					return generatedRenderer.enhance(element, data, substituteContext(context));
+				} else if (generatedRenderer.render) {
+					return generatedRenderer.render(element, data, substituteContext(context));
 				}
 			};
 			obj.action = function (context) {
-				context.generatedRenderer = context.generatedRenderer || obj.rendererForData(context.data);
-				return context.generatedRenderer.action.apply(context.generatedRenderer, arguments);
+				var generatedRenderer = context.get('generated');
+				if (!generatedRenderer) {
+					throw new Error("Generated renderer: cannot run action without rendering first");
+				}
+				var args = Array.prototype.slice.call(arguments, 0);
+				args[0] = substituteContext(context);
+				return generatedRenderer.action.apply(generatedRenderer, arguments);
 			};
 			obj.update = function (element, data, context) {
-				context.generatedRenderer = context.generatedRenderer || obj.rendererForData(context.data);
-				context.generatedRenderer.defaultUpdate = this.defaultUpdate;
-				if (context.generatedRenderer.update) {
-					return context.generatedRenderer.update.apply(context.generatedRenderer, arguments);
+				var generatedRenderer = context.get('generated');
+				if (!generatedRenderer) {
+					throw new Error("Generated renderer: cannot update without rendering first");
+				}
+				generatedRenderer.defaultUpdate = this.defaultUpdate;
+				
+				var args = Array.prototype.slice.call(arguments, 0);
+				args[2] = substituteContext(context);
+				if (generatedRenderer.update) {
+					return generatedRenderer.update.apply(generatedRenderer, args);
 				} else {
-					return this.defaultUpdate.apply(this, arguments);
+					return this.defaultUpdate.apply(this, args);
 				}
 			};
 	
@@ -11760,6 +11825,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	// Generic renderer for arrays
 	// Requires "render.table" and "render.generator" plugins
 	Jsonary.render.register(Jsonary.plugins.Generator({
+		name: "Adaptive table",
 		// Part of the generator plugin - this function returns a renderer based on the data/schema requirements
 		rendererForData: function (data) {
 			var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;

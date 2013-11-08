@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-07 */
+/* Bundled on 2013-11-08 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -1516,6 +1516,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		},
 		formDecode: function (data, sepBefore, sepAfter, arrayJoin) {
 			var result = {};
+			if (data === "") {
+				return result;
+			}
 			var parts = data.split("&");
 			for (var partIndex = 0; partIndex < parts.length; partIndex++) {
 				var part = parts[partIndex];
@@ -2376,13 +2379,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			};
 			publicApi.ajaxFunction(params, function (error, data, headers) {
 				if (!error) {
-					thisRequest.ajaxSuccess(data, headers, hintSchema);
 					// Special RESTy knowledge
 					// TODO: check if result follows same schema as original - if so, assume it's the new value, to prevent extra request
 					// If we don't *have* the original, search for any rel="self" links and replace (if we have the original, these should already have been replaced)
 					if (params.method == "PUT") {
 						publicApi.invalidate(params.url);
 					}			
+	
+					thisRequest.ajaxSuccess(data, headers, hintSchema);
 				} else {
 					thisRequest.ajaxError(error, data, headers);
 				}
@@ -2748,7 +2752,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 		}
 		this.whenAccessed = function (callback) {
-			accessCallbacks.push(callback);
+			if (publicApi.config.accessImmediately) {
+				callback.call(this);
+			} else {
+				accessCallbacks.push(callback);
+			}
 		}
 	
 		this.setRaw = function (value) {
@@ -6966,9 +6974,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var thisSchemaSet = this;
 			if (!thisSchemaSet.schemasStable) {
 				thisSchemaSet.schemasStable = true;
+				// This function uses DelayedCallbacks itself, so don't need to use it twice
 				notifySchemaChangeListeners(thisSchemaSet.dataObj);
 			}
-			thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+			DelayedCallbacks.add(function () {
+				thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+			});
 			return true;
 		},
 		addSchemasForProperty: function (key, subData) {
@@ -7198,6 +7209,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	publicApi.config = {
 		antiCacheUrls: false,
+		accessImmediately: false,
 		debug: false
 	}
 
@@ -7268,6 +7280,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		};
 		var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 		
+		function TempStore() {
+			var obj = {};
+			this.get = function (key) {
+				return obj[key];
+			};
+			this.set = function (key, value) {
+				return obj[key] = value;
+			};
+		};
+		
 		var contextIdCounter = 0;
 		function RenderContext(elementIdPrefix) {
 			this.uniqueId = contextIdCounter++;
@@ -7334,6 +7356,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			this.oldSubContexts = {};
 			this.missingComponents = componentList;
 			this.bannedRenderers = {};
+			
+			// Temporary data attached to context - not stored, but preserved even across prototype-inheritance
+			var temp = new TempStore();
+			this.set = temp.set;
+			this.get = temp.get;
 		}
 		RenderContext.prototype = {
 			rootContext: null,
@@ -7408,7 +7435,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				return subContext;
 			},
 			subContextSavedStates: {},
-			saveUiState: function () {
+			saveUiState: function (report) {
 				var subStates = {};
 				for (var key in this.subContexts) {
 					subStates[key] = this.subContexts[key].saveUiState();
@@ -7476,7 +7503,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					this.subContexts[labelKey] = this.oldSubContexts[labelKey];
 				}
 				if (this.subContexts[labelKey] != undefined) {
-					if (this.subContexts[labelKey].data === null) {
+					if (data === null || this.subContexts[labelKey].data === null) {
 						// null can be used as a placeholder, to get callbacks when rendering requests/urls
 						this.subContexts[labelKey].data = data;
 					} else if (this.subContexts[labelKey].data != data) {
@@ -7521,6 +7548,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						this.subContexts = {};
 						this.oldSubContexts = {};
 						this.bannedRenderers = bannedRenderers;
+	
+						var temp = new TempStore();
+						this.set = temp.set;
+						this.get = temp.get;
 					}
 					Context.prototype = this.rootContext;
 					this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, missingComponents, bannedRenderers);
@@ -7553,13 +7584,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var renderer = this.renderer;
 				this.data.whenStable(function (data) {
 					renderer.asyncRenderHtml(data, thisContext, function (error, innerHtml) {
-						if (error) {
-							return htmlCallback(error, innerHtml, thisContext);
+						if (!error) {
+							thisContext.clearOldSubContexts();
 						}
-						thisContext.clearOldSubContexts();
 	
-						innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
-						htmlCallback(null, innerHtml, thisContext);
+						asyncRenderHtml.postTransform(error, innerHtml, thisContext, htmlCallback);
 					});
 				});
 			},
@@ -8041,12 +8070,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				context = context.withoutComponent(options.withoutComponent);
 			}
 			return context.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
-				if (error) {
-					htmlCallback(error, innerHtml, renderContext);
-				}
-				htmlCallback(null, '<span class="jsonary">' + innerHtml + '</span>', renderContext);
+				asyncRenderHtml.postTransform(error, innerHtml, renderContext, htmlCallback);
 			});
 		}
+		asyncRenderHtml.postTransform = function (error, innerHtml, renderContext, callback) {
+			if (!error) {
+				innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
+			}
+			return callback(error, innerHtml, renderContext, callback);
+		};
 	
 		if (global.jQuery != undefined) {
 			render.empty = function (element) {
