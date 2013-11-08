@@ -344,7 +344,7 @@ app.use('/', function (request, response) {
 			html += 		'<a id="html-only-switcher" href="' + Jsonary.location.urlFromUiState(stateCopy) + '">disable AJAX client</a>';
 		}
 
-		//*/
+		/*/
 		html += '<pre>GET: <code>' + Jsonary.escapeHtml(prettyJson(request.query)) + '</code></pre>';
 		html += '<pre>POST: <code>' + Jsonary.escapeHtml(prettyJson(request.body)) + '</code></pre>';
 		//*/
