@@ -286,7 +286,12 @@ app.use('/json/', function (request, response) {
 app.use('/', express.static(__dirname + "/public"));
 
 var defaultJsonPage = '/json/';
-app.use('/', function (request, response) {
+app.use('/', function (request, response, next) {
+	if (request.path !== '/'
+		&& request.path.substring(0, 7) !== '/pages/'
+		 && request.path.substring(0, 5) !== '/api/') {
+		next();
+	}
 	var timer = LogTimer('page');
 	
 	response.setHeader('Content-Type', 'text/html');
