@@ -375,7 +375,8 @@ app.use('/', function (request, response) {
 								'Jsonary.location.addHistoryPoint();',
 							'}',
 							'changeMonitor.ignore(function () {',
-								'Jsonary.location.query.setValue(renderContext.saveState());',
+								'var uiState = renderContext.saveState();',
+								'Jsonary.location.replace(Jsonary.location.urlFromUiState(uiState));',
 							'});',
 						'});',
 					'</script>']

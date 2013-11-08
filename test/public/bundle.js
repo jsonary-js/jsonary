@@ -11968,11 +11968,25 @@
 	});
 	
 	Jsonary.location.urlFromUiState = function (uiState) {
-		return '?' + Jsonary.encodeData(uiState);
+		var query = {htmlOnly: uiState.htmlOnly};
+		for (var key in uiState.page) {
+			query[key] = uiState.page[key];
+		}
+		var result = '/' + (uiState.nav || "") + '?' + Jsonary.encodeData(query);
+		result = result.replace(/\?$/, '');
+		return result;
 	};
 	Jsonary.location.uiStateFromUrl = function (url) {
-		var query = url.split('?').slice(1).join('?');
-		return Jsonary.decodeData(query);
+		var nav = url.split('?')[0].substring(1);
+		var query = Jsonary.decodeData(url.split('?').slice(1).join('?'));
+		var htmlOnly = query.htmlOnly;
+		delete query.htmlOnly;
+		
+		return {
+			nav: nav,
+			htmlOnly: htmlOnly,
+			page: query
+		};
 	};
 
 /**** markdown-hack.js ****/
