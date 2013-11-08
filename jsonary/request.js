@@ -527,13 +527,14 @@ Request.prototype = {
 		};
 		publicApi.ajaxFunction(params, function (error, data, headers) {
 			if (!error) {
-				thisRequest.ajaxSuccess(data, headers, hintSchema);
 				// Special RESTy knowledge
 				// TODO: check if result follows same schema as original - if so, assume it's the new value, to prevent extra request
 				// If we don't *have* the original, search for any rel="self" links and replace (if we have the original, these should already have been replaced)
 				if (params.method == "PUT") {
 					publicApi.invalidate(params.url);
 				}			
+
+				thisRequest.ajaxSuccess(data, headers, hintSchema);
 			} else {
 				thisRequest.ajaxError(error, data, headers);
 			}

@@ -3,12 +3,27 @@ var fs = require('fs');
 
 module.exports = function(grunt) {
 
+	grunt.loadNpmTasks('grunt-contrib-compress');
+
 	// Project configuration.
 	grunt.initConfig({
 		pkg: grunt.file.readJSON('package.json'),
 		'hacky-tests': {
 			core: 'tests/tests',
 			render: 'tests/render-tests'
+		},
+		compress: {
+			'get-started-bundle': {
+				options: {
+					archive: 'get-started.zip',
+					pretty: true
+				},
+				files: [{
+					expand: true,
+					cwd: 'node-package/',
+					src: ['core/**', 'plugins/**', 'renderers/**', 'super-bundle/**', 'index.html', 'LICENSE.txt', 'example.json']
+				}]
+			}
 		}
 	});
 
@@ -181,6 +196,6 @@ module.exports = function(grunt) {
 
 	grunt.registerTask('test', ['assemble-package', 'hacky-tests']);
 	// Default task(s).
-	grunt.registerTask('default', ['test']);
+	grunt.registerTask('default', ['test', 'compress']);
 
 };

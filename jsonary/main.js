@@ -16,5 +16,6 @@
 
 publicApi.config = {
 	antiCacheUrls: false,
+	accessImmediately: false,
 	debug: false
 }

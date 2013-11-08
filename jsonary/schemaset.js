@@ -1871,9 +1871,12 @@ SchemaSet.prototype = {
 		var thisSchemaSet = this;
 		if (!thisSchemaSet.schemasStable) {
 			thisSchemaSet.schemasStable = true;
+			// This function uses DelayedCallbacks itself, so don't need to use it twice
 			notifySchemaChangeListeners(thisSchemaSet.dataObj);
 		}
-		thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+		DelayedCallbacks.add(function () {
+			thisSchemaSet.schemasStableListeners.notify(thisSchemaSet.dataObj, thisSchemaSet.getSchemas());
+		});
 		return true;
 	},
 	addSchemasForProperty: function (key, subData) {

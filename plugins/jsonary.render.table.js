@@ -80,36 +80,36 @@
 		},
 		action: function (context, actionName) {
 			var thisRenderer = this;
-			if (context.label.substring(0, 3) == "col" && !context.cellData) {
+			if (context.label.substring(0, 3) == "col" && !context.get('cellData')) {
 				// Recover cellData when running server-side
 				var columnPath = context.label.substring(3);
 				var rowContext = context.parent;
 				var tableContext = rowContext.parent;
 				context.data.items(function (index, rowData) {
-					if (thisRenderer.rowContext(rowData, tableContext) == rowContext) {
+					if (thisRenderer.rowContext(rowData, tableContext).uniqueId == rowContext.uniqueId) {
 						var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
 						thisRenderer.cellContext(cellData, rowContext, columnPath); // Sets cellData on the appropriate context
 					}
 				});
-			} else if (context.label.substring(0, 3) == "row" && !context.rowData) {
+			} else if (context.label.substring(0, 3) == "row" && !context.get('rowData')) {
 				// Recover rowData when running server-side
 				var tableContext = context.parent;
 				context.data.items(function (index, rowData) {
 					thisRenderer.rowContext(rowData, tableContext); // Sets rowData on the appropriate context
 				});
 			}
-			if (context.cellData) {
-				var columnPath = context.columnPath;
+			if (context.get('cellData')) {
+				var columnPath = context.get('columnPath');
 
 				var cellAction = this.config.cellAction[columnPath];
-				var newArgs = [context.cellData];
+				var newArgs = [context.get('cellData')];
 				while (newArgs.length <= arguments.length) {
 					newArgs.push(arguments[newArgs.length - 1]);
 				}
 				return cellAction.apply(this.config, newArgs);
-			} else if (context.rowData) {
+			} else if (context.get('rowData')) {
 				var rowAction = this.config.rowAction;
-				var newArgs = [context.rowData];
+				var newArgs = [context.get('rowData')];
 				while (newArgs.length <= arguments.length) {
 					newArgs.push(arguments[newArgs.length - 1]);
 				}
@@ -124,13 +124,13 @@
 		rowContext: function (data, context) {
 			var rowLabel = "row" + context.labelForData(data);
 			var subContext = context.subContext(rowLabel);
-			subContext.rowData = data;
+			subContext.set('rowData', data);
 			return subContext;
 		},
 		cellContext: function (data, context, columnPath) {
 			var subContext = context.subContext('col' + columnPath);
-			subContext.columnPath = columnPath;
-			subContext.cellData = data;
+			subContext.set('columnPath', columnPath);
+			subContext.set('cellData', data);
 			return subContext;
 		},
 		renderHtml: function (data, context) {
@@ -328,10 +328,10 @@
 		// Move column for editable items
 		this.addConditionalColumn(function (data) {
 			return !data.readOnly() && data.length() > (data.schemas().tupleTypingLength() + 1);
-		}, "move", function (data, context) {
-			if (context.uiState.moveRow != undefined) {
+		}, "move", function (data, tableContext) {
+			if (tableContext.uiState.moveRow != undefined) {
 				return '<th style="padding: 0; text-align: center">'
-					+ context.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
+					+ tableContext.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
 					+ '</th>';
 			}
 			return '<th></th>';

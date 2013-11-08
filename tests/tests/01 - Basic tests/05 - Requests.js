@@ -19,7 +19,8 @@ tests.add("encodeData()", function() {
 		{"key": "value"},
 		{"array":[null, true, 3, "4"]},
 		{"object":{"key": "value"}},
-		{"array":[[0,1],[2,3]]}
+		{"array":[[0,1],[2,3]]},
+		{}
 	];
 	var expectedForm = [
 		"plain+string",
@@ -28,6 +29,7 @@ tests.add("encodeData()", function() {
 		"array%5B%5D=null&array%5B%5D=true&array%5B%5D=3&array%5B%5D=4",
 		"object%5Bkey%5D=value",
 		"array%5B0%5D%5B%5D=0&array%5B0%5D%5B%5D=1&array%5B1%5D%5B%5D=2&array%5B1%5D%5B%5D=3",
+		""
 	];
 	var expectedJson = [
 		"\"plain string\"",
@@ -35,7 +37,8 @@ tests.add("encodeData()", function() {
 		"{\"key\":\"value\"}",
 		'{"array":[null,true,3,"4"]}',
 		'{"object":{"key":"value"}}',
-		'{"array":[[0,1],[2,3]]}'
+		'{"array":[[0,1],[2,3]]}',
+		'{}'
 	];
 	for (var i = 0; i < data.length; i++) {
 		var formResult = Jsonary.encodeData(data[i]);
@@ -53,13 +56,15 @@ tests.add("decodeData()", function() {
 		{"key": "value"},
 		{"array":[null, true, 3, "four"]},
 		{"object":{"key": "value"}},
-		{"array":[[0,1],[2,3]]}
+		{"array":[[0,1],[2,3]]},
+		{}
 	];
 	var expectedForm = [
 		"key=value",
 		"array%5B%5D=null&array%5B%5D=true&array%5B%5D=3&array%5B%5D=4",
 		"object%5Bkey%5D=value",
 		"array%5B0%5D%5B%5D=0&array%5B0%5D%5B%5D=1&array%5B1%5D%5B%5D=2&array%5B1%5D%5B%5D=3",
+		""
 	];
 	var expectedJson = [
 		"\"plain string\"",
@@ -67,7 +72,8 @@ tests.add("decodeData()", function() {
 		"{\"key\":\"value\"}",
 		'{"array":[null,true,3,"4"]}',
 		'{"object":{"key":"value"}}',
-		'{"array":[[0,1],[2,3]]}'
+		'{"array":[[0,1],[2,3]]}',
+		''
 	];
 	for (var i = 0; i < data.length; i++) {
 		var formResult = Jsonary.encodeData(data[i]);

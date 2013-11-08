@@ -262,6 +262,9 @@ var Utils = {
 	},
 	formDecode: function (data, sepBefore, sepAfter, arrayJoin) {
 		var result = {};
+		if (data === "") {
+			return result;
+		}
 		var parts = data.split("&");
 		for (var partIndex = 0; partIndex < parts.length; partIndex++) {
 			var part = parts[partIndex];

@@ -1,6 +1,7 @@
 // Generic renderer for arrays
 // Requires "render.table" and "render.generator" plugins
 Jsonary.render.register(Jsonary.plugins.Generator({
+	name: "Adaptive table",
 	// Part of the generator plugin - this function returns a renderer based on the data/schema requirements
 	rendererForData: function (data) {
 		var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;

@@ -91,9 +91,16 @@ JsonaryBundle.prototype = {
 
 function modifyJsonaryForServer(baseUri, inputPrefix) {
 	var Jsonary = this;
+	Jsonary.config.accessImmediately = true;
 	Jsonary.baseUri = baseUri || '';
 	inputPrefix = inputPrefix || 'Jsonary';
-	var canonicalUrl = Jsonary.baseUri;
+
+	Jsonary.server = {
+		httpAgent: null,
+		httpsAgent: null,
+		cookies: cookieClient(),
+		pageUri: Jsonary.baseUri
+	};
 
 	Jsonary.render.actionUrl = function (args) {
 		var inputName = new Buffer(JSON.stringify({
@@ -101,24 +108,107 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 			action: args.actionName,
 			params: args.params
 		})).toString('base64');
-		var parts = canonicalUrl.split('#');
+		var parts = Jsonary.server.pageUri.split('#');
 		if (parts[0].indexOf('?') == -1) {
-			parts[0] += '?';
+			if (parts[0].indexOf('?') !== parts[0].length - 1) {
+				parts[0] += '?';
+			}
 		} else {
 			parts[0] += '&';
 		}
 		parts[0] += inputPrefix + '.action=' + inputName;
 		return parts.join('#');
 	};
+	
+	var inputContexts = [];
+	function buttonActionsForContext(context) {
+		return inputContexts.length > 0;
+	}
+	Jsonary.server.canRedirect = function () {
+		return inputContexts.length == 0 && Object.keys(savedData).length == 0;
+	};
+
+	var buttonReplacementHtml = [];
+	Jsonary.server.reset = function (pageUri) {
+		inputContexts = [];
+		buttonReplacementHtml = [];
+		if (typeof pageUri !== 'undefined') {
+			Jsonary.server.pageUri = pageUri;
+		}
+	};
+	
 	// Yes, I know that the browser also does percent-encoding.
 	// However, if we simply escape the HTML, then any lists ([]) get interpreted as properties, and that's just a mess to undo.
 	Jsonary.render.actionInputName = function (args) {
+		inputContexts = [true];
 		var inputName = new Buffer(JSON.stringify({
 			contextPath: args.context.labelSequence(),
 			action: args.actionName,
 			params: args.params
 		})).toString('base64');
 		return inputPrefix + ".input:" + inputName;
+	};
+	
+	var delayedActionRegex = /<<ACTION[0-9.]+>>/g;
+	var delayedActionHtml = {};
+	
+	Jsonary.render.actionHtml = function (elementId, innerHtml, args) {
+		var replacement = "<<ACTION" + Math.random() + ">>";
+		delayedActionHtml[replacement] = {
+			elementId: elementId,
+			innerHtml: innerHtml,
+			args: args
+		};
+		return replacement;
+	};
+	function linkActionHtml(elementId, innerHtml, args) {
+		return '<a class="jsonary-action" href="' + args.linkUrl + '">' + innerHtml + '</a>';
+	};
+	function buttonActionHtml(elementId, innerHtml, args) {
+		var textValue = innerHtml.replace(/<.*?>/g, "");
+		var inputName = new Buffer(JSON.stringify({
+			contextPath: args.context.labelSequence(),
+			action: args.actionName,
+			params: args.params
+		})).toString('base64');
+		// Yes, I know that the browser also does percent-encoding.
+		// However, if we simply escape the HTML, then any lists ([]) get interpreted as properties, and that's just a mess to undo.
+		var result = '<input type="submit" id="' + elementId + '" name="' + inputPrefix + '.action:' + inputName + '" value="' + Jsonary.escapeHtml(textValue) + '"></input>';
+		buttonReplacementHtml.push({
+			elementId: elementId,
+			linkUrl: args.linkUrl,
+			innerHtml: innerHtml
+		});
+		return result;
+	};
+
+	Jsonary.server.footerHtml = function () {
+		// Button substitution
+		var result = "";
+		result += '<script>';
+		result += '(function (buttons) {';
+		result += 	'var replaceButton = function (elementId, linkUrl, innerHtml) {';
+		result += 		'var button = document.getElementById(elementId);'
+		result +=		'if (!button) {';
+		result += 			'return;';
+		result += 		'}';
+		result += 		'button.style.display="none";';
+		result += 		'var link = document.createElement("a");';
+		result += 		'link.setAttribute("href", linkUrl);';
+		result += 		'link.innerHTML = innerHtml;';
+		result += 		'link.className = "jsonary-action";';
+		result += 		'link.onclick = function () {';
+		result += 			'button.click();';
+		result += 			'return false;';
+		result += 		'};';
+		result += 		'button.parentNode.insertBefore(link, button);';
+		result += 	'};';
+		result += 	'for (var i = 0; i < buttons.length; i++) {';
+		result += 		'replaceButton(buttons[i].elementId, buttons[i].linkUrl, buttons[i].innerHtml);';
+		result += 	'}';
+		result += '})(' + JSON.stringify(buttonReplacementHtml) + ');';
+		result += '</script>';
+		return result;
 	};
 	
 	// Log to console - warnings and errors only
@@ -135,25 +225,21 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	});
 
 	var savedData = {};
-	Jsonary.server = {
-		httpAgent: null,
-		httpsAgent: null,
-		cookies: cookieClient(),
-		savedData: savedData
-	};
-	
 	Jsonary.server.loadSavedData = function (body) {
-		if (body['Jsonary.data']) {
-			try {
-				var loaded = JSON.parse(body[inputPrefix + '.data']);
-				savedData = Object.create(loaded);
-			} catch (e) {
-				console.log("malformed " + inputPrefix + ".data: " + body[inputPrefix + '.data']);
+		var dataJsonArray = body[inputPrefix + '.data'];
+		if (dataJsonArray) {
+			dataJsonArray = Array.isArray(dataJsonArray) ? dataJsonArray : [dataJsonArray];
+			for (var i = 0; i < dataJsonArray.length; i++) {
+				try {
+					var parsed = JSON.parse(dataJsonArray[i]);
+				} catch (e) {
+					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".data[" + i + "] " + dataJsonArray[i]);
+				}
+				for (var key in parsed) {
+					savedData[key] = parsed[key];
+				}
 			}
 		}
-	};
-	Jsonary.server.clearData = function () {
-		savedData = {};
 	};
 	Jsonary.render.loadData = function (saveDataId) {
 		var documentId = saveDataId.split(":")[0];
@@ -170,8 +256,33 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 		}
 		return documentId + ":" + data.pointerPath();
 	};
+	Jsonary.asyncRenderHtml.postTransform = (function (oldFunction) {
+		return function (error, innerHtml, renderContext, callback) {
+			if (!error) {
+				innerHtml = innerHtml.replace(delayedActionRegex, function (string) {
+					if (delayedActionHtml[string]) {
+						var obj = delayedActionHtml[string];
+						if (obj.userOnly || buttonActionsForContext(obj.args.context)) {
+							return buttonActionHtml(obj.elementId, obj.innerHtml, obj.args);
+						} else {
+							return linkActionHtml(obj.elementId, obj.innerHtml, obj.args);
+						}
+					}
+					return string;
+				});
+			
+				//savedData = {};
+				var savedUiState = renderContext.saveUiState();
+				if (Object.keys(savedData).length > 0) {
+					innerHtml += '<input type="hidden" name="' + inputPrefix + '.data[]" value=\'' + Jsonary.escapeHtml(JSON.stringify(savedData), true) + '\'>';
+				}
+			}
+			oldFunction.call(this, error, innerHtml, renderContext, callback);
+		};
+	})(Jsonary.asyncRenderHtml.postTransform);
 	
 	Jsonary.server.performActions = function (context, query, body) {
+
 		var needsReRender = false;
 		// Execute inputs first, then actions
 		for (var key in body) {
@@ -182,14 +293,14 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
 				} catch (e) {
-					console.log("malformed " + inputPrefix + ".input:" + base64);
+					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".input:" + base64);
 					continue;
 				}
 				var actionContext = context.labelSequenceContext(actionArgs.contextPath);
 				if (actionContext) {
 					var result = actionContext.actionArgs(actionArgs.action, [body[key]].concat(actionArgs.params));
 				} else {
-					console.log("Could not find input action context for: " + actionArgs.contextPath);
+					Jsonary.log(Jsonary.logLevel.ERROR, "Could not find input action context for: " + actionArgs.contextPath);
 				}
 			}
 		}
@@ -201,14 +312,14 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
 				} catch (e) {
-					console.log("malformed " + inputPrefix + ".action:" + base64);
+					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".action:" + base64);
 					continue;
 				}
 				var actionContext = context.labelSequenceContext(actionArgs.contextPath);
 				if (actionContext) {
 					var result = actionContext.actionArgs(actionArgs.action, actionArgs.params);
 				} else {
-					console.log("Could not find action context for: " + actionArgs.contextPath);
+					Jsonary.log(Jsonary.logLevel.ERROR, "Could not find action context for: " + actionArgs.contextPath);
 				}
 			}
 		}
@@ -220,14 +331,14 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
 				} catch (e) {
-					console.log("malformed " + inputPrefix + ".action:" + base64);
+					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".action:" + base64);
 					continue;
 				}
 				var actionContext = context.labelSequenceContext(actionArgs.contextPath);
 				if (actionContext) {
 					var result = actionContext.actionArgs(actionArgs.action, actionArgs.params);
 				} else {
-					console.log("Could not find action context for: " + actionArgs.contextPath);
+					Jsonary.log(Jsonary.logLevel.ERROR, "Could not find action context for: " + actionArgs.contextPath);
 				}
 			}
 		}
@@ -258,6 +369,7 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	
 	// Make an actual HTTP request, defaulting to the current server if just path is given
 	Jsonary.ajaxFunction = function (params, callback) {
+		console.log(params);
 		requestCount++;
 		var options = urlModule.parse(params.url);
 		var isHttps = (options.protocol == 'https' || options.protocol == 'https:');

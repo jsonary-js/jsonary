@@ -55,6 +55,16 @@
 	};
 	var componentList = [componentNames.ADD_REMOVE, componentNames.TYPE_SELECTOR, componentNames.RENDERER];
 	
+	function TempStore() {
+		var obj = {};
+		this.get = function (key) {
+			return obj[key];
+		};
+		this.set = function (key, value) {
+			return obj[key] = value;
+		};
+	};
+	
 	var contextIdCounter = 0;
 	function RenderContext(elementIdPrefix) {
 		this.uniqueId = contextIdCounter++;
@@ -121,6 +131,11 @@
 		this.oldSubContexts = {};
 		this.missingComponents = componentList;
 		this.bannedRenderers = {};
+		
+		// Temporary data attached to context - not stored, but preserved even across prototype-inheritance
+		var temp = new TempStore();
+		this.set = temp.set;
+		this.get = temp.get;
 	}
 	RenderContext.prototype = {
 		rootContext: null,
@@ -195,7 +210,7 @@
 			return subContext;
 		},
 		subContextSavedStates: {},
-		saveUiState: function () {
+		saveUiState: function (report) {
 			var subStates = {};
 			for (var key in this.subContexts) {
 				subStates[key] = this.subContexts[key].saveUiState();
@@ -263,7 +278,7 @@
 				this.subContexts[labelKey] = this.oldSubContexts[labelKey];
 			}
 			if (this.subContexts[labelKey] != undefined) {
-				if (this.subContexts[labelKey].data === null) {
+				if (data === null || this.subContexts[labelKey].data === null) {
 					// null can be used as a placeholder, to get callbacks when rendering requests/urls
 					this.subContexts[labelKey].data = data;
 				} else if (this.subContexts[labelKey].data != data) {
@@ -308,6 +323,10 @@
 					this.subContexts = {};
 					this.oldSubContexts = {};
 					this.bannedRenderers = bannedRenderers;
+
+					var temp = new TempStore();
+					this.set = temp.set;
+					this.get = temp.get;
 				}
 				Context.prototype = this.rootContext;
 				this.subContexts[labelKey] = new Context(this.rootContext, this, labelKey, data, uiStartingState, missingComponents, bannedRenderers);
@@ -340,13 +359,11 @@
 			var renderer = this.renderer;
 			this.data.whenStable(function (data) {
 				renderer.asyncRenderHtml(data, thisContext, function (error, innerHtml) {
-					if (error) {
-						return htmlCallback(error, innerHtml, thisContext);
+					if (!error) {
+						thisContext.clearOldSubContexts();
 					}
-					thisContext.clearOldSubContexts();
 
-					innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
-					htmlCallback(null, innerHtml, thisContext);
+					asyncRenderHtml.postTransform(error, innerHtml, thisContext, htmlCallback);
 				});
 			});
 		},
@@ -828,12 +845,15 @@
 			context = context.withoutComponent(options.withoutComponent);
 		}
 		return context.asyncRenderHtml(data, null, uiStartingState, function (error, innerHtml, renderContext) {
-			if (error) {
-				htmlCallback(error, innerHtml, renderContext);
-			}
-			htmlCallback(null, '<span class="jsonary">' + innerHtml + '</span>', renderContext);
+			asyncRenderHtml.postTransform(error, innerHtml, renderContext, htmlCallback);
 		});
 	}
+	asyncRenderHtml.postTransform = function (error, innerHtml, renderContext, callback) {
+		if (!error) {
+			innerHtml = '<span class="jsonary">' + innerHtml + '</span>';
+		}
+		return callback(error, innerHtml, renderContext, callback);
+	};
 
 	if (global.jQuery != undefined) {
 		render.empty = function (element) {

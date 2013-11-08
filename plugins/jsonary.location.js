@@ -95,6 +95,10 @@
 		var fragment = lastHref.split('#').slice(1).join('#');
 		var resolved = Jsonary.Uri.resolve(lastHref.split('#')[0], fragment);
 		api.resolved = resolved;
+		
+		var uri = new Jsonary.Uri(resolved);
+		uri.scheme = uri.domain = uri.port = uri.username = uri.password = uri.doubleSlash = null;
+		api.trailing = uri.toString();
 
 		ignoreUpdate = true;
 		api.base = resolved.split('?')[0];

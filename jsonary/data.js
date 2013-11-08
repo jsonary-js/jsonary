@@ -66,7 +66,11 @@ function Document(url, isDefinitive, readOnly) {
 		}
 	}
 	this.whenAccessed = function (callback) {
-		accessCallbacks.push(callback);
+		if (publicApi.config.accessImmediately) {
+			callback.call(this);
+		} else {
+			accessCallbacks.push(callback);
+		}
 	}
 
 	this.setRaw = function (value) {
