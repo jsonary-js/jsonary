@@ -7463,6 +7463,18 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				this.uiState = result[0];
 				this.subContextSavedStates = result[1];
 			},
+			withSameComponents: function () {
+				missingComponents = this.missingComponents.slice(0);
+				if (this.renderer != undefined) {
+					for (var i = 0; i < this.renderer.filterObj.component.length; i++) {
+						var componentIndex = missingComponents.indexOf(this.renderer.filterObj.component[i]);
+						if (componentIndex !== -1) {
+							missingComponents.splice(componentIndex, 1);
+						}
+					}
+				}
+				return this.withComponent(missingComponents);
+			},
 			withComponent: function (components) {
 				if (!Array.isArray(components)) {
 					components = [components];
@@ -7472,10 +7484,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var result = Object.create(this);
 				result.getSubContext = function () {
 					var subContext = actualGetSubContext.apply(this, arguments);
-					for (var i = 0; i < components.length; i++) {
-						if (subContext.missingComponents.indexOf(components[i]) === -1) {
-							subContext.missingComponents.unshift(components[i]);
+					for (var i = components.length; i >= 0; i--) {
+						var index = subContext.missingComponents.indexOf(components[i]);
+						if (index !== -1) {
+							subContext.missingComponents.splice(index, 1);
 						}
+						subContext.missingComponents.unshift(components[i]);
 					}
 					return subContext;
 				};
@@ -9054,7 +9068,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					result += context.actionHtml(html, "submit");
 					var html = '<span class="button action">cancel</span>';
 					result += context.actionHtml(html, "cancel");
-					result += context.renderHtml(context.uiState.submissionData, '~linkData');
+					result += context.withSameComponents().renderHtml(context.uiState.submissionData, '~linkData');
 					return result;
 				}
 				
