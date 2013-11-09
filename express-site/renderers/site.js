@@ -27,15 +27,23 @@ Jsonary.render.register({
 	renderHtml: function (data, context) {
 		var title = "Page title";
 		var page = null;
-		var pageTitle = data.get('/title');
+		var pageTitle = null;
 		data.property('sections').items(function (index, subData) {
 			if (subData.get('/tabs') == context.uiState.nav) {
 				page = subData.property('tabs').getLink('full').href;
-				pageTitle += ": " + subData.get('/title');
+				pageTitle = data.get('/title') + ": " + subData.get('/title');
 			}
 		});
 		context.set('pageTitle', pageTitle);
-		var result = '<h1>' + Jsonary.escapeHtml(pageTitle) + '</h1>';
+		var result = '<h1>';
+		if (pageTitle === null) {
+			result += context.renderHtml(data.property('title'), 'title');
+			Jsonary.pageTitle = data.get('/title');
+		} else {
+			result += Jsonary.escapeHtml(pageTitle);
+			Jsonary.pageTitle = pageTitle;
+		}
+		result += '</h1>';
 		result += '<hr>';
 		if (!page) {
 			if (context.uiState.nav) {
@@ -55,7 +63,7 @@ Jsonary.render.register({
 		}
 	},
 	enhance: function (element, data, context) {
-		element.ownerDocument.title = context.get('pageTitle');
+		element.ownerDocument.title = Jsonary.pageTitle;
 	},
 	saveState: function (uiState, subStates) {
 		var result = {page: subStates.page};

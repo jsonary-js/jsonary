@@ -281,7 +281,7 @@ app.use('/', function (request, response, next) {
 
 		var html = '<html>';
 		html += 	'<head>';
-		html += 		'<title>' + Jsonary.escapeHtml(renderContext.get('pageTitle') || '???') + '</title>';
+		html += 		'<title>' + Jsonary.escapeHtml(Jsonary.pageTitle || '???') + '</title>';
 		html += 		'<link rel="stylesheet" href="/bundle.css">';
 		html += 	'</head>';
 		html += 	'<body>';
