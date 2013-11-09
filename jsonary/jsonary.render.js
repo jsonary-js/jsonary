@@ -228,6 +228,18 @@
 			this.uiState = result[0];
 			this.subContextSavedStates = result[1];
 		},
+		withSameComponents: function () {
+			missingComponents = this.missingComponents.slice(0);
+			if (this.renderer != undefined) {
+				for (var i = 0; i < this.renderer.filterObj.component.length; i++) {
+					var componentIndex = missingComponents.indexOf(this.renderer.filterObj.component[i]);
+					if (componentIndex !== -1) {
+						missingComponents.splice(componentIndex, 1);
+					}
+				}
+			}
+			return this.withComponent(missingComponents);
+		},
 		withComponent: function (components) {
 			if (!Array.isArray(components)) {
 				components = [components];
@@ -237,10 +249,12 @@
 			var result = Object.create(this);
 			result.getSubContext = function () {
 				var subContext = actualGetSubContext.apply(this, arguments);
-				for (var i = 0; i < components.length; i++) {
-					if (subContext.missingComponents.indexOf(components[i]) === -1) {
-						subContext.missingComponents.unshift(components[i]);
+				for (var i = components.length; i >= 0; i--) {
+					var index = subContext.missingComponents.indexOf(components[i]);
+					if (index !== -1) {
+						subContext.missingComponents.splice(index, 1);
 					}
+					subContext.missingComponents.unshift(components[i]);
 				}
 				return subContext;
 			};

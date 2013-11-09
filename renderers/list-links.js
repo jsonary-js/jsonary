@@ -19,7 +19,7 @@
 				result += context.actionHtml(html, "submit");
 				var html = '<span class="button action">cancel</span>';
 				result += context.actionHtml(html, "cancel");
-				result += context.renderHtml(context.uiState.submissionData, '~linkData');
+				result += context.withSameComponents().renderHtml(context.uiState.submissionData, '~linkData');
 				return result;
 			}
 			
