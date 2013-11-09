@@ -83,6 +83,45 @@ Jsonary.render.register({
 	}
 });
 
+// ACE editors leak memory
+var aceEditorPool = [];
+var aceEditorReturnToPool = function (editor, element) {
+	aceEditorPool.push({editor: editor, element: element});
+};
+var aceEditorObtain = function (container, getElementId) {
+	var editor, editorElement;
+	if (aceEditorPool.length > 0) {
+		var obj = aceEditorPool.shift();
+		editor = obj.editor;
+		editorElement = obj.element;
+		container.appendChild(editorElement);
+	} else {
+		editorElement = document.createElement('div');
+		editorElement.className = "ace-editor";
+		editorElement.innerHTML = "";
+		editorElement.id = getElementId();
+		container.appendChild(editorElement);
+		editor = ace.edit(editorElement.id);
+	}
+	var cleanupInterval = setInterval(function () {
+		var el = editorElement;
+		while (el.parentNode) {
+			el = el.parentNode;
+		}
+		if (el != editorElement.ownerDocument) {
+			editor.getSession().removeAllListeners('change');
+			editor.getSession().removeAllListeners('blur');
+			editorElement.parentNode.removeChild(editorElement);
+			aceEditorReturnToPool(editor, editorElement);
+			clearInterval(cleanupInterval);
+			console.log("Recycled (" + aceEditorPool.length + ")");
+		} else {
+			console.log("Still good");
+		}
+	}, 1000);
+	return editor;
+};
+
 Jsonary.render.register({
 	renderHtml: function (data, context) {
 		// Fall back to other renderer
@@ -93,13 +132,9 @@ Jsonary.render.register({
 		var container = document.createElement('div');
 		container.className = "ace-editor-container";
 		element.appendChild(container);
-		var editorElement = document.createElement('div');
-		editorElement.className = "ace-editor";
-		editorElement.innerHTML = Jsonary.escapeHtml(data.value());
-		editorElement.id = context.getElementId();
-		container.appendChild(editorElement);
+		var editor = aceEditorObtain(container, context.getElementId.bind(context));
+		editor.getSession().setValue(data.value());
 
-		var editor = ace.edit(editorElement.id);
 		context.set('editor', editor);
 		var extraLines = data.readOnly() ? 0 : 1;
 		function updateHeight() {
@@ -113,6 +148,7 @@ Jsonary.render.register({
 		if (data.readOnly()) {
 			editor.setReadOnly(true);
 		} else {
+			editor.setReadOnly(false);
 			editor.on('change', updateHeight);
 			editor.on('blur', function () {
 				var jsCode = editor.getSession().getValue();
