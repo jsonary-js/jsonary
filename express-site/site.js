@@ -251,7 +251,7 @@ app.use('/', function (request, response, next) {
 	var uiState = Jsonary.location.uiStateFromUrl(strippedUrl);
 	Jsonary.server.pageUri = Jsonary.location.urlFromUiState(uiState);
 	
-	Jsonary.asyncRenderHtml(defaultJsonPage, uiState, {withComponent: 'WHOLE_PAGE'}, function (error, innerHtml, renderContext) {
+	Jsonary.asyncRenderHtml(defaultJsonPage, uiState, {withComponent: ['LIST_LINKS', 'WHOLE_PAGE']}, function (error, innerHtml, renderContext) {
 		timer.event('first render');
 		var needsReRender = Jsonary.server.performActions(renderContext, request.query, request.body);
 		timer.event('inputs/actions');
@@ -319,7 +319,7 @@ app.use('/', function (request, response, next) {
 						'var changeMonitor = Jsonary.location.onChange(function () {',
 							'var uiState = Jsonary.location.uiStateFromUrl(Jsonary.location.trailing);',
 							'renderContext = Jsonary.render("jsonary-target", ' + JSON.stringify(defaultJsonPage) + ', uiState, {',
-								'withComponent: "WHOLE_PAGE"',
+								'withComponent: ["LIST_LINKS", "WHOLE_PAGE"]',
 							'});',
 						'});',
 						'Jsonary.render.addActionHandler(function (context, data, actionName, historyPoint) {',

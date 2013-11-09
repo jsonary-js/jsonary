@@ -802,7 +802,11 @@ input.json-number-input {
 /**** site.css ****/
 
 body {
+	background-color: #D5D0C8;
+
+	font-family: Arial Unicode MS, Arial, sans-serif;
 	font-size: 14px;
+	color: #222;
 }
 
 #html-only-switcher {
@@ -810,9 +814,13 @@ body {
 	top: 0;
 	right: 0;
 	padding: 0.3em;
+	padding-left: 0.6em;
+	padding-right: 0.6em;
 	border: 2px solid #888;
+	border-top: none;
+	border-right: none;
 	background-color: #F4F4F4;
-	border-bottom-left-radius: 3px;
+	border-bottom-left-radius: 5px;
 	color: black;
 	text-decoration: none;
 }
@@ -823,12 +831,15 @@ body {
 }
 
 h1 {
-	font-size: 1.1em;
+	text-align: center;
+	font-size: 2em;
+	font-weight: bold;
 }
 
 .site {
 	border: 1px solid black;
 	border-radius: 5px;
+	background-color: #FFF;
 }
 
 .site-title {
