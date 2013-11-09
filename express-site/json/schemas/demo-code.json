@@ -1,0 +1,33 @@
+{
+	"title": "Demo JavaScript code",
+	"type": "object",
+	"properties": {
+		"js": {
+			"type": "string",
+			"media": {"type": "application/javascript"},
+			"default": "console.log(1 === 1);"
+		},
+		"html": {
+			"type": "string",
+			"media": {"type": "text/html"},
+			"default": ""
+		}
+	},
+	"required": ["html", "js"],
+	"definitions": {
+		"array": {
+			"type": "array",
+			"items": {
+				"oneOf": [
+					{"$ref": "#"},
+					{
+						"title": "Markdown",
+						"type": "string",
+						"format": "markdown"
+					}
+				]
+			},
+			"minItems": 1
+		}
+	}
+}

@@ -2,8 +2,9 @@ var express = require('express');
 var url = require('url');
 var http = require('http');
 var https = require('https');
-//require('../assemble-package'); // reset all bundles
+var path = require('path');
 var jsonaryBundle = require('../node-package/jsonary-bundle');
+var prettyJson = require('./prettyJson');
 
 var classes = require('./classes.js');
 var mysqlPool = require('./mysql-connect-to-pool.js');
@@ -17,6 +18,7 @@ function createBundles() {
 	// extra plugins and renderers
 	bundle.add('../plugins/jsonary.location');
 	bundle.add('../plugins/jsonary.undo');
+	/*
 	bundle.add('../plugins/jsonary.jstl');
 	bundle.add('../plugins/jsonary.render.table');
 	bundle.add('../plugins/jsonary.render.generate');
@@ -24,10 +26,11 @@ function createBundles() {
 	bundle.add('../renderers/contributed/full-preview');
 	bundle.add('../renderers/contributed/full-instances');
 	bundle.add('../renderers/contributed/adaptive-table');
-	bundle.add('../renderers/contributed/markdown');
+	*/
 
 	// Site-specific renderers
 	bundle.add('renderers/site');
+	bundle.add('renderers/demo-code');
 	bundle.add('renderers/markdown-hack');
 	
 	bundle.writeCss('public/bundle.css');
@@ -132,66 +135,8 @@ app.put('/json/pages/:name', function (request, response, next) {
 	});
 });
 
-function prettyJson(data, indent) {
-	var indent = indent || '\t';
-	if (Array.isArray(data)) {
-		if (data.length === 0) {
-			return '[]';
-		} else if (data.length === 1) {
-			return '[' + prettyJson(data[0], indent) + ']';
-		} else {
-			var singleLine = true;
-			var parts = [];
-			for (var i = 0; i < data.length; i++) {
-				var subJson = prettyJson(data[i], indent);
-				parts[i] = subJson;
-				if (subJson.indexOf('\n') !== -1) {
-					singleLine = false;
-				}
-			}
-			if (singleLine && parts.length <= 5) {
-				return '[' + parts.join(', ') + ']';
-			} else {
-				var result = '[';
-				for (var i = 0; i < parts.length; i++) {
-					if (i > 0) {
-						result += ',';
-					}
-					result += '\n' + indent + parts[i].replace(/\n/g, '\n' + indent);
-				}
-				return result + '\n]';
-			}
-		}
-	} else if (data && typeof data === 'object') {
-		var keys = Object.keys(data);
-		if (keys.length === 0) {
-			return '{}';
-		}
-		if (keys.length > 10) {
-			keys.sort();
-		}
-		if (keys.length === 1) {
-			var part = prettyJson(data[keys[0]], indent);
-			if (part.indexOf('\n') === -1) {
-				return '{' + JSON.stringify(keys[0]) + ": " + part + '}';
-			} else {
-				return '{\n' + indent + JSON.stringify(keys[0]) + ": " + part.replace(/\n/g, '\n' + indent); + '\n}';
-			}
-		} else {
-			var result = "{";
-			for (var i = 0; i < keys.length; i++) {
-				if (i > 0) {
-					result += ',';
-				}
-				result += '\n' + indent + JSON.stringify(keys[i]);
-				result += ': ' + prettyJson(data[keys[i]], indent).replace(/\n/g, '\n' + indent);
-			}
-			return result + '\n}';
-		}
-	}
-	return JSON.stringify(data, null, '\t');
-}
 app.use('/json/schemas/', function (request, response, next) {
+	console.log('schema: ' + request.url);
 	response.set('Content-Type', 'application/json');
 	response.links({
 		describedby: "http://json-schema.org/hyper-schema"
@@ -203,7 +148,7 @@ app.use('/json/schemas/', express.static(__dirname + '/json/schemas'));
 
 var jsonData = {
 	"title": "Jsonary",
-	"topContent": "[download](https://github.com/geraintluff/jsonary/raw/master/get-started-bundle.zip) and get started",
+	"topContent": "[download](/get-started.zip) and get started",
 	"sections": [
 		{
 			"title": "Features and goals",
@@ -284,13 +229,16 @@ app.use('/json/', function (request, response) {
 });
 
 app.use('/', express.static(__dirname + "/public"));
+app.use('/get-started.zip', function (request, response) {
+	response.sendfile(path.join(__dirname, '../get-started.zip'));
+});
 
 var defaultJsonPage = '/json/';
 app.use('/', function (request, response, next) {
 	if (request.path !== '/'
 		&& request.path.substring(0, 7) !== '/pages/'
 		 && request.path.substring(0, 5) !== '/api/') {
-		next();
+		return next();
 	}
 	var timer = LogTimer('page');
 	
@@ -365,6 +313,7 @@ app.use('/', function (request, response, next) {
 		if (Jsonary.server.canRedirect() && !request.query.htmlOnly) {
 			//*/ JavaScript browser
 			html += '<script src="/bundle.js"></script>';
+			html += '<script src="/js/ace/ace.js"></script>';
 			html += ['<script>',
 						'Jsonary.location.queryVariant = ' + JSON.stringify(Jsonary.location.queryVariant) + ';',
 						'Jsonary.location.replace(' + JSON.stringify(Jsonary.location.urlFromUiState(savedUiState)) + ');',

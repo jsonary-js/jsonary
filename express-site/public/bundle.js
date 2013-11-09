@@ -1,10 +1,10 @@
-/* Bundled on 2013-11-08 */
+/* Bundled on 2013-11-09 */
 (function() {
 
 
 /**** jsonary-core.js ****/
 
-	/* Bundled on 2013-11-08 */
+	/* Bundled on 2013-11-09 */
 	(function() {
 	/* Copyright (C) 2012-2013 Geraint Luff
 	
@@ -8063,7 +8063,7 @@
 					data.document.registerChangeListener(function () {
 						updateFunction(data.value());
 					});
-				} else {
+				} else if (!updateFunction) {
 					data = data.readOnlyCopy();
 				}
 				return Jsonary.render(target, data);
@@ -10382,1500 +10382,6 @@
 	})();
 	
 
-/**** jsonary.jstl.js ****/
-
-	(function (publicApi) {
-		var templateMap = {};
-		var loadedUrls = {};
-		function loadTemplates(url) {
-			if (url == undefined) {
-				if (typeof document == "undefined") {
-					return;
-				}
-				var scripts = document.getElementsByTagName("script");
-				var lastScript = scripts[scripts.length - 1];
-				url = lastScript.getAttribute("src");
-			}
-			if (loadedUrls[url]) {
-				return;
-			}
-			loadedUrls[url] = true;
-	
-			var code = "";
-			if (typeof XMLHttpRequest != 'undefined') {
-				// In browser
-				var xhr = new XMLHttpRequest();
-				xhr.open("GET", url, false);
-				xhr.send();
-				code = xhr.responseText;
-			} else if (typeof require != 'undefined') {
-				// Server-side
-				var fs = require('fs');
-				code = fs.readFileSync(url).toString();
-			}
-	
-			var parts = (" " + code).split(/\/\*\s*[Tt]emplate:/);
-			parts.shift();
-			for (var i = 0; i < parts.length; i++) {
-				var part = parts[i];
-				part = part.substring(0, part.indexOf("*/"));
-				var endOfLine = part.indexOf("\n");
-				var key = part.substring(0, endOfLine).trim();
-				var template = part.substring(endOfLine + 1);
-				templateMap[key] = template;
-			}
-		}
-		function getTemplate(key) {
-			loadTemplates();
-			var rawCode = templateMap[key];
-			if (rawCode) {
-				return create(rawCode);
-			}
-			return null;
-		}
-		function create(rawCode) {
-			return {
-				toString: function () {return this.code;},
-				code: rawCode,
-				compile: function (directEvalFunction, constFunctions, additionalParams) {
-					return compile(this.code, directEvalFunction, constFunctions, additionalParams);
-				}
-			};
-		}
-	
-		function compile(template, directEvalFunction, headerText, additionalParams) {
-			if (directEvalFunction == undefined) {
-				directEvalFunction = publicApi.defaultFunction;
-			}
-			if (headerText == undefined) {
-				headerText = publicApi.defaultHeaderCode;
-			}
-			if (additionalParams == undefined) {
-				additionalParams = {};
-			}
-			var constants = [];
-			var variables = [];
-			
-			var substitutionFunctionName = "subFunc" + Math.floor(Math.random()*1000000000);
-			var jscode = '(function () {\n';
-			
-			var directFunctions = [];
-			var directFunctionVarNames = [];
-			for (var key in additionalParams) {
-				if (additionalParams[key]) {
-					directFunctionVarNames.push(key);
-					directFunctions.push(additionalParams[key]);
-				}
-			}
-			var parts = (" " + template).split(/<\?js|<\?|<%/g);
-			var initialString = parts.shift().substring(1);
-			if (headerText) {
-				jscode += "\n" + headerText + "\n";
-			}
-			jscode += '	var _arguments = arguments;\n';
-			if (additionalParams['echo'] !== undefined) {
-				jscode += '	echo(' + JSON.stringify(initialString) + ');\n';
-			} else {
-				var resultVariableName = "result" + Math.floor(Math.random()*1000000000);
-				jscode += '	var ' + resultVariableName + ' = ' + JSON.stringify(initialString) + ';\n';
-				jscode += '	var echo = function (str) {' + resultVariableName + ' += str;};\n';
-			}
-			while (parts.length > 0) {
-				var part = parts.shift();
-				var endIndex = part.match(/\?>|%>/).index;
-				var embeddedCode = part.substring(0, endIndex);
-				var constant = part.substring(endIndex + 2);
-				
-				if (/\s/.test(embeddedCode.charAt(0))) {
-					jscode += "\n" + embeddedCode + "\n";
-				} else {
-					var directFunction = directEvalFunction(embeddedCode) || defaultFunction(embeddedCode);
-					if (typeof directFunction == "string") {
-						jscode += "\n\t	echo(" + directFunction + ");\n";
-					} else {
-						directFunctions.push(directFunction);
-						var argName = "fn" + Math.floor(Math.random()*10000000000);
-						directFunctionVarNames.push(argName);
-						jscode += "\n	echo(" + argName + ".apply(this, _arguments));\n";
-					}
-				}
-				
-				jscode += '	echo(' + JSON.stringify(constant) + ');\n';
-			}
-			if (additionalParams['echo'] !== undefined) {
-				jscode += '\n	return "";\n})';
-			} else {
-				jscode += '\n	return ' + resultVariableName + ';\n})';
-			}
-			
-			//console.log("\n\n" + jscode + "\n\n");
-			
-			var f = Function.apply(null, directFunctionVarNames.concat(["return " + jscode]));
-			return f.apply(null, directFunctions);
-		}
-		
-		function defaultFunction(varName) {
-			return function (data) {
-				var string = "" + data[varName];
-				return string.replace("&", "&amp;").replace("<", "&lt;").replace(">", "gt;").replace('"', "&quot;").replace("'", "&#39;");
-			};
-		};
-		
-		publicApi.loadTemplates = loadTemplates;
-		publicApi.getTemplate = getTemplate;
-		publicApi.create = create;
-		publicApi.defaultFunction = defaultFunction;
-		publicApi.defaultHeaderCode = "var value = arguments[0];";
-	})((typeof module !== 'undefined' && module.exports) ? exports : (this.jstl = {}, this.jstl));
-	
-	// Jsonary plugin
-	(function (Jsonary) {
-		
-		var headerCode = [
-			'var data = arguments[0], context = arguments[1];',
-			'function want(path) {',
-			'	var subData = data.subPath(path);',
-			'	return subData.defined() || !subData.readOnly();',
-			'};',
-			'function action(html, actionName) {',
-			'echo(context.actionHtml.apply(context, arguments));',
-			'};',
-			'function render(subData, label) {',
-			'	echo(context.renderHtml(subData, label));',
-			'};'
-		].join("\n");
-		var substitutionFunction = function (path) {
-			if (path == "$") {
-				return function (data, context) {
-					return context.renderHtml(data);
-				};
-			} else if (path.charAt(0) == "/") {
-				return function (data, context) {
-					return context.renderHtml(data.subPath(path));
-				};
-			} else if (path.charAt(0) == "=") {
-				return 'window.escapeHtml(' + path.substring(1) + ')';
-			} else {
-				return function (data, context) {
-					var string = "" + data.propertyValue(path);
-					return string.replace("&", "&amp;").replace("<", "&lt;").replace(">", "gt;").replace('"', "&quot;").replace("'", "&#39;");
-				}
-			}
-		};
-		
-		Jsonary.extend({
-			template: function (key) {
-				var template = jstl.getTemplate(key);
-				if (template == null) {
-					throw new Exception("Could not locate template: " + key);
-				}
-				return template.compile(substitutionFunction, headerCode);
-			},
-			loadTemplates: function () {
-				jstl.loadTemplates();
-			}
-		});
-	})(Jsonary);
-	
-
-/**** jsonary.render.table.js ****/
-
-	(function (Jsonary) {
-	
-		function TableRenderer (config) {
-			if (!(this instanceof TableRenderer)) {
-				return new TableRenderer(config);
-			}
-			var thisRenderer = this;
-			
-			config = config || {};
-			this.config = config;
-			
-			for (var key in TableRenderer.defaults) {
-				if (!config[key]) {
-					if (typeof TableRenderer.defaults[key] == "function") {
-						config[key] = TableRenderer.defaults[key];
-					} else {
-						config[key] = JSON.parse(JSON.stringify(TableRenderer.defaults[key]));
-					}
-				}
-			}
-			
-			for (var i = 0; i < config.columns.length; i++) {
-				var columnPath = config.columns[i];
-				config.cellRenderHtml[key] = config.cellRenderHtml[key] || config.defaultCellRenderHtml;
-				config.titleHtml[key] = config.titleHtml[key] || config.defaultTitleHtml;
-			}
-			
-			config.rowRenderHtml = this.wrapRowFunction(config, config.rowRenderHtml);
-			for (var key in config.cellRenderHtml) {
-				config.cellRenderHtml[key] = this.wrapCellFunction(config, config.cellRenderHtml[key], key);
-			}
-			for (var key in config.titleHtml) {
-				config.titleHtml[key] = this.wrapTitleFunction(config, config.titleHtml[key], key);
-			}
-	
-			if (config.filter) {
-				this.filter = function (data, schemas) {
-					return config.filter(data, schemas);
-				};
-			}
-			
-			this.addColumn = function (key, title, renderHtml) {
-				config.columns.push(key);
-				if (typeof title == 'function') {
-					config.titleHtml[key] = thisRenderer.wrapTitleFunction(config, title, key);
-				} else {
-					if (title != undefined) {
-						config.titles[key] = title;
-					}
-					config.titleHtml[key] = thisRenderer.wrapTitleFunction(config, config.defaultTitleHtml, key);
-				}
-				renderHtml = renderHtml || config.defaultCellRenderHtml;
-				config.cellRenderHtml[key] = thisRenderer.wrapCellFunction(config, renderHtml, key);
-				return this;
-			}
-			
-			this.component = config.component;
-		};
-		TableRenderer.prototype = {
-			wrapRowFunction: function (functionThis, original) {
-				var thisRenderer = this;
-				return function (rowData, context) {
-					var rowContext = thisRenderer.rowContext(rowData, context);
-					return original.call(functionThis, rowData, rowContext);
-				};
-			},
-			wrapTitleFunction: function (functionThis, original, columnKey) {
-				var thisRenderer = this;
-				return function (cellData, context) {
-					var titleContext = context;
-					return original.call(functionThis, cellData, titleContext, columnKey);
-				}
-			},
-			wrapCellFunction: function (functionThis, original, columnKey) {
-				var thisRenderer = this;
-				return function (cellData, context) {
-					var cellContext = thisRenderer.cellContext(cellData, context, columnKey);
-					return original.call(functionThis, cellData, cellContext, columnKey);
-				}
-			},
-			action: function (context, actionName) {
-				var thisRenderer = this;
-				if (context.label.substring(0, 3) == "col" && !context.get('cellData')) {
-					// Recover cellData when running server-side
-					var columnPath = context.label.substring(3);
-					var rowContext = context.parent;
-					var tableContext = rowContext.parent;
-					context.data.items(function (index, rowData) {
-						if (thisRenderer.rowContext(rowData, tableContext).uniqueId == rowContext.uniqueId) {
-							var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
-							thisRenderer.cellContext(cellData, rowContext, columnPath); // Sets cellData on the appropriate context
-						}
-					});
-				} else if (context.label.substring(0, 3) == "row" && !context.get('rowData')) {
-					// Recover rowData when running server-side
-					var tableContext = context.parent;
-					context.data.items(function (index, rowData) {
-						thisRenderer.rowContext(rowData, tableContext); // Sets rowData on the appropriate context
-					});
-				}
-				if (context.get('cellData')) {
-					var columnPath = context.get('columnPath');
-	
-					var cellAction = this.config.cellAction[columnPath];
-					var newArgs = [context.get('cellData')];
-					while (newArgs.length <= arguments.length) {
-						newArgs.push(arguments[newArgs.length - 1]);
-					}
-					return cellAction.apply(this.config, newArgs);
-				} else if (context.get('rowData')) {
-					var rowAction = this.config.rowAction;
-					var newArgs = [context.get('rowData')];
-					while (newArgs.length <= arguments.length) {
-						newArgs.push(arguments[newArgs.length - 1]);
-					}
-					return rowAction.apply(this.config, newArgs);
-				}
-				var newArgs = [context.data];
-				while (newArgs.length <= arguments.length) {
-					newArgs.push(arguments[newArgs.length - 1]);
-				}
-				return this.config.action.apply(this.config, newArgs);
-			},
-			rowContext: function (data, context) {
-				var rowLabel = "row" + context.labelForData(data);
-				var subContext = context.subContext(rowLabel);
-				subContext.set('rowData', data);
-				return subContext;
-			},
-			cellContext: function (data, context, columnPath) {
-				var subContext = context.subContext('col' + columnPath);
-				subContext.set('columnPath', columnPath);
-				subContext.set('cellData', data);
-				return subContext;
-			},
-			renderHtml: function (data, context) {
-				return this.config.tableRenderHtml(data, context);
-			},
-			rowRenderHtml: function (data, context) {
-				var config = this.config;
-				return config.rowRenderHtml(data, context);
-			},
-			enhance: function (element, data, context) {
-				if (this.config.enhance) {
-					return this.config.enhance(element, data, context);
-				} else if (this.config.render) {
-					return this.config.render(element, data, context);
-				}
-			},
-			update: function (element, data, context, operation) {
-				if (this.config.update) {
-					this.config.defaultUpdate = this.config.defaultUpdate || this.defaultUpdate;
-					return this.config.update.apply(this, arguments);
-				}
-				return this.defaultUpdate.apply(this, arguments);
-			},
-			linkHandler: function () {
-				if (this.config.linkHandler) {
-					return this.config.linkHandler.apply(this.config, arguments);
-				}
-			},
-			register: function(filterFunction) {
-				if (filterFunction) {
-					this.filter = filterFunction;
-				}
-				return Jsonary.render.register(this);
-			}
-		};
-		TableRenderer.defaults = {
-			columns: [],
-			titles: {},
-			titleHtml: {},
-			defaultTitleHtml:  function (data, context, columnPath) {
-				return '<th>' + Jsonary.escapeHtml(this.titles[columnPath] != undefined ? this.titles[columnPath] : columnPath) + '</th>';
-			},
-			cellRenderHtml: {},
-			defaultCellRenderHtml: function (cellData, context, columnPath) {
-				return '<td data-column="' + Jsonary.escapeHtml(columnPath) + '">' + context.renderHtml(cellData, columnPath) + '</td>';
-			},
-			cellAction: {},
-			rowRenderHtml: function (rowData, context) {
-				var result = "<tr>";
-				for (var i = 0; i < this.columns.length; i++) {
-					var columnPath = this.columns[i];
-					var cellData = (columnPath == "" || columnPath.charAt(0) == "/") ? rowData.subPath(columnPath) : rowData;
-					var cellRenderHtml = this.cellRenderHtml[columnPath];
-					result += this.cellRenderHtml[columnPath](cellData, context, columnPath);
-				}
-				result += '</tr>';
-				return result;
-			},
-			rowAction: function (data, context, actionName) {
-				throw new Error("Unknown row action: " + actionName);
-			},
-			tableRenderHtml: function (data, context) {
-				var result = '';
-				result += '<table class="json-array-table">';
-				result += this.tableHeadRenderHtml(data, context);
-				result += this.tableBodyRenderHtml(data, context);
-				result += '</table>';
-				return result;
-			},
-			tableHeadRenderHtml: function (data, context) {
-				var result = '<thead><tr>';
-				for (var i = 0; i < this.columns.length; i++) {
-					var columnPath = this.columns[i];
-					result += this.titleHtml[columnPath](data, context);
-				}
-				return result + '</tr></thead>';
-			},
-			rowOrder: function (data, context) {
-				var result = [];
-				var length = data.length;
-				while (result.length < length) {
-					result[result.length] = result.length;
-				}
-				return result;
-			},
-			tableBodyRenderHtml: function (data, context) {
-				var config = this.config;
-				var result = '<tbody>';
-				
-				var rowOrder = this.rowOrder(data, context);
-				for (var i = 0; i < rowOrder.length; i++) {
-					var rowData = data.item(rowOrder[i]);
-					result += this.rowRenderHtml(rowData, context);
-				}
-				
-				if (!data.readOnly()) {
-					if (data.schemas().maxItems() == null || data.schemas().maxItems() > data.length()) {
-						result += '<tr><td colspan="' + this.columns.length + '" class="json-array-table-add">';
-						result += context.actionHtml('+ add', 'add');
-						result += '</td></tr>';
-					}
-				}
-				return result + '</tbody>';
-			},
-			action: function (data, context, actionName) {
-				if (actionName == "add") {
-					var index = data.length();
-					var schemas = data.schemas().indexSchemas(index);
-					schemas.createValue(function (value) {
-						data.push(value);
-					});
-					return false;
-				}
-			}
-		};
-		
-		/** Fancy tables with sorting and links **/
-		function FancyTableRenderer(config) {
-			if (!(this instanceof FancyTableRenderer)) {
-				return new FancyTableRenderer(config);
-			}
-			config = config || {};
-			this.name = config.name || "FancyTableRenderer";
-	
-			for (var key in FancyTableRenderer.defaults) {
-				if (!config[key]) {
-					if (typeof FancyTableRenderer.defaults[key] == "function") {
-						config[key] = FancyTableRenderer.defaults[key];
-					} else {
-						config[key] = JSON.parse(JSON.stringify(FancyTableRenderer.defaults[key]));
-					}
-				}
-			}
-			
-			for (var key in config.sort) {
-				if (typeof config.sort[key] !== 'function') {
-					config.sort[key] = config.defaultSort;
-				}
-			}
-			
-			if (typeof config.rowsPerPage !== 'function') {
-				if (config.serverSide && config.serverSide.rowsPerPage) {
-					config.rowsPerPage = function () {
-						var value = this.serverSide.rowsPerPage.apply(this, arguments);
-						if (!value) {
-							return [];
-						}
-						return Array.isArray(value) ? value : [value];
-					};
-				} else {
-					var rowsPerPageStaticValue = config.rowsPerPage || [];
-					if (!Array.isArray(rowsPerPageStaticValue)) {
-						rowsPerPageStaticValue = [rowsPerPageStaticValue];
-					}
-					config.rowsPerPage = function () {
-						return rowsPerPageStaticValue.slice(0);
-					};
-				}
-			}
-	
-			TableRenderer.call(this, config);
-			
-			var prevAddColumn = this.addColumn;
-			this.addColumn = function (key, title, renderHtml, sorting) {
-				if (sorting) {
-					config.sort[key] = (typeof sorting == 'function') ? sorting : config.defaultSort;
-				}
-				return prevAddColumn.call(this, key, title, renderHtml);
-			};
-			
-			// Delete column for editable items
-			this.addConditionalColumn(function (data) {
-				return !data.readOnly() && data.length() > data.schemas().minItems();
-			}, "remove", "", function (data, context) {
-				var result = '<td class="json-array-table-remove">';
-				
-				// Check whether a delete is appropriate
-				var arrayData = data.parent();
-				var tupleTypingLength = arrayData.schemas().tupleTypingLength();
-				var minItems = arrayData.schemas().minItems();
-				var index = parseInt(data.parentKey());
-				if ((index >= tupleTypingLength || index == arrayData.length() - 1)
-					&& arrayData.length() > minItems) {
-					result += context.actionHtml('<span class="json-array-table-delete">X</span>', 'remove');
-				}
-				return result + '</td>';
-			});
-			config.cellAction.remove = function (data, context, actionName) {
-				if (actionName == "remove") {
-					data.remove();
-					return false;
-				}
-			};
-	
-			// Move column for editable items
-			this.addConditionalColumn(function (data) {
-				return !data.readOnly() && data.length() > (data.schemas().tupleTypingLength() + 1);
-			}, "move", function (data, tableContext) {
-				if (tableContext.uiState.moveRow != undefined) {
-					return '<th style="padding: 0; text-align: center">'
-						+ tableContext.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
-						+ '</th>';
-				}
-				return '<th></th>';
-			}, function (data, context) {
-				var result = '<td class="json-array-table-move">';
-				var tableContext = context.parent.parent;
-				
-				// Check whether a move is appropriate
-				var arrayData = data.parent();
-				var tupleTypingLength = arrayData.schemas().tupleTypingLength();
-				var index = parseInt(data.parentKey());
-				if (index >= tupleTypingLength) {
-					if (tableContext.uiState.moveRow == undefined) {
-						result += tableContext.actionHtml('<div class="json-array-table-move-select">move</div>', 'move-select', index);
-					} else if (tableContext.uiState.moveRow == index) {
-						result += tableContext.actionHtml('<div class="json-array-table-move-cancel">cancel</div>', 'move-cancel');
-					} else if (tableContext.uiState.moveRow > index) {
-						result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-up">to here</div>', 'move', tableContext.uiState.moveRow, index);
-					} else {
-						result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-down">to here</div>', 'move', tableContext.uiState.moveRow, index);
-					}
-				}
-				return result + '</td>';
-			});
-		}
-		FancyTableRenderer.prototype = Object.create(TableRenderer.prototype);
-		FancyTableRenderer.prototype.addConditionalColumn = function (condition, key, title, renderHtml) {
-			var titleAsFunction = (typeof title == 'function') ? title : function (data, context) {
-				return '<th>' + Jsonary.escapeHtml(title) + '</th>';
-			};
-			if (!renderHtml) {
-				renderHtml = function (data, context) {
-					return this.defaultCellRenderHtml(data, context);
-				};
-			}
-			var titleFunction = function (data, context) {
-				if (!condition.call(this, data, context)) {
-					return '<th style="display: none"></th>';
-				} else {
-					return titleAsFunction.call(this, data, context);
-				}
-			};
-			var renderFunction = function (data, cellContext) {
-				var tableContext = cellContext.parent.parent;
-				if (!condition.call(this, tableContext.data, tableContext)) {
-					return '<td style="display: none"></td>';
-				} else {
-					return renderHtml.call(this, data, cellContext, key);
-				}
-			};
-			this.addColumn(key, titleFunction, renderFunction);
-		};
-		FancyTableRenderer.prototype.addLinkColumn = function (path, linkRel, title, linkHtml, activeHtml, confirmHtml) {
-			var subPath = ((typeof path == "string") && path.charAt(0) == "/") ? path : "";
-			if (typeof linkRel == "string") {
-				var columnName = "link" + path + "$" + linkRel;
-				
-				this.addColumn(columnName, title, function (data, context) {
-					if (!context.data.readOnly()) {
-						return '<td></td>';
-					}
-					var result = '<td>';
-					if (!context.parent.uiState.linkRel) {
-						var link = data.subPath(subPath).links(linkRel)[0];
-						if (link && data.readOnly()) {
-							var html = (typeof linkHtml == 'function') ? linkHtml.call(this, data, context, link) : linkHtml;
-							result += context.parent.actionHtml(html, 'link', linkRel, 0, subPath || undefined);
-						}
-					} else if (activeHtml) {
-						var activeLink = data.subPath(subPath).links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
-						if (activeLink && activeLink.rel == linkRel) {
-							if (typeof confirmHtml == 'string') {
-								var html = (typeof confirmHtml == 'function') ? confirmHtml.call(this, data, context, activeLink) : confirmHtml;
-								result += context.parent.actionHtml(confirmHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
-								if (activeHtml) {
-									var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
-									result += context.parent.actionHtml(html, 'link-cancel');
-								}
-							} else if (confirmHtml) {
-								var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
-								result += context.parent.actionHtml(html, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
-							} else if (activeHtml) {
-								var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
-								result += context.parent.actionHtml(html, 'link-cancel');
-							}
-						}
-					}
-					return result + '</td>';
-				});
-			} else {
-				var linkDefinition = linkRel;
-				linkRel = linkDefinition.rel();
-				var columnName = "link" + path + "$" + linkRel + "$";
-				this.addColumn(columnName, title, function (data, context) {
-					var result = '<td>';
-					if (!context.parent.uiState.linkRel) {
-						var links = data.subPath(subPath).links(linkRel);
-						for (var i = 0; i < links.length; i++) {
-							var link = links[i];
-							if (link.definition = linkDefinition) {
-								var html = (typeof linkHtml == 'function') ? linkHtml.call(this, data, context, link) : linkHtml;
-								result += context.parent.actionHtml(html, 'link', linkRel, 0, subPath || undefined);
-							}
-						}
-					} else if (activeHtml) {
-						var activeLink = data.subPath(subPath).links(context.parent.uiState.linkRel)[context.parent.uiState.linkIndex || 0];
-						if (activeLink.definition == linkDefinition) {
-							if (typeof confirmHtml == 'string') {
-								var html = (typeof confirmHtml == 'function') ? confirmHtml.call(this, data, context, activeLink) : confirmHtml;
-								result += context.parent.actionHtml(confirmHtml, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
-								if (activeHtml) {
-									var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
-									result += context.parent.actionHtml(html, 'link-cancel');
-								}
-							} else if (confirmHtml) {
-								var html = (typeof confirmHtml == 'function') ? confirmHtml.call(this, data, context, activeLink) : confirmHtml;
-								result += context.parent.actionHtml(html, 'link-confirm', context.parent.uiState.linkRel, context.parent.uiState.linkIndex, subPath || undefined);
-							} else if (activeHtml) {
-								var html = (typeof activeHtml == 'function') ? activeHtml.call(this, data, context, activeLink) : activeHtml;
-								result += context.parent.actionHtml(html, 'link-cancel');
-							}
-						}
-					}
-					return result + '</td>';
-				});
-			}
-			return this;
-		};
-	
-		FancyTableRenderer.defaults = {
-			sort: {},
-			// TODO: "natural" sort
-			defaultSort: function (a, b) {
-				if (a == null) {
-					return (b == null) ? 0 : -1;
-				} else if (b == null || a > b) {
-					return 1;
-				} else if (a < b) {
-					return -1;
-				}
-				return 0;
-			},
-			serverSide: {},
-			rowOrder: function (data, context) {
-				var thisConfig = this;
-				
-				if (thisConfig.serverSide && thisConfig.serverSide.currentSort) {
-					var sortResult = thisConfig.serverSide.currentSort.call(this, data, context);
-					if (Array.isArray(sortResult)) {
-						context.uiState.sort = sortResult;
-					} else if (typeof sortResult === 'string') {
-						context.uiState.sort = [sortResult];
-					}
-					var result = [];
-					var length = data.length();
-					while (result.length < length) {
-						result.push(result.length);
-					}
-					return result;
-				}
-				
-				var sortFunctions = [];
-				context.uiState.sort = context.uiState.sort || [];
-				
-				function addSortFunction(sortIndex, sortKey) {
-					var direction = sortKey.split('/')[0];
-					var path = sortKey.substring(direction.length);
-					var multiplier = (direction == "desc") ? -1 : 1;
-					sortFunctions.push(function (a, b) {
-						var valueA = a.get(path);
-						var valueB = b.get(path);
-						var comparison = (typeof thisConfig.sort[path] == 'function') ? thisConfig.sort[path](valueA, valueB) : thisConfig.defaultSort(valueA, valueB);
-						return multiplier*comparison;
-					});
-				}
-				for (var i = 0; i < context.uiState.sort.length; i++) {
-					addSortFunction(i, context.uiState.sort[i]);
-				}
-				var indices = [];
-				var length = data.length();
-				while (indices.length < length) {
-					indices[indices.length] = indices.length;
-				}
-				var maxSortIndex = -1;
-				indices.sort(function (a, b) {
-					for (var i = 0; i < sortFunctions.length; i++) {
-						var comparison = sortFunctions[i](data.item(a), data.item(b));
-						if (comparison != 0) {
-							maxSortIndex = Math.max(maxSortIndex, i);
-							return comparison;
-						}
-					}
-					maxSortIndex = sortFunctions.length;
-					return a - b;
-				});
-				// Trim sort conditions list, for smaller UI state
-				context.uiState.sort = context.uiState.sort.slice(0, maxSortIndex + 1);
-				return indices;
-			},
-			rowsPerPage: null,
-			pages: function (rowOrder, data, context) {
-				if (this.serverSide && this.serverSide.currentPage && this.serverSide.totalPages) {
-					var current = this.serverSide.currentPage.call(this, data, context) || 1;
-					var total = this.serverSide.totalPages.call(this, data, context);
-					if (typeof total !== 'undefined') {
-						context.uiState.page = current;
-						var result = [];
-						for (var i = 1; !(i > total); i++) {
-							if (i === current) {
-								result.push(rowOrder);
-							} else {
-								result.push([]);
-							}
-						}
-						return result;
-					}
-				}
-	
-				var rowsPerPage = context.uiState.rowsPerPage || this.rowsPerPage(data, context)[0];
-				if (!rowsPerPage) {
-					return [rowOrder];
-				}
-				var pages = [];
-				while (rowOrder.length) {
-					pages.push(rowOrder.splice(0, rowsPerPage));
-				}
-				return pages;
-			},
-			tableHeadRenderHtml: function (data, context) {
-				var result = '<thead>';
-				var rowOrder = this.rowOrder(data, context);
-				var pages = this.pages(rowOrder, data, context);
-	
-				var rowsPerPageOptions = this.rowsPerPage(data, context);
-				if (pages.length > 1 || rowsPerPageOptions.length > 1) {
-					var page = context.uiState.page || 1;
-					result += '<tr><th colspan="' + this.columns.length + '" class="json-array-table-pages">';
-					// Left arrows
-					if (page > 1) {
-						result += context.actionHtml('<span class="button">&lt;&lt;</span>', 'page', 1);
-						result += context.actionHtml('<span class="button">&lt;</span>', 'page', page - 1);
-					} else {
-						result += '<span class="button disabled">&lt;&lt;</span>';
-						result += '<span class="button disabled">&lt;</span>';
-					}
-					
-					// Page selector
-					result += 'page <select name="' + context.inputNameForAction('page') + '">';
-					for (var i = 1; i <= pages.length; i++) {
-						if (i == page) {
-							result += '<option value="' + i + '" selected>' + i + '</option>';
-						} else {
-							result += '<option value="' + i + '">' + i + '</option>';
-						}
-					}
-					result += '</select>/' + pages.length;
-	
-					// Rows-per-page selector
-					if (rowsPerPageOptions.length > 1) {
-						context.uiState.rowsPerPage = context.uiState.rowsPerPage || rowsPerPageOptions[0];
-						result += ', <select name="' + context.inputNameForAction('rowsPerPage') + '">';
-						rowsPerPageOptions.sort(function (a, b) {return a - b});
-						for (var i = 0; i < rowsPerPageOptions.length; i++) {
-							if (rowsPerPageOptions[i] === rowsPerPageOptions[i - 1]) {
-								continue;
-							}
-							var iHtml = Jsonary.escapeHtml(rowsPerPageOptions[i]);
-							var selected = (rowsPerPageOptions[i] == context.uiState.rowsPerPage) ? ' selected' : '';
-							result += '<option value="' + iHtml + '"' + selected + '>' + iHtml + '</option>';
-						}
-						result += '</select> per page';
-					}
-	
-					// Right arrows
-					if (page < pages.length) {
-						result += context.actionHtml('<span class="button">&gt;</span>', 'page', page + 1);
-						result += context.actionHtml('<span class="button">&gt;&gt;</span>', 'page', pages.length);
-					} else {
-						result += '<span class="button disabled">&gt;</span>';
-						result += '<span class="button disabled">&gt;&gt;</span>';
-					}
-					result += '</tr>';
-				}
-				result += '<tr>';
-				for (var i = 0; i < this.columns.length; i++) {
-					var columnKey = this.columns[i];
-					result += this.titleHtml[columnKey](data, context);
-				}
-				result += '</tr>';
-				return result + '</thead>';
-			},
-			tableBodyRenderHtml: function (data, context) {
-				var result = '<tbody>';
-				var rowOrder = this.rowOrder(data, context);
-	
-				var pages = this.pages(rowOrder, data, context);
-				if (!pages.length) {
-					pages = [[]];
-				}
-				var page = context.uiState.page || 1;
-				var pageRows = pages[page - 1];
-				if (!pageRows) {
-					pageRows = pages[0] || [];
-					context.uiState.page = 0;
-				}
-				for (var i = 0; i < pageRows.length; i++) {
-					var rowData = data.item(pageRows[i]);
-					result += this.rowRenderHtml(rowData, context);
-				}
-				if (page == pages.length && !data.readOnly()) {
-					if (data.schemas().maxItems() == null || data.schemas().maxItems() > data.length()) {
-						result += '<tr><td colspan="' + this.columns.length + '" class="json-array-table-add">';
-						result += context.actionHtml('+ add', 'add');
-						result += '</td></tr>';
-					}
-				}
-				return result + '</tbody>';
-			},
-			action: function (data, context, actionName, arg1, arg2) {
-				if (actionName == "sort") {
-					delete context.uiState.page;
-					var columnKey = arg1;
-					context.uiState.sort = context.uiState.sort || [];
-					if (context.uiState.sort[0] == "asc" + columnKey) {
-						context.uiState.sort[0] = "desc" + arg1;
-					} else {
-						if (context.uiState.sort.indexOf("desc" + columnKey) != -1) {
-							context.uiState.sort.splice(context.uiState.sort.indexOf("desc" + columnKey), 1);
-						} else if (context.uiState.sort.indexOf("asc" + columnKey) != -1) {
-							context.uiState.sort.splice(context.uiState.sort.indexOf("asc" + columnKey), 1);
-						}
-						context.uiState.sort.unshift("asc" + arg1);
-					}
-					if (this.serverSide && this.serverSide.action) {
-						return this.serverSide.action.apply(this, arguments);
-					}
-					return true;
-				} else if (actionName == "page") {
-					context.uiState.page = parseInt(arg1, 10);
-					if (this.serverSide && this.serverSide.action) {
-						return this.serverSide.action.apply(this, arguments);
-					}
-					return true;
-				} else if (actionName == "rowsPerPage") {
-					var oldRowsPerPage = context.uiState.rowsPerPage;
-					var newRowsPerPage = parseInt(arg1, 10);
-					if (oldRowsPerPage) {
-						context.uiState.page = Math.round(((context.uiState.page || 1) - 1)*oldRowsPerPage/newRowsPerPage) + 1;
-					}
-					context.uiState.rowsPerPage = newRowsPerPage;
-					if (this.serverSide && this.serverSide.action) {
-						return this.serverSide.action.apply(this, arguments);
-					}
-					return true;
-				} else if (actionName == "move-select") {
-					var index = arg1;
-					context.uiState.moveRow = index;
-					return true;
-				} else if (actionName == "move-cancel") {
-					delete context.uiState.moveRow;
-					return true;
-				} else if (actionName == "move") {
-					var fromIndex = arg1;
-					var toIndex = arg2;
-					delete context.uiState.moveRow;
-					data.item(fromIndex).moveTo(data.item(toIndex));
-					return false;
-				}
-				return TableRenderer.defaults.action.apply(this, arguments);
-			},
-			defaultTitleHtml: function (data, context, columnKey) {
-				if (data.readOnly()) {
-					var result = '<th>';
-					context.uiState.sort = context.uiState.sort || [];
-					var titleHtml = Jsonary.escapeHtml(this.titles[columnKey] != undefined ? this.titles[columnKey] : columnKey);
-					if (context.uiState.sort[0] == "asc" + columnKey) {
-						result += '<div class="json-array-table-sort-asc">';
-						result += context.actionHtml(titleHtml, 'sort', columnKey);
-						result += '<span class="json-array-table-sort-text">up</span>';
-						result += '</div>';
-					} else if (context.uiState.sort[0] == "desc" + columnKey) {
-						result += '<div class="json-array-table-sort-desc">';
-						result += context.actionHtml(titleHtml, 'sort', columnKey);
-						result += '<span class="json-array-table-sort-text">down</span>';
-						result += '</div>';
-					} else if (columnKey.charAt(0) == "/" && this.sort[columnKey]) {
-						result += '<div class="json-array-table-sort">';
-						result += context.actionHtml(titleHtml, 'sort', columnKey);
-						result += '</div>';
-					} else {
-						return TableRenderer.defaults.defaultTitleHtml.call(this, data, context, columnKey);
-					}
-					return result + '</th>'
-				}
-				return TableRenderer.defaults.defaultTitleHtml.call(this, data, context, columnKey);
-			},
-			rowExpandRenderHtml: function (data, context, expand) {
-				result = '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
-				if (expand === true) {
-					result += context.renderHtml(data, 'expand');
-				} else {
-					result += context.renderHtml(expand, 'expand');
-				}
-				return result + '</td>';
-			},
-			rowRenderHtml: function (data, context) {
-				var result = '';
-				if (context.uiState.expand) {
-					result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
-					result += this.rowExpandRenderHtml(data, context, context.uiState.expand);
-				} else if (context.uiState.linkRel) {
-					var link = data.subPath(context.uiState.linkPath || '').links(context.uiState.linkRel)[context.uiState.linkIndex || 0];
-					if (context.uiState.linkData) {
-						if (link.rel == "edit" && link.submissionSchemas.length == 0) {
-							result += TableRenderer.defaults.rowRenderHtml.call(this, context.uiState.linkData, context);
-						} else {
-							result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
-							result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
-							result += '<div class="json-array-table-full-title">' + Jsonary.escapeHtml(link.title || link.rel) + '</div>';
-							result += '<div class="json-array-table-full-buttons">';
-							result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex, context.uiState.linkPath);
-							result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
-							result += '</div>';
-							result += context.renderHtml(context.uiState.linkData, 'linkData');
-							result += '</td>';
-						}
-					} else {
-						result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
-						result += '<td class="json-array-table-full" colspan="' + this.columns.length + '">';
-						result += '<div class="json-array-table-full-title">' + Jsonary.escapeHtml(link.title || link.rel) + '</div>';
-							result += '<div class="json-array-table-full-buttons">';
-						result += context.actionHtml('<span class="button action">confirm</span>', 'link-confirm', context.uiState.linkRel, context.uiState.linkIndex, context.uiState.linkPath);
-						result += context.actionHtml(' <span class="button action">cancel</span>', 'link-cancel');
-							result += '</div>';
-						result += '</td>';
-					}
-				} else {
-					result += TableRenderer.defaults.rowRenderHtml.call(this, data, context);
-				}
-				return result;
-			},
-			rowAction: function (data, context, actionName, arg1, arg2, arg3) {
-				thisConfig = this;
-				delete context.parent.uiState.moveRow;
-				if (actionName == "expand") {
-					if (context.uiState.expand && !arg1) {
-	 					delete context.uiState.expand;
-	 				} else {
-						context.uiState.expand = arg1 || true;
-					}
-					return true;
-				} else if (actionName == "link") {
-					var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
-					var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
-					if (link.submissionSchemas.length) {
-						context.uiState.linkRel = linkRel;
-						context.uiState.linkIndex = linkIndex;
-						var linkData = Jsonary.create();
-						linkData.addSchema(link.submissionSchemas);
-						context.uiState.linkData = linkData;
-						if (subPath) {
-							context.uiState.linkPath = subPath;
-						} else {
-							delete context.uiState.linkPath;
-						}
-						link.submissionSchemas.createValue(function (value) {
-							linkData.setValue(value);
-						});
-						delete context.uiState.expand;
-					} else if (link.rel == "edit") {
-						context.uiState.linkRel = linkRel;
-						context.uiState.linkIndex = linkIndex;
-						if (subPath) {
-							context.uiState.linkPath = subPath;
-						} else {
-							delete context.uiState.linkPath;
-						}
-						context.uiState.linkData = data.subPath(subPath).editableCopy();
-						delete context.uiState.expand;
-					} else if (link.method != "GET") {
-						context.uiState.linkRel = linkRel;
-						context.uiState.linkIndex = linkIndex;
-						if (subPath) {
-							context.uiState.linkPath = subPath;
-						} else {
-							delete context.uiState.linkPath;
-						}
-						delete context.uiState.linkData;
-						delete context.uiState.expand;
-					} else {
-						var targetExpand = (link.rel == "self") ? true : link.href;
-						if (context.uiState.expand == targetExpand) {
-							delete context.uiState.expand;
-						} else {
-							context.uiState.expand = targetExpand;
-						}
-					}
-					return true;
-				} else if (actionName == "link-confirm") {
-					var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
-					var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
-					if (link) {
-						link.follow(context.uiState.linkData);
-					}
-					delete context.uiState.linkRel;
-					delete context.uiState.linkIndex;
-					delete context.uiState.linkPath;
-					delete context.uiState.linkData;
-					delete context.uiState.expand;
-					return true;
-				} else if (actionName == "link-cancel") {
-					delete context.uiState.linkRel;
-					delete context.uiState.linkIndex;
-					delete context.uiState.linkPath;
-					delete context.uiState.linkData;
-					delete context.uiState.expand;
-					return true;
-				}
-				return TableRenderer.defaults.rowAction.apply(this, arguments);
-			},
-			update: function (element, data, context, operation) {
-				if (context.uiState.moveRow != undefined) {
-					delete context.uiState.moveRow;
-					return true;
-				}
-				return this.defaultUpdate(element, data, context, operation);
-			},
-			linkHandler: function () {}
-		};
-		
-		Jsonary.plugins = Jsonary.plugins || {};
-		Jsonary.plugins.TableRenderer = TableRenderer;
-		Jsonary.plugins.FancyTableRenderer = FancyTableRenderer;
-	})(Jsonary);
-
-/**** jsonary.render.generate.js ****/
-
-	(function (Jsonary) {
-	
-		Jsonary.plugins.Generator = function (obj) {
-			if (!obj.rendererForData) {
-				throw "Generator must have method rendererForData";
-			}
-			
-			obj.name = obj.name || "Generated (unknown)";
-			
-			function substituteContext(context) {
-				var replacement = Object.create(context);
-				
-				replacement.subContext = function () {
-					var result = context.subContext.apply(this, arguments);
-					result.set('generated', context.get('generated'));
-					return substituteContext(result);
-				};
-				
-				return replacement;
-			}
-		
-			obj.renderHtml = function (data, context) {
-				var generatedRenderer = context.get('generated') || obj.rendererForData(data);
-				context.set('generated', generatedRenderer);
-				return generatedRenderer.renderHtml(data, substituteContext(context));
-			};
-			obj.enhance = function (element, data, context) {
-				var generatedRenderer = context.get('generated');
-				if (!generatedRenderer) {
-					throw new Error("Generated renderer: cannot enhance without rendering first");
-				}
-				if (generatedRenderer.enhance) {
-					return generatedRenderer.enhance(element, data, substituteContext(context));
-				} else if (generatedRenderer.render) {
-					return generatedRenderer.render(element, data, substituteContext(context));
-				}
-			};
-			obj.action = function (context) {
-				var generatedRenderer = context.get('generated');
-				if (!generatedRenderer) {
-					throw new Error("Generated renderer: cannot run action without rendering first");
-				}
-				var args = Array.prototype.slice.call(arguments, 0);
-				args[0] = substituteContext(context);
-				return generatedRenderer.action.apply(generatedRenderer, arguments);
-			};
-			obj.update = function (element, data, context) {
-				var generatedRenderer = context.get('generated');
-				if (!generatedRenderer) {
-					throw new Error("Generated renderer: cannot update without rendering first");
-				}
-				generatedRenderer.defaultUpdate = this.defaultUpdate;
-				
-				var args = Array.prototype.slice.call(arguments, 0);
-				args[2] = substituteContext(context);
-				if (generatedRenderer.update) {
-					return generatedRenderer.update.apply(generatedRenderer, args);
-				} else {
-					return this.defaultUpdate.apply(this, args);
-				}
-			};
-	
-			return obj;
-		};	
-	
-	})(Jsonary);
-
-/**** string-formats.js ****/
-
-	(function () {
-		// Display string
-		Jsonary.render.register({
-			renderHtml: function (data, context) {
-				var date = new Date(data.value());
-				if (isNaN(date.getTime())) {
-					return '<span class="json-string json-string-date">' + Jsonary.escapeHtml(data.value()) + '</span>';
-				} else {
-					return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
-				}
-			},
-			filter: {
-				type: 'string',
-				readOnly: true,
-				filter: function (data, schemas) {
-					return schemas.formats().indexOf("date-time") != -1;
-				}
-			}
-		});
-		
-		// Display string
-		Jsonary.render.register({
-			renderHtml: function (data, context) {
-				if (data.readOnly()) {
-					if (context.uiState.showPassword) {
-						return Jsonary.escapeHtml(data.value());
-					} else {
-						return context.actionHtml('(show password)', 'show-password');
-					}
-				} else {
-					var inputName = context.inputNameForAction('update');
-					return '<input type="password" name="' + inputName + '" value="' + Jsonary.escapeHtml(data.value()) + '"></input>';
-				}
-			},
-			action: function (context, actionName, arg1) {
-				if (actionName == "show-password") {
-					context.uiState.showPassword = true;
-					return true;
-				} else if (actionName == "update") {
-					context.data.setValue(arg1);
-				}
-			},
-			filter: {
-				type: 'string',
-				filter: function (data, schemas) {
-					return schemas.formats().indexOf("password") != -1;
-				}
-			}
-		});
-	})();
-	
-
-/**** full-preview.js ****/
-
-	Jsonary.render.register({
-		component: [Jsonary.render.Components.LIST_LINKS],
-		renderHtml: function (data, context) {
-			var previewLink = data.getLink('full-preview');
-			var innerHtml = context.renderHtml(previewLink.follow(null, false));
-			return context.actionHtml(innerHtml, 'full');
-		},
-		action: function (context, actionName) {
-			var data = context.data;
-			if (actionName == 'full') {
-				var fullLink = data.getLink('full');
-				fullLink.follow();
-			}
-		},
-		filter: function (data, schemas) {
-			return data.readOnly() && data.getLink('full') && data.getLink('full-preview');
-		}
-	});
-	
-	Jsonary.render.register({
-		component: [Jsonary.render.Components.LIST_LINKS],
-		renderHtml: function (data, context) {
-			var previewLink = data.getLink('full-preview');
-			return context.renderHtml(data) + " - " + context.renderHtml(previewLink.follow(null, false));
-		},
-		filter: function (data, schemas) {
-			return !data.readOnly() && data.getLink('full') && data.getLink('full-preview');
-		}
-	});
-
-/**** full-instances.js ****/
-
-	(function (Jsonary) {
-		Jsonary.render.register({
-			component: [Jsonary.render.Components.RENDERER, Jsonary.render.Components.LIST_LINKS],
-			renderHtml: function (data, context) {
-				var result = '<select name="' + context.inputNameForAction('select-url') + '">';
-				var options = {};
-				var optionOrder = [];
-				var optionValues = {};
-				var renderData = {};
-				
-				var links = data.links('instances');
-				var fullLink = data.getLink('full');
-				var previewPath = "";
-				
-				var fullPreviewLink = data.getLink('full-preview');
-				if (fullPreviewLink && Jsonary.Uri.resolve(fullPreviewLink.href, '#') == Jsonary.Uri.resolve(fullLink.href, '#')) {
-					var fullFragment = fullLink.href.split('#').slice(1).join('#');
-					var previewFragment = fullPreviewLink.href.split('#').slice(1).join('#');
-					var previewPath = decodeURIComponent(previewFragment.substring(fullFragment.length));
-				}
-				
-				var rerender = false;
-				for (var i = 0; i < links.length; i++) {
-					var link = links[i];
-					link.follow(null, false).getData(function (data) {
-						data.items(function (index, subData) {
-							var url = subData.getLink('self') ? subData.getLink('self').href : subData.referenceUrl();
-							if (!options[url]) {
-								options[url] = subData;
-		
-								var value = fullLink.valueForUrl(url);
-								if (value !== undefined) {
-									optionOrder.push(url);
-									optionValues[url] = value;
-									renderData[url] = subData.subPath(previewPath);
-								}
-							}
-						});
-						if (rerender) {
-							context.rerender();
-							rerender = false;
-						}
-					});
-				}
-				rerender = true;
-				var optionsHtml = "";
-				var foundSelected = false;
-				for (var i = 0; i < optionOrder.length; i++) {
-					var url = optionOrder[i];
-					var selected = '';
-					if (data.equals(Jsonary.create(optionValues[url]))) {
-						foundSelected = true;
-						selected = ' selected';
-					}
-					optionsHtml += '<option value="' + Jsonary.escapeHtml(url) + '"' + selected + '>' + context.renderHtml(renderData[url]) + '</option>';
-				}
-				if (!foundSelected) {
-					optionsHtml = '<option selected>' + context.renderHtml(fullPreviewLink.follow(null, false), 'current') + '</option>' + optionsHtml;
-				}
-				result += optionsHtml;
-				return result + '</select>';
-			},
-			action: function (context, actionName, arg1) {
-				var data = context.data;
-				if (actionName == 'select-url') {
-					var url = arg1;
-					var fullLink = data.getLink('full');
-					var value = fullLink.valueForUrl(url);
-					data.setValue(value);
-				}
-			},
-			filter: function (data, schemas) {
-				return !data.readOnly() && data.getLink('instances') && data.getLink('full');
-			}
-		});
-	})(Jsonary);
-
-/**** adaptive-table.js ****/
-
-	// Generic renderer for arrays
-	// Requires "render.table" and "render.generator" plugins
-	Jsonary.render.register(Jsonary.plugins.Generator({
-		name: "Adaptive table",
-		// Part of the generator plugin - this function returns a renderer based on the data/schema requirements
-		rendererForData: function (data) {
-			var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
-			var renderer = new FancyTableRenderer({
-				sort: {},
-				rowsPerPage: 15
-			});
-			var columnsObj = {};
-			
-			function addColumnsFromSchemas(schemas, pathPrefix, depthRemaining) {
-				schemas = schemas.getFull();
-	
-				pathPrefix = pathPrefix || "";
-				var basicTypes = schemas.basicTypes();
-	
-				// If the data might not be an object, add a column for it
-				if (basicTypes.length != 1 || basicTypes[0] != "object" || depthRemaining <= 0) {
-					var column = pathPrefix;
-					if (!columnsObj[column]) {
-						columnsObj[column] = true;
-						renderer.addColumn(column, schemas.title() || column, function (data, context) {
-							if (data.basicType() == "object" && depthRemaining > 0) {
-								return '<td></td>';
-							} else {
-								return this.defaultCellRenderHtml(data, context, column);
-							}
-						});
-						if (basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array') {
-							// add sorting
-							renderer.config.sort[column] = true;
-						}
-					}
-				}
-	
-				// If the data might be an object, add columns for its links/properties
-				if (basicTypes.indexOf('object') != -1 && depthRemaining > 0) {
-					if (data.readOnly()) {
-						var links = schemas.links();
-						for (var i = 0; i < links.length; i++) {
-							var link = links[i];
-							addColumnsFromLink(link, i);
-						}
-					}
-					var knownProperties = schemas.knownProperties();
-					var knownPropertyIndices = [];
-					// Sort object properties by displayOrder
-					var knownPropertyOrder = {};
-					for (var i = 0; i < knownProperties.length; i++) {
-						knownPropertyIndices.push(i);
-						var key = knownProperties[i];
-						knownPropertyOrder[key] = schemas.propertySchemas(key).displayOrder();
-					}
-					knownPropertyIndices.sort(function (indexA, indexB) {
-						var keyA = knownProperties[indexA];
-						var keyB = knownProperties[indexB];
-						if (knownPropertyOrder[keyA] == null) {
-							if (knownPropertyOrder[keyB] == null) {
-								return indexA - indexB;
-							}
-							return 1;
-						} else if (knownPropertyOrder[keyB] == null) {
-							return -1;
-						}
-						return knownPropertyOrder[keyA] - knownPropertyOrder[keyB];
-					});
-					// Iterate over the potential properties
-					for (var i = 0; i < knownPropertyIndices.length; i++) {
-						var key = knownProperties[knownPropertyIndices[i]];
-						addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]), depthRemaining - 1);
-					}
-				}
-			}
-	
-			function addColumnsFromLink(linkDefinition, index) {
-				var columnName = "link$" + index + "$" + linkDefinition.rel();
-	
-				var columnTitle = Jsonary.escapeHtml(linkDefinition.data.property("title").value()|| linkDefinition.rel());
-				var linkText = columnTitle;
-				var activeText = null, isConfirm = true;
-				if (linkDefinition.rel() == 'edit') {
-					activeText = 'save';
-				}
-	
-				renderer.addLinkColumn(linkDefinition, linkDefinition.rel(), columnTitle, linkText, activeText, isConfirm);
-			}
-	
-			var itemSchemas = data.schemas().indexSchemas(0).getFull();
-			var recursionLimit = (itemSchemas.knownProperties().length >= 8) ? 0 : 1;
-			if (data.schemas().displayAsTable()) {
-				recursionLimit = 2;
-			}
-			addColumnsFromSchemas(itemSchemas, '', recursionLimit);
-			return renderer;
-		},
-		filter: function (data, schemas) {
-			if (data.basicType() == "array") {
-				if (schemas.displayAsTable()) {
-					return true;
-				}
-				// Array full of objects
-				if (!schemas.tupleTyping()) {
-					var indexSchemas = schemas.indexSchemas(0).getFull();
-					var itemTypes = indexSchemas.basicTypes();
-					if (itemTypes.length == 1 && itemTypes[0] == "object") {
-						if (indexSchemas.additionalPropertySchemas().length > 0) {
-							return false;
-						}
-						if (indexSchemas.knownProperties().length < 20) {
-							return true;
-						}
-					}
-				}
-			}
-			return false;
-		}
-	}));
-	
-	// Display-order extension (non-standard keyword)
-	Jsonary.extendSchema({
-		displayOrder: function () {
-			return this.data.propertyValue("displayOrder");
-		}
-	});
-	Jsonary.extendSchemaList({
-		displayOrder: function () {
-			var displayOrder = null;
-			this.each(function (index, schema) {
-				var value = schema.displayOrder();
-				if (value != null && (displayOrder == null || value < displayOrder)) {
-					displayOrder = value;
-				}
-			});
-			return displayOrder;
-		}
-	});
-	
-	// displayAsTable extension (non-standard keyword, suggested by Ognian)
-	Jsonary.extendSchema({
-		displayAsTable: function () {
-			return !!this.data.propertyValue("displayAsTable");
-		}
-	});
-	Jsonary.extendSchemaList({
-		displayAsTable: function () {
-			var displayAsTable = false;
-			this.each(function (index, schema) {
-				displayAsTable = displayAsTable || schema.displayAsTable();
-			});
-			return displayAsTable;
-		}
-	});
-
-/**** markdown.js ****/
-
-	(function () {
-		function stripTags(md) {
-			// Rather brutal regex
-			return md.replace(/<[^<>]+>/g, '');
-		}
-	
-		Jsonary.render.register({
-			renderHtml: function (data, context) {
-				var html = "";
-				if (typeof markdown === 'object' && markdown && typeof markdown.toHTML === 'function') {
-					html = markdown.toHTML(stripTags(data.value()));
-				} else if (typeof Markdown === 'object' && typeof Markdown.getSanitizingConverter === 'function') {
-					var converter = Markdown.getSanitizingConverter();
-					html = converter.makeHtml(data.value());
-				}
-				if (html.match(/<p>/g).length == 1 && html.substring(0, 3) == "<p>" && html.substring(html.length - 4) == '</p>') {
-					html = html.substring(3, html.length - 4);
-				}
-				return html;
-			},
-			filter: function (data, schemas) {
-				if (data.readOnly() && data.schemas().formats().indexOf('markdown') !== -1) {
-					if (typeof markdown === 'object' && markdown && typeof markdown.toHTML === 'function') {
-						return true;
-					} else if (typeof Markdown === 'object' && typeof Markdown.getSanitizingConverter === 'function') {
-						return true;
-					}
-				}
-				return false;
-			}
-		});
-	})();
-
 /**** site.js ****/
 
 	Jsonary.render.register({
@@ -11988,6 +10494,156 @@
 			page: query
 		};
 	};
+
+/**** demo-code.js ****/
+
+	Jsonary.render.register({
+		renderHtml: function (data, context) {
+			var result = '<div class="demo-code">';
+			result += '<div class="demo-code-input">';
+			if (!data.readOnly() || data.get('/html')) {
+				result += '<div class="demo-code-input-pair">';
+				result += '<div class="demo-code-input-title">HTML:</div>';
+				result += '<div class="demo-code-html">' + context.renderHtml(data.property('html')) + '</div>';
+				result += '</div>';
+			}
+			
+			result += '<div class="demo-code-input-pair">';
+			result += '<div class="demo-code-input-title">JavaScript:</div>';
+			result += '<div class="demo-code-javascript">' + context.renderHtml(data.property('js')) + '</div>';
+			result += '</div>';
+			result += '</div>';
+			return result + '</div>';
+		},
+		runCode: function (data, context) {
+			setTimeout(function () {
+				context.htmlTarget.innerHTML = data.get('/html') || "";
+				context.consoleTarget.innerHTML = "";
+				var jsCode = data.get('/js');
+				try {
+					var func = new Function('element', 'console', jsCode);
+					func.call(context.htmlTarget, context.htmlTarget, context.consoleWrapped);
+				} catch (e) {
+					context.consoleWrapped.error(e);
+				}
+			}, 10);
+		},
+		update: function (element, data, context) {
+			this.runCode(data, context);
+			return false;
+		},
+		render: function (element, data, context) {
+			for (var i = 0; i < element.childNodes.length; i++) {
+				if (element.childNodes[i].nodeType === 1) {
+					element = element.childNodes[i];
+					break;
+				}
+			}
+	
+			var result = document.createElement('div');
+			result.className = "demo-code-result";
+	
+			var consoleResult = document.createElement('div');
+			consoleResult.className = "demo-code-console";
+	
+			var consoleWrapped = Object.create(console);
+			consoleWrapped.log = function (value) {
+				if (typeof value !== 'string') {
+					value = JSON.stringify(value);
+				}
+				var logLine = document.createElement('div');
+				logLine.className = "demo-code-console-line";
+				logLine.innerHTML = '<span class="demo-code-console-line-mark">&gt;</span>' + Jsonary.escapeHtml(value);
+				consoleResult.appendChild(logLine);
+			};
+			consoleWrapped.error = function (value) {
+				if (typeof value !== 'string') {
+					if (value.stack) {
+						value = value.stack;
+					} else {
+						value = JSON.stringify(value);
+					}
+				}
+				var logLine = document.createElement('div');
+				logLine.className = "demo-code-console-error";
+				logLine.innerHTML = '<span class="demo-code-console-line-mark">&gt;</span>' + Jsonary.escapeHtml(value);
+				consoleResult.appendChild(logLine);
+			};
+			context.consoleWrapped = consoleWrapped;	
+			context.htmlTarget = result;
+			context.consoleTarget = consoleResult;
+			element.appendChild(result);
+			element.appendChild(consoleResult);
+			this.runCode(data, context);
+		},
+		filter: {
+			type: 'object',
+			schema: '/json/schemas/demo-code'
+		}
+	});
+	
+	Jsonary.render.register({
+		renderHtml: function (data, context) {
+			// Fall back to other renderer
+			return context.withComponent('DATA_RENDERER').renderHtml(data);
+		},
+		enhance: function (element, data, context) {
+			element.innerHTML = "";
+			var container = document.createElement('div');
+			container.className = "ace-editor-container";
+			element.appendChild(container);
+			var editorElement = document.createElement('div');
+			editorElement.className = "ace-editor";
+			editorElement.innerHTML = Jsonary.escapeHtml(data.value());
+			editorElement.id = context.getElementId();
+			container.appendChild(editorElement);
+	
+			var editor = ace.edit(editorElement.id);
+			context.set('editor', editor);
+			var extraLines = data.readOnly() ? 0 : 1;
+			function updateHeight() {
+				var jsCode = editor.getSession().getValue();
+				var lines = Math.min(15, Math.max(1, jsCode.split(/\n/g).length + extraLines));
+				container.style.height = 16*lines + "px";
+				editor.resize();
+			}
+			updateHeight();
+	
+			if (data.readOnly()) {
+				editor.setReadOnly(true);
+			} else {
+				editor.on('change', updateHeight);
+				editor.on('blur', function () {
+					var jsCode = editor.getSession().getValue();
+					data.setValue(jsCode);
+				});
+			}
+	
+			var mediaType = null;
+			data.schemas().any(function (index, schema) {
+				mediaType = mediaType || schema.data.get('/media/type');
+			});
+			if (mediaType === 'text/html') {
+				editor.setTheme("ace/theme/tomorrow");
+				editor.getSession().setMode("ace/mode/html");
+			} else if (mediaType === 'application/javascript') {
+				editor.setTheme("ace/theme/tomorrow");
+				editor.getSession().setMode("ace/mode/javascript");
+			}
+		},
+		update: function (element, data, context) {
+			var editor = context.get('editor');
+			var jsCode = editor.getSession().getValue();
+			return data.value() !== jsCode;
+		},
+		filter: {
+			filter: function (data, schemas) {
+				return schemas.any(function (index, schema) {
+					return schema.data.get('/media/type') && !schema.data.get('/media/binaryEncoding');
+				});
+			}
+		}
+	});
 
 /**** markdown-hack.js ****/
 

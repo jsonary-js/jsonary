@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-08 */
+/* Bundled on 2013-11-09 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -8057,7 +8057,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				data.document.registerChangeListener(function () {
 					updateFunction(data.value());
 				});
-			} else {
+			} else if (!updateFunction) {
 				data = data.readOnlyCopy();
 			}
 			return Jsonary.render(target, data);

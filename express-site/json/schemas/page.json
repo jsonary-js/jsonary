@@ -4,10 +4,7 @@
 	"properties": {
 		"name": {"type": "string", "readOnly": true},
 		"title": {"type": "string"},
-		"content": {
-			"type": "array",
-			"items": {"type": "string", "format":  "markdown"}
-		}
+		"content": {"$ref": "demo-code#/definitions/array"}
 	},
 	"required": ["name", "title", "content"],
 	"links": [

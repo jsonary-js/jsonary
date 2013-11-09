@@ -822,7 +822,7 @@
 			data.document.registerChangeListener(function () {
 				updateFunction(data.value());
 			});
-		} else {
+		} else if (!updateFunction) {
 			data = data.readOnlyCopy();
 		}
 		return Jsonary.render(target, data);
