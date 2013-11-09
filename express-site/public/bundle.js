@@ -11927,18 +11927,6 @@
 		enhance: function (element, data, context) {
 			element.ownerDocument.title = Jsonary.pageTitle;
 		},
-		saveState: function (uiState, subStates) {
-			var result = {page: subStates.page};
-			for (var key in uiState) {
-				result[key] = result[key] || uiState[key];
-			}
-			return result;
-		},
-		loadState: function (savedState) {
-			var page = savedState.page || {};
-			delete savedState.page;
-			return [savedState, {page: page}];
-		},
 		linkHandler: function (data, context, link, submissionData, request) {
 			var found = null;
 			data.property('sections').items(function (index, subData) {
@@ -11958,25 +11946,19 @@
 	});
 	
 	Jsonary.location.urlFromUiState = function (uiState) {
-		var query = {htmlOnly: uiState.htmlOnly};
-		for (var key in uiState.page) {
-			query[key] = uiState.page[key];
-		}
-		var result = '/' + (uiState.nav || "") + '?' + Jsonary.encodeData(query);
+		var query = JSON.parse(JSON.stringify(uiState));
+		var nav = query.nav || "";
+		delete query.nav;
+		var result = '/' + nav + '?' + Jsonary.encodeData(query);
 		result = result.replace(/\?$/, '');
 		return result;
 	};
 	Jsonary.location.uiStateFromUrl = function (url) {
 		var nav = url.split('?')[0].substring(1);
 		var query = Jsonary.decodeData(url.split('?').slice(1).join('?'));
-		var htmlOnly = query.htmlOnly;
-		delete query.htmlOnly;
 		
-		return {
-			nav: nav,
-			htmlOnly: htmlOnly,
-			page: query
-		};
+		query.nav = nav;
+		return query;
 	};
 
 /**** demo-code.js ****/
