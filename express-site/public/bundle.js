@@ -12083,7 +12083,7 @@
 			editorElement.innerHTML = "";
 			editorElement.id = getElementId();
 			container.appendChild(editorElement);
-			editor = ace.edit(editorElement.id);
+			editor = ace.edit(editorElement.id, {});
 		}
 		var cleanupInterval = setInterval(function () {
 			var el = editorElement;
@@ -12096,9 +12096,9 @@
 				editorElement.parentNode.removeChild(editorElement);
 				aceEditorReturnToPool(editor, editorElement);
 				clearInterval(cleanupInterval);
-				console.log("Recycled (" + aceEditorPool.length + ")");
+				//console.log("Recycled (" + aceEditorPool.length + ")");
 			} else {
-				console.log("Still good");
+				//console.log("Still good");
 			}
 		}, 1000);
 		return editor;
