@@ -516,9 +516,11 @@
 				subContext.loadState(subContext.uiStartingState);
 			}
 			
-			renderer.asyncRenderHtml(data, subContext, function (error, innerHtml) {
-				subContext.clearOldSubContexts();
-				htmlCallback(null, innerHtml, subContext);
+			data.whenStable(function () {
+				renderer.asyncRenderHtml(data, subContext, function (error, innerHtml) {
+					subContext.clearOldSubContexts();
+					htmlCallback(null, innerHtml, subContext);
+				});
 			});
 			return subContext;
 		},

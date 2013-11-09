@@ -3539,7 +3539,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		whenStable: function (callback) {
 			var thisData = this;
 			this.document.whenStable(function () {
-				callback.call(thisData, thisData);
+				thisData.whenSchemasStable(callback.bind(thisData, thisData));
 			});
 			return this;
 		},
@@ -7751,9 +7751,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					subContext.loadState(subContext.uiStartingState);
 				}
 				
-				renderer.asyncRenderHtml(data, subContext, function (error, innerHtml) {
-					subContext.clearOldSubContexts();
-					htmlCallback(null, innerHtml, subContext);
+				data.whenStable(function () {
+					renderer.asyncRenderHtml(data, subContext, function (error, innerHtml) {
+						subContext.clearOldSubContexts();
+						htmlCallback(null, innerHtml, subContext);
+					});
 				});
 				return subContext;
 			},

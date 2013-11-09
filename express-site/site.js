@@ -18,7 +18,6 @@ function createBundles() {
 	// extra plugins and renderers
 	bundle.add('../plugins/jsonary.location');
 	bundle.add('../plugins/jsonary.undo');
-	/*
 	bundle.add('../plugins/jsonary.jstl');
 	bundle.add('../plugins/jsonary.render.table');
 	bundle.add('../plugins/jsonary.render.generate');
@@ -26,7 +25,6 @@ function createBundles() {
 	bundle.add('../renderers/contributed/full-preview');
 	bundle.add('../renderers/contributed/full-instances');
 	bundle.add('../renderers/contributed/adaptive-table');
-	*/
 
 	// Site-specific renderers
 	bundle.add('renderers/site');

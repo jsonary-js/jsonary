@@ -355,12 +355,15 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 		checkRequestsComplete();
 	};
 	function checkRequestsComplete() {
-		if (requestCount > 0) {
-			return;
-		}
-		while (requestCompleteCallbacks.length > 0) {
-			process.nextTick(requestCompleteCallbacks.shift());
-		}
+		process.nextTick(function () {
+			console.log("requestCount: " + requestCount);
+			if (requestCount > 0) {
+				return;
+			}
+			while (requestCompleteCallbacks.length > 0) {
+				requestCompleteCallbacks.shift()();
+			}
+		});
 	}
 	
 	Jsonary.render.getElementById = function () {
@@ -369,8 +372,12 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	
 	// Make an actual HTTP request, defaulting to the current server if just path is given
 	Jsonary.ajaxFunction = function (params, callback) {
+		if (params.url == 'http://localhost:8080/json/schemas/demo-code') {
+//			console.log((new Error).stack);
+		}
 		console.log(params);
 		requestCount++;
+		console.log("requestCount++: " + requestCount);
 		var options = urlModule.parse(params.url);
 		var isHttps = (options.protocol == 'https' || options.protocol == 'https:');
 		var httpModule = isHttps ? https : http;
@@ -407,6 +414,7 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 			});
 			callback(e, e, '');
 			requestCount--;
+			console.log("requestCount--: " + requestCount);
 			checkRequestsComplete();
 		});
 		if (params.data != undefined) {
@@ -448,6 +456,7 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 				callback(new Jsonary.HttpError(response.statusCode, response), data, headerText);
 			}
 			requestCount--;
+			console.log("requestCount--: " + requestCount);
 			checkRequestsComplete();
 		}
 	};

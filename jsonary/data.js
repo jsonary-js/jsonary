@@ -843,7 +843,7 @@ Data.prototype = {
 	whenStable: function (callback) {
 		var thisData = this;
 		this.document.whenStable(function () {
-			callback.call(thisData, thisData);
+			thisData.whenSchemasStable(callback.bind(thisData, thisData));
 		});
 		return this;
 	},
