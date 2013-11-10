@@ -10,7 +10,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 
 		var renderer = new FancyTableRenderer({
 			sort: {},
-			rowsPerPage: !detectedPagingLinks
+			rowsPerPage: detectedPagingLinks ? null : 15
 		});
 		var columnsObj = {};
 				
