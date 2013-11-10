@@ -8,8 +8,9 @@ var cookieClient = require('cookie-client');
 
 var bundleModule = require('./create-bundle.js');
 
-function JsonaryBundle() {
+function JsonaryBundle(startingPoint) {
 	var bundle = bundleModule.js();
+	startingPoint = startingPoint || '../core/jsonary-core';
 	
 	var knownPaths = [];
 	this.addPath = function (dirs) {
@@ -78,7 +79,7 @@ function JsonaryBundle() {
 		return this;
 	};
 
-	this.add('../core/jsonary-core');
+	this.add(startingPoint);
 	// Make "Jsonary" available in scope for any additional files
 	bundle.code('var Jsonary = this.Jsonary;');
 }
@@ -465,4 +466,7 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 module.exports = new JsonaryBundle();
 module.exports.fresh = function () {
 	return new JsonaryBundle();
+};
+module.exports.superBundle = function () {
+	return new JsonaryBundle('../super-bundle/jsonary-super-bundle.js');
 };

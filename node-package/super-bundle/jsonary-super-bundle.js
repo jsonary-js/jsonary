@@ -11861,7 +11861,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 			var renderer = new FancyTableRenderer({
 				sort: {},
-				rowsPerPage: !detectedPagingLinks
+				rowsPerPage: detectedPagingLinks ? null : 15
 			});
 			var columnsObj = {};
 					
