@@ -5,14 +5,15 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 	// Part of the generator plugin - this function returns a renderer based on the data/schema requirements
 	rendererForData: function (data) {
 		var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
+
+		var detectedPagingLinks = !!(data.getLink('next') || data.getLink('prev'));
+
 		var renderer = new FancyTableRenderer({
 			sort: {},
-			rowsPerPage: 15
+			rowsPerPage: !detectedPagingLinks
 		});
 		var columnsObj = {};
-		
-		var allowSorting = !(data.getLink('next') || data.getLink('prev'));
-		
+				
 		function addColumnsFromSchemas(schemas, pathPrefix, depthRemaining) {
 			schemas = schemas.getFull();
 
@@ -32,7 +33,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 						}
 					});
 					var isScalar = basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array';
-					if (allowSorting && isScalar) {
+					if (!detectedPagingLinks && isScalar) {
 						// add sorting
 						renderer.config.sort[column] = true;
 					}

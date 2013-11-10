@@ -60,6 +60,11 @@
 		<script>
 			var urlBar = document.getElementById('url-bar');
 			var goButton = document.getElementById('go');
+			Jsonary.baseUri = window.location.href.split('#')[0].split('?')[0].replace(/\/[^\/]*$/, '/');
+			var baseRegex = /^http(s)?:\/\/[^\/]+\//;
+			if (baseRegex.test(Jsonary.baseUri)) {
+				Jsonary.baseUri = Jsonary.baseUri.match(baseRegex)[0];
+			}
 			
 			// Navigation using the URL bar
 			urlBar.onkeydown = function (e) {
@@ -92,7 +97,7 @@
 				}
 				url = request.url.replace(/#$/, "");
 				var shortUrl = url;
-				var urlBase = window.location.href.split('#')[0].split('?')[0].replace(/\/[^\/]*$/, '/');
+				var urlBase = Jsonary.baseUri;
 				if (url.substring(0, urlBase.length) == urlBase) {
 					shortUrl = url.substring(urlBase.length) || "./";
 				}
