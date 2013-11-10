@@ -78,6 +78,7 @@
 		if (newHref != oldHref) {
 			addHistoryPoint = false;
 		}
+		lastHref = window.location.href;
 		if (notify) {
 			for (var i = 0; i < changeListeners.length; i++) {
 				changeListeners[i].call(api, api, api.query);

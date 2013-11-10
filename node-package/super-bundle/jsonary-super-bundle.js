@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-09 */
+/* Bundled on 2013-11-10 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -10187,6 +10187,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			if (newHref != oldHref) {
 				addHistoryPoint = false;
 			}
+			lastHref = window.location.href;
 			if (notify) {
 				for (var i = 0; i < changeListeners.length; i++) {
 					changeListeners[i].call(api, api, api.query);
@@ -11861,6 +11862,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			});
 			var columnsObj = {};
 			
+			var allowSorting = !(data.getLink('next') || data.getLink('prev'));
+			
 			function addColumnsFromSchemas(schemas, pathPrefix, depthRemaining) {
 				schemas = schemas.getFull();
 	
@@ -11879,7 +11882,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 								return this.defaultCellRenderHtml(data, context, column);
 							}
 						});
-						if (basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array') {
+						var isScalar = basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array';
+						if (allowSorting && isScalar) {
 							// add sorting
 							renderer.config.sort[column] = true;
 						}

@@ -11,6 +11,8 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 		});
 		var columnsObj = {};
 		
+		var allowSorting = !(data.getLink('next') || data.getLink('prev'));
+		
 		function addColumnsFromSchemas(schemas, pathPrefix, depthRemaining) {
 			schemas = schemas.getFull();
 
@@ -29,7 +31,8 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 							return this.defaultCellRenderHtml(data, context, column);
 						}
 					});
-					if (basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array') {
+					var isScalar = basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array';
+					if (allowSorting && isScalar) {
 						// add sorting
 						renderer.config.sort[column] = true;
 					}
