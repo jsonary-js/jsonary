@@ -235,7 +235,7 @@ app.get('/test', function (request, response) {
 	var params = {
 		protocol: request.protocol,
 		hostname: request.host.split(':')[0],
-		port: (SERVER_PORT != 80) ? SERVER_PORT : null,
+		port: (!HIDE_PORT && SERVER_PORT.toString() != "80") ? SERVER_PORT : null,
 		pathname: '/'
 	};
 	var baseUri = url.format(params);
@@ -258,7 +258,7 @@ app.use('/', function (request, response, next) {
 	var baseUri = url.format({
 		protocol: request.protocol,
 		hostname: request.host.split(':')[0],
-		port: (SERVER_PORT != 80) ? SERVER_PORT : null,
+		port: (!HIDE_PORT && SERVER_PORT != 80) ? SERVER_PORT : null,
 		pathname: '/'
 	});
 	console.log(baseUri);
@@ -363,6 +363,7 @@ app.use('/', function (request, response, next) {
 	}
 });
 
+var HIDE_PORT = !!process.env.HIDE_PORT;
 var SERVER_PORT = process.env.PORT || 8083;
 http.createServer(app).listen(SERVER_PORT);
 console.log('Listening on port ' + SERVER_PORT);
