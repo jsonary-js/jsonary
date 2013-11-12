@@ -370,7 +370,7 @@ app.use('/', function (request, response, next) {
 	}
 });
 
-var HIDE_PORT = !!process.env.HIDE_PORT;
+var HIDE_PORT = !!parseInt(process.env.HIDE_PORT);
 var SERVER_PORT = process.env.PORT || 8083;
 http.createServer(app).listen(SERVER_PORT);
 console.log('Listening on port ' + SERVER_PORT);

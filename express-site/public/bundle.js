@@ -3041,6 +3041,9 @@
 								
 							}
 						} else if (operation.action() == "remove") {
+							if (!parent) {
+								secrets.setValue(undefined);
+							}
 						} else if (operation.action() == "move") {
 						} else {
 							throw new Error("Unrecognised patch operation: " + operation.action());
@@ -3542,9 +3545,15 @@
 				return this.document.resolveUrl(url);
 			},
 			get: function (path) {
+				if (!path) {
+					return this.value();
+				}
 				return this.subPath(path).value();
 			},
 			set: function (path, value) {
+				if (arguments.length == 1) {
+					return this.setValue(path);
+				}
 				this.subPath(path).setValue(value);
 				return this;
 			},
@@ -9608,18 +9617,6 @@
 				}
 			});
 			
-			function updateTextAreaSize(textarea) {
-				var lines = textarea.value.split("\n");
-				var maxWidth = 4;
-				for (var i = 0; i < lines.length; i++) {
-					if (maxWidth < lines[i].length) {
-						maxWidth = lines[i].length;
-					}
-				}
-				textarea.setAttribute("cols", maxWidth + 1);
-				textarea.setAttribute("rows", lines.length);
-			}
-		
 			// Display/edit objects
 			Jsonary.render.register({	
 				name: "Jsonary plain objects",
@@ -9828,23 +9825,8 @@
 					readOnly: true
 				}
 			});
-		
-			function copyTextStyle(source, target) {
-				var style = getComputedStyle(source, null);
-				for (var key in style) {
-					if (key.substring(0, 4) == "font" || key.substring(0, 4) == "text") {
-						target.style[key] = style[key];
-					}
-				}
-			}
-			function updateTextareaSize(textarea, sizeMatchBox, suffix) {
-				sizeMatchBox.innerHTML = "";
-				sizeMatchBox.appendChild(document.createTextNode(textarea.value + suffix));
-				var style = getComputedStyle(sizeMatchBox, null);
-				textarea.style.width = parseInt(style.width.substring(0, style.width.length - 2)) + 4 + "px";
-				textarea.style.height = parseInt(style.height.substring(0, style.height.length - 2)) + 4 + "px";
-			}
 			
+			// Convert from HTML to plain-text
 			function getText(element) {
 				var result = "";
 				for (var i = 0; i < element.childNodes.length; i++) {
@@ -9897,7 +9879,13 @@
 					var maxLength = data.schemas().maxLength();
 					var inputName = context.inputNameForAction('new-value');
 					var valueHtml = escapeHtml(data.value());
-					return '<textarea class="json-string" name="' + inputName + '">'
+					var rows = 0;
+					var lines = data.value().split('\n');
+					for (var i = 0; i < lines.length; i++) {
+						// Assume a 70-character line
+						rows += Math.floor(lines[i].length/70) + 1;
+					}
+					return '<textarea class="json-string" rows="' + rows + '" name="' + inputName + '">'
 						+ valueHtml
 						+ '</textarea>';
 				},
@@ -9907,7 +9895,6 @@
 					}
 				},
 				render: function (element, data, context) {
-					//Use contentEditable
 					if (element.contentEditable !== null) {
 						element.innerHTML = '<div class="json-string json-string-content-editable">' + escapeHtml(data.value()).replace(/\n/g, "<br>") + '</div>';
 						var valueSpan = element.childNodes[0];
@@ -9918,69 +9905,6 @@
 						};
 						return;
 					}
-					
-					if (typeof window.getComputedStyle != "function") {
-						return;
-					}
-					// min/max length
-					var minLength = data.schemas().minLength();
-					var maxLength = data.schemas().maxLength();
-					var noticeBox = document.createElement("span");
-					noticeBox.className="json-string-notice";
-					function updateNoticeBox(stringValue) {
-						if (stringValue.length < minLength) {
-							noticeBox.innerHTML = 'Too short (minimum ' + minLength + ' characters)';
-						} else if (maxLength != null && stringValue.length > maxLength) {
-							noticeBox.innerHTML = 'Too long (+' + (stringValue.length - maxLength) + ' characters)';
-						} else if (maxLength != null) {
-							noticeBox.innerHTML = (maxLength - stringValue.length) + ' characters left';
-						} else {
-							noticeBox.innerHTML = "";
-						}
-					}
-					
-					// size match
-					var sizeMatchBox = document.createElement("div");
-					
-					var textarea = null;
-					for (var i = 0; i < element.childNodes.length; i++) {
-						if (element.childNodes[i].nodeType == 1) {
-							textarea = element.childNodes[i];
-							break;
-						}
-					}
-					element.insertBefore(sizeMatchBox, textarea);
-					copyTextStyle(textarea, sizeMatchBox);
-					sizeMatchBox.style.display = "inline";
-					sizeMatchBox.style.position = "absolute";
-					sizeMatchBox.style.width = "auto";
-					sizeMatchBox.style.height = "auto";
-					sizeMatchBox.style.left = "-100000px";
-					sizeMatchBox.style.top = "0px";
-					sizeMatchBox.style.whiteSpace = "pre";
-					sizeMatchBox.style.zIndex = -10000;
-					var suffix = "MMMMM";
-					updateTextareaSize(textarea, sizeMatchBox, suffix);		
-					
-					textarea.value = data.value();
-					textarea.onkeyup = function () {
-						updateNoticeBox(this.value);
-						updateTextareaSize(this, sizeMatchBox, suffix);
-					};
-					textarea.onfocus = function () {
-						updateNoticeBox(data.value());
-						suffix = "MMMMM\nMMM";
-						updateTextareaSize(this, sizeMatchBox, suffix);
-					};
-					textarea.onblur = function () {
-						data.setValue(this.value);
-						noticeBox.innerHTML = "";
-						suffix = "MMMMM";
-						updateTextareaSize(this, sizeMatchBox, suffix);
-					};
-					element.appendChild(noticeBox);
-					textarea = null;
-					element = null;
 				},
 				update: function (element, data, context, operation) {
 					if (element.contentEditable !== null) {
