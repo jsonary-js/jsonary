@@ -14,7 +14,7 @@ app.use(express.bodyParser());
 
 var jsonaryJsBundle;
 function createBundles() {
-	var bundle = jsonaryBundle.fresh();
+	var bundle = jsonaryBundle.fresh().addPath(__dirname);
 	// extra plugins and renderers
 	bundle.add('../plugins/jsonary.location');
 	bundle.add('../plugins/jsonary.undo');
@@ -31,10 +31,10 @@ function createBundles() {
 	bundle.add('renderers/demo-code');
 	bundle.add('renderers/markdown-hack');
 	
-	bundle.writeCss('public/bundle.css');
-	//bundle.writeCss('bundle.min.css', true);
-	bundle.writeJs('public/bundle.js');
-	//bundle.writeJs('bundle.min.js', true);
+	bundle.writeCss(__dirname + '/public/bundle.css');
+	//bundle.writeCss(__dirname + '/bundle.min.css', true);
+	bundle.writeJs(__dirname + '/public/bundle.js');
+	//bundle.writeJs(__dirname + '/bundle.min.js', true);
 	return bundle;
 }
 var jsonaryJsBundle = createBundles();

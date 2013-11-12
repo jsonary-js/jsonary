@@ -1,10 +1,10 @@
-/* Bundled on 2013-11-09 */
+/* Bundled on 2013-11-12 */
 (function() {
 
 
 /**** jsonary-core.js ****/
 
-	/* Bundled on 2013-11-09 */
+	/* Bundled on 2013-11-10 */
 	(function() {
 	/* Copyright (C) 2012-2013 Geraint Luff
 	
@@ -11709,12 +11709,15 @@
 		// Part of the generator plugin - this function returns a renderer based on the data/schema requirements
 		rendererForData: function (data) {
 			var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
+	
+			var detectedPagingLinks = !!(data.getLink('next') || data.getLink('prev'));
+	
 			var renderer = new FancyTableRenderer({
 				sort: {},
-				rowsPerPage: 15
+				rowsPerPage: detectedPagingLinks ? null : 15
 			});
 			var columnsObj = {};
-			
+					
 			function addColumnsFromSchemas(schemas, pathPrefix, depthRemaining) {
 				schemas = schemas.getFull();
 	
@@ -11733,7 +11736,8 @@
 								return this.defaultCellRenderHtml(data, context, column);
 							}
 						});
-						if (basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array') {
+						var isScalar = basicTypes.length == 1 && basicTypes[0] !== 'object' && basicTypes[0] !== 'array';
+						if (!detectedPagingLinks && isScalar) {
 							// add sorting
 							renderer.config.sort[column] = true;
 						}
