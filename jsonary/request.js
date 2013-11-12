@@ -185,6 +185,9 @@ function FragmentRequest(request, fragment) {
 	};
 }
 FragmentRequest.prototype = {
+	toString: function () {
+		return "[Jsonary Request]";
+	}
 }
 
 function requestJson(url, method, data, encType, cacheFunction, hintSchema, oldHeaders) {

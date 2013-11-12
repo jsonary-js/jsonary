@@ -65,41 +65,6 @@
 	padding: 0.2em;
 }
 
-.json-array-table-move-select, .json-array-table-move-cancel, .json-array-table-move-to, .json-array-table-delete {
-	display: block;
-	width: 16px;
-	height: 16px;
-	text-indent: 16px;
-	overflow: hidden;
-	background-position: center middle;
-	background-repeat: no-repeat;
-	opacity: 0.35;
-}
-
-.json-array-table-move-select:hover, .json-array-table-move-cancel:hover, .json-array-table-move-to:hover, .json-array-table-delete:hover {
-	opacity: 1;
-}
-
-.json-array-table-delete {
-	background-image: url('images/delete.png');
-}
-
-.json-array-table-move-select {
-	background-image: url('images/move-up-down.png');
-}
-
-.json-array-table-move-cancel {
-	background-image: url('images/move-cancel.png');
-}
-
-.json-array-table-move-up {
-	background-image: url('images/move-up.png');
-}
-
-.json-array-table-move-down {
-	background-image: url('images/move-down.png');
-}
-
 /* Sorting */
 
 .json-array-table-sort, .json-array-table-sort-asc, .json-array-table-sort-desc {

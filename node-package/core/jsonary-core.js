@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-10 */
+/* Bundled on 2013-11-12 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -37,7 +37,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		Object.keys = function (obj) {
 			var result = [];
 			for (var key in obj) {
-				if (obj.hasOwnProperty(key)) {
+				if (Object.prototype.hasOwnProperty.call(obj, key)) {
 					result.push(key);
 				}
 			}
@@ -2047,6 +2047,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		};
 	}
 	FragmentRequest.prototype = {
+		toString: function () {
+			return "[Jsonary Request]";
+		}
 	}
 	
 	function requestJson(url, method, data, encType, cacheFunction, hintSchema, oldHeaders) {
@@ -2879,6 +2882,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}
 	
 	Document.prototype = {
+		toString: function () {
+			return "[Jsonary Document]";
+		},
 		resolveUrl: function (url) {
 			return Uri.resolve(this.url, url);
 		},
@@ -3295,6 +3301,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		};
 	}
 	Data.prototype = {
+		toString: function () {
+			return "[Jsonary Data]";
+		},
 		referenceUrl: function () {
 			if (this.document.isDefinitive) {
 				var pointerPath = this.pointerPath();
@@ -3705,7 +3714,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}
 	Schema.prototype = {
 		"toString": function () {
-			return "<Schema " + this.data + ">";
+			return "[Jsonary Schema]";
 		},
 		referenceUrl: function (includeRef) {
 			if (includeRef && this.data.property('$ref').defined()) {
@@ -5202,6 +5211,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		"object": true
 	};
 	SchemaList.prototype = {
+		"toString": function () {
+			return "[Jsonary Schema List]";
+		},
 		indexOf: function (schema, resolveRef) {
 			var i = this.length - 1;
 			while (i >= 0) {
@@ -7255,6 +7267,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
 		}
 	
+		function fixScroll(execFunction) {
+			var doc = document.documentElement, body = document.body;
+			var left = (doc && doc.scrollLeft || body && body.scrollLeft || 0);
+			var top = (doc && doc.scrollTop  || body && body.scrollTop  || 0);
+			execFunction();
+			if (left || top) {
+				window.scrollTo(left, top);
+			}
+		}
+	
 		var prefixPrefix = "Jsonary";
 		var prefixCounter = 0;
 	
@@ -7352,11 +7374,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 							var prevContext = element.jsonaryContext;
 							var prevUiState = copyValue(this.uiStartingState);
 							var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents, prevContext.bannedRenderers);
-							if (renderer.uniqueId == prevContext.renderer.uniqueId) {
-								renderer.render(element, data, prevContext);
-							} else {
-								prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
-							}
+							fixScroll(function () {
+								if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+									renderer.render(element, data, prevContext);
+								} else {
+									prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+								}
+							});
 						}
 					}
 				});
@@ -7373,6 +7397,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			this.get = temp.get;
 		}
 		RenderContext.prototype = {
+			toString: function () {
+				return "[Jsonary RenderContext]";
+			},
 			rootContext: null,
 			baseContext: null,
 			labelSequence: function () {
@@ -7595,8 +7622,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				var element = render.getElementById(this.elementId);
 				if (element != null) {
-					this.renderer.render(element, this.data, this);
-					this.clearOldSubContexts();
+					fixScroll(function () {
+						this.renderer.render(element, this.data, this);
+						this.clearOldSubContexts();
+					}.bind(this));
 				}
 			},
 			asyncRerenderHtml: function (htmlCallback) {
@@ -7793,7 +7822,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 						renderer.update(element, data, prevContext, operation);
 					} else {
-						prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+						fixScroll(function () {
+							prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+						});
 					}
 				}
 			},
@@ -7841,7 +7872,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				var argsObject = {
 					context: this,
-					actionName: actionName,
+					actionName: actionName
 				};
 				var name = Jsonary.render.actionInputName(argsObject);
 				this.enhancementInputs[name] = {
@@ -8250,6 +8281,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 		}
 		Renderer.prototype = {
+			toString: function () {
+				return "[Jsonary Renderer]";
+			},
 			updateAll: function () {
 				var elementIds = [];
 				for (var uniqueId in pageContext.elementLookup) {
@@ -8360,7 +8394,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					redraw = this.defaultUpdate(element, data, context, operation);
 				}
 				if (redraw) {
-					this.render(element, data, context);
+					fixScroll(function () {
+						this.render(element, data, context);
+					}.bind(this));
 				}
 				return this;
 			},
@@ -9239,7 +9275,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				if (showDelete) {
 					var parentType = parent.basicType();
 					result += "<div class='json-" + parentType + "-delete-container'>";
-					result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
+					result += context.actionHtml("<span class='json-" + parentType + "-delete json-" + parentType + "-delete-inner'>X</span>", "remove") + " ";
 					result += context.renderHtml(data, 'data');
 					result += "</div>";
 				} else {
@@ -9718,32 +9754,57 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 		// Display/edit arrays
 		Jsonary.render.register({
-			name: "Jsonary plain arrays",
+			name: "Jsonary re-orderable array",
 			renderHtml: function (data, context) {
 				var tupleTypingLength = data.schemas().tupleTypingLength();
 				var maxItems = data.schemas().maxItems();
 				var result = "";
-				data.indices(function (index, subData) {
+				var canReorder = !data.readOnly() && (data.length() > tupleTypingLength + 1);
+				data.items(function (index, subData) {
 					result += '<div class="json-array-item">';
+					if (canReorder && index >= tupleTypingLength) {
+						if (typeof context.uiState.moveSelect === 'undefined') {
+							result += context.actionHtml('<span class="json-array-move json-array-move-start">move</span>', 'moveStart', index);
+						} else if (context.uiState.moveSelect == index) {
+							result += context.actionHtml('<span class="json-array-move json-array-move-cancel">cancel</span>', 'moveCancel');
+						} else if (context.uiState.moveSelect > index) {
+							result += context.actionHtml('<span class="json-array-move json-array-move-up">to here</span>', 'moveSelect', context.uiState.moveSelect, index);
+						} else {
+							result += context.actionHtml('<span class="json-array-move json-array-move-down">to here</span>', 'moveSelect', context.uiState.moveSelect, index);
+						}
+					}
 					result += '<span class="json-array-value">' + context.renderHtml(subData) + '</span>';
 					result += '</div>';
 				});
 				if (!data.readOnly()) {
 					if (maxItems == null || data.length() < maxItems) {
-						var addHtml = '<span class="json-array-add">+ add</span>';
-						result += context.actionHtml(addHtml, "add");
+						result += '<div class="json-array-item">';
+						result += context.renderHtml(data.item(data.length()));
+						result += '</div>';
 					}
 				}
 				return result;
 			},
-			action: function (context, actionName) {
-				var data = context.data;
-				if (actionName == "add") {
-					var index = data.length();
-					data.schemas().createValueForIndex(index, function (newValue) {
-						data.index(index).setValue(newValue);
-					});
+			action: {
+				moveStart: function (data, context, index) {
+					context.uiState.moveSelect = index;
+					return true;
+				},
+				moveCancel: function (data, context, index) {
+					delete context.uiState.moveSelect;
+					return true;
+				},
+				moveSelect: function (data, context, fromIndex, toIndex) {
+					delete context.uiState.moveSelect;
+					data.item(fromIndex).moveTo(data.item(toIndex));
 				}
+			},
+			update: function (element, data, context, operation) {
+				if (context.uiState.moveSelect != undefined) {
+					delete context.uiState.moveSelect;
+					return true;
+				}
+				return this.defaultUpdate(element, data, context, operation);
 			},
 			filter: {
 				type: 'array'

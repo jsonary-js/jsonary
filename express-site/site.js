@@ -159,6 +159,10 @@ var jsonData = {
 		{
 			"title": "API",
 			"tabs": "api/"
+		},
+		{
+			"title": "Using data",
+			"tabs": "pages/data"
 		}
 	]
 };
@@ -300,7 +304,8 @@ app.use('/', function (request, response, next) {
 
 		timer.event('render complete');
 
-		var html = '<html>';
+		var html = '<!DOCTYPE html>'
+		html += '<html>';
 		html += 	'<head>';
 		html += 		'<title>' + Jsonary.escapeHtml(Jsonary.pageTitle || '???') + '</title>';
 		html += 		'<link rel="stylesheet" href="/bundle.css">';
@@ -329,6 +334,8 @@ app.use('/', function (request, response, next) {
 		html += '</div>';
 		timer.event('saved state');
 		
+		html += '<script src="/js/prism/prism.js"></script>';
+		html += '<link rel="stylesheet" href="/js/prism/prism.css">';
 		if (Jsonary.server.canRedirect() && !request.query.htmlOnly) {
 			//*/ JavaScript browser
 			html += '<script src="/bundle.js"></script>';

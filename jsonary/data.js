@@ -183,6 +183,9 @@ function Document(url, isDefinitive, readOnly) {
 }
 
 Document.prototype = {
+	toString: function () {
+		return "[Jsonary Document]";
+	},
 	resolveUrl: function (url) {
 		return Uri.resolve(this.url, url);
 	},
@@ -599,6 +602,9 @@ function Data(document, secrets, parent, parentKey) {
 	};
 }
 Data.prototype = {
+	toString: function () {
+		return "[Jsonary Data]";
+	},
 	referenceUrl: function () {
 		if (this.document.isDefinitive) {
 			var pointerPath = this.pointerPath();

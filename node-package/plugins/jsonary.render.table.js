@@ -314,7 +314,7 @@
 			var index = parseInt(data.parentKey());
 			if ((index >= tupleTypingLength || index == arrayData.length() - 1)
 				&& arrayData.length() > minItems) {
-				result += context.actionHtml('<span class="json-array-table-delete">X</span>', 'remove');
+				result += context.actionHtml('<span class="json-array-delete">X</span>', 'remove');
 			}
 			return result + '</td>';
 		});
@@ -331,7 +331,7 @@
 		}, "move", function (data, tableContext) {
 			if (tableContext.uiState.moveRow != undefined) {
 				return '<th style="padding: 0; text-align: center">'
-					+ tableContext.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
+					+ tableContext.actionHtml('<div class="json-array-move-cancel" style="float: left">cancel</div>', 'move-cancel')
 					+ '</th>';
 			}
 			return '<th></th>';
@@ -345,13 +345,13 @@
 			var index = parseInt(data.parentKey());
 			if (index >= tupleTypingLength) {
 				if (tableContext.uiState.moveRow == undefined) {
-					result += tableContext.actionHtml('<div class="json-array-table-move-select">move</div>', 'move-select', index);
+					result += tableContext.actionHtml('<div class="json-array-move json-array-move-start">move</div>', 'move-start', index);
 				} else if (tableContext.uiState.moveRow == index) {
-					result += tableContext.actionHtml('<div class="json-array-table-move-cancel">cancel</div>', 'move-cancel');
+					result += tableContext.actionHtml('<div class="json-array-move json-array-move-cancel">cancel</div>', 'move-cancel');
 				} else if (tableContext.uiState.moveRow > index) {
-					result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-up">to here</div>', 'move', tableContext.uiState.moveRow, index);
+					result += tableContext.actionHtml('<div class="json-array-move json-array-move-select json-array-move-up">to here</div>', 'move', tableContext.uiState.moveRow, index);
 				} else {
-					result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-down">to here</div>', 'move', tableContext.uiState.moveRow, index);
+					result += tableContext.actionHtml('<div class="json-array-move json-array-move-select json-array-move-down">to here</div>', 'move', tableContext.uiState.moveRow, index);
 				}
 			}
 			return result + '</td>';

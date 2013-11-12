@@ -20,6 +20,16 @@
 		return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
 	}
 
+	function fixScroll(execFunction) {
+		var doc = document.documentElement, body = document.body;
+		var left = (doc && doc.scrollLeft || body && body.scrollLeft || 0);
+		var top = (doc && doc.scrollTop  || body && body.scrollTop  || 0);
+		execFunction();
+		if (left || top) {
+			window.scrollTo(left, top);
+		}
+	}
+
 	var prefixPrefix = "Jsonary";
 	var prefixCounter = 0;
 
@@ -117,11 +127,13 @@
 						var prevContext = element.jsonaryContext;
 						var prevUiState = copyValue(this.uiStartingState);
 						var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents, prevContext.bannedRenderers);
-						if (renderer.uniqueId == prevContext.renderer.uniqueId) {
-							renderer.render(element, data, prevContext);
-						} else {
-							prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
-						}
+						fixScroll(function () {
+							if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+								renderer.render(element, data, prevContext);
+							} else {
+								prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+							}
+						});
 					}
 				}
 			});
@@ -138,6 +150,9 @@
 		this.get = temp.get;
 	}
 	RenderContext.prototype = {
+		toString: function () {
+			return "[Jsonary RenderContext]";
+		},
 		rootContext: null,
 		baseContext: null,
 		labelSequence: function () {
@@ -360,8 +375,10 @@
 			}
 			var element = render.getElementById(this.elementId);
 			if (element != null) {
-				this.renderer.render(element, this.data, this);
-				this.clearOldSubContexts();
+				fixScroll(function () {
+					this.renderer.render(element, this.data, this);
+					this.clearOldSubContexts();
+				}.bind(this));
 			}
 		},
 		asyncRerenderHtml: function (htmlCallback) {
@@ -558,7 +575,9 @@
 				if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 					renderer.update(element, data, prevContext, operation);
 				} else {
-					prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+					fixScroll(function () {
+						prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+					});
 				}
 			}
 		},
@@ -606,7 +625,7 @@
 			}
 			var argsObject = {
 				context: this,
-				actionName: actionName,
+				actionName: actionName
 			};
 			var name = Jsonary.render.actionInputName(argsObject);
 			this.enhancementInputs[name] = {
@@ -1015,6 +1034,9 @@
 		}
 	}
 	Renderer.prototype = {
+		toString: function () {
+			return "[Jsonary Renderer]";
+		},
 		updateAll: function () {
 			var elementIds = [];
 			for (var uniqueId in pageContext.elementLookup) {
@@ -1125,7 +1147,9 @@
 				redraw = this.defaultUpdate(element, data, context, operation);
 			}
 			if (redraw) {
-				this.render(element, data, context);
+				fixScroll(function () {
+					this.render(element, data, context);
+				}.bind(this));
 			}
 			return this;
 		},

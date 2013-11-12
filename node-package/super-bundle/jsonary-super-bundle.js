@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-10 */
+/* Bundled on 2013-11-12 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -37,7 +37,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		Object.keys = function (obj) {
 			var result = [];
 			for (var key in obj) {
-				if (obj.hasOwnProperty(key)) {
+				if (Object.prototype.hasOwnProperty.call(obj, key)) {
 					result.push(key);
 				}
 			}
@@ -2047,6 +2047,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		};
 	}
 	FragmentRequest.prototype = {
+		toString: function () {
+			return "[Jsonary Request]";
+		}
 	}
 	
 	function requestJson(url, method, data, encType, cacheFunction, hintSchema, oldHeaders) {
@@ -2879,6 +2882,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}
 	
 	Document.prototype = {
+		toString: function () {
+			return "[Jsonary Document]";
+		},
 		resolveUrl: function (url) {
 			return Uri.resolve(this.url, url);
 		},
@@ -3295,6 +3301,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		};
 	}
 	Data.prototype = {
+		toString: function () {
+			return "[Jsonary Data]";
+		},
 		referenceUrl: function () {
 			if (this.document.isDefinitive) {
 				var pointerPath = this.pointerPath();
@@ -3705,7 +3714,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	}
 	Schema.prototype = {
 		"toString": function () {
-			return "<Schema " + this.data + ">";
+			return "[Jsonary Schema]";
 		},
 		referenceUrl: function (includeRef) {
 			if (includeRef && this.data.property('$ref').defined()) {
@@ -5202,6 +5211,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		"object": true
 	};
 	SchemaList.prototype = {
+		"toString": function () {
+			return "[Jsonary Schema List]";
+		},
 		indexOf: function (schema, resolveRef) {
 			var i = this.length - 1;
 			while (i >= 0) {
@@ -7255,6 +7267,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
 		}
 	
+		function fixScroll(execFunction) {
+			var doc = document.documentElement, body = document.body;
+			var left = (doc && doc.scrollLeft || body && body.scrollLeft || 0);
+			var top = (doc && doc.scrollTop  || body && body.scrollTop  || 0);
+			execFunction();
+			if (left || top) {
+				window.scrollTo(left, top);
+			}
+		}
+	
 		var prefixPrefix = "Jsonary";
 		var prefixCounter = 0;
 	
@@ -7352,11 +7374,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 							var prevContext = element.jsonaryContext;
 							var prevUiState = copyValue(this.uiStartingState);
 							var renderer = selectRenderer(data, prevUiState, prevContext.missingComponents, prevContext.bannedRenderers);
-							if (renderer.uniqueId == prevContext.renderer.uniqueId) {
-								renderer.render(element, data, prevContext);
-							} else {
-								prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
-							}
+							fixScroll(function () {
+								if (renderer.uniqueId == prevContext.renderer.uniqueId) {
+									renderer.render(element, data, prevContext);
+								} else {
+									prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+								}
+							});
 						}
 					}
 				});
@@ -7373,6 +7397,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			this.get = temp.get;
 		}
 		RenderContext.prototype = {
+			toString: function () {
+				return "[Jsonary RenderContext]";
+			},
 			rootContext: null,
 			baseContext: null,
 			labelSequence: function () {
@@ -7595,8 +7622,10 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				var element = render.getElementById(this.elementId);
 				if (element != null) {
-					this.renderer.render(element, this.data, this);
-					this.clearOldSubContexts();
+					fixScroll(function () {
+						this.renderer.render(element, this.data, this);
+						this.clearOldSubContexts();
+					}.bind(this));
 				}
 			},
 			asyncRerenderHtml: function (htmlCallback) {
@@ -7793,7 +7822,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					if (renderer.uniqueId == prevContext.renderer.uniqueId) {
 						renderer.update(element, data, prevContext, operation);
 					} else {
-						prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+						fixScroll(function () {
+							prevContext.baseContext.render(element, data, prevContext.label, prevUiState);
+						});
 					}
 				}
 			},
@@ -7841,7 +7872,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				var argsObject = {
 					context: this,
-					actionName: actionName,
+					actionName: actionName
 				};
 				var name = Jsonary.render.actionInputName(argsObject);
 				this.enhancementInputs[name] = {
@@ -8250,6 +8281,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 		}
 		Renderer.prototype = {
+			toString: function () {
+				return "[Jsonary Renderer]";
+			},
 			updateAll: function () {
 				var elementIds = [];
 				for (var uniqueId in pageContext.elementLookup) {
@@ -8360,7 +8394,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					redraw = this.defaultUpdate(element, data, context, operation);
 				}
 				if (redraw) {
-					this.render(element, data, context);
+					fixScroll(function () {
+						this.render(element, data, context);
+					}.bind(this));
 				}
 				return this;
 			},
@@ -9239,7 +9275,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				if (showDelete) {
 					var parentType = parent.basicType();
 					result += "<div class='json-" + parentType + "-delete-container'>";
-					result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
+					result += context.actionHtml("<span class='json-" + parentType + "-delete json-" + parentType + "-delete-inner'>X</span>", "remove") + " ";
 					result += context.renderHtml(data, 'data');
 					result += "</div>";
 				} else {
@@ -9718,32 +9754,57 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 		// Display/edit arrays
 		Jsonary.render.register({
-			name: "Jsonary plain arrays",
+			name: "Jsonary re-orderable array",
 			renderHtml: function (data, context) {
 				var tupleTypingLength = data.schemas().tupleTypingLength();
 				var maxItems = data.schemas().maxItems();
 				var result = "";
-				data.indices(function (index, subData) {
+				var canReorder = !data.readOnly() && (data.length() > tupleTypingLength + 1);
+				data.items(function (index, subData) {
 					result += '<div class="json-array-item">';
+					if (canReorder && index >= tupleTypingLength) {
+						if (typeof context.uiState.moveSelect === 'undefined') {
+							result += context.actionHtml('<span class="json-array-move json-array-move-start">move</span>', 'moveStart', index);
+						} else if (context.uiState.moveSelect == index) {
+							result += context.actionHtml('<span class="json-array-move json-array-move-cancel">cancel</span>', 'moveCancel');
+						} else if (context.uiState.moveSelect > index) {
+							result += context.actionHtml('<span class="json-array-move json-array-move-up">to here</span>', 'moveSelect', context.uiState.moveSelect, index);
+						} else {
+							result += context.actionHtml('<span class="json-array-move json-array-move-down">to here</span>', 'moveSelect', context.uiState.moveSelect, index);
+						}
+					}
 					result += '<span class="json-array-value">' + context.renderHtml(subData) + '</span>';
 					result += '</div>';
 				});
 				if (!data.readOnly()) {
 					if (maxItems == null || data.length() < maxItems) {
-						var addHtml = '<span class="json-array-add">+ add</span>';
-						result += context.actionHtml(addHtml, "add");
+						result += '<div class="json-array-item">';
+						result += context.renderHtml(data.item(data.length()));
+						result += '</div>';
 					}
 				}
 				return result;
 			},
-			action: function (context, actionName) {
-				var data = context.data;
-				if (actionName == "add") {
-					var index = data.length();
-					data.schemas().createValueForIndex(index, function (newValue) {
-						data.index(index).setValue(newValue);
-					});
+			action: {
+				moveStart: function (data, context, index) {
+					context.uiState.moveSelect = index;
+					return true;
+				},
+				moveCancel: function (data, context, index) {
+					delete context.uiState.moveSelect;
+					return true;
+				},
+				moveSelect: function (data, context, fromIndex, toIndex) {
+					delete context.uiState.moveSelect;
+					data.item(fromIndex).moveTo(data.item(toIndex));
 				}
+			},
+			update: function (element, data, context, operation) {
+				if (context.uiState.moveSelect != undefined) {
+					delete context.uiState.moveSelect;
+					return true;
+				}
+				return this.defaultUpdate(element, data, context, operation);
 			},
 			filter: {
 				type: 'array'
@@ -11060,7 +11121,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var index = parseInt(data.parentKey());
 				if ((index >= tupleTypingLength || index == arrayData.length() - 1)
 					&& arrayData.length() > minItems) {
-					result += context.actionHtml('<span class="json-array-table-delete">X</span>', 'remove');
+					result += context.actionHtml('<span class="json-array-delete">X</span>', 'remove');
 				}
 				return result + '</td>';
 			});
@@ -11077,7 +11138,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}, "move", function (data, tableContext) {
 				if (tableContext.uiState.moveRow != undefined) {
 					return '<th style="padding: 0; text-align: center">'
-						+ tableContext.actionHtml('<div class="json-array-table-move-cancel" style="float: left">cancel</div>', 'move-cancel')
+						+ tableContext.actionHtml('<div class="json-array-move-cancel" style="float: left">cancel</div>', 'move-cancel')
 						+ '</th>';
 				}
 				return '<th></th>';
@@ -11091,13 +11152,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				var index = parseInt(data.parentKey());
 				if (index >= tupleTypingLength) {
 					if (tableContext.uiState.moveRow == undefined) {
-						result += tableContext.actionHtml('<div class="json-array-table-move-select">move</div>', 'move-select', index);
+						result += tableContext.actionHtml('<div class="json-array-move json-array-move-start">move</div>', 'move-start', index);
 					} else if (tableContext.uiState.moveRow == index) {
-						result += tableContext.actionHtml('<div class="json-array-table-move-cancel">cancel</div>', 'move-cancel');
+						result += tableContext.actionHtml('<div class="json-array-move json-array-move-cancel">cancel</div>', 'move-cancel');
 					} else if (tableContext.uiState.moveRow > index) {
-						result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-up">to here</div>', 'move', tableContext.uiState.moveRow, index);
+						result += tableContext.actionHtml('<div class="json-array-move json-array-move-select json-array-move-up">to here</div>', 'move', tableContext.uiState.moveRow, index);
 					} else {
-						result += tableContext.actionHtml('<div class="json-array-table-move-to json-array-table-move-down">to here</div>', 'move', tableContext.uiState.moveRow, index);
+						result += tableContext.actionHtml('<div class="json-array-move json-array-move-select json-array-move-down">to here</div>', 'move', tableContext.uiState.moveRow, index);
 					}
 				}
 				return result + '</td>';
@@ -12204,7 +12265,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
 			var style = document.createElement('style');
-			style.innerHTML = ".json-schema,.json-link{margin-right:.5em;margin-left:.5em;border:1px solid #DD3;background-color:#FFB;padding-left:.5em;padding-right:.5em;color:#880;font-size:.85em;font-style:italic;text-decoration:none}.json-link{border:1px solid #88F;background-color:#DDF;color:#008;font-style:normal}.json-raw{display:inline;white-space:pre}.json-null{font-style:italic;color:#666}.valid{background-color:#DFD}.invalid{background-color:#FDD}textarea{vertical-align:middle}.json-object{width:100%;font-size:inherit}.json-object-title{font-weight:700}.json-object-outer{background-color:#FFF;background-color:rgba(255,255,255,.8);border-radius:3px}.json-object-outer>legend{background-color:#EEE;border:1px solid #BBB;border-radius:3px;font-size:.8em;padding:.2em;padding-left:.7em;padding-right:.7em}.json-object-pair{margin-bottom:.3em}.json-object-key{padding:0;vertical-align:top;width:4em}.json-object-key-text,.json-object-key-title{text-align:right;font-style:italic;padding-right:.5em;border-right:1px solid #000;white-space:pre}.json-object-key-title{font-weight:700;font-style:normal;min-height:1.2em}.json-object-value{padding-left:.5em;vertical-align:top}.json-object-delete-container,.json-array-delete-container{position:relative;vertical-align:top;padding-left:1.2em}.json-object-delete,.json-array-delete{position:absolute;left:0;top:0;font-family:Arial,sans-serif;font-style:normal;font-weight:700;font-size:.9em;color:red;text-decoration:none;margin-right:1em;opacity:.5;transition:opacity .05s ease-in;text-shadow:0 -1px 1px rgba(255,255,255,.7),0 1px 1px rgba(0,0,0,.8)}.json-object-delete:hover,.json-array-delete:hover{opacity:1}.json-object-delete-value{}.json-object-add{display:block;padding-left:2.2em;color:#888;font-size:.9em}.json-object-add-key,.json-object-add-key-new{text-decoration:none;margin-left:1em;color:#000;border:1px solid #888;background-color:#EEE}.json-object-add-key-new{border:1px dotted #BBB;background-color:#EEF;font-style:italic}.json-select-type-dialog-outer{position:relative}.json-select-type-dialog{position:absolute;top:-.65em;left:-.5em;width:12em;border:2px solid #000;border-radius:10px;background-color:#fff;padding:.5em;z-index:1;opacity:.95;box-shadow:0 1px 3px rgba(0,0,0,.1)}.json-select-type-background{position:fixed;top:0;right:0;bottom:0;left:0;background-image:URL(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.json-select-type{font-family:monospaced;font-weight:700;font-size:.8em;padding-left:.3em;padding-right:.3em}.json-array{font-size:inherit}.json-array-item{display:block}.json-array-add{display:block;padding-left:2.2em;color:#000;font-family:monospace;font-style:normal;font-weight:700;color:#00F;text-decoration:none;margin-right:1em}.json-string{white-space:pre-wrap;border-radius:3px;font-size:inherit}.json-string-content-editable{display:inline;display:inline-block;vertical-align:text-top;background-color:#FFF;background-color:rgba(255,255,255,.95);outline:1px solid #BBB;outline:1px solid rgba(0,0,0,.05);color:#444;margin:.1em;padding:.3em;font-family:inherit;text-shadow:none;font-size:.9em;line-height:1.2em;min-width:5em;min-height:1.2em;max-height:20em;overflow:auto;border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}.json-string-content-editable:focus{color:#000;border-color:#48C;box-shadow:0 0 2px rgba(0,0,0,.1);z-index:1}.json-string-content-editable p{display:block!important;margin:0!important;padding:0!important}.json-string-content-editable *{position:static!important;margin:0!important;padding:0!important;font-size:inherit!important;font-family:inherit!important;color:#000!important;background:none!important;border:0!important;outline:0!important;font-weight:400!important;font-style:normal!important;text-decoration:none!important;text-transform:none!important;font-variant:normal!important;line-height:1.2em!important}textarea.json-string{font-size:inherit;font-weight:inherit;font-family:inherit;background-color:#FFF;background-color:rgba(255,255,255,.5);width:90%}.json-string-notice{color:#666;margin-left:.5em}.json-number{font-family:monospace;color:#000;font-weight:700;text-decoration:none;white-space:nowrap}input.json-number-input{width:3em;text-align:center;font-family:Trebuchet MS;font-weight:700}.json-number-increment,.json-number-decrement{font-family:monospace;padding-left:.5em;padding-right:.5em}.json-boolean-true,.json-boolean-false{font-family:monospace;color:#080;font-weight:700;text-decoration:none}.json-boolean-false{color:#800}.json-undefined-create{color:#008;text-decoration:none}.json-undefined-create:hover{color:#08F}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.5)}.prompt-buttons{background-color:#EEE;border:2px solid #000;text-align:center;position:relative}.prompt-data{background-color:#fff;border:2px solid #000;border-radius:10px;position:relative}";
+			style.innerHTML = ".json-schema,.json-link{margin-right:.5em;margin-left:.5em;border:1px solid #DD3;background-color:#FFB;padding-left:.5em;padding-right:.5em;color:#880;font-size:.85em;font-style:italic;text-decoration:none}.json-link{border:1px solid #88F;background-color:#DDF;color:#008;font-style:normal}.json-raw{display:inline;white-space:pre}.json-null{font-style:italic;color:#666}.valid{background-color:#DFD}.invalid{background-color:#FDD}textarea{vertical-align:middle}.json-object{width:100%;font-size:inherit}.json-object-title{font-weight:700}.json-object-outer{background-color:#FFF;background-color:rgba(255,255,255,.8);border-radius:3px}.json-object-outer>legend{background-color:#EEE;border:1px solid #BBB;border-radius:3px;font-size:.8em;padding:.2em;padding-left:.7em;padding-right:.7em}.json-object-pair{margin-bottom:.3em}.json-object-key{padding:0;vertical-align:top;width:4em}.json-object-key-text,.json-object-key-title{text-align:right;font-style:italic;padding-right:.5em;border-right:1px solid #000;white-space:pre}.json-object-key-title{font-weight:700;font-style:normal;min-height:1.2em}.json-object-value{padding-left:.5em;vertical-align:top}.json-object-delete-container,.json-array-delete-container{position:relative;vertical-align:top;padding-left:1.2em}.json-object-delete-inner,.json-array-delete-inner{position:absolute;top:0;left:0}.json-object-delete,.json-array-delete{font-family:Arial,sans-serif;font-style:normal;font-weight:700;font-size:.9em;color:red;text-decoration:none;opacity:.5;transition:opacity .05s ease-in;text-shadow:0 -1px 1px rgba(255,255,255,.7),0 1px 1px rgba(0,0,0,.8)}.json-object-delete:hover,.json-array-delete:hover{opacity:1}.json-object-delete-value{}.json-object-add{display:block;padding-left:2.2em;color:#888;font-size:.9em}.json-object-add-key,.json-object-add-key-new{text-decoration:none;margin-left:1em;color:#000;border:1px solid #888;background-color:#EEE}.json-object-add-key-new{border:1px dotted #BBB;background-color:#EEF;font-style:italic}.json-select-type-dialog-outer{position:relative}.json-select-type-dialog{position:absolute;top:-.65em;left:-.5em;width:12em;border:2px solid #000;border-radius:10px;background-color:#fff;padding:.5em;z-index:1;opacity:.95;box-shadow:0 1px 3px rgba(0,0,0,.1)}.json-select-type-background{position:fixed;top:0;right:0;bottom:0;left:0;background-image:URL(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH3AwdEQcKfNuiKQAAAB1pVFh0Q29tbWVudAAAAAAAQ3JlYXRlZCB3aXRoIEdJTVBkLmUHAAAATElEQVQY043QsQ2AQAxD0Y9rlvBYbJQts8QNQMVJIOCcysWTJWerqgPA9uBx3b1fWQkCUIJm4wrZHkrQrfEPTbhCAErQ65ivLyhBACczESoFljB75gAAAABJRU5ErkJggg==\")}.json-select-type{font-family:monospaced;font-weight:700;font-size:.8em;padding-left:.3em;padding-right:.3em}.json-array{font-size:inherit}.json-array-item{display:block;position:relative;padding-left:1.2em}.json-array-item .json-array-move{position:absolute;left:0;top:0}.json-array-value{}.json-string{white-space:pre-wrap;border-radius:3px;font-size:inherit}.json-string-content-editable{display:inline;display:inline-block;vertical-align:text-top;background-color:#FFF;background-color:rgba(255,255,255,.95);outline:1px solid #BBB;outline:1px solid rgba(0,0,0,.05);color:#444;margin:.1em;padding:.3em;font-family:inherit;text-shadow:none;font-size:.9em;line-height:1.2em;min-width:5em;min-height:1.2em;max-height:20em;overflow:auto;border:1px solid;background-color:#FFF;border-radius:3px;border-color:#CCC;border-top-color:#A6A6A6;border-bottom-color:#DDD}.json-string-content-editable:focus{color:#000;border-color:#48C;box-shadow:0 0 2px rgba(0,0,0,.1);z-index:1}.json-string-content-editable p{display:block!important;margin:0!important;padding:0!important}.json-string-content-editable *{position:static!important;margin:0!important;padding:0!important;font-size:inherit!important;font-family:inherit!important;color:#000!important;background:none!important;border:0!important;outline:0!important;font-weight:400!important;font-style:normal!important;text-decoration:none!important;text-transform:none!important;font-variant:normal!important;line-height:1.2em!important}textarea.json-string{font-size:inherit;font-weight:inherit;font-family:inherit;background-color:#FFF;background-color:rgba(255,255,255,.5);width:90%}.json-string-notice{color:#666;margin-left:.5em}.json-number{font-family:monospace;color:#000;font-weight:700;text-decoration:none;white-space:nowrap}input.json-number-input{width:3em;text-align:center;font-family:Trebuchet MS;font-weight:700}.json-number-increment,.json-number-decrement{font-family:monospace;padding-left:.5em;padding-right:.5em}.json-boolean-true,.json-boolean-false{font-family:monospace;color:#080;font-weight:700;text-decoration:none}.json-boolean-false{color:#800}.json-undefined-create{color:#008;text-decoration:none}.json-undefined-create:hover{color:#08F}.prompt-overlay{position:fixed;top:0;left:0;width:70%;height:100%;background-color:#000;padding-left:15%;padding-right:15%;background-color:rgba(100,100,100,.5)}.prompt-buttons{background-color:#EEE;border:2px solid #000;text-align:center;position:relative}.prompt-data{background-color:#fff;border:2px solid #000;border-radius:10px;position:relative}.json-array-move,.json-array-delete,.json-object-delete{display:block;width:16px;height:16px;text-indent:16px;overflow:hidden;background-position:center middle;background-repeat:no-repeat;opacity:.35}.json-array-move:hover,.json-array-delete:hover,.json-object-delete:hover{opacity:1}.json-array-delete,.json-object-delete{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAApElEQVQ4y82SsQ3CMBBFHxEFAyAKF6HLCKTPHhnkJsgg2SODuDNFhJAHcIFsmhSWYgeQkeCkq/7/r7h/8G9zAcKGHhZPPmxFQgYSa0lIsCLh1raxsV42pfEuZDO8y0B4TBNV0wDgtWbfdRyHYZVJAWrA3PuewzwD4JTiNI4AZ+Aam6vS2lIAY0XwWuOUwimF1xorAmBeAT8+4ldrLH6k4lf+zTwBbL+JOS+cUboAAAAASUVORK5CYII=\")}.json-array-move-start{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdElEQVQ4y62Tyw2AIBBEH94oAauwB+qedrQEj3iRRBMW5TPJXAjzQnYHsLUB6XagUQFIkpKkKsQZ4V3S6zDGCLACRw1QDNcg7m/YgriWsAUJj2m3essv8PTpXOiXLxWm1WF4iNPWOKVIXVUe/kyfkFwY69IFeyZbUaKi2aEAAAAASUVORK5CYII=\");float:left}.json-array-move-cancel{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAZklEQVQ4y81SwQmAQAwLDuIYjpwtOlee8XNCxTs5KaKBvtKEpi3wN2wAfMO79YzFEeGBSea6Jo4I286Na6seh1mTafHFhKRJPhLjGJmkJVmSSeZIJyxvnLIUobTE8hnLj1R+5W+wA9RyupOydS/wAAAAAElFTkSuQmCC\")}.json-array-move-select{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdUlEQVQ4y+2RMQqAMBAE58BGG+v4ChsL67x7X+A/9AmWsVBBwQQTWxcC4cgMdxdjT6AsVh2XERgy4enNowZoC7ujP0YLgMuFHRAkBUlJiUXgWdKt6L0H6IAlJXiEUxJ7C8cklgPHJO6y7dzTnx3UhV+98ud7NsZqMHtU+VD/AAAAAElFTkSuQmCC\")}.json-array-move-up{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAW0lEQVQ4y+2QwQmAMAxFX4+OEKfoDp37r6MjeKwXhQomGM99kEvgPULApwL9GiOJAV1SlxRGiiNvkh7L1hrACuxR4FWOIuWr7EVKRvYiNnw7O/W+YOEfB5MJcAIH0y4k53GkLAAAAABJRU5ErkJggg==\")}.json-array-move-down{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAY0lEQVQ4y+2RsQnAMAwEz2VGUKbwDp7710lGSOk0MYhgB8W1H4RAcC/xgqUlSE/fJvkLwIA6WbldYMAhKbS2lAKwA2dy85CJh30GIZM33DMYmvTgLxlQJVVJLTD7+6Ls0h7CNyr1LiTNtq8FAAAAAElFTkSuQmCC\")}";
 			document.head.appendChild(style);
 		})();
 	}
@@ -12215,7 +12276,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	if (typeof window != 'undefined' && typeof document != 'undefined') {
 		(function () {
 			var style = document.createElement('style');
-			style.innerHTML = ".json-array-table{border-spacing:0;border-collapse:collapse}.json-array-table .json-array-table{width:100%;margin:-4px;width:calc(100% + 8px)}.json-array-table>thead>tr>th{background-color:#EEE;border-bottom:1px solid #666;padding:.3em;font-size:.9em;font-weight:700;text-align:center}.json-array-table>thead{border:1px solid #BBB}.json-array-table>thead>tr>th.json-array-table-pages{border-bottom:1px solid #BBB;background-color:#DDD}.json-array-table>thead>tr>th.json-array-table-pages .button{font-family:Courier New,monospace}.json-array-table>tbody>tr>td{border:1px solid #CCC;border-top-color:#DDD;border-bottom-color:#DDD;padding:3px;font-size:inherit;text-align:left}.json-array-table>tbody>tr>td.json-array-table-full{padding:.3em;background-color:#EEE}.json-array-table>tbody>tr>td.json-array-table-add{text-align:center;background-color:#F8F8F8;border:1px solid #DDD}.json-array-table-full-buttons{text-align:center}.json-array-table-full-title{text-align:center;margin:-.3em;margin-bottom:.5em;background-color:#CCC;border-bottom:1px solid #BBB;font-weight:700;padding:.2em}.json-array-table-move-select,.json-array-table-move-cancel,.json-array-table-move-to,.json-array-table-delete{display:block;width:16px;height:16px;text-indent:16px;overflow:hidden;background-position:center middle;background-repeat:no-repeat;opacity:.35}.json-array-table-move-select:hover,.json-array-table-move-cancel:hover,.json-array-table-move-to:hover,.json-array-table-delete:hover{opacity:1}.json-array-table-delete{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAApElEQVQ4y82SsQ3CMBBFHxEFAyAKF6HLCKTPHhnkJsgg2SODuDNFhJAHcIFsmhSWYgeQkeCkq/7/r7h/8G9zAcKGHhZPPmxFQgYSa0lIsCLh1raxsV42pfEuZDO8y0B4TBNV0wDgtWbfdRyHYZVJAWrA3PuewzwD4JTiNI4AZ+Aam6vS2lIAY0XwWuOUwimF1xorAmBeAT8+4ldrLH6k4lf+zTwBbL+JOS+cUboAAAAASUVORK5CYII=\")}.json-array-table-move-select{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdElEQVQ4y62Tyw2AIBBEH94oAauwB+qedrQEj3iRRBMW5TPJXAjzQnYHsLUB6XagUQFIkpKkKsQZ4V3S6zDGCLACRw1QDNcg7m/YgriWsAUJj2m3essv8PTpXOiXLxWm1WF4iNPWOKVIXVUe/kyfkFwY69IFeyZbUaKi2aEAAAAASUVORK5CYII=\")}.json-array-table-move-cancel{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAZklEQVQ4y81SwQmAQAwLDuIYjpwtOlee8XNCxTs5KaKBvtKEpi3wN2wAfMO79YzFEeGBSea6Jo4I286Na6seh1mTafHFhKRJPhLjGJmkJVmSSeZIJyxvnLIUobTE8hnLj1R+5W+wA9RyupOydS/wAAAAAElFTkSuQmCC\")}.json-array-table-move-up{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAW0lEQVQ4y+2QwQmAMAxFX4+OEKfoDp37r6MjeKwXhQomGM99kEvgPULApwL9GiOJAV1SlxRGiiNvkh7L1hrACuxR4FWOIuWr7EVKRvYiNnw7O/W+YOEfB5MJcAIH0y4k53GkLAAAAABJRU5ErkJggg==\")}.json-array-table-move-down{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAY0lEQVQ4y+2RsQnAMAwEz2VGUKbwDp7710lGSOk0MYhgB8W1H4RAcC/xgqUlSE/fJvkLwIA6WbldYMAhKbS2lAKwA2dy85CJh30GIZM33DMYmvTgLxlQJVVJLTD7+6Ls0h7CNyr1LiTNtq8FAAAAAElFTkSuQmCC\")}.json-array-table-sort,.json-array-table-sort-asc,.json-array-table-sort-desc{padding-left:15px;padding-right:15px;margin-left:-5px;margin-right:-5px}.json-array-table-sort-asc,.json-array-table-sort-desc{background-position:right center;background-repeat:no-repeat}.json-array-table-sort-text{display:block;float:right;width:0;overflow:hidden}.json-array-table-sort-asc{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAXklEQVQoz+3SuwmAQBBF0SPGNmG1lrENmCoWZGoH7pqssCyCn9gLE0xweW9g+ClpMaD5Is9IGN9ITRZilmPeHzUIWaon3IkL9iI1Fek7prriSYe+EK/OgRXb/08fOAC7tBnlR5zMuwAAAABJRU5ErkJggg==\")}.json-array-table-sort-desc{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAW0lEQVQoz2NgGAUkAUY0NgsRev4yMDD8wyaxE0nyPxL+BxXfhs9UHQYGhgVoGmF4AVQeL9BlYGBYi2T7Pyhfl9iw0GFgYNgO1byWGBvRgT4DA0MHKTZic8FwAwDm/hlxhNq1AAAAAABJRU5ErkJggg==\")}";
+			style.innerHTML = ".json-array-table{border-spacing:0;border-collapse:collapse}.json-array-table .json-array-table{width:100%;margin:-4px;width:calc(100% + 8px)}.json-array-table>thead>tr>th{background-color:#EEE;border-bottom:1px solid #666;padding:.3em;font-size:.9em;font-weight:700;text-align:center}.json-array-table>thead{border:1px solid #BBB}.json-array-table>thead>tr>th.json-array-table-pages{border-bottom:1px solid #BBB;background-color:#DDD}.json-array-table>thead>tr>th.json-array-table-pages .button{font-family:Courier New,monospace}.json-array-table>tbody>tr>td{border:1px solid #CCC;border-top-color:#DDD;border-bottom-color:#DDD;padding:3px;font-size:inherit;text-align:left}.json-array-table>tbody>tr>td.json-array-table-full{padding:.3em;background-color:#EEE}.json-array-table>tbody>tr>td.json-array-table-add{text-align:center;background-color:#F8F8F8;border:1px solid #DDD}.json-array-table-full-buttons{text-align:center}.json-array-table-full-title{text-align:center;margin:-.3em;margin-bottom:.5em;background-color:#CCC;border-bottom:1px solid #BBB;font-weight:700;padding:.2em}.json-array-table-sort,.json-array-table-sort-asc,.json-array-table-sort-desc{padding-left:15px;padding-right:15px;margin-left:-5px;margin-right:-5px}.json-array-table-sort-asc,.json-array-table-sort-desc{background-position:right center;background-repeat:no-repeat}.json-array-table-sort-text{display:block;float:right;width:0;overflow:hidden}.json-array-table-sort-asc{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAXklEQVQoz+3SuwmAQBBF0SPGNmG1lrENmCoWZGoH7pqssCyCn9gLE0xweW9g+ClpMaD5Is9IGN9ITRZilmPeHzUIWaon3IkL9iI1Fek7prriSYe+EK/OgRXb/08fOAC7tBnlR5zMuwAAAABJRU5ErkJggg==\")}.json-array-table-sort-desc{background-image:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAW0lEQVQoz2NgGAUkAUY0NgsRev4yMDD8wyaxE0nyPxL+BxXfhs9UHQYGhgVoGmF4AVQeL9BlYGBYi2T7Pyhfl9iw0GFgYNgO1byWGBvRgT4DA0MHKTZic8FwAwDm/hlxhNq1AAAAAABJRU5ErkJggg==\")}";
 			document.head.appendChild(style);
 		})();
 	}

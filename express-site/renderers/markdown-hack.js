@@ -63,7 +63,7 @@ Jsonary.render.register({
 		html = html.replace(/(["'])javascript/i, function (whole, quoteChar) {
 			return quoteChar + "tricksy";
 		});
-		return html;
+		return '<span class="markdown">' + html + '</span>';
 	},
 	filter: {
 		readOnly: true,

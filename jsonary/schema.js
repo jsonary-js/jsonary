@@ -58,7 +58,7 @@ function Schema(data) {
 }
 Schema.prototype = {
 	"toString": function () {
-		return "<Schema " + this.data + ">";
+		return "[Jsonary Schema]";
 	},
 	referenceUrl: function (includeRef) {
 		if (includeRef && this.data.property('$ref').defined()) {

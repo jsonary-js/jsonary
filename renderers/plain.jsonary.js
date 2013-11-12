@@ -43,7 +43,7 @@
 			if (showDelete) {
 				var parentType = parent.basicType();
 				result += "<div class='json-" + parentType + "-delete-container'>";
-				result += context.actionHtml("<span class='json-" + parentType + "-delete'>X</span>", "remove") + " ";
+				result += context.actionHtml("<span class='json-" + parentType + "-delete json-" + parentType + "-delete-inner'>X</span>", "remove") + " ";
 				result += context.renderHtml(data, 'data');
 				result += "</div>";
 			} else {
@@ -522,32 +522,57 @@
 
 	// Display/edit arrays
 	Jsonary.render.register({
-		name: "Jsonary plain arrays",
+		name: "Jsonary re-orderable array",
 		renderHtml: function (data, context) {
 			var tupleTypingLength = data.schemas().tupleTypingLength();
 			var maxItems = data.schemas().maxItems();
 			var result = "";
-			data.indices(function (index, subData) {
+			var canReorder = !data.readOnly() && (data.length() > tupleTypingLength + 1);
+			data.items(function (index, subData) {
 				result += '<div class="json-array-item">';
+				if (canReorder && index >= tupleTypingLength) {
+					if (typeof context.uiState.moveSelect === 'undefined') {
+						result += context.actionHtml('<span class="json-array-move json-array-move-start">move</span>', 'moveStart', index);
+					} else if (context.uiState.moveSelect == index) {
+						result += context.actionHtml('<span class="json-array-move json-array-move-cancel">cancel</span>', 'moveCancel');
+					} else if (context.uiState.moveSelect > index) {
+						result += context.actionHtml('<span class="json-array-move json-array-move-up">to here</span>', 'moveSelect', context.uiState.moveSelect, index);
+					} else {
+						result += context.actionHtml('<span class="json-array-move json-array-move-down">to here</span>', 'moveSelect', context.uiState.moveSelect, index);
+					}
+				}
 				result += '<span class="json-array-value">' + context.renderHtml(subData) + '</span>';
 				result += '</div>';
 			});
 			if (!data.readOnly()) {
 				if (maxItems == null || data.length() < maxItems) {
-					var addHtml = '<span class="json-array-add">+ add</span>';
-					result += context.actionHtml(addHtml, "add");
+					result += '<div class="json-array-item">';
+					result += context.renderHtml(data.item(data.length()));
+					result += '</div>';
 				}
 			}
 			return result;
 		},
-		action: function (context, actionName) {
-			var data = context.data;
-			if (actionName == "add") {
-				var index = data.length();
-				data.schemas().createValueForIndex(index, function (newValue) {
-					data.index(index).setValue(newValue);
-				});
+		action: {
+			moveStart: function (data, context, index) {
+				context.uiState.moveSelect = index;
+				return true;
+			},
+			moveCancel: function (data, context, index) {
+				delete context.uiState.moveSelect;
+				return true;
+			},
+			moveSelect: function (data, context, fromIndex, toIndex) {
+				delete context.uiState.moveSelect;
+				data.item(fromIndex).moveTo(data.item(toIndex));
 			}
+		},
+		update: function (element, data, context, operation) {
+			if (context.uiState.moveSelect != undefined) {
+				delete context.uiState.moveSelect;
+				return true;
+			}
+			return this.defaultUpdate(element, data, context, operation);
 		},
 		filter: {
 			type: 'array'

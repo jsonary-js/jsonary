@@ -89,6 +89,9 @@ var ALL_TYPES_DICT = {
 	"object": true
 };
 SchemaList.prototype = {
+	"toString": function () {
+		return "[Jsonary Schema List]";
+	},
 	indexOf: function (schema, resolveRef) {
 		var i = this.length - 1;
 		while (i >= 0) {

@@ -102,17 +102,19 @@ textarea {
 	padding-left: 1.2em;
 }
 
-.json-object-delete, .json-array-delete {
+.json-object-delete-inner, .json-array-delete-inner {
 	position: absolute;
-	left: 0;
 	top: 0;
+	left: 0;
+}
+
+.json-object-delete, .json-array-delete {
 	font-family: Arial, sans-serif;
 	font-style: normal;
 	font-weight: bold;
 	font-size: 0.9em;
 	color: #F00;
 	text-decoration: none;
-	margin-right: 1em;
 	opacity: 0.5;
 	transition: opacity 0.05s ease-in;
 	text-shadow: 0px -1px 1px rgba(255, 255, 255, 0.7), 0px 1px 1px rgba(0, 0, 0, 0.8);
@@ -189,19 +191,17 @@ textarea {
 
 .json-array-item {
 	display: block;
+	position: relative;
+	padding-left: 1.2em;
 }
 
-.json-array-add {
-	display: block;
-	padding-left: 2.2em;
-	color: #000;
+.json-array-item .json-array-move {
+	position: absolute;
+	left: 0;
+	top: 0;
+}
 
-	font-family: monospace;
-	font-style: normal;
-	font-weight: bold;
-	color: #00F;
-	text-decoration: none;
-	margin-right: 1em;
+.json-array-value {
 }
 
 /**** String ****/
@@ -359,3 +359,47 @@ input.json-number-input {
 	border-radius: 10px;	
 	position: relative;
 }
+
+/**** Icon raphics replacing text ****/
+
+.json-array-move, .json-array-delete, .json-object-delete {
+	display: block;
+	width: 16px;
+	height: 16px;
+	text-indent: 16px;
+	overflow: hidden;
+	background-position: center middle;
+	background-repeat: no-repeat;
+	opacity: 0.35;
+}
+
+.json-array-move:hover, .json-array-delete:hover, .json-object-delete:hover {
+	opacity: 1;
+}
+
+.json-array-delete, .json-object-delete {
+	background-image: url('images/delete.png');
+}
+
+.json-array-move-start {
+	background-image: url('images/move-up-down.png');
+	float: left;
+}
+
+.json-array-move-cancel {
+	background-image: url('images/move-cancel.png');
+}
+
+.json-array-move-select {
+	background-image: url('images/move-to-here.png');
+}
+
+.json-array-move-up {
+	background-image: url('images/move-up.png');
+}
+
+.json-array-move-down {
+	background-image: url('images/move-down.png');
+}
+
+
