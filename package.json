@@ -8,10 +8,16 @@
     "wrench": "~1.5.1"
   },
   "scripts": {
-    "test": "grunt test",
-    "install": "pushd node-package; npm install; popd;"
+    "test": "grunt test"
   },
   "dependencies": {
-    "grunt-contrib-compress": "~0.5.2"
+    "grunt-contrib-compress": "~0.5.2",
+    "clean-css": "1.0.x",
+    "uglify-js": "2.3.x",
+    "mime": "1.2.x",
+    "cookie-client": "0.0.x",
+    "express": "3.x",
+    "my-json": "0.0.2",
+    "mysql": "~2.0.0-alpha9"
   }
 }
