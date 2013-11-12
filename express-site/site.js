@@ -231,6 +231,20 @@ app.use('/get-started.zip', function (request, response) {
 	response.sendfile(path.join(__dirname, '../get-started.zip'));
 });
 
+app.get('/test', function (request, response) {
+	var params = {
+		protocol: request.protocol,
+		hostname: request.host.split(':')[0],
+		port: (SERVER_PORT != 80) ? SERVER_PORT : null,
+		pathname: '/'
+	};
+	var baseUri = url.format(params);
+	response.json({
+		baseUri: baseUri,
+		params: params
+	});
+});
+
 var defaultJsonPage = '/json/';
 app.use('/', function (request, response, next) {
 	if (request.path !== '/'
