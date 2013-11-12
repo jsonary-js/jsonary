@@ -342,6 +342,6 @@ app.use('/', function (request, response, next) {
 	}
 });
 
-var SERVER_PORT = 8080;
+var SERVER_PORT = process.env.PORT || 8083;
 http.createServer(app).listen(SERVER_PORT);
-console.log('Listening on port 8080');
+console.log('Listening on port ' + SERVER_PORT);
