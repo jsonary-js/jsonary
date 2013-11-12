@@ -336,6 +336,9 @@ function Data(document, secrets, parent, parentKey) {
 						
 					}
 				} else if (operation.action() == "remove") {
+					if (!parent) {
+						secrets.setValue(undefined);
+					}
 				} else if (operation.action() == "move") {
 				} else {
 					throw new Error("Unrecognised patch operation: " + operation.action());
@@ -837,9 +840,15 @@ Data.prototype = {
 		return this.document.resolveUrl(url);
 	},
 	get: function (path) {
+		if (!path) {
+			return this.value();
+		}
 		return this.subPath(path).value();
 	},
 	set: function (path, value) {
+		if (arguments.length == 1) {
+			return this.setValue(path);
+		}
 		this.subPath(path).setValue(value);
 		return this;
 	},

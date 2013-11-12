@@ -24,6 +24,36 @@ tests.add("Creating/extracting data", function () {
 	return recursiveCompare(exampleData, data.value());
 });
 
+tests.add("Setting/getting (value/setValue)", function () {
+	var data = Jsonary.create("value 1");
+	this.assert(data.value() == "value 1", 'equal');
+	
+	data.setValue(false);
+	this.assert(data.value() == false, 'equal 2');
+	
+	return true;
+});
+
+tests.add("Setting/getting (set/get)", function () {
+	var data = Jsonary.create("value 1");
+	this.assert(data.get() == "value 1", 1);
+	
+	data.set(false);
+	this.assert(data.get() == false, 2);
+
+	data.set(undefined);
+	this.assert(data.get() === undefined, 3);
+
+	data.set({a: 1, b: 2});
+	this.assert(data.get('/a') === 1, 4);
+	this.assert(data.get('/b') === 2, 5);
+	
+	data.set('/b', undefined);
+	this.assert(data.get('/b') === undefined, 6);
+	
+	return true;
+});
+
 tests.add("Basic type (new)", function () {
 	var data, basicType;
 	var basicTypeExamples = {

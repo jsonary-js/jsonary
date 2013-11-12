@@ -127,7 +127,7 @@ module.exports = function(grunt) {
 						grunt.log.writeln('');
 						grunt.log.error("Test failed: " + title);
 						grunt.log.writeln(reason + "\n");
-						if (reason.stack) {
+						if (reason && reason.stack) {
 							console.log(reason.stack);
 						}
 						grunt.fail.warn("Test failed (" + title + ")");
