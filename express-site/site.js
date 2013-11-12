@@ -241,7 +241,14 @@ app.use('/', function (request, response, next) {
 	var timer = LogTimer('page');
 	
 	response.setHeader('Content-Type', 'text/html');
-	var Jsonary = jsonaryJsBundle.instance('http://localhost:8080/', 'Jsonary');
+	var baseUri = url.format({
+		protocol: request.protocol,
+		hostname: request.host.split(':')[0],
+		port: (SERVER_PORT != 80) ? SERVER_PORT : null,
+		pathname: '/'
+	});
+	console.log(baseUri);
+	var Jsonary = jsonaryJsBundle.instance(baseUri, 'Jsonary');
 	timer.event('create Jsonary');
 
 	Jsonary.server.loadSavedData(request.body);
