@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-12 */
+/* Bundled on 2013-11-13 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -6269,13 +6269,17 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						continue;
 					}
 					(function (key) {
-						pending++;
 						var origPropValue = origValue[key];
+						if (typeof origPropValue === 'undefined') {
+							// Don't need to create key if not in original data
+							return;
+						}
+						pending++;
 						if (callback) {
 							thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 								if (candidate && typeof value !== 'undefined') {
 									candidate[key] = value;
-								} else if (banCoercion && typeof origPropValue !== 'undefined') {
+								} else if (banCoercion) {
 									candidate = undefined;
 								}
 								pending--;
@@ -6287,7 +6291,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 							var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 							if (candidate && typeof propValue !== 'undefined') {
 								candidate[key] = propValue;
-							} else if (banCoercion && typeof origPropValue !== 'undefined') {
+							} else if (banCoercion) {
 								candidate = undefined;
 							}
 						}
@@ -7881,7 +7885,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				}
 				var argsObject = {
 					context: this,
-					actionName: actionName
+					actionName: actionName,
+					params: params
 				};
 				var name = Jsonary.render.actionInputName(argsObject);
 				this.enhancementInputs[name] = {

@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-12 */
+/* Bundled on 2013-11-13 */
 (function() {
 
 
@@ -6229,6 +6229,7 @@
 				return candidate;
 			},
 			createValueObject: function (origValue, callback, banCoercion) {
+				console.log("Creating value object: " + JSON.stringify(Array.prototype.slice.call(arguments, 0)));
 				if (typeof origValue === 'function') {
 					var tmp = origValue;
 					origValue = callback;
@@ -6271,6 +6272,9 @@
 					var definedProperties = this.definedProperties();
 					for (var i = 0; candidate && i < definedProperties.length; i++) {
 						var key = definedProperties[i];
+						if (typeof origValue[key] === 'undefined') {
+							continue;
+						}
 						if (!candidate || typeof candidate[key] !== 'undefined') {
 							continue;
 						}
@@ -6281,7 +6285,7 @@
 								thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 									if (candidate && typeof value !== 'undefined') {
 										candidate[key] = value;
-									} else if (banCoercion && typeof origPropValue !== 'undefined') {
+									} else if (banCoercion) {
 										candidate = undefined;
 									}
 									pending--;
@@ -6293,7 +6297,7 @@
 								var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 								if (candidate && typeof propValue !== 'undefined') {
 									candidate[key] = propValue;
-								} else if (banCoercion && typeof origPropValue !== 'undefined') {
+								} else if (banCoercion) {
 									candidate = undefined;
 								}
 							}
@@ -7887,7 +7891,8 @@
 					}
 					var argsObject = {
 						context: this,
-						actionName: actionName
+						actionName: actionName,
+						params: params
 					};
 					var name = Jsonary.render.actionInputName(argsObject);
 					this.enhancementInputs[name] = {
@@ -9511,12 +9516,14 @@
 					return result;
 				},
 				createValue: function (context) {
+					console.log("Creating new value");
 					var data = context.data;
 					var newSchemas = context.data.schemas().fixed();
 					var xorSchemas = context.data.schemas().fixed().xorSchemas();
 					for (var i = 0; i < xorSchemas.length; i++) {
 						newSchemas = newSchemas.concat([xorSchemas[i][context.uiState.xorSelected[i]].getFull()]);
 					}
+					console.log("Creating new value: 1");
 					var orSchemas = context.data.schemas().fixed().orSchemas();
 					for (var i = 0; i < orSchemas.length; i++) {
 						var options = orSchemas[i];
@@ -9526,11 +9533,16 @@
 							}
 						}
 					}
+					console.log("Creating new value: 2");
 					newSchemas = newSchemas.getFull();
+					console.log("Creating new value: 3");
 					data.setValue(newSchemas.createValue());
+					console.log("Creating new value: 4");
 					newSchemas.createValue(function (value) {
+						console.log("Creating new value: 5");
 						data.setValue(value);
-					})
+					});
+					console.log("Creating new value: 5");
 				},
 				action: function (context, actionName, value, arg1) {
 					if (actionName == "closeDialog") {
@@ -11909,6 +11921,7 @@
 		},
 		action: {
 			back: function (data, context) {
+				console.log("Navigating back to root");
 				delete context.uiState.nav;
 				return true;
 			}

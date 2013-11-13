@@ -141,6 +141,7 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	// Yes, I know that the browser also does percent-encoding.
 	// However, if we simply escape the HTML, then any lists ([]) get interpreted as properties, and that's just a mess to undo.
 	Jsonary.render.actionInputName = function (args) {
+		console.log([args.actionName, args.params]);
 		inputContexts = [true];
 		var inputName = new Buffer(JSON.stringify({
 			contextPath: args.context.labelSequence(),
@@ -283,16 +284,17 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	})(Jsonary.asyncRenderHtml.postTransform);
 	
 	Jsonary.server.performActions = function (context, query, body) {
-
 		var needsReRender = false;
 		// Execute inputs first, then actions
 		for (var key in body) {
 			if (key.substring(0, (inputPrefix + ".input:").length) == (inputPrefix + ".input:")) {
+				console.log(key);
 				needsReRender = true;
 				var base64 = key.substring((inputPrefix + ".input:").length);
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
+					console.log(actionJson);
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".input:" + base64);
 					continue;
@@ -307,11 +309,13 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 		}
 		for (var key in body) {
 			if (key.substring(0, (inputPrefix + ".action:").length) == (inputPrefix + ".action:")) {
+				console.log(key);
 				needsReRender = true;
 				var base64 = key.substring((inputPrefix + ".action:").length);
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
+					console.log(actionJson);
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".action:" + base64);
 					continue;
@@ -326,11 +330,13 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 		}
 		for (var key in query) {
 			if (key == inputPrefix + '.action') {
+				console.log(key);
 				needsReRender = true;
 				var base64 = query[inputPrefix + '.action'];
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
+					console.log(actionJson);
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".action:" + base64);
 					continue;
@@ -357,7 +363,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	};
 	function checkRequestsComplete() {
 		process.nextTick(function () {
-			console.log("requestCount: " + requestCount);
 			if (requestCount > 0) {
 				return;
 			}
@@ -373,12 +378,8 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	
 	// Make an actual HTTP request, defaulting to the current server if just path is given
 	Jsonary.ajaxFunction = function (params, callback) {
-		if (params.url == 'http://localhost:8080/json/schemas/demo-code') {
-//			console.log((new Error).stack);
-		}
-		console.log(params);
+		//console.log(params);
 		requestCount++;
-		console.log("requestCount++: " + requestCount);
 		var options = urlModule.parse(params.url);
 		var isHttps = (options.protocol == 'https' || options.protocol == 'https:');
 		var httpModule = isHttps ? https : http;
@@ -415,7 +416,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 			});
 			callback(e, e, '');
 			requestCount--;
-			console.log("requestCount--: " + requestCount);
 			checkRequestsComplete();
 		});
 		if (params.data != undefined) {
@@ -457,7 +457,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 				callback(new Jsonary.HttpError(response.statusCode, response), data, headerText);
 			}
 			requestCount--;
-			console.log("requestCount--: " + requestCount);
 			checkRequestsComplete();
 		}
 	};

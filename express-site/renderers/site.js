@@ -58,6 +58,7 @@ Jsonary.render.register({
 	},
 	action: {
 		back: function (data, context) {
+			console.log("Navigating back to root");
 			delete context.uiState.nav;
 			return true;
 		}
