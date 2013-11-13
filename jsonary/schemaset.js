@@ -1138,13 +1138,17 @@ SchemaList.prototype = {
 					continue;
 				}
 				(function (key) {
-					pending++;
 					var origPropValue = origValue[key];
+					if (typeof origPropValue === 'undefined') {
+						// Don't need to create key if not in original data
+						return;
+					}
+					pending++;
 					if (callback) {
 						thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 							if (candidate && typeof value !== 'undefined') {
 								candidate[key] = value;
-							} else if (banCoercion && typeof origPropValue !== 'undefined') {
+							} else if (banCoercion) {
 								candidate = undefined;
 							}
 							pending--;
@@ -1156,7 +1160,7 @@ SchemaList.prototype = {
 						var propValue = thisSchemaSet.createValueForProperty(key, origPropValue, undefined, banCoercion || undefined);
 						if (candidate && typeof propValue !== 'undefined') {
 							candidate[key] = propValue;
-						} else if (banCoercion && typeof origPropValue !== 'undefined') {
+						} else if (banCoercion) {
 							candidate = undefined;
 						}
 					}

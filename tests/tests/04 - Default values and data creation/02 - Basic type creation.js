@@ -190,6 +190,11 @@ tests.add("object", function () {
 tests.add("required properties (v4-style)", function () {
 	var schema = Jsonary.createSchema({
 		"type": "object",
+		"properties": {
+			"key1": {"default": 1},
+			"key2": {"default": 2},
+			"key3": {"default": 3}
+		},
 		"required": ["key1", "key2"]
 	});
 	var schemaList = schema.asList();
@@ -198,6 +203,7 @@ tests.add("required properties (v4-style)", function () {
 	this.assert(typeof value == "object" && value != null, "value is object: " + JSON.stringify(value));
 	this.assert(value.key1 !== undefined, "value.key1 defined: " + JSON.stringify(value));
 	this.assert(value.key2 !== undefined, "value.key2 defined: " + JSON.stringify(value));
+	this.assert(value.key3 === undefined, "value.key3 undefined: " + JSON.stringify(value));
 
 	return true;
 });
@@ -221,3 +227,64 @@ tests.add("required properties are correct type", function () {
 	return true;
 });
 
+tests.add("Don't hang on recursive schema if possible", function () {
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		properties: {
+			key1: {"$ref": "#"}
+		}
+	});
+	
+	var value = schema.createValue();
+	this.assert(typeof value == 'object', "value is object");
+	return true;
+});
+
+tests.add("Don't hang on recursive schema if possible (with default)", function () {
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		properties: {
+			key1: {"$ref": "#"}
+		},
+		"default": {
+			"key1": {}
+		}
+	});
+	
+	var value = schema.createValue();
+	this.assert(typeof value == 'object', "value is object");
+	return true;
+});
+
+tests.add("Don't hang on recursive schema if possible (async)", function () {
+	var thisTest = this;
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		properties: {
+			key1: {"$ref": "#"}
+		}
+	});
+	
+	var value = schema.createValue(function (value) {
+		thisTest.assert(typeof value == 'object', "value is object");
+		thisTest.pass()
+	});
+});
+
+tests.add("Don't hang on recursive schema if possible (async with default)", function () {
+	var thisTest = this;
+	var schema = Jsonary.createSchema({
+		"type": "object",
+		properties: {
+			key1: {"$ref": "#"}
+		},
+		"default": {
+			"key1": {}
+		}
+	});
+	
+	var value = schema.createValue(function (value) {
+		thisTest.assert(typeof value == 'object', "value is object");
+		thisTest.pass()
+	});
+});
