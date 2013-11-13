@@ -1,11 +1,11 @@
 {
-  "name": "hello-world",
-  "description": "hello world test app",
+  "name": "jsonary-site",
+  "description": "Jsonary website",
   "version": "0.0.1",
   "private": true,
   "dependencies": {
     "express": "3.x",
-    "my-json": "0.0.2",
+    "my-json": "~0.0.4",
     "mysql": "~2.0.0-alpha9"
   }
 }

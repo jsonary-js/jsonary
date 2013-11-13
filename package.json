@@ -17,7 +17,7 @@
     "mime": "1.2.x",
     "cookie-client": "0.0.x",
     "express": "3.x",
-    "my-json": "0.0.2",
+    "my-json": "~0.0.4",
     "mysql": "~2.0.0-alpha9"
   }
 }

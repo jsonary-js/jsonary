@@ -63,6 +63,10 @@ function LogTimer(timerName) {
 LogTimer.prototype = {
 };
 
+app.use('/jsonary', express.static(__dirname + "/../node-package"));
+
+app.use('/json/api', require('./routes/api.js'));
+
 app.get('/json/pages/', function (request, response, next) {
 	var cached = classes.cacheWithPool(mysqlPool);
 	

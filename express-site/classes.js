@@ -8,5 +8,13 @@ module.exports = myJson.group({
 			'string/name': 'name',
 			'json': 'json'
 		}
+	},
+	Api: {
+		table: 'jsonary_api',
+		keyColumn: 'string/apiName',
+		columns: {
+			'string/apiName': 'name',
+			'json': 'json'
+		}
 	}
 });
