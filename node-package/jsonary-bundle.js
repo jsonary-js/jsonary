@@ -141,7 +141,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	// Yes, I know that the browser also does percent-encoding.
 	// However, if we simply escape the HTML, then any lists ([]) get interpreted as properties, and that's just a mess to undo.
 	Jsonary.render.actionInputName = function (args) {
-		console.log([args.actionName, args.params]);
 		inputContexts = [true];
 		var inputName = new Buffer(JSON.stringify({
 			contextPath: args.context.labelSequence(),

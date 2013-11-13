@@ -4,7 +4,7 @@
 
 /**** jsonary-core.js ****/
 
-	/* Bundled on 2013-11-12 */
+	/* Bundled on 2013-11-13 */
 	(function() {
 	/* Copyright (C) 2012-2013 Geraint Luff
 	
@@ -6229,7 +6229,6 @@
 				return candidate;
 			},
 			createValueObject: function (origValue, callback, banCoercion) {
-				console.log("Creating value object: " + JSON.stringify(Array.prototype.slice.call(arguments, 0)));
 				if (typeof origValue === 'function') {
 					var tmp = origValue;
 					origValue = callback;
@@ -6272,15 +6271,16 @@
 					var definedProperties = this.definedProperties();
 					for (var i = 0; candidate && i < definedProperties.length; i++) {
 						var key = definedProperties[i];
-						if (typeof origValue[key] === 'undefined') {
-							continue;
-						}
 						if (!candidate || typeof candidate[key] !== 'undefined') {
 							continue;
 						}
 						(function (key) {
-							pending++;
 							var origPropValue = origValue[key];
+							if (typeof origPropValue === 'undefined') {
+								// Don't need to create key if not in original data
+								return;
+							}
+							pending++;
 							if (callback) {
 								thisSchemaSet.createValueForProperty(key, origPropValue, function (value) {
 									if (candidate && typeof value !== 'undefined') {
@@ -9379,7 +9379,8 @@
 					if (actionName == "select-basic-type") {
 						context.uiState.dialogOpen = false;
 						var schemas = context.data.schemas().concat([Jsonary.createSchema({type: basicType})]);
-						schemas.createValue(function (newValue) {
+						var oldValue = context.data.get();
+						schemas.createValue(oldValue, function (newValue) {
 							context.data.setValue(newValue);
 						});
 						return true;
@@ -9516,14 +9517,12 @@
 					return result;
 				},
 				createValue: function (context) {
-					console.log("Creating new value");
 					var data = context.data;
 					var newSchemas = context.data.schemas().fixed();
 					var xorSchemas = context.data.schemas().fixed().xorSchemas();
 					for (var i = 0; i < xorSchemas.length; i++) {
 						newSchemas = newSchemas.concat([xorSchemas[i][context.uiState.xorSelected[i]].getFull()]);
 					}
-					console.log("Creating new value: 1");
 					var orSchemas = context.data.schemas().fixed().orSchemas();
 					for (var i = 0; i < orSchemas.length; i++) {
 						var options = orSchemas[i];
@@ -9533,16 +9532,12 @@
 							}
 						}
 					}
-					console.log("Creating new value: 2");
 					newSchemas = newSchemas.getFull();
-					console.log("Creating new value: 3");
-					data.setValue(newSchemas.createValue());
-					console.log("Creating new value: 4");
-					newSchemas.createValue(function (value) {
-						console.log("Creating new value: 5");
+					var oldValue = data.get();
+					data.setValue(newSchemas.createValue(oldValue));
+					newSchemas.createValue(oldValue, function (value) {
 						data.setValue(value);
-					});
-					console.log("Creating new value: 5");
+					})
 				},
 				action: function (context, actionName, value, arg1) {
 					if (actionName == "closeDialog") {
@@ -9552,16 +9547,22 @@
 						context.uiState.dialogOpen = true;
 						return true;
 					} else if (actionName == "selectXorSchema") {
-						context.uiState.xorSelected[arg1] = value;
-						this.createValue(context);
-						return true;
-					} else if (actionName == "selectOrSchema") {
-						context.uiState.orSelected[arg1] = [];
-						for (var i = 0; i < value.length; i++) {
-							context.uiState.orSelected[arg1][value[i]] = true;
+						console.log([context.uiState.xorSelected[arg1], value]);
+						if (context.uiState.xorSelected[arg1] != value) {
+							context.uiState.xorSelected[arg1] = value;
+							this.createValue(context);
+							return true;
 						}
-						this.createValue(context);
-						return true;
+					} else if (actionName == "selectOrSchema") {
+						// Order should be the same, and they're all numbers, so...
+						if (JSON.stringify(context.uiState.orSelected[arg1]) != JSON.stringify(value)) {
+							context.uiState.orSelected[arg1] = [];
+							for (var i = 0; i < value.length; i++) {
+								context.uiState.orSelected[arg1][value[i]] = true;
+							}
+							this.createValue(context);
+							return true;
+						}
 					} else {
 						alert("Unkown action: " + actionName);
 					}

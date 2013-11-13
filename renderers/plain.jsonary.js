@@ -127,7 +127,8 @@
 			if (actionName == "select-basic-type") {
 				context.uiState.dialogOpen = false;
 				var schemas = context.data.schemas().concat([Jsonary.createSchema({type: basicType})]);
-				schemas.createValue(function (newValue) {
+				var oldValue = context.data.get();
+				schemas.createValue(oldValue, function (newValue) {
 					context.data.setValue(newValue);
 				});
 				return true;
@@ -280,8 +281,9 @@
 				}
 			}
 			newSchemas = newSchemas.getFull();
-			data.setValue(newSchemas.createValue());
-			newSchemas.createValue(function (value) {
+			var oldValue = data.get();
+			data.setValue(newSchemas.createValue(oldValue));
+			newSchemas.createValue(oldValue, function (value) {
 				data.setValue(value);
 			})
 		},
@@ -293,16 +295,25 @@
 				context.uiState.dialogOpen = true;
 				return true;
 			} else if (actionName == "selectXorSchema") {
-				context.uiState.xorSelected[arg1] = value;
-				this.createValue(context);
-				return true;
-			} else if (actionName == "selectOrSchema") {
-				context.uiState.orSelected[arg1] = [];
-				for (var i = 0; i < value.length; i++) {
-					context.uiState.orSelected[arg1][value[i]] = true;
+				if (context.uiState.xorSelected[arg1] + "" != value + "") {
+					context.uiState.xorSelected[arg1] = value;
+					this.createValue(context);
+					return true;
 				}
-				this.createValue(context);
-				return true;
+			} else if (actionName == "selectOrSchema") {
+				// Order should be the same, and they're all numbers, so...
+				var different = (context.uiState.orSelected[arg1].length !== value.length);
+				for (var i = 0; !different && i < value.length; i++) {
+					different = (context.uiState.orSelected[arg1][i] + "" == value[i] + "");
+				}
+				if (different) {
+					context.uiState.orSelected[arg1] = [];
+					for (var i = 0; i < value.length; i++) {
+						context.uiState.orSelected[arg1][value[i]] = true;
+					}
+					this.createValue(context);
+					return true;
+				}
 			} else {
 				alert("Unkown action: " + actionName);
 			}
