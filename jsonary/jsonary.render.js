@@ -625,7 +625,8 @@
 			}
 			var argsObject = {
 				context: this,
-				actionName: actionName
+				actionName: actionName,
+				params: params
 			};
 			var name = Jsonary.render.actionInputName(argsObject);
 			this.enhancementInputs[name] = {
