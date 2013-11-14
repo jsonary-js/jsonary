@@ -56,7 +56,9 @@
 				node.appendChild(document.createTextNode('['));
 				for (var i = 0; i < value.length; i++) {
 					node.appendChild(consoleDisplay(value[i], true));
-					node.appendChild(document.createTextNode(', '));
+					if (i < value.length - 1) {
+						node.appendChild(document.createTextNode(', '));
+					}
 				}
 				node.appendChild(document.createTextNode(']'));
 			}
