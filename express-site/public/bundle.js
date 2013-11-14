@@ -12085,7 +12085,7 @@
 					var codeText = value + "";
 					if (typeof Prism !== 'undefined') {
 						codeText = prepareForPrism(codeText);
-						node.innerHTML = '<code style="white-space: pre-wrap">' + Prism.highlight(codeText, Prism.languages.javascript) + '</code>';
+						node.innerHTML = '<span style="white-space: pre">' + Prism.highlight(codeText, Prism.languages.javascript) + '</span>';
 					} else {
 						node.innerHTML = Jsonary.escapeHtml(codeText);
 					}
