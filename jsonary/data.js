@@ -914,7 +914,7 @@ Document.prototype.deflate = function (canUseUrl) {
 	}
 	var rawData = this.raw;
 	var schemas = [];
-	rawData.schemas().each(function (index, schema) {
+	rawData.schemas().fixed().each(function (index, schema) {
 		if (schema.referenceUrl() != undefined) {
 			schemas.push(schema.referenceUrl());
 		} else {
