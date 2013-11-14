@@ -1,10 +1,10 @@
-/* Bundled on 2013-11-13 */
+/* Bundled on 2013-11-14 */
 (function() {
 
 
 /**** jsonary-core.js ****/
 
-	/* Bundled on 2013-11-13 */
+	/* Bundled on 2013-11-14 */
 	(function() {
 	/* Copyright (C) 2012-2013 Geraint Luff
 	
@@ -3619,7 +3619,7 @@
 			}
 			var rawData = this.raw;
 			var schemas = [];
-			rawData.schemas().each(function (index, schema) {
+			rawData.schemas().fixed().each(function (index, schema) {
 				if (schema.referenceUrl() != undefined) {
 					schemas.push(schema.referenceUrl());
 				} else {
@@ -9547,15 +9547,18 @@
 						context.uiState.dialogOpen = true;
 						return true;
 					} else if (actionName == "selectXorSchema") {
-						console.log([context.uiState.xorSelected[arg1], value]);
-						if (context.uiState.xorSelected[arg1] != value) {
+						if (context.uiState.xorSelected[arg1] + "" != value + "") {
 							context.uiState.xorSelected[arg1] = value;
 							this.createValue(context);
 							return true;
 						}
 					} else if (actionName == "selectOrSchema") {
 						// Order should be the same, and they're all numbers, so...
-						if (JSON.stringify(context.uiState.orSelected[arg1]) != JSON.stringify(value)) {
+						var different = (context.uiState.orSelected[arg1].length !== value.length);
+						for (var i = 0; !different && i < value.length; i++) {
+							different = (context.uiState.orSelected[arg1][i] + "" == value[i] + "");
+						}
+						if (different) {
 							context.uiState.orSelected[arg1] = [];
 							for (var i = 0; i < value.length; i++) {
 								context.uiState.orSelected[arg1][value[i]] = true;
@@ -9758,6 +9761,7 @@
 							delete context.uiState.addInputValue;
 							delete context.uiState.addInputSelect;
 							data.schemas().createValueForProperty(key, function (newValue) {
+								console.log("New property value!");
 								data.property(key).setValue(newValue);
 							});
 						}

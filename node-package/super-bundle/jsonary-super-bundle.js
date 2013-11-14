@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-13 */
+/* Bundled on 2013-11-14 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -3613,7 +3613,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		}
 		var rawData = this.raw;
 		var schemas = [];
-		rawData.schemas().each(function (index, schema) {
+		rawData.schemas().fixed().each(function (index, schema) {
 			if (schema.referenceUrl() != undefined) {
 				schemas.push(schema.referenceUrl());
 			} else {

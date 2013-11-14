@@ -131,6 +131,7 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 
 	var buttonReplacementHtml = [];
 	Jsonary.server.reset = function (pageUri) {
+		savedData = {};
 		inputContexts = [];
 		buttonReplacementHtml = [];
 		if (typeof pageUri !== 'undefined') {
@@ -233,6 +234,8 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 			for (var i = 0; i < dataJsonArray.length; i++) {
 				try {
 					var parsed = JSON.parse(dataJsonArray[i]);
+					console.log(parsed);
+					console.log('----------');
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".data[" + i + "] " + dataJsonArray[i]);
 				}
@@ -241,6 +244,7 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 				}
 			}
 		}
+		console.log(savedData);
 	};
 	Jsonary.render.loadData = function (saveDataId) {
 		var documentId = saveDataId.split(":")[0];
@@ -287,13 +291,13 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 		// Execute inputs first, then actions
 		for (var key in body) {
 			if (key.substring(0, (inputPrefix + ".input:").length) == (inputPrefix + ".input:")) {
-				console.log(key);
 				needsReRender = true;
 				var base64 = key.substring((inputPrefix + ".input:").length);
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
 					console.log(actionJson);
+					console.log(body[key]);
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".input:" + base64);
 					continue;
@@ -308,13 +312,13 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 		}
 		for (var key in body) {
 			if (key.substring(0, (inputPrefix + ".action:").length) == (inputPrefix + ".action:")) {
-				console.log(key);
 				needsReRender = true;
 				var base64 = key.substring((inputPrefix + ".action:").length);
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
 					console.log(actionJson);
+					console.log(body[key]);
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".action:" + base64);
 					continue;
@@ -329,7 +333,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 		}
 		for (var key in query) {
 			if (key == inputPrefix + '.action') {
-				console.log(key);
 				needsReRender = true;
 				var base64 = query[inputPrefix + '.action'];
 				try {
