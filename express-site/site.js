@@ -368,11 +368,11 @@ app.use('/', function (request, response, next) {
 				.join("\n");
 		}
 		
+		timer.done();
 		html += '<!--' + JSON.stringify(timer.messages, null, '\t') + '-->';
 		
 		html += '</body></html>';
 		response.end(html);
-		timer.done();
 	}
 });
 
