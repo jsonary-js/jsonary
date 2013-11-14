@@ -40,6 +40,7 @@ function createBundles() {
 var jsonaryJsBundle = createBundles();
 
 function LogTimer(timerName) {
+	this.messages = [];
 	if (!(this instanceof LogTimer)) {
 		return new LogTimer(timerName);
 	}
@@ -50,15 +51,15 @@ function LogTimer(timerName) {
 	};
 	this.event = function (eventName) {
 		var newTime = Date.now();
-		console.log(timerName + ": " + eventName + ": " + (newTime - lastTime) + "ms");
+		console.log(this.messages[this.messages.length] = timerName + ": " + eventName + ": " + (newTime - lastTime) + "ms");
 		lastTime = newTime;
 	};
 	this.done = function () {
 		var newTime = Date.now();
-		console.log(timerName + ": " + (newTime - firstTime) + "ms total");
+		console.log(this.messages[this.messages.length] = timerName + ": " + (newTime - firstTime) + "ms total");
 		lastTime = newTime;
 	};
-	console.log(timerName + ": started timer");
+	console.log(this.messages[this.messages.length] = timerName + ": started timer");
 }
 LogTimer.prototype = {
 };
@@ -366,7 +367,8 @@ app.use('/', function (request, response, next) {
 					'</script>']
 				.join("\n");
 		}
-		//*/
+		
+		html += '<!--' + JSON.stringify(timer.messages, null, '\t') + '-->';
 		
 		html += '</body></html>';
 		response.end(html);

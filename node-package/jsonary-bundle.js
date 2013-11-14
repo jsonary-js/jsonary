@@ -234,8 +234,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 			for (var i = 0; i < dataJsonArray.length; i++) {
 				try {
 					var parsed = JSON.parse(dataJsonArray[i]);
-					console.log(parsed);
-					console.log('----------');
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".data[" + i + "] " + dataJsonArray[i]);
 				}
@@ -244,7 +242,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 				}
 			}
 		}
-		console.log(savedData);
 	};
 	Jsonary.render.loadData = function (saveDataId) {
 		var documentId = saveDataId.split(":")[0];
@@ -296,8 +293,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
-					console.log(actionJson);
-					console.log(body[key]);
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".input:" + base64);
 					continue;
@@ -317,8 +312,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
-					console.log(actionJson);
-					console.log(body[key]);
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".action:" + base64);
 					continue;
@@ -338,7 +331,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 				try {
 					var actionJson = new Buffer(base64, 'base64').toString();
 					var actionArgs = JSON.parse(actionJson);
-					console.log(actionJson);
 				} catch (e) {
 					Jsonary.log(Jsonary.logLevel.ERROR, "malformed " + inputPrefix + ".action:" + base64);
 					continue;
@@ -380,7 +372,6 @@ function modifyJsonaryForServer(baseUri, inputPrefix) {
 	
 	// Make an actual HTTP request, defaulting to the current server if just path is given
 	Jsonary.ajaxFunction = function (params, callback) {
-		//console.log(params);
 		requestCount++;
 		var options = urlModule.parse(params.url);
 		var isHttps = (options.protocol == 'https' || options.protocol == 'https:');
