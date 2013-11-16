@@ -1,4 +1,4 @@
-/* Bundled on 2013-11-14 */
+/* Bundled on 2013-11-16 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -8237,11 +8237,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				this.filterFunction = this.filterObj.filter;
 			}
 			if (this.filterObj.schema) {
-				var possibleSchemas = this.filterObj.schema;
+				var possibleSchemas = Array.isArray(this.filterObj.schema) ? this.filterObj.schema : [this.filterObj.schema];
 				this.filterFunction = (function (oldFilterFunction) {
 					return function (data, schemas) {
 						for (var i = 0; i < possibleSchemas.length; i++) {
-							if (schemas.containsUrl(possibleSchemas)) {
+							if (schemas.containsUrl(possibleSchemas[i])) {
 								return oldFilterFunction ? oldFilterFunction.apply(this, arguments) : true;
 							}
 						}
