@@ -6357,21 +6357,25 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var propertySchemas = this.propertySchemas(key);
 			return propertySchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
 		},
-		createData: function (origValue, callback) {
+		createData: function (origValue, baseUri, callback) {
 			var thisSchemaSet = this;
 			if (typeof origValue === 'function') {
 				var tmp = origValue;
 				origValue = callback;
 				callback = tmp;
+			} else if (typeof baseUri === 'function' || typeof baseUri === 'boolean') {
+				callback = baseUri;
+				baseUri = undefined;
 			}
 			if (publicApi.isData(origValue)) {
+				baseUri = baseUri || origValue.resolveUrl('');
 				origValue == origValue.value();
 			}
 			if (callback) {
 				var tempKey = Utils.getUniqueKey();
 				// Temporarily read-only
 				var tempSchema = publicApi.createSchema({readOnly: true});
-				var data = publicApi.create('...').addSchema(tempSchema, tempKey);
+				var data = publicApi.create('...', baseUri).addSchema(tempSchema, tempKey);
 				this.createValue(origValue, function (value) {
 					DelayedCallbacks.increment();
 					data.removeSchema(tempKey);
@@ -6384,7 +6388,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 				});
 				return data;
 			}
-			return publicApi.create(this.createValue(undefined, origValue)).addSchema(this.fixed());
+			return publicApi.create(this.createValue(origValue), baseUri).addSchema(this.fixed());
 		},
 		indexSchemas: function(index) {
 			var result = new SchemaList();

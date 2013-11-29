@@ -1,10 +1,10 @@
-/* Bundled on 2013-11-14 */
+/* Bundled on 2013-11-29 */
 (function() {
 
 
 /**** jsonary-core.js ****/
 
-	/* Bundled on 2013-11-14 */
+	/* Bundled on 2013-11-29 */
 	(function() {
 	/* Copyright (C) 2012-2013 Geraint Luff
 	
@@ -1885,6 +1885,11 @@
 			};
 		}
 		
+		var beforeAjaxMonitors = new MonitorSet(null);
+		publicApi.beforeAjax = function (callback) {
+			beforeAjaxMonitors.add('monitor', callback);
+		};
+		
 		publicApi.ajaxFunction = function (params, callback) {
 			var xhrUrl = params.url;
 			var xhrData = params.data;
@@ -1940,8 +1945,14 @@
 					}
 				}
 			};
+			xhr.open(params.method, xhrUrl, true);
 			if (params.headers) {
 				for (var key in params.headers) {
+					var values = params.headers[key];
+					if (!Array.isArray(values)) {
+						values = [values];
+					}
+		
 					var parts = key.split('-');
 					for (var i = 0; i < parts.length; i++) {
 						if (parts[i].length > 0) {
@@ -1949,14 +1960,9 @@
 						}
 					}
 					key = parts.join('-');
-					var values = params.headers[key];
-					if (!Array.isArray(values)) {
-						values = [values];
-					}
 					xhr.setRequestHeader(key, values.join(", "));
 				}
 			}
-			xhr.open(params.method, xhrUrl, true);
 			xhr.setRequestHeader("Content-Type", encType);
 			xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
 			xhr.send(xhrData);
@@ -2112,7 +2118,7 @@
 				data = {};
 			}
 		
-			var cacheable = (cacheFunction && method == "GET" && encType == "application/x-www-form-urlencoded");
+			var cacheable = (cacheFunction && method == "GET" && encType == "application/x-www-form-urlencoded" && 	!/^data:/.test(url));
 			if (cacheable) {
 				var cacheKey = JSON.stringify(url) + ":" + JSON.stringify(data);
 				var result = cacheFunction(cacheKey);
@@ -2396,7 +2402,8 @@
 					method: method,
 					headers: headers || {}
 				};
-				publicApi.ajaxFunction(params, function (error, data, headers) {
+				beforeAjaxMonitors.notify(params);
+				var dataCallback = function (error, data, headers) {
 					if (!error) {
 						// Special RESTy knowledge
 						// TODO: check if result follows same schema as original - if so, assume it's the new value, to prevent extra request
@@ -2412,7 +2419,29 @@
 					Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + thisRequest.document.uniqueId + " is stable");
 					delete thisRequest.document.whenStable;
 					stableListeners.notify(thisRequest.document);
-				});
+				};
+				if (/^data:/.test(xhrUrl)) {
+					var firstPart = xhrUrl.split(',', 1)[0];
+					var encodedData = xhrUrl.substring(firstPart.length + 1);
+					firstPart = firstPart.substring(5); // remove "data:"
+					var dataParams = firstPart.split(';');
+					var dataType = dataParams[0]
+					var base64 = dataParams.indexOf('base64') !== -1;
+					var resHeaders = "Content-Type: " + dataType.replace(/\s/g, '');
+					var error = null, decodedData;
+					if (base64) {
+						error = new Error("base64 data URLs not supported yet");
+						decodedData = encodedData;
+					} else {
+						decodedData = decodeURIComponent(encodedData.replace(/\+/g, '%20'));
+					}
+					try {
+						decodedData = JSON.parse(decodedData);
+					} catch (e) {
+					}
+					return dataCallback(error, decodedData, resHeaders);
+				}
+				publicApi.ajaxFunction(params, dataCallback);
 			}
 		};
 		
@@ -3557,8 +3586,8 @@
 				this.subPath(path).setValue(value);
 				return this;
 			},
-			json: function () {
-				return JSON.stringify(this.value());
+			json: function (indent) {
+				return JSON.stringify(this.value(), null, indent);
 			},
 			whenStable: function (callback) {
 				var thisData = this;
@@ -8243,11 +8272,11 @@
 					this.filterFunction = this.filterObj.filter;
 				}
 				if (this.filterObj.schema) {
-					var possibleSchemas = this.filterObj.schema;
+					var possibleSchemas = Array.isArray(this.filterObj.schema) ? this.filterObj.schema : [this.filterObj.schema];
 					this.filterFunction = (function (oldFilterFunction) {
 						return function (data, schemas) {
 							for (var i = 0; i < possibleSchemas.length; i++) {
-								if (schemas.containsUrl(possibleSchemas)) {
+								if (schemas.containsUrl(possibleSchemas[i])) {
 									return oldFilterFunction ? oldFilterFunction.apply(this, arguments) : true;
 								}
 							}
@@ -9761,7 +9790,6 @@
 							delete context.uiState.addInputValue;
 							delete context.uiState.addInputSelect;
 							data.schemas().createValueForProperty(key, function (newValue) {
-								console.log("New property value!");
 								data.property(key).setValue(newValue);
 							});
 						}
@@ -11713,10 +11741,11 @@
 			var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
 	
 			var detectedPagingLinks = !!(data.getLink('next') || data.getLink('prev'));
+			var isShort = data.readOnly() && data.length() < 15;
 	
 			var renderer = new FancyTableRenderer({
 				sort: {},
-				rowsPerPage: detectedPagingLinks ? null : 15
+				rowsPerPage: (isShort || detectedPagingLinks) ? null : [15, 5, 30, 100]
 			});
 			var columnsObj = {};
 					

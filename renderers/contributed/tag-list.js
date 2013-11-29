@@ -19,10 +19,11 @@ Jsonary.render.register({
 			result += '<div class="json-tag-list-add">';
 			result += context.actionHtml('<span class="button">add</span>', 'add');
 			if (!context.uiState.addData) {
-				var itemSchema = data.item(data.length()).schemas(true);
-				context.uiState.addData = itemSchema.createData();
+				var undefinedItem = data.item(data.length());
+				var itemSchema = undefinedItem.schemas(true);
+				context.uiState.addData = itemSchema.createData(undefinedItem, true);
 			}
-			result += context.renderHtml(context.uiState.addData);
+			result += context.withoutComponent('LIST_LINKS').renderHtml(context.uiState.addData, 'add');
 			result += '</div>';
 		}
 		return result + '</div>';
