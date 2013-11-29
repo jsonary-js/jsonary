@@ -3484,18 +3484,15 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			if (this.readOnly(false)) {
 				return this;
 			}
-			var copy = publicApi.create(this.value(), this.document.url + "#:copy", true);
-			this.schemas().each(function (index, schema) {
-				copy.addSchema(schema);
-			});
+			var url = this.resolveUrl('#:copy');
+			var copy = publicApi.create(this.value(), url, true);
+			copy.addSchema(this.schemas().fixed());
 			return copy;
 		},
 		editableCopy: function () {
-			var copy = publicApi.create(this.value(), this.document.url + "#:copy", false);
-			var schemaKey = Utils.getUniqueKey();
-			this.schemas().fixed().each(function (index, schema) {
-				copy.addSchema(schema, schemaKey);
-			});
+			var url = this.resolveUrl('#:copy');
+			var copy = publicApi.create(this.value(), url, false);
+			copy.addSchema(this.schemas().fixed());
 			return copy;
 		},
 		asSchema: function () {
