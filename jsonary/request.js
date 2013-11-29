@@ -80,6 +80,11 @@ publicApi.ajaxFunction = function (params, callback) {
 	xhr.open(params.method, xhrUrl, true);
 	if (params.headers) {
 		for (var key in params.headers) {
+			var values = params.headers[key];
+			if (!Array.isArray(values)) {
+				values = [values];
+			}
+
 			var parts = key.split('-');
 			for (var i = 0; i < parts.length; i++) {
 				if (parts[i].length > 0) {
@@ -87,10 +92,6 @@ publicApi.ajaxFunction = function (params, callback) {
 				}
 			}
 			key = parts.join('-');
-			var values = params.headers[key];
-			if (!Array.isArray(values)) {
-				values = [values];
-			}
 			xhr.setRequestHeader(key, values.join(", "));
 		}
 	}
