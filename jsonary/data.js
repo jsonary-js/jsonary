@@ -852,8 +852,8 @@ Data.prototype = {
 		this.subPath(path).setValue(value);
 		return this;
 	},
-	json: function () {
-		return JSON.stringify(this.value());
+	json: function (indent) {
+		return JSON.stringify(this.value(), null, indent);
 	},
 	whenStable: function (callback) {
 		var thisData = this;
