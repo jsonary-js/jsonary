@@ -1203,7 +1203,7 @@ SchemaList.prototype = {
 			var tmp = origValue;
 			origValue = callback;
 			callback = tmp;
-		} else if (typeof baseUri === 'function') {
+		} else if (typeof baseUri === 'function' || typeof baseUri === 'boolean') {
 			callback = baseUri;
 			baseUri = undefined;
 		}
