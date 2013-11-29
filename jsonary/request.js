@@ -249,7 +249,7 @@ function requestJson(url, method, data, encType, cacheFunction, hintSchema, oldH
 		data = {};
 	}
 
-	var cacheable = (cacheFunction && method == "GET" && encType == "application/x-www-form-urlencoded");
+	var cacheable = (cacheFunction && method == "GET" && encType == "application/x-www-form-urlencoded" && 	!/^data:/.test(url));
 	if (cacheable) {
 		var cacheKey = JSON.stringify(url) + ":" + JSON.stringify(data);
 		var result = cacheFunction(cacheKey);
@@ -534,7 +534,7 @@ Request.prototype = {
 			headers: headers || {}
 		};
 		beforeAjaxMonitors.notify(params);
-		publicApi.ajaxFunction(params, function (error, data, headers) {
+		var dataCallback = function (error, data, headers) {
 			if (!error) {
 				// Special RESTy knowledge
 				// TODO: check if result follows same schema as original - if so, assume it's the new value, to prevent extra request
@@ -550,7 +550,29 @@ Request.prototype = {
 			Jsonary.log(Jsonary.logLevel.DEBUG, "Document " + thisRequest.document.uniqueId + " is stable");
 			delete thisRequest.document.whenStable;
 			stableListeners.notify(thisRequest.document);
-		});
+		};
+		if (/^data:/.test(xhrUrl)) {
+			var firstPart = xhrUrl.split(',', 1)[0];
+			var encodedData = xhrUrl.substring(firstPart.length + 1);
+			firstPart = firstPart.substring(5); // remove "data:"
+			var dataParams = firstPart.split(';');
+			var dataType = dataParams[0]
+			var base64 = dataParams.indexOf('base64') !== -1;
+			var resHeaders = "Content-Type: " + dataType.replace(/\s/g, '');
+			var error = null, decodedData;
+			if (base64) {
+				error = new Error("base64 data URLs not supported yet");
+				decodedData = encodedData;
+			} else {
+				decodedData = decodeURIComponent(encodedData.replace(/\+/g, '%20'));
+			}
+			try {
+				decodedData = JSON.parse(decodedData);
+			} catch (e) {
+			}
+			return dataCallback(error, decodedData, resHeaders);
+		}
+		publicApi.ajaxFunction(params, dataCallback);
 	}
 };
 
