@@ -72,6 +72,7 @@ publicApi.ajaxFunction = function (params, callback) {
 			}
 		}
 	};
+	xhr.open(params.method, xhrUrl, true);
 	if (params.headers) {
 		for (var key in params.headers) {
 			var parts = key.split('-');
@@ -88,7 +89,6 @@ publicApi.ajaxFunction = function (params, callback) {
 			xhr.setRequestHeader(key, values.join(", "));
 		}
 	}
-	xhr.open(params.method, xhrUrl, true);
 	xhr.setRequestHeader("Content-Type", encType);
 	xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
 	xhr.send(xhrData);
