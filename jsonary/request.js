@@ -17,6 +17,11 @@ if (typeof XMLHttpRequest == "undefined") {
 	};
 }
 
+var beforeAjaxMonitors = new MonitorSet(null);
+publicApi.beforeAjax = function (callback) {
+	beforeAjaxMonitors.add('monitor', callback);
+};
+
 publicApi.ajaxFunction = function (params, callback) {
 	var xhrUrl = params.url;
 	var xhrData = params.data;
@@ -528,6 +533,7 @@ Request.prototype = {
 			method: method,
 			headers: headers || {}
 		};
+		beforeAjaxMonitors.notify(params);
 		publicApi.ajaxFunction(params, function (error, data, headers) {
 			if (!error) {
 				// Special RESTy knowledge
