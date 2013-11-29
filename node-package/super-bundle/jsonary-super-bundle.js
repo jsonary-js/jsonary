@@ -11888,10 +11888,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
 	
 			var detectedPagingLinks = !!(data.getLink('next') || data.getLink('prev'));
+			var isShort = data.readOnly() && data.length() < 15;
 	
 			var renderer = new FancyTableRenderer({
 				sort: {},
-				rowsPerPage: detectedPagingLinks ? null : 15
+				rowsPerPage: (isShort || detectedPagingLinks) ? null : [15, 5, 30, 100]
 			});
 			var columnsObj = {};
 					
