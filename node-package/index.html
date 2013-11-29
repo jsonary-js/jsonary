@@ -10,13 +10,12 @@
 				font-size: 0.9em;
 			}
 
-			#url-bar, #go {
+			#url-bar, #go, #edit-extras {
 				display: block;
 				position: fixed;
 				top: 0;
-				width: 100%;
-				left: 0;
-				right: 60px;
+				left: 60px;
+				right: 50px;
 				height: 1.5em;
 				margin: 0;
 				padding: 0;
@@ -29,9 +28,30 @@
 			
 			#go {
 				top: 0px;
+				left: 0px;
+				right: auto;
+				width: 60px;
+			}
+
+			#edit-extras {
+				top: 0px;
 				right: 0px;
 				left: auto;
-				width: 60px;
+				width: 50px;
+			}
+			
+			#edit-extras-box {
+				position: absolute;
+				top: 30px;
+				bottom: 5px;
+				left: 5px;
+				right: 5px;
+				overflow: auto;
+				border: 3px solid black;
+				border-radius: 10px;
+				background-color: #CDE;
+				box-shadow: 0px 0px 50px #024;
+				padding: 1em;
 			}
 
 			#main {
@@ -55,7 +75,9 @@
 
 		<input id="url-bar" value="example.json"/>
 		<div id="go" class="button">Go</div>
+		<div id="edit-extras" class="button action">extras</div>
 		<div id="main"></div>
+		<div id="edit-extras-box"></div>
 
 		<script>
 			var urlBar = document.getElementById('url-bar');
@@ -110,6 +132,59 @@
 				Jsonary.render('main', request);
 			}
 			
+			// Extra parameter dialog
+			var extrasBox = document.getElementById('edit-extras-box');
+			var extrasButton = document.getElementById('edit-extras');
+			extrasBox.style.display = 'none';
+			extrasButton.onclick = function () {
+				extrasBox.style.display = {
+					'none': 'block',
+					'block': 'none'
+				}[extrasBox.style.display] || 'block';
+			};
+			
+			// Extra parameter editing/insertion
+			var extraParams = {
+				headers: {}
+			};
+			try {
+				if (typeof localStorage !== 'undefined') {
+					extraParams.headers = JSON.parse(localStorage.jsonBrowserExtraHeaders);
+				}
+			} catch (e) {
+				// do nothing
+			}
+			Jsonary.renderValue(extrasBox, extraParams, {
+				"title": "Extra parameters",
+				"type": "object",
+				"properties": {
+					"headers": {
+						"type": "object",
+						"additionalProperties": {
+							"type": "string"
+						}
+					}
+				},
+				"required": ["headers"],
+				"additionalProperties": false
+			}, function (value) {
+				if (typeof localStorage !== 'undefined') {
+					localStorage.jsonBrowserExtraHeaders = JSON.stringify(value.headers);
+				}
+				extraParams = value;
+				console.log(value);
+			});
+			Jsonary.beforeAjax(function (params) {
+				for (var key in extraParams.headers) {
+					var headerKey = key.toLowerCase();
+					params.headers[headerKey] = params.headers[headerKey] || []
+					if (!Array.isArray(params.headers[key])) {
+						params.headers[headerKey] = [params.headers[headerKey]];
+					}
+					params.headers[headerKey].push(extraParams.headers[key]);
+				}
+			});
+
 			// First render
 			navigateTo(Jsonary.location.query.get('/url') || urlBar.value);
 		</script>
