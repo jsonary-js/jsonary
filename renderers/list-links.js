@@ -64,13 +64,11 @@
 				}
 				context.uiState.submitLink = arg1;
 				if (link.method == "PUT" && link.submissionSchemas.length == 0) {
+					// TODO: editable copy of actual target?
 					context.uiState.editing = context.data.editableCopy();
 					context.uiState.submissionData = context.data.editableCopy();
 				} else {
-					context.uiState.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
-					link.submissionSchemas.createValue(function (submissionValue) {
-						context.uiState.submissionData.setValue(submissionValue);
-					});
+					context.uiState.submissionData = link.createSubmissionData(undefined, true);
 				}
 				if (link.method == "PUT") {
 					context.uiState.editInPlace = true;

@@ -4452,7 +4452,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			this.targetSchema = this.definition.targetSchema;
 		}
 	}
-	var ACTIVE_LINK_SCHEMA_KEY = Utils.getUniqueKey();
 	ActiveLink.prototype = {
 		toString: function() {
 			return this.href;
@@ -4464,28 +4463,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 			var hrefBase = this.hrefBase;
 			var submissionSchemas = this.submissionSchemas.getFull();
-			if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
+			if (callback && submissionSchemas.length == 0 && this.method == "PUT") {
 				Jsonary.getData(this.href, function (data) {
-					callback(origData || data.editableCopy());
-				})
+					if (typeof callback === 'function') {
+						callback(origData || data.editableCopy());
+					}
+				});
 				return this;
 			}
-			if (callback != undefined) {
-				submissionSchemas.createValue(origData, function (value) {
-					var data = publicApi.create(value, hrefBase);
-					for (var i = 0; i < submissionSchemas.length; i++) {
-						data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
-					}
-					callback(data);
-				});
-			} else {
-				var value = submissionSchemas.createValue(origData);
-				var data = publicApi.create(value, hrefBase);
-				for (var i = 0; i < submissionSchemas.length; i++) {
-					data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
-				}
-				return data;
-			}
+			var baseUri = (publicApi.isData(origData) && origData.resolveUrl('')) || hrefBase;
+			return submissionSchemas.createData(origData, baseUri, callback);
 		},
 		follow: function(submissionData, extraHandler) {
 			if (typeof submissionData == 'function') {
@@ -9193,13 +9180,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					}
 					context.uiState.submitLink = arg1;
 					if (link.method == "PUT" && link.submissionSchemas.length == 0) {
+						// TODO: editable copy of actual target?
 						context.uiState.editing = context.data.editableCopy();
 						context.uiState.submissionData = context.data.editableCopy();
 					} else {
-						context.uiState.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
-						link.submissionSchemas.createValue(function (submissionValue) {
-							context.uiState.submissionData.setValue(submissionValue);
-						});
+						context.uiState.submissionData = link.createSubmissionData(undefined, true);
 					}
 					if (link.method == "PUT") {
 						context.uiState.editInPlace = true;
