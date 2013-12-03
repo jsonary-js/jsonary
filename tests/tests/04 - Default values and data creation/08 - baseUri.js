@@ -22,3 +22,24 @@ tests.add("take baseUri from data", function () {
 	this.assert(createdData.resolveUrl('') == 'http://example.com/', "base URI matches: " + createdData.resolveUrl(''));
 	return true;
 });
+
+
+tests.add("submission data has baseUri", function () {
+	var data1 = Jsonary.create(":)", "http://example.com/");
+	data1.addLink({
+		rel: 'test',
+		href: 'blah',
+		schema: {
+			type: 'string',
+			links: [{
+				rel: 'self',
+				href: 'foo/bar'
+			}]
+		}
+	});
+
+	var createdData = data1.getLink('test').createSubmissionData();
+	
+	this.assert(createdData.resolveUrl('') == 'http://example.com/foo/bar', "base URI matches: " + createdData.resolveUrl(''));
+	return true;
+});
