@@ -10173,6 +10173,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		api.replace = function (newHref, notify) {
 			start();
 			var oldHref = window.location.href;
+			newHref = Jsonary.Uri.resolve(oldHref, newHref);
 			if (notify == undefined) {
 				notify = true;
 			}
@@ -10203,6 +10204,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			if (newHref != oldHref) {
 				addHistoryPoint = false;
 			}
+			api.base = newHref.split(/[?#]/)[0];
 			lastHref = window.location.href;
 			if (notify) {
 				for (var i = 0; i < changeListeners.length; i++) {
