@@ -16,7 +16,7 @@
 	};
 	
 	function getCurrent() {
-		return Jsonary.location.base.replace(/^[^:]*:\/\/[^/]*/, '').replace(/\?.*$/, '');
+		return Jsonary.location.base.replace(/^[^:]*:\/\/[^/]*/, '').replace(/[?#].*$/, '');
 	}
 
 	var routes = [];
