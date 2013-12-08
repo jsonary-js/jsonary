@@ -772,13 +772,18 @@ ActiveLink.prototype = {
 		}
 		var hrefBase = this.hrefBase;
 		var submissionSchemas = this.submissionSchemas.getFull();
-		if (callback && submissionSchemas.length == 0 && this.method == "PUT") {
+		if (callback && !origData && submissionSchemas.length == 0 && this.method == "PUT") {
+			var readOnlySchema = Jsonary.createSchema({readOnly: true});
+			var resultData = Jsonary.create('...').addSchema(readOnlySchema, 'tmp');
 			Jsonary.getData(this.href, function (data) {
+				resultData.removeSchema('tmp');
+				resultData.set(data.get());
+				resultData.addSchema(data.schemas().fixed());
 				if (typeof callback === 'function') {
-					callback(origData || data.editableCopy());
+					callback(resultData);
 				}
 			});
-			return this;
+			return resultData;
 		}
 		var baseUri = (publicApi.isData(origData) && origData.resolveUrl('')) || hrefBase;
 		return submissionSchemas.createData(origData, baseUri, callback);
