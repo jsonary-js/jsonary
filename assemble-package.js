@@ -35,7 +35,9 @@ var masterBundle = bundle.base(__dirname)
 	.css('renderers/common.css')
 
 	.js('renderers/plain.jsonary.js')
-	.css('renderers/plain.jsonary.css');
+	.css('renderers/plain.jsonary.css')
+
+	.js('renderers/string-formats.js');
 
 console.log("Writing jsonary-core");
 masterBundle.compileJs('node-package/core/jsonary-core.js', true);
@@ -51,8 +53,6 @@ masterBundle.js('plugins/jsonary.location.js')
 	.css('plugins/jsonary.render.table.css')
 	.js('plugins/jsonary.render.generate.js')
 
-	.js('renderers/string-formats.js')
-	
 	.js('renderers/contributed/full-preview.js')
 	.js('renderers/contributed/full-instances.js')
 	.js('renderers/contributed/adaptive-table.js')
