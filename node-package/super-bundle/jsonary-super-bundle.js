@@ -2022,6 +2022,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		
 		this.baseUrl = request.url;
 		this.fragment = fragment;
+		this.document = request.document;
 		if (fragment == null) {
 			fragment = "";
 		}
@@ -4463,13 +4464,18 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 			var hrefBase = this.hrefBase;
 			var submissionSchemas = this.submissionSchemas.getFull();
-			if (callback && submissionSchemas.length == 0 && this.method == "PUT") {
+			if (callback && !origData && submissionSchemas.length == 0 && this.method == "PUT") {
+				var readOnlySchema = Jsonary.createSchema({readOnly: true});
+				var resultData = Jsonary.create('...').addSchema(readOnlySchema, 'tmp');
 				Jsonary.getData(this.href, function (data) {
+					resultData.removeSchema('tmp');
+					resultData.set(data.get());
+					resultData.addSchema(data.schemas().fixed());
 					if (typeof callback === 'function') {
-						callback(origData || data.editableCopy());
+						callback(resultData);
 					}
 				});
-				return this;
+				return resultData;
 			}
 			var baseUri = (publicApi.isData(origData) && origData.resolveUrl('')) || hrefBase;
 			return submissionSchemas.createData(origData, baseUri, callback);
@@ -7297,14 +7303,20 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
 		}
 	
+		var fixScrollActive = false;
 		function fixScroll(execFunction) {
+			if (fixScrollActive) return execFunction();
+			fixScrollActive = true;
 			var doc = document.documentElement, body = document.body;
 			var left = (doc && doc.scrollLeft || body && body.scrollLeft || 0);
 			var top = (doc && doc.scrollTop  || body && body.scrollTop  || 0);
 			execFunction();
-			if (left || top) {
-				window.scrollTo(left, top);
-			}
+			setTimeout(function () {
+				if (left || top) {
+					window.scrollTo(left, top);
+				}
+				fixScrollActive = false;
+			}, 10);
 		}
 	
 		var prefixPrefix = "Jsonary";
@@ -9190,13 +9202,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						return false;
 					}
 					context.uiState.submitLink = arg1;
-					if (link.method == "PUT" && link.submissionSchemas.length == 0) {
-						// TODO: editable copy of actual target?
-						context.uiState.editing = context.data.editableCopy();
-						context.uiState.submissionData = context.data.editableCopy();
-					} else {
-						context.uiState.submissionData = link.createSubmissionData(undefined, true);
-					}
+					context.uiState.submissionData = link.createSubmissionData(undefined, true);
 					if (link.method == "PUT") {
 						context.uiState.editInPlace = true;
 					}
@@ -10367,19 +10373,23 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	(function (Jsonary) {
 		function Route(templateStr, handlerFunction) {
 			this.template = Jsonary.UriTemplate(templateStr);
+			this.templateString = templateStr;
 			this.run = handlerFunction;
 		}
 		Route.prototype = {
 			test: function (url) {
 				var params = this.template.fromUri(url);
-				if (this.template.fillFromObject(params) === url) {
+				if (params && this.template.fillFromObject(params) === url) {
 					return params;
 				}
+			},
+			url: function (params) {
+				return this.template.fillFromObject(params);
 			}
 		};
 		
 		function getCurrent() {
-			return Jsonary.location.base.replace(/^[^:]*:\/\/[^/]*/, '').replace(/\?.*$/, '');
+			return Jsonary.location.base.replace(/^[^:]*:\/\/[^/]*/, '').replace(/[?#].*$/, '');
 		}
 	
 		var routes = [];
@@ -10414,6 +10424,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			var route = new Route(template, handler);
 			routes.push(route);
 			runRoutesLater();
+			return route;
 		};
 		api.shortUrl = function (url) {
 			var shortUrl = url.replace(/#$/, "");
@@ -11692,17 +11703,13 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 					if (link.submissionSchemas.length) {
 						context.uiState.linkRel = linkRel;
 						context.uiState.linkIndex = linkIndex;
-						var linkData = Jsonary.create();
-						linkData.addSchema(link.submissionSchemas);
+						var linkData = link.createSubmissionData(undefined, true);
 						context.uiState.linkData = linkData;
 						if (subPath) {
 							context.uiState.linkPath = subPath;
 						} else {
 							delete context.uiState.linkPath;
 						}
-						link.submissionSchemas.createValue(function (value) {
-							linkData.setValue(value);
-						});
 						delete context.uiState.expand;
 					} else if (link.rel == "edit") {
 						context.uiState.linkRel = linkRel;
@@ -11725,12 +11732,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						delete context.uiState.linkData;
 						delete context.uiState.expand;
 					} else {
+						link.follow();
+						return;
+						/*
 						var targetExpand = (link.rel == "self") ? true : link.href;
 						if (context.uiState.expand == targetExpand) {
 							delete context.uiState.expand;
 						} else {
 							context.uiState.expand = targetExpand;
 						}
+						*/
 					}
 					return true;
 				} else if (actionName == "link-confirm") {
