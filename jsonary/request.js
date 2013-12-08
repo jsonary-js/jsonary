@@ -160,6 +160,7 @@ function FragmentRequest(request, fragment) {
 	
 	this.baseUrl = request.url;
 	this.fragment = fragment;
+	this.document = request.document;
 	if (fragment == null) {
 		fragment = "";
 	}
