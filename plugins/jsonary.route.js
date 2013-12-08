@@ -6,9 +6,12 @@
 	Route.prototype = {
 		test: function (url) {
 			var params = this.template.fromUri(url);
-			if (this.template.fillFromObject(params) === url) {
+			if (params && this.template.fillFromObject(params) === url) {
 				return params;
 			}
+		},
+		url: function (params) {
+			return this.template.fillFromObject(params);
 		}
 	};
 	
@@ -48,6 +51,7 @@
 		var route = new Route(template, handler);
 		routes.push(route);
 		runRoutesLater();
+		return route;
 	};
 	api.shortUrl = function (url) {
 		var shortUrl = url.replace(/#$/, "");
