@@ -789,17 +789,13 @@
 				if (link.submissionSchemas.length) {
 					context.uiState.linkRel = linkRel;
 					context.uiState.linkIndex = linkIndex;
-					var linkData = Jsonary.create();
-					linkData.addSchema(link.submissionSchemas);
+					var linkData = link.createSubmissionData(undefined, true);
 					context.uiState.linkData = linkData;
 					if (subPath) {
 						context.uiState.linkPath = subPath;
 					} else {
 						delete context.uiState.linkPath;
 					}
-					link.submissionSchemas.createValue(function (value) {
-						linkData.setValue(value);
-					});
 					delete context.uiState.expand;
 				} else if (link.rel == "edit") {
 					context.uiState.linkRel = linkRel;
@@ -822,12 +818,16 @@
 					delete context.uiState.linkData;
 					delete context.uiState.expand;
 				} else {
+					link.follow();
+					return;
+					/*
 					var targetExpand = (link.rel == "self") ? true : link.href;
 					if (context.uiState.expand == targetExpand) {
 						delete context.uiState.expand;
 					} else {
 						context.uiState.expand = targetExpand;
 					}
+					*/
 				}
 				return true;
 			} else if (actionName == "link-confirm") {
