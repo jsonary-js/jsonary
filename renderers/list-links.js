@@ -56,7 +56,8 @@
 		},
 		action: function (context, actionName, arg1) {
 			if (actionName == "follow-link") {
-				var link = context.data.links()[arg1];
+				var data = context.data;
+				var link = data.links()[arg1];
 				if (link.method == "GET" && link.submissionSchemas.length == 0) {
 					// There's no data to prompt for, and GET links are safe, so we don't put up a dialog
 					link.follow();
@@ -65,7 +66,10 @@
 				context.uiState.submitLink = arg1;
 				context.uiState.submissionData = link.createSubmissionData(undefined, true);
 				if (link.method == "PUT") {
-					context.uiState.editInPlace = true;
+					var dataUrl = (data.getLink('self') && data.getLink('self').href) || data.referenceUrl() || '';
+					if (link.href.replace(/#$/, '') === dataUrl.replace(/#$/, '')) {
+						context.uiState.editInPlace = true;
+					}
 				}
 				return true;
 			} else if (actionName == "submit") {
