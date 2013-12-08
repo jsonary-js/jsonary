@@ -1,4 +1,4 @@
-/* Bundled on 2013-12-06 */
+/* Bundled on 2013-12-08 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -8123,6 +8123,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			pageContext.subContexts = {};
 			return '<span class="jsonary">' + innerHtml + '</span>';
 		}
+		function enhanceElement(element) {
+			if (typeof element === 'string') {
+				var elementId = element;
+				element = render.getElementById(elementId);
+				if (!element) {
+					throw new Error('Element not found: ' + elementId)
+				}
+			}
+			pageContext.enhanceElement(element);
+		}
 		function renderValue(target, startingValue, schema, updateFunction) {
 			if (typeof updateFunction === 'string') {
 				var element = document.getElementById(updateFunction) || document.getElementsByName(updateFunction)[0];
@@ -8748,8 +8758,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		Jsonary.extend({
 			render: render,
 			renderHtml: renderHtml,
+			enhance: enhanceElement,
 			renderValue: renderValue,
-			asyncRenderHtml: asyncRenderHtml
+			asyncRenderHtml: asyncRenderHtml,
 		});
 		Jsonary.extendData({
 			renderTo: function (element, uiState) {
@@ -10119,6 +10130,60 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 		});
 	
 	})(this);
+	
+
+/**** string-formats.js ****/
+
+	(function () {
+		// Display string
+		Jsonary.render.register({
+			renderHtml: function (data, context) {
+				var date = new Date(data.value());
+				if (isNaN(date.getTime())) {
+					return '<span class="json-string json-string-date">' + Jsonary.escapeHtml(data.value()) + '</span>';
+				} else {
+					return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
+				}
+			},
+			filter: {
+				type: 'string',
+				readOnly: true,
+				filter: function (data, schemas) {
+					return schemas.formats().indexOf("date-time") != -1;
+				}
+			}
+		});
+		
+		// Display string
+		Jsonary.render.register({
+			renderHtml: function (data, context) {
+				if (data.readOnly()) {
+					if (context.uiState.showPassword) {
+						return Jsonary.escapeHtml(data.value());
+					} else {
+						return context.actionHtml('(show password)', 'show-password');
+					}
+				} else {
+					var inputName = context.inputNameForAction('update');
+					return '<input type="password" name="' + inputName + '" value="' + Jsonary.escapeHtml(data.value()) + '"></input>';
+				}
+			},
+			action: function (context, actionName, arg1) {
+				if (actionName == "show-password") {
+					context.uiState.showPassword = true;
+					return true;
+				} else if (actionName == "update") {
+					context.data.setValue(arg1);
+				}
+			},
+			filter: {
+				type: 'string',
+				filter: function (data, schemas) {
+					return schemas.formats().indexOf("password") != -1;
+				}
+			}
+		});
+	})();
 	
 
 /**** jsonary.location.js ****/
@@ -11774,66 +11839,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 	})(Jsonary);
 
-/**** string-formats.js ****/
-
-	(function () {
-		// Display string
-		Jsonary.render.register({
-			renderHtml: function (data, context) {
-				var date = new Date(data.value());
-				if (isNaN(date.getTime())) {
-					return '<span class="json-string json-string-date">' + Jsonary.escapeHtml(data.value()) + '</span>';
-				} else {
-					return '<span class="json-string json-string-date">' + date.toLocaleString() + '</span>';
-				}
-			},
-			filter: {
-				type: 'string',
-				readOnly: true,
-				filter: function (data, schemas) {
-					return schemas.formats().indexOf("date-time") != -1;
-				}
-			}
-		});
-		
-		// Display string
-		Jsonary.render.register({
-			renderHtml: function (data, context) {
-				if (data.readOnly()) {
-					if (context.uiState.showPassword) {
-						return Jsonary.escapeHtml(data.value());
-					} else {
-						return context.actionHtml('(show password)', 'show-password');
-					}
-				} else {
-					var inputName = context.inputNameForAction('update');
-					return '<input type="password" name="' + inputName + '" value="' + Jsonary.escapeHtml(data.value()) + '"></input>';
-				}
-			},
-			action: function (context, actionName, arg1) {
-				if (actionName == "show-password") {
-					context.uiState.showPassword = true;
-					return true;
-				} else if (actionName == "update") {
-					context.data.setValue(arg1);
-				}
-			},
-			filter: {
-				type: 'string',
-				filter: function (data, schemas) {
-					return schemas.formats().indexOf("password") != -1;
-				}
-			}
-		});
-	})();
-	
-
 /**** full-preview.js ****/
 
 	Jsonary.render.register({
 		component: [Jsonary.render.Components.LIST_LINKS],
 		renderHtml: function (data, context) {
-			var previewLink = data.getLink('full-preview');
+			var previewLink = data.getLink('preview') || data.getLink('full-preview');
 			var innerHtml = context.renderHtml(previewLink.follow(null, false));
 			return context.actionHtml(innerHtml, 'full');
 		},
@@ -11845,18 +11856,18 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 			}
 		},
 		filter: function (data, schemas) {
-			return data.readOnly() && data.getLink('full') && data.getLink('full-preview');
+			return data.readOnly() && data.getLink('full') && (data.getLink('preview') || data.getLink('full-preview'));
 		}
 	});
 	
 	Jsonary.render.register({
 		component: [Jsonary.render.Components.LIST_LINKS],
 		renderHtml: function (data, context) {
-			var previewLink = data.getLink('full-preview');
+			var previewLink = data.getLink('preview') || data.getLink('full-preview');
 			return context.renderHtml(data) + " - " + context.renderHtml(previewLink.follow(null, false));
 		},
 		filter: function (data, schemas) {
-			return !data.readOnly() && data.getLink('full') && data.getLink('full-preview');
+			return !data.readOnly() && data.getLink('full') && (data.getLink('preview') || data.getLink('full-preview'));
 		}
 	});
 

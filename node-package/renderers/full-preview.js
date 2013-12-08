@@ -1,7 +1,7 @@
 Jsonary.render.register({
 	component: [Jsonary.render.Components.LIST_LINKS],
 	renderHtml: function (data, context) {
-		var previewLink = data.getLink('full-preview');
+		var previewLink = data.getLink('preview') || data.getLink('full-preview');
 		var innerHtml = context.renderHtml(previewLink.follow(null, false));
 		return context.actionHtml(innerHtml, 'full');
 	},
@@ -13,17 +13,17 @@ Jsonary.render.register({
 		}
 	},
 	filter: function (data, schemas) {
-		return data.readOnly() && data.getLink('full') && data.getLink('full-preview');
+		return data.readOnly() && data.getLink('full') && (data.getLink('preview') || data.getLink('full-preview'));
 	}
 });
 
 Jsonary.render.register({
 	component: [Jsonary.render.Components.LIST_LINKS],
 	renderHtml: function (data, context) {
-		var previewLink = data.getLink('full-preview');
+		var previewLink = data.getLink('preview') || data.getLink('full-preview');
 		return context.renderHtml(data) + " - " + context.renderHtml(previewLink.follow(null, false));
 	},
 	filter: function (data, schemas) {
-		return !data.readOnly() && data.getLink('full') && data.getLink('full-preview');
+		return !data.readOnly() && data.getLink('full') && (data.getLink('preview') || data.getLink('full-preview'));
 	}
 });

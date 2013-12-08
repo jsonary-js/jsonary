@@ -1,10 +1,10 @@
-/* Bundled on 2013-11-29 */
+/* Bundled on 2013-12-07 */
 (function() {
 
 
 /**** jsonary-core.js ****/
 
-	/* Bundled on 2013-11-29 */
+	/* Bundled on 2013-12-06 */
 	(function() {
 	/* Copyright (C) 2012-2013 Geraint Luff
 	
@@ -3490,18 +3490,15 @@
 				if (this.readOnly(false)) {
 					return this;
 				}
-				var copy = publicApi.create(this.value(), this.document.url + "#:copy", true);
-				this.schemas().each(function (index, schema) {
-					copy.addSchema(schema);
-				});
+				var url = this.resolveUrl('#:copy');
+				var copy = publicApi.create(this.value(), url, true);
+				copy.addSchema(this.schemas().fixed());
 				return copy;
 			},
 			editableCopy: function () {
-				var copy = publicApi.create(this.value(), this.document.url + "#:copy", false);
-				var schemaKey = Utils.getUniqueKey();
-				this.schemas().fixed().each(function (index, schema) {
-					copy.addSchema(schema, schemaKey);
-				});
+				var url = this.resolveUrl('#:copy');
+				var copy = publicApi.create(this.value(), url, false);
+				copy.addSchema(this.schemas().fixed());
 				return copy;
 			},
 			asSchema: function () {
@@ -4461,7 +4458,6 @@
 				this.targetSchema = this.definition.targetSchema;
 			}
 		}
-		var ACTIVE_LINK_SCHEMA_KEY = Utils.getUniqueKey();
 		ActiveLink.prototype = {
 			toString: function() {
 				return this.href;
@@ -4473,28 +4469,16 @@
 				}
 				var hrefBase = this.hrefBase;
 				var submissionSchemas = this.submissionSchemas.getFull();
-				if (callback != undefined && submissionSchemas.length == 0 && this.method == "PUT") {
+				if (callback && submissionSchemas.length == 0 && this.method == "PUT") {
 					Jsonary.getData(this.href, function (data) {
-						callback(origData || data.editableCopy());
-					})
+						if (typeof callback === 'function') {
+							callback(origData || data.editableCopy());
+						}
+					});
 					return this;
 				}
-				if (callback != undefined) {
-					submissionSchemas.createValue(origData, function (value) {
-						var data = publicApi.create(value, hrefBase);
-						for (var i = 0; i < submissionSchemas.length; i++) {
-							data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
-						}
-						callback(data);
-					});
-				} else {
-					var value = submissionSchemas.createValue(origData);
-					var data = publicApi.create(value, hrefBase);
-					for (var i = 0; i < submissionSchemas.length; i++) {
-						data.addSchema(submissionSchemas[i], ACTIVE_LINK_SCHEMA_KEY);
-					}
-					return data;
-				}
+				var baseUri = (publicApi.isData(origData) && origData.resolveUrl('')) || hrefBase;
+				return submissionSchemas.createData(origData, baseUri, callback);
 			},
 			follow: function(submissionData, extraHandler) {
 				if (typeof submissionData == 'function') {
@@ -6363,21 +6347,25 @@
 				var propertySchemas = this.propertySchemas(key);
 				return propertySchemas.createValue(origValue, callback, undefined, undefined, banCoercion);
 			},
-			createData: function (origValue, callback) {
+			createData: function (origValue, baseUri, callback) {
 				var thisSchemaSet = this;
 				if (typeof origValue === 'function') {
 					var tmp = origValue;
 					origValue = callback;
 					callback = tmp;
+				} else if (typeof baseUri === 'function' || typeof baseUri === 'boolean') {
+					callback = baseUri;
+					baseUri = undefined;
 				}
 				if (publicApi.isData(origValue)) {
+					baseUri = baseUri || origValue.resolveUrl('');
 					origValue == origValue.value();
 				}
 				if (callback) {
 					var tempKey = Utils.getUniqueKey();
 					// Temporarily read-only
 					var tempSchema = publicApi.createSchema({readOnly: true});
-					var data = publicApi.create('...').addSchema(tempSchema, tempKey);
+					var data = publicApi.create('...', baseUri).addSchema(tempSchema, tempKey);
 					this.createValue(origValue, function (value) {
 						DelayedCallbacks.increment();
 						data.removeSchema(tempKey);
@@ -6390,7 +6378,7 @@
 					});
 					return data;
 				}
-				return publicApi.create(this.createValue(undefined, origValue)).addSchema(this.fixed());
+				return publicApi.create(this.createValue(origValue), baseUri).addSchema(this.fixed());
 			},
 			indexSchemas: function(index) {
 				var result = new SchemaList();
@@ -9198,13 +9186,11 @@
 						}
 						context.uiState.submitLink = arg1;
 						if (link.method == "PUT" && link.submissionSchemas.length == 0) {
+							// TODO: editable copy of actual target?
 							context.uiState.editing = context.data.editableCopy();
 							context.uiState.submissionData = context.data.editableCopy();
 						} else {
-							context.uiState.submissionData = Jsonary.create().addSchema(link.submissionSchemas);
-							link.submissionSchemas.createValue(function (submissionValue) {
-								context.uiState.submissionData.setValue(submissionValue);
-							});
+							context.uiState.submissionData = link.createSubmissionData(undefined, true);
 						}
 						if (link.method == "PUT") {
 							context.uiState.editInPlace = true;
@@ -10195,6 +10181,7 @@
 		api.replace = function (newHref, notify) {
 			start();
 			var oldHref = window.location.href;
+			newHref = Jsonary.Uri.resolve(oldHref, newHref);
 			if (notify == undefined) {
 				notify = true;
 			}
@@ -10225,6 +10212,7 @@
 			if (newHref != oldHref) {
 				addHistoryPoint = false;
 			}
+			api.base = newHref.split(/[?#]/)[0];
 			lastHref = window.location.href;
 			if (notify) {
 				for (var i = 0; i < changeListeners.length; i++) {

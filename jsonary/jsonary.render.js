@@ -846,6 +846,16 @@
 		pageContext.subContexts = {};
 		return '<span class="jsonary">' + innerHtml + '</span>';
 	}
+	function enhanceElement(element) {
+		if (typeof element === 'string') {
+			var elementId = element;
+			element = render.getElementById(elementId);
+			if (!element) {
+				throw new Error('Element not found: ' + elementId)
+			}
+		}
+		pageContext.enhanceElement(element);
+	}
 	function renderValue(target, startingValue, schema, updateFunction) {
 		if (typeof updateFunction === 'string') {
 			var element = document.getElementById(updateFunction) || document.getElementsByName(updateFunction)[0];
@@ -1471,8 +1481,9 @@
 	Jsonary.extend({
 		render: render,
 		renderHtml: renderHtml,
+		enhance: enhanceElement,
 		renderValue: renderValue,
-		asyncRenderHtml: asyncRenderHtml
+		asyncRenderHtml: asyncRenderHtml,
 	});
 	Jsonary.extendData({
 		renderTo: function (element, uiState) {
