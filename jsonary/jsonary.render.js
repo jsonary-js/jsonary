@@ -20,14 +20,20 @@
 		return str.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;");
 	}
 
+	var fixScrollActive = false;
 	function fixScroll(execFunction) {
+		if (fixScrollActive) return execFunction();
+		fixScrollActive = true;
 		var doc = document.documentElement, body = document.body;
 		var left = (doc && doc.scrollLeft || body && body.scrollLeft || 0);
 		var top = (doc && doc.scrollTop  || body && body.scrollTop  || 0);
 		execFunction();
-		if (left || top) {
-			window.scrollTo(left, top);
-		}
+		setTimeout(function () {
+			if (left || top) {
+				window.scrollTo(left, top);
+			}
+			fixScrollActive = false;
+		}, 10);
 	}
 
 	var prefixPrefix = "Jsonary";
