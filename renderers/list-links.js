@@ -63,13 +63,7 @@
 					return false;
 				}
 				context.uiState.submitLink = arg1;
-				if (link.method == "PUT" && link.submissionSchemas.length == 0) {
-					// TODO: editable copy of actual target?
-					context.uiState.editing = context.data.editableCopy();
-					context.uiState.submissionData = context.data.editableCopy();
-				} else {
-					context.uiState.submissionData = link.createSubmissionData(undefined, true);
-				}
+				context.uiState.submissionData = link.createSubmissionData(undefined, true);
 				if (link.method == "PUT") {
 					context.uiState.editInPlace = true;
 				}
