@@ -1,6 +1,7 @@
 (function (Jsonary) {
 	function Route(templateStr, handlerFunction) {
 		this.template = Jsonary.UriTemplate(templateStr);
+		this.templateString = templateStr;
 		this.run = handlerFunction;
 	}
 	Route.prototype = {
