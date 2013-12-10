@@ -1,4 +1,4 @@
-/* Bundled on 2013-12-08 */
+/* Bundled on 2013-12-10 */
 (function() {
 /* Copyright (C) 2012-2013 Geraint Luff
 
@@ -11736,16 +11736,16 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 						delete context.uiState.linkData;
 						delete context.uiState.expand;
 					} else {
+						/*
 						link.follow();
 						return;
-						/*
+						*/
 						var targetExpand = (link.rel == "self") ? true : link.href;
 						if (context.uiState.expand == targetExpand) {
 							delete context.uiState.expand;
 						} else {
 							context.uiState.expand = targetExpand;
 						}
-						*/
 					}
 					return true;
 				} else if (actionName == "link-confirm") {

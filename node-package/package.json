@@ -1,6 +1,6 @@
 {
   "name": "jsonary",
-  "version": "0.0.14",
+  "version": "0.0.16",
   "author": "Geraint Luff",
   "description": "Jsonary - use JSON Schema in your client",
   "dependencies": {

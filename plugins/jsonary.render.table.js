@@ -818,16 +818,16 @@
 					delete context.uiState.linkData;
 					delete context.uiState.expand;
 				} else {
+					/*
 					link.follow();
 					return;
-					/*
+					*/
 					var targetExpand = (link.rel == "self") ? true : link.href;
 					if (context.uiState.expand == targetExpand) {
 						delete context.uiState.expand;
 					} else {
 						context.uiState.expand = targetExpand;
 					}
-					*/
 				}
 				return true;
 			} else if (actionName == "link-confirm") {
