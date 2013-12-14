@@ -4,3 +4,6 @@
 [submodule "jsonary/uri-templates"]
 	path = jsonary/uri-templates
 	url = https://github.com/geraintluff/uri-templates.git
+[submodule "node-package"]
+	path = node-package
+	url = https://github.com/jsonary-js/jsonary-release.git
