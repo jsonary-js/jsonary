@@ -1,8 +1,0 @@
-{
-	"title": "Welcome to Jsonary",
-	"content": [
-		"This is a starting document for the demo JSON browser packaged with Jsonary.",
-		"Type the URL of your JSON API into the bar at the top to see your own data displayed here.  As you document your API using JSON Hyper-Schema, this page will become a fully adaptive client for your API.",
-		"See the Jsonary documentation for how to embed Jsonary in your own page/site."
-	]
-}
