@@ -5,7 +5,11 @@
   "private": true,
   "devDependencies": {
     "grunt": "~0.4.1",
-    "wrench": "~1.5.1"
+    "wrench": "~1.5.1",
+    "mime": "~1.2.11",
+    "cookie-client": "0.0.3",
+    "clean-css": "~1.0.12",
+    "uglify-js": "~2.3.6"
   },
   "scripts": {
     "test": "grunt test"
