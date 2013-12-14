@@ -1,4 +1,8 @@
 (function (Jsonary) {
+	if (typeof window === 'undefined') {
+		return;
+	}
+
 	function Route(templateStr, handlerFunction) {
 		this.template = Jsonary.UriTemplate(templateStr);
 		this.templateString = templateStr;
