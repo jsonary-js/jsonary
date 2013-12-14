@@ -42,29 +42,12 @@ var masterBundle = bundle.base(__dirname)
 console.log("Writing jsonary-core");
 masterBundle.compileJs('node-package/core/jsonary-core.js', true);
 masterBundle.compileCss('node-package/core/jsonary-core.css');
-	
-	// Plugins
-masterBundle.js('plugins/jsonary.location.js')
-	.js('plugins/jsonary.route.js')
-	.js('plugins/jsonary.popup.js')
-	.js('plugins/jsonary.undo.js')
-	.js('plugins/jsonary.jstl.js')
-	.js('plugins/jsonary.render.table.js')
-	.css('plugins/jsonary.render.table.css')
-	.js('plugins/jsonary.render.generate.js')
-
-	.js('renderers/contributed/full-preview.js')
-	.js('renderers/contributed/full-instances.js')
-	.js('renderers/contributed/adaptive-table.js')
-	.js('renderers/contributed/tag-list.js')
-	.css('renderers/contributed/tag-list.css')
-	.js('renderers/contributed/image-picker.js')
-	.css('renderers/contributed/image-picker.css');
 
 console.log("Writing jsonary-super-bundle");
-masterBundle.compileJs('node-package/super-bundle/jsonary-super-bundle.js', true, true);
+var superBundle = require('./node-package').superBundle();
+superBundle.writeJs('node-package/super-bundle/jsonary-super-bundle.js', true, true);
 console.log("Jsonary bundles complete");
-
+	
 console.log("Copying files");
 // copy license
 fs.writeFileSync('node-package/LICENSE.txt', licenseText, {enc: 'utf-8'});
