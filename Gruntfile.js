@@ -15,7 +15,7 @@ module.exports = function(grunt) {
 		compress: {
 			'get-started-bundle': {
 				options: {
-					archive: 'get-started.zip',
+					archive: 'express-site/get-started.zip',
 					pretty: true
 				},
 				files: [{

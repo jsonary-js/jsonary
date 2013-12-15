@@ -7,3 +7,6 @@
 [submodule "node-package"]
 	path = node-package
 	url = https://github.com/jsonary-js/jsonary-release.git
+[submodule "express-site"]
+	path = express-site
+	url = https://github.com/jsonary-js/jsonary-site.git
