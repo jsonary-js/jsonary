@@ -17,6 +17,22 @@ Jsonary.extendSchemaList({
 	}
 });
 
+// hidden extension (non-standard keyword, suggested by Ognian)
+Jsonary.extendSchema({
+    hidden: function () {
+        return !!this.data.propertyValue("hidden");
+    }
+});
+Jsonary.extendSchemaList({
+    hidden: function () {
+        var hidden = false;
+        this.each(function (index, schema) {
+            hidden = hidden || schema.hidden();
+        });
+        return hidden;
+    }
+});
+
 // Display/edit objects, using displayOrder for ordering
 Jsonary.render.register({	
 	renderHtml: function (data, context) {
@@ -27,8 +43,10 @@ Jsonary.render.register({
 		var keysDisplayOrder = {};
 		var guaranteedKeys = data.readOnly() ? [] : schemas.definedProperties();			
 		data.properties(guaranteedKeys, function (key, subData) {
+            if(!(subData.schemas().hidden() || schemas.propertySchemas(key).hidden())){
 			keysList.push(key);
 			keysDisplayOrder[key] = (subData.schemas().displayOrder() || schemas.propertySchemas(key).displayOrder());
+            }
 		}, true);
 		keysList.sort(function (keyA, keyB) {
 			if (keysDisplayOrder[keyA] == null) {
