@@ -22,8 +22,8 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 			var basicTypes = schemas.basicTypes();
 
 			// If the data might not be an object, add a column for it
-			if (basicTypes.length != 1 || basicTypes[0] != "object" || depthRemaining <= 0) {
-				var column = pathPrefix;
+			if ((basicTypes.length != 1 || basicTypes[0] != "object" || depthRemaining <= 0) && !schemas.hidden()) {
+                    var column = pathPrefix;
 				if (!columnsObj[column]) {
 					columnsObj[column] = true;
 					renderer.addColumn(column, schemas.title() || column, function (data, context) {
@@ -75,7 +75,9 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 				// Iterate over the potential properties
 				for (var i = 0; i < knownPropertyIndices.length; i++) {
 					var key = knownProperties[knownPropertyIndices[i]];
-					addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]), depthRemaining - 1);
+                    if (!schemas.propertySchemas(key).hidden()){
+                        addColumnsFromSchemas(schemas.propertySchemas(key), pathPrefix + Jsonary.joinPointer([key]), depthRemaining - 1);
+                    }
 				}
 			}
 		}
@@ -157,4 +159,20 @@ Jsonary.extendSchemaList({
 		});
 		return displayAsTable;
 	}
+});
+
+// hidden extension (non-standard keyword, suggested by Ognian)
+Jsonary.extendSchema({
+    hidden: function () {
+        return !!this.data.propertyValue("hidden");
+    }
+});
+Jsonary.extendSchemaList({
+    hidden: function () {
+        var hidden = false;
+        this.each(function (index, schema) {
+            hidden = hidden || schema.hidden();
+        });
+        return hidden;
+    }
 });
