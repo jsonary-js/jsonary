@@ -68,19 +68,21 @@ Jsonary.render.register({
 		}
 		result += '<table class="json-object"><tbody>';
 		var drawProperty = function (key, subData) {
-			result += '<tr class="json-object-pair">';
-			if (subData.defined()) {
-				var title = subData.schemas().title();
-			} else {
-				var title = subData.parent().schemas().propertySchemas(subData.parentKey()).title();
-			}
-			if (title == "") {
-				result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div></td>';
-			} else {
-				result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div><div class="json-object-key-text">' + escapeHtml(title) + '</div></td>';
-			}
-			result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
-			result += '</tr>';
+            if(!subData.schemas().hidden()){
+	    		result += '<tr class="json-object-pair">';
+	    		if (subData.defined()) {
+	    			var title = subData.schemas().title();
+	    		} else {
+	    			var title = subData.parent().schemas().propertySchemas(subData.parentKey()).title();
+	    		}
+	    		if (title == "") {
+	    			result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div></td>';
+	    		} else {
+	    			result +=	'<td class="json-object-key"><div class="json-object-key-title">' + escapeHtml(key) + '</div><div class="json-object-key-text">' + escapeHtml(title) + '</div></td>';
+	    		}
+	    		result += '<td class="json-object-value">' + context.renderHtml(subData) + '</td>';
+	    		result += '</tr>';
+            }
 		}
 		if (!data.readOnly()) {
 			var maxProperties = schemas.maxProperties();
@@ -90,6 +92,9 @@ Jsonary.render.register({
 					drawProperty(key, subData);
 				}
 			}, drawProperty);
+            // There are 2 callbacks the first one is called for the properties of the object defined in the schema or provided as the very first argumen
+            // the second one is called for properties in the data NOT defined in the schema
+            // so if we want to exclude a property only if it is defined as hidden in the schema we have to change the draw property function to try to see if this item is hidden and only if it is hidden to disable it otherwise it has to be displayed.
 
 			if (canAdd && schemas.allowedAdditionalProperties()) {
 				result += '<tr class="json-object-pair"><td class="json-object-key"><div class="json-object-key-text">';
