@@ -686,7 +686,7 @@
 					return this.serverSide.action.apply(this, arguments);
 				}
 				return true;
-			} else if (actionName == "move-select") {
+			} else if (actionName == "move-start") {
 				var index = arg1;
 				context.uiState.moveRow = index;
 				return true;
