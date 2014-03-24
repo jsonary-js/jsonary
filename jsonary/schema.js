@@ -538,9 +538,10 @@ Schema.prototype.extendSchemas = Schema.prototype.andSchemas;
 Schema.prototype.indexSchemas = Schema.prototype.itemSchemas;
 Schema.prototype.isComplete = Schema.prototype.isFull;
 
-publicApi.extendSchema = function (obj) {
+publicApi.extendSchema = function (obj, force) {
+    if(!force) force=false;
 	for (var key in obj) {
-		if (Schema.prototype[key] == undefined) {
+		if (force || Schema.prototype[key] == undefined) {
 			Schema.prototype[key] = obj[key];
 		}
 	}
