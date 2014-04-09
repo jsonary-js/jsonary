@@ -27,7 +27,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
 				if (!columnsObj[column]) {
 					columnsObj[column] = true;
 					renderer.addColumn(column, schemas.title() || column, function (data, context) {
-						if (data.basicType() == "object" && depthRemaining < 0) {
+						if (data.basicType() == "object" && depthRemaining <= 0) {
 							return '<td class="jsonary-recursion-limit-reached">...</td>';
                         } else {
 							return this.defaultCellRenderHtml(data, context, column);
