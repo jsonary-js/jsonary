@@ -396,6 +396,7 @@ Request.prototype = {
 		var remainder = headers["content-type"].substring(contentType.length + 1);
 		while (remainder.length > 0) {
 			remainder = remainder.replace(/^,\s*/, '');
+			remainder = remainder.replace(/^;\s*/, '');
 			var partName = remainder.split("=", 1)[0];
 			remainder = remainder.substring(partName.length + 1).trim();
 			partName = partName.trim();
@@ -412,7 +413,7 @@ Request.prototype = {
 					contentTypeParameters[partName] = partValue;
 				}
 			} else {
-				partValue = /^[^,]*/.exec(remainder)[0];
+				partValue = /^[^,;]*/.exec(remainder)[0];
 				remainder = remainder.substring(partValue.length).trim();
 				contentTypeParameters[partName] = partValue;
 			}
