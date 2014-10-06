@@ -1011,7 +1011,7 @@ SchemaList.prototype = {
 			origValue = callback;
 			callback = tmp;
 		}
-		if (typeof origValue !== 'undefined' && !Array.isArray(origValue)) {
+		if (typeof origValue !== 'undefined' && origValue !== null && !Array.isArray(origValue)) {
 			return undefined;
 		}
 		var thisSchemaSet = this;
