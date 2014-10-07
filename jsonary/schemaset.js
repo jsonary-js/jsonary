@@ -1012,6 +1012,7 @@ SchemaList.prototype = {
 			callback = tmp;
 		}
 		if (typeof origValue !== 'undefined' && !Array.isArray(origValue)) {
+			if (callback) callback(undefined);
 			return undefined;
 		}
 		var thisSchemaSet = this;
@@ -1098,6 +1099,7 @@ SchemaList.prototype = {
 			callback = tmp;
 		}
 		if (typeof origValue !== 'undefined' && (typeof origValue !== 'object' || Array.isArray(origValue))) {
+			if (callback) callback(undefined);
 			return undefined;
 		}
 		var thisSchemaSet = this;

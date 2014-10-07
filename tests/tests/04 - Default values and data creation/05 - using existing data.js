@@ -92,6 +92,19 @@ tests.add("defining array items to match original", function () {
 	return true;
 });
 
+
+tests.add("defining array items, ignoring existing data", function () {
+	var thisTest = this;
+	var schema1 = Jsonary.createSchema({
+		type: "array"
+	});
+	var origData = "not an array";
+	schema1.createValue(origData, function (createdData) {
+		thisTest.assert(Array.isArray(createdData), "value is an array");
+		thisTest.pass();
+	});
+});
+
 tests.add("defining object properties inside array items (no constraints)", function () {
 	var schema1 = Jsonary.createSchema({
 		type: "array",
