@@ -92,7 +92,6 @@ tests.add("defining array items to match original", function () {
 	return true;
 });
 
-
 tests.add("defining array items, ignoring existing data", function () {
 	var thisTest = this;
 	var schema1 = Jsonary.createSchema({
@@ -101,6 +100,22 @@ tests.add("defining array items, ignoring existing data", function () {
 	var origData = "not an array";
 	schema1.createValue(origData, function (createdData) {
 		thisTest.assert(Array.isArray(createdData), "value is an array");
+		thisTest.pass();
+	});
+});
+
+tests.add("defining object, with null as existing data", function () {
+	var thisTest = this;
+	var schema1 = Jsonary.createSchema({
+		type: "object",
+		properties: {
+			"foo": {type: "boolean"}
+		},
+		required: ["foo"]
+	});
+	var origData = null;
+	schema1.createValue(origData, function (createdData) {
+		thisTest.assert(typeof createdData.foo === 'boolean', "data.foo is a boolean");
 		thisTest.pass();
 	});
 });

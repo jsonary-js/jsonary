@@ -1098,7 +1098,7 @@ SchemaList.prototype = {
 			origValue = callback;
 			callback = tmp;
 		}
-		if (typeof origValue !== 'undefined' && (typeof origValue !== 'object' || Array.isArray(origValue))) {
+		if (typeof origValue !== 'undefined' && (!origValue || typeof origValue !== 'object' || Array.isArray(origValue))) {
 			if (callback) callback(undefined);
 			return undefined;
 		}
