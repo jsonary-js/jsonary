@@ -7,7 +7,7 @@ Jsonary.render.register(Jsonary.plugins.Generator({
         var FancyTableRenderer = Jsonary.plugins.FancyTableRenderer;
 
         var detectedPagingLinks = !!(data.getLink('next') || data.getLink('prev'));
-        var isShort = data.readOnly() && data.length() < (Jsonary.options.adaptive_table.pagingRows ? Jsonary.options.adaptive_table.pagingRows : 15);
+        var isShort = data.readOnly() && data.length() < (Jsonary && Jsonary.options && Jsonary.options.adaptive_table && Jsonary.options.adaptive_table.pagingRows ? Jsonary.options.adaptive_table.pagingRows : 15);
 
         var renderer = new FancyTableRenderer({
             sort: {},
