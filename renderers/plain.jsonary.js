@@ -191,7 +191,7 @@
 			var orSchemas = fixedSchemas.orSchemas();
 			if (orSchemas.length == 0) {
 				xorSchemas = fixedSchemas.xorSchemas();
-				if (xorSchemas.length == 1) {
+				if (xorSchemas.length <= 1) {
 					singleOption = true;
 				}
 			}
