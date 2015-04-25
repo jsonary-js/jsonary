@@ -1103,7 +1103,7 @@ SchemaList.prototype = {
 			return undefined;
 		}
 		var thisSchemaSet = this;
-		var candidate = origValue?origValue:{};
+		var candidate = {};
 		var pending = 1;
 		var requiredProperties = this.requiredProperties();
 		for (var i = 0; candidate && i < requiredProperties.length; i++) {
