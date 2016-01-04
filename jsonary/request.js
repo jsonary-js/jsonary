@@ -97,6 +97,7 @@ publicApi.ajaxFunction = function (params, callback) {
 	}
 	xhr.setRequestHeader("Content-Type", encType);
 	xhr.setRequestHeader("If-Modified-Since", "Thu, 01 Jan 1970 00:00:00 GMT");
+	xhr.withCredentials=true;
 	xhr.send(xhrData);
 };
 
