@@ -223,9 +223,9 @@ var hyperSchema = {
 		"allOf": {
 			"$ref": "#/definitions/schemaArray"
 		},
-		"oneOf": {
-			"$ref": "#/definitions/schemaArray"
-		},
+		// "oneOf": {
+		// 	"$ref": "#/definitions/schemaArray"
+		// },
 		"oneOf": {
 			"$ref": "#/definitions/schemaArray"
 		},
