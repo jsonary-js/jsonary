@@ -97,6 +97,17 @@ Jsonary.render.register(Jsonary.plugins.Generator({
             if (linkDefinition.rel() == 'externallink') {
                 renderer.addColumn(columnName, columnTitle, function (data, context) {
                     var theHref=data.links("externallink")[0].href
+
+                    var linkPrefix = Jsonary.ogiitGlobalConst_LinkPrefix;
+                    var linkHtml = "";
+                    if (
+                      linkPrefix
+                      && linkPrefix != theHref.substr(0, linkPrefix.length)
+                      && "http" != theHref.substr(0, 4)
+                    )
+                    {
+                        theHref = linkPrefix + theHref;
+                    }
                     return "<td><a href='"+theHref+"' target='_blank'>"+columnTitle+"</a></td>"
                 } ) // signature is (key, title, renderer)
                 return
