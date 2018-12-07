@@ -301,6 +301,15 @@
 					return true;
 				}
 			} else if (actionName == "selectOrSchema") {
+				// go through value array and if it contains a value in context.uiState.orSelected[arg1] remove it
+				// this is only needed for iOS since in other browsers this is the default behaviour of the multiple select box
+				var normalizedValue=[];
+				for(var i=0; i<value.length; i++){
+					if(!context.uiState.orSelected[arg1][value[i]])
+						normalizedValue.push(value[i]);
+				}
+				value=normalizedValue;
+
 				// Order should be the same, and they're all numbers, so...
 				var different = (context.uiState.orSelected[arg1].length !== value.length);
 				for (var i = 0; !different && i < value.length; i++) {

@@ -786,6 +786,12 @@
 			} else if (actionName == "link") {
 				var linkRel = arg1, linkIndex = arg2, subPath = arg3 || '';
 				var link = data.subPath(subPath).links(linkRel)[linkIndex || 0];
+
+				var linkPrefix=Jsonary.ogiitGlobalConst_LinkPrefix;
+				if(linkPrefix && linkPrefix!=link.href.substr(0,linkPrefix.length)
+					&& "http"!=link.href.substr(0,4)
+				) {link.href=linkPrefix+link.href;}
+
 				if (link.submissionSchemas.length) {
 					context.uiState.linkRel = linkRel;
 					context.uiState.linkIndex = linkIndex;

@@ -1713,6 +1713,12 @@ SchemaSet.prototype = {
 			var subSchemaKey = Utils.getKeyVariant(schemaKey);
 			linkInstance.addMonitor(subSchemaKey, function (active) {
 				var rawLink = linkInstance.rawLink;
+
+				var linkPrefix=Jsonary.ogiitGlobalConst_LinkPrefix;
+				if(linkPrefix && rawLink &&rawLink.href && linkPrefix!=rawLink.href.substr(0,linkPrefix.length)
+					&& "http"!=rawLink.href.substr(0,4)
+				) {rawLink.href=linkPrefix+rawLink.href;}
+
 				var newUrl = active ? rawLink.href : null;
 				if (appliedUrl !== newUrl) {
 					appliedUrl = newUrl;

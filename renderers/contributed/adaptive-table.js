@@ -92,6 +92,27 @@ Jsonary.render.register(Jsonary.plugins.Generator({
                 activeText = 'save';
             }
 
+            // For some type of links we must double the render logic here
+            // For now this is only externallink since others can be moved to better places (not in an array...)
+            if (linkDefinition.rel() == 'externallink') {
+                renderer.addColumn(columnName, columnTitle, function (data, context) {
+                    var theHref=data.links("externallink")[0]?data.links("externallink")[0].href:"/jsonary_no_data_no_link"
+
+                    var linkPrefix = Jsonary.ogiitGlobalConst_LinkPrefix;
+                    var linkHtml = "";
+                    if (
+                      linkPrefix
+                      && linkPrefix != theHref.substr(0, linkPrefix.length)
+                      && "http" != theHref.substr(0, 4)
+                    )
+                    {
+                        theHref = linkPrefix + theHref;
+                    }
+                    return "<td><a href='"+theHref+"' target='_blank'>"+columnTitle+"</a></td>"
+                } ) // signature is (key, title, renderer)
+                return
+            }
+
             renderer.addLinkColumn(linkDefinition, linkDefinition.rel(), columnTitle, linkText, activeText, isConfirm);
         }
 
